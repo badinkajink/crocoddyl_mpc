@@ -17,13 +17,14 @@
     </keyframe>
 
     <custom>
-        <numeric name="agent_planner" data="0"/>
+        <numeric name="agent_planner" data="2"/>
         <numeric name="agent_horizon" data="1.0"/>
         <numeric name="agent_timestep" data="0.015"/>
         <numeric name="sampling_spline_points" data="3"/>
         <numeric name="sampling_exploration" data="0.05"/>
         <numeric name="gradient_spline_points" data="5"/>
         <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
+
     </custom>
 
     <sensor>
@@ -76,8 +77,9 @@
 
         <framepos name="left_hand_pos" objtype="site" objname="left_hand"/>
         <framepos name="right_hand_pos" objtype="site" objname="right_hand"/>
-        <subtreelinvel name="left_hand_vel" objtype="site" objname="left_hand"/>
-        <subtreelinvel name="right_hand_vel" objtype="site" objname="right_hand"/>
-
+        <framelinvel name="left_hand_vel" objtype="site" objname="left_hand"/>
+        <framelinvel name="right_hand_vel" objtype="site" objname="right_hand"/>
+        <touch name="left_hand_contact" site="left_hand"/>
+        <touch name="right_hand_contact" site="right_hand"/>
     </sensor>
 </mujoco>
