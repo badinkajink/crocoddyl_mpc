@@ -14,52 +14,50 @@ namespace mjpc {
 //      Residual(2): CoM Velocity
 //      Residual(3): joint velocity
 //      Residual(4): balance
-//      Residual(5): upright
-//      Residual(6): position
+//      Residual(5): torso forward tilt (NEW - encourages leaning)
+//      Residual(6): pelvis tilt (NEW - allows forward lean)
 //      Residual(7): posture
 //      Residual(8): velocity
 //      Residual(9): control
-//      Residual(10): box goal distance
-//      Residual(11): left hand distance
-//      Residual(12): right hand distance
-//      Residual(13): torso lean (pitch / forward-backward)
-//      Residual(14): CoM offset relative to feet
-//      Residual(15): torso angular velocity
-//      Residual(16): lean height limit
-//      Residual(17): bracing / hand support
+//      Residual(10): object distance (reaching hand)
+//      Residual(11): right hand distance to object
+//      Residual(12): left hand brace position on table (NEW)
 //   Number of parameters:
 //      Parameter(0): head height goal
-//      Parameter(1): torso pitch goal
-//      Parameter(2): bracing target
 // ----------------------------------------------------------------
-
 void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
                                 double *residual) const {
   double const height_goal = parameters_[0];
-  double const torso_pitch_goal = parameters_[1];
-//   double const bracing_goal = parameters_[2];
 
   int counter = 0;
 
-  //------------- Reward for the push task as in humanoid_bench --------------//
-  double const hand_dist_penalty = 0.1;
-  double const target_dist_penalty = 1.0;
+  //------------- Reward for the lean task --------------//
+  double const hand_dist_penalty = 1.0;
+  double const brace_reward = 0.5;
   double const success = 1000;
 
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
-  double goal_dist = mju_dist3(object_pos, task_->target_position_.data());
-
-  double penalty_dist = target_dist_penalty * goal_dist;
-  double reward_success = (goal_dist < 0.05) ? success : 0;
-
-  // ----- hand position ----- //
-  double hand_dist =
-      mju_dist3(SensorByName(model, data, "left_hand_pos"), object_pos);
+  
+  // ----- right hand position (reaching hand) ----- //
+  double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
+  double hand_dist = mju_dist3(right_hand_pos, object_pos);
   double penalty_hand = hand_dist_penalty * hand_dist;
 
+  // ----- left hand brace (on table) ----- //
+  double const *left_hand_pos = SensorByName(model, data, "left_hand_pos");
+  double const *table_pos = SensorByName(model, data, "table_surface_pos");
+  
+  // Ideal brace position: on table, forward of robot
+  double ideal_brace[3] = {table_pos[0] - 0.2, left_hand_pos[1], table_pos[2] + 0.05};
+  double brace_dist = mju_dist3(left_hand_pos, ideal_brace);
+  double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);
+
+  // Success when hand reaches object
+  double reward_success = (hand_dist < 0.05) ? success : 0;
+
   // ----- reward ----- //
-  double reward = -penalty_hand - penalty_dist + reward_success;
+  double reward = -penalty_hand + reward_brace + reward_success;
 
   //--------------- End of reward calculation -----------------//
 
@@ -68,6 +66,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // -------------- Below are additional residuals -------------- //
 
   // ----- Height: head feet vertical error ----- //
+  // Note: Reduced importance vs push task since leaning lowers head
 
   // feet sensor positions
   double *foot_right_pos = SensorByName(model, data, "foot_right_pos");
@@ -87,7 +86,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_copy(&residual[counter], com_velocity, 2);
   counter += 2;
 
-  // ----- joint velocity ---->--- //
+  // ----- joint velocity ----- //
   mju_copy(residual + counter, data->qvel + 6, model->nu);
   counter += model->nu;
 
@@ -125,43 +124,39 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_add3(pcp, vec, center);
   pcp[2] = 1.0e-3;
 
-  // is standing
-  double standing =
-      torso_height / mju_sqrt(torso_height * torso_height + 0.45 * 0.45) - 0.4;
+  // is leaning - modified to be less strict than standing
+  double leaning =
+      torso_height / mju_sqrt(torso_height * torso_height + 0.65 * 0.65) - 0.2;
 
   mju_sub(&residual[counter], capture_point, pcp, 2);
-  mju_scl(&residual[counter], &residual[counter], standing, 2);
+  mju_scl(&residual[counter], &residual[counter], leaning, 2);
 
   counter += 2;
 
-  // ----- upright ----- //
-  double *torso_up = SensorByName(model, data, "torso_up");
+  // ----- torso forward tilt (NEW) ----- //
+  // Encourage forward lean to reach object
+  // ----- torso forward tilt (direction-based) ----- //
+  double *torso_forward = SensorByName(model, data, "torso_forward");
+  double *torso_pos = SensorByName(model, data, "torso_position");
+
+  // Vector from torso to object (desired lean direction)
+  double reach_dir[3];
+  mju_sub3(reach_dir, object_pos, torso_pos);
+  // double reach_dist = mju_normalize3(reach_dir);
+
+  // Want torso forward axis to align with reach direction
+  // dot product should be close to 1
+  double alignment = mju_dot3(torso_forward, reach_dir);
+  residual[counter++] = 1.0 - alignment;
+
+  // ----- pelvis tilt (NEW) ----- //
+  // Allow pelvis to tilt slightly forward for stability during lean
   double *pelvis_up = SensorByName(model, data, "pelvis_up");
-  double *foot_right_up = SensorByName(model, data, "foot_right_up");
-  double *foot_left_up = SensorByName(model, data, "foot_left_up");
-
-  double z_ref[3] = {0.0, 0.0, 1.0};
-
-  // torso
-  residual[counter++] = torso_up[2] - 1.0;
-
-  // pelvis
-  residual[counter++] = 0.3 * (pelvis_up[2] - 1.0);
-
-  // right foot
-  mju_sub3(&residual[counter], foot_right_up, z_ref);
-  mju_scl3(&residual[counter], &residual[counter], 0.1 * standing);
-  counter += 3;
-
-  mju_sub3(&residual[counter], foot_left_up, z_ref);
-  mju_scl3(&residual[counter], &residual[counter], 0.1 * standing);
-  counter += 3;
-
-  // ----- keep initial position -----//
-  mju_sub(&residual[counter], data->qpos, model->key_qpos, 7);
-  counter += 7;
+  double target_pelvis_tilt = 0.85;  // Slight forward tilt allowed
+  residual[counter++] = pelvis_up[2] - target_pelvis_tilt;
 
   // ----- posture ----- //
+  // Reduced weight vs push task to allow more deviation for leaning
   mju_sub(&residual[counter], data->qpos + 7, model->key_qpos + 7, model->nu);
   counter += model->nu;
 
@@ -182,7 +177,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_addToScl(move_feet, foot_left_vel, -0.5, 2);
 
   mju_copy(&residual[counter], move_feet, 2);
-  mju_scl(&residual[counter], &residual[counter], standing, 2);
+  mju_scl(&residual[counter], &residual[counter], leaning, 2);
   counter += 2;
 
   // ----- control ----- //
@@ -190,52 +185,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
           model->nu);  // because of pos control
   counter += model->nu;
 
-  // ------ box position ------ //
-  mju_sub3(&residual[counter], object_pos, task_->target_position_.data());
-  mju_scl3(&residual[counter], &residual[counter], standing);
+  // ------ object distance (right hand) ------ //
+  mju_sub3(&residual[counter], right_hand_pos, object_pos);
+  mju_scl3(&residual[counter], &residual[counter], leaning);
   counter += 3;
 
-  // ----- distance between hands and box ----- //
-  mju_sub3(&residual[counter], SensorByName(model, data, "left_hand_pos"),
-           object_pos);
-  counter += 3;
-  mju_sub3(&residual[counter], SensorByName(model, data, "right_hand_pos"),
-           object_pos);
+  // ----- right hand distance to object ----- //
+  mju_sub3(&residual[counter], right_hand_pos, object_pos);
   counter += 3;
 
-  // ---------------- Lean-specific residuals ----------------- //
+  // ----- left hand brace on table (NEW) ----- //
+  // Encourage left hand to brace on table surface for stability
+  mju_sub3(&residual[counter], left_hand_pos, ideal_brace);
+  counter += 3;
 
-  // ----- Torso lean / pitch ----- //
-  double *torso_forward = SensorByName(model, data, "torso_forward");
-  residual[counter++] = torso_forward[0] - torso_pitch_goal; // x-axis pitch
+  std::cout << task_->target_position_[0] << std::flush;
 
-  // ----- CoM offset relative to feet ----- //
-  double *com = SensorByName(model, data, "torso_subcom");
-  double *foot_r = SensorByName(model, data, "foot_right_pos");
-  double *foot_l = SensorByName(model, data, "foot_left_pos");
-
-  double foot_center[2] = {(foot_r[0]+foot_l[0])*0.5, (foot_r[1]+foot_l[1])*0.5};
-  residual[counter++] = com[0] - foot_center[0];
-  residual[counter++] = com[1] - foot_center[1];
-
-  // ----- Torso angular velocity ----- //
-  double *torso_vel = SensorByName(model, data, "torso_velocity");
-  residual[counter++] = torso_vel[0];
-  residual[counter++] = torso_vel[1];
-  residual[counter++] = torso_vel[2];
-
-  // ----- Lean height ----- //
-//   double torso_z = SensorByName(model, data, "torso_position")[2];
-//   residual[counter++] = torso_z;
-
-  // ----- Bracing / hand contact ----- //
-//   double *lh_pos = SensorByName(model, data, "left_hand_pos");
-//   double *rh_pos = SensorByName(model, data, "right_hand_pos");
-//   // example: distance to table surface (z = 0.45)
-//   residual[counter++] = lh_pos[2] - bracing_goal;
-//   residual[counter++] = rh_pos[2] - bracing_goal;
-
-  // ----- sanity check for sensor dimension ----- //
+  // sensor dim sanity check
   int user_sensor_dim = 0;
   for (int i = 0; i < model->nsensor; i++) {
     if (model->sensor_type[i] == mjSENS_USER) {
@@ -244,36 +210,39 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   }
   if (user_sensor_dim != counter) {
     mju_error(
-        "Mismatch between user-sensor dim %d and residual length %d",
+        "mismatch between total user-sensor dimension %d "
+        "and actual length of residual %d",
         user_sensor_dim, counter);
   }
 }
 
-// -------- Transition for lean task -------- //
+// -------- Transition for humanoid_bench lean task -------- //
+// ------------------------------------------------------------ //
 void lean::TransitionLocked(mjModel *model, mjData *data) {
-  double *object_pos = SensorByName(model, data, "object_pos");
-  double goal_dist = mju_dist3(object_pos, target_position_.data());
-  if (goal_dist < 0.05) { // consider task solved
+  double const *object_pos = SensorByName(model, data, "object_pos");
+  double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
+  double hand_dist = mju_dist3(right_hand_pos, object_pos);
+  
+  if (hand_dist < 0.05) {  // consider task as solved
+    // set random target position (farther away to require leaning)
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_x(0.9, 1.3);
-    std::uniform_real_distribution<> dis_y(-0.5, 0.5);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.8};
-    printf("New target position: %f, %f\n", target_position_[0],
-           target_position_[1]);
+    std::uniform_real_distribution<> dis_x(1.1, 1.3);
+    std::uniform_real_distribution<> dis_y(-0.3, 0.3);
+    target_position_ = {dis_x(gen), dis_y(gen), 0.95};
+    printf("New target position: %f, %f, %f\n", target_position_[0],
+           target_position_[1], target_position_[2]);
   }
   mju_copy3(data->mocap_pos, target_position_.data());
 }
 
-// -------- Reset lean task -------- //
 void lean::ResetLocked(const mjModel *model) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dis_x(0.9, 1.3);
-  std::uniform_real_distribution<> dis_y(-0.5, 0.5);
-  target_position_ = {dis_x(gen), dis_y(gen), 0.8};
-  printf("New target position: %f, %f\n", target_position_[0],
-         target_position_[1]);
+  std::uniform_real_distribution<> dis_x(1.1, 1.3);
+  std::uniform_real_distribution<> dis_y(-0.3, 0.3);
+  target_position_ = {dis_x(gen), dis_y(gen), 0.95};
+  printf("New target position: %f, %f, %f\n", target_position_[0],
+         target_position_[1], target_position_[2]);
 }
-
 }  // namespace mjpc

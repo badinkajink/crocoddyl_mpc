@@ -10,10 +10,10 @@
 #include "mujoco/mujoco.h"
 
 namespace mjpc {
-
 class lean : public Task {
  public:
   std::string Name() const override = 0;
+
   std::string XmlPath() const override = 0;
 
   class ResidualFn : public mjpc::BaseResidualFn {
@@ -29,36 +29,41 @@ class lean : public Task {
   };
 
   lean() : residual_(this) {
-    // default target farther and smaller
-    target_position_ = {1.1, 0.0, 0.8};
-
+    target_position_ = {1.2, 0.0, 0.95};
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_x(0.9, 1.3);
-    std::uniform_real_distribution<> dis_y(-0.5, 0.5);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.8};
+    std::uniform_real_distribution<> dis_x(1.1, 1.3);
+    std::uniform_real_distribution<> dis_y(-0.3, 0.3);
+    target_position_ = {dis_x(gen), dis_y(gen), 0.95};
   }
 
   void TransitionLocked(mjModel *model, mjData *data) override;
+
   void ResetLocked(const mjModel *model) override;
 
  protected:
-  std::unique_ptr<mjpc::ResidualFn> ResidualLocked() const override {
+  std::unique_ptr<mjpc::ResidualFn> ResidualLocked() const
+
+      override {
     return std::make_unique<ResidualFn>(this);
   }
 
-  ResidualFn *InternalResidual() override {
+  ResidualFn *InternalResidual()
+
+      override {
     return &residual_;
   }
 
  private:
   ResidualFn residual_;
   std::array<double, 3> target_position_;
+  // std::array<double, 3> table_brace_position_;
 };
 
 class Lean_H12 : public lean {
  public:
   std::string Name() const override { return "Lean H12"; }
+
   std::string XmlPath() const override {
     return GetModelPath("humanoid_bench/lean/Lean_H12.xml");
   }

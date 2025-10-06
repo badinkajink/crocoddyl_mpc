@@ -10,7 +10,6 @@
         <texture type="2d" name="plywood_cover" file="../assets/plywood-4k.png"/>
     </asset>
     <worldbody>
-        <!-- Table remains same -->
         <body name="table" pos="0.9 0 0.45">
             <geom name="table_top" type="box" pos="0 0 0.4" size="0.5 1 0.05" class="visual" material="wooden_cover"/>
             <geom name="table_top_collision" type="box" pos="0 0 0.4" size="0.5 1 0.05" class="collision"/>
@@ -28,18 +27,17 @@
             <geom name="table_leg_4_collision" type="box" pos="-0.4 -0.85 -0.05" size="0.05 0.05 0.4"
                   class="collision"/>
         </body>
-
-        <!-- Object to lean over -->
-        <body name="object" pos="1.1 0 0.8" euler="0 0 0">
+        <!-- Object placed farther on table to require leaning -->
+        <body name="object" pos="1.2 0 0.95" euler='-0 0 -0'>
             <freejoint name="free_object"/>
-            <inertial pos="0 0 0" mass="0.2" diaginertia="0.0005 0.0005 0.0005"/>
+            <inertial pos="0 0 0" mass="0.3" diaginertia="0.001 0.001 0.001"/>
             <geom name="object" type="box" size=".05 .05 .05" rgba="0.67 0.73 0.78 1" class="visual"/>
             <geom name="object_collision" type="box" size=".05 .05 .05" class="collision"/>
         </body>
 
-        <!-- Target for success measurement -->
-        <body name="target" mocap="true" pos="1.2 0 0.8">
-            <geom type="sphere" size="0.025" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
+        <!-- Target position visualization -->
+        <body name="target" mocap="true" pos="1.2 0.0 0.95">
+            <geom type="sphere" size="0.03" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
         </body>
     </worldbody>
 </mujocoinclude>

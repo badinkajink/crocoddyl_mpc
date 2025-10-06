@@ -1,8 +1,8 @@
 <mujoco model="Lean H12">
     <include file="../h1_2/h1_2_modified.xml"/>
     <include file="lean.xml"/>
-    <include file="../../common.xml"/>
-    <include file="../assets/floor.xml"/>
+    <include file="../../common.xml" />
+    <include file="../assets/floor.xml" />
 
     <keyframe>
         <key name="home" 
@@ -13,7 +13,7 @@
               0 0 0 0 0
               0 0 0 0 0
               0 0 0 0 0 
-              0.7 0 1 1 0 0 0"/>
+              1.2 0 0.95 1 0 0 0"/>
     </keyframe>
 
     <custom>
@@ -24,36 +24,30 @@
         <numeric name="sampling_exploration" data="0.05"/>
         <numeric name="gradient_spline_points" data="5"/>
         <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
-        <numeric name="residual_Torso Lean Goal" data="0.0 0.0 0.0"/>
-        <!-- <numeric name="residual_Bracing Goal" data="0.0"/> -->
     </custom>
 
     <sensor>
-        <!-- Push / humanoid stand residuals -->
+        <!--        cost terms for lean task-->
         <user name="humanoid_bench" dim="1" user="6 0.0 0.0 100.0 0.01"/>
         <user name="Height" dim="1" user="6 100.0 0.0 100.0 0.1"/>
         <user name="CoM Vel." dim="2" user="0 10.0 0.0 100.0"/>
         <user name="Joint Vel." dim="27" user="0 0.01 0.0 0.1"/>
         <user name="Balance" dim="2" user="1 5.0 0.0 25.0 0.02 4.0"/>
-        <user name="Upright" dim="8" user="2 5.0 0.0 25.0 0.01"/>
-        <user name="Position" dim="7" user="0 0.425 0 1.0"/>
-        <user name="Posture" dim="27" user="0 0.025 0 1.0"/>
+        <user name="Torso Forward Tilt" dim="1" user="6 3.0 0.0 25.0 0.1"/>
+        <user name="Pelvis Tilt" dim="1" user="6 2.0 0.0 25.0 0.1"/>
+        <user name="Posture" dim="27" user="0 0.015 0 1.0"/>
         <user name="Velocity" dim="2" user="7 0.625 0 25.0 0.2 4.0"/>
         <user name="Control" dim="27" user="3 0.0 0 1.0 0.3"/>
 
-        <!-- Task-specific push residuals -->
-        <user name="goal dist" dim="3" user="6 37.0 0.0 100.0 0.1"/>
-        <user name="left_hand_dist" dim="3" user="6 10.0 0.0 100.0 0.1"/>
-        <user name="right_hand_dist" dim="3" user="6 10.0 0.0 100.0 0.1"/>
+        <!--        task specific cost terms-->
+        <user name="object_dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
+        <user name="right_hand_dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
+        <user name="left_hand_table" dim="3" user="6 5.0 0.0 100.0 0.1"/>
 
-        <!-- Lean-specific residuals -->
-        <user name="torso_lean" dim="1" user="6 10.0 0 25.0 0.05"/> <!-- torso pitch/lean -->
-        <user name="com_offset" dim="2" user="0 5.0 0 25.0"/>        <!-- CoM relative to feet -->
-        <user name="torso_ang_vel" dim="3" user="0 1.0 0 5.0"/>      <!-- torso angular velocity -->
-        <!-- <user name="lean_height" dim="1" user="6 1.0 0 2.0"/>         -->
-        <!-- <user name="bracing" dim="2" user="6 5.0 0 25.0"/>            -->
+        <!--        traces-->
+        <framepos name="trace0" objtype="body" objname="torso_link"/>
 
-        <!-- Sensors -->
+        <!-- residual -->
         <framepos name="torso_position" objtype="body" objname="torso_link"/>
         <framepos name="head_position" objtype="body" objname="torso_link"/>
         <subtreecom name="torso_subcom" body="torso_link"/>
@@ -78,8 +72,12 @@
         <subtreelinvel name="foot_left_vel" body="left_ankle_roll_link"/>
 
         <framepos name="object_pos" objtype="body" objname="object"/>
+        <framepos name="table_surface_pos" objtype="geom" objname="table_top"/>
 
         <framepos name="left_hand_pos" objtype="site" objname="left_hand"/>
         <framepos name="right_hand_pos" objtype="site" objname="right_hand"/>
+        <subtreelinvel name="left_hand_vel" objtype="site" objname="left_hand"/>
+        <subtreelinvel name="right_hand_vel" objtype="site" objname="right_hand"/>
+
     </sensor>
 </mujoco>
