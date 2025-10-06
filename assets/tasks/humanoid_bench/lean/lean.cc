@@ -59,15 +59,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const *table_pos = SensorByName(model, data, "table_surface_pos");
 
   // Ideal brace position: on table, closer to robot base
-  double ideal_brace[3] = {table_pos[0] - 0.3, bracing_hand[1], table_pos[2] + 0.05};
+  // Position brace closer to robot and slightly lower to encourage weight transfer
+  double *torso_pos = SensorByName(model, data, "torso_position");
+  double torso_to_table_x = table_pos[0] - torso_pos[0];
+  double ideal_brace[3] = {
+      torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
+      bracing_hand[1],  // Keep y close to current
+      table_pos[2] + 0.02  // Lower - encourage pressing into table
+  };
   double brace_dist = mju_dist3(bracing_hand, ideal_brace);
   double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);  // Success when hand reaches object
 
   double reward_success = (hand_dist < 0.05) ? success : 0;
 
-  // ----- reward ----- //
+  // Add to main reward
   double reward = -penalty_hand + reward_brace + reward_success;
-
   //--------------- End of reward calculation -----------------//
 
   residual[counter++] = success - reward;
@@ -142,11 +148,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   counter += 2;
 
-  // ----- torso forward tilt (NEW) ----- //
-  // Encourage forward lean to reach object
   // ----- torso forward tilt (direction-based) ----- //
+  // Encourage forward lean to reach object
   double *torso_forward = SensorByName(model, data, "torso_forward");
-  double *torso_pos = SensorByName(model, data, "torso_position");
 
   // Vector from torso to object (desired lean direction)
   double reach_dir[3];
@@ -194,6 +198,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
           model->nu);  // because of pos control
   counter += model->nu;
 
+  // ----- bracing hand position on table ----- //
+  mju_sub3(&residual[counter], bracing_hand, ideal_brace);
+  counter += 3;
+
+  // ----- bracing hand contact force ----- //
+  double *left_contact = SensorByName(model, data, "left_hand_contact");
+  double *right_contact = SensorByName(model, data, "right_hand_contact");
+  double brace_contact_force = left_reaches ? right_contact[0] : left_contact[0];
+
+  // Want significant downward force (tune desired force via weight in XML)
+  double desired_brace_force = 15.0;  // N
+  residual[counter++] = desired_brace_force - brace_contact_force;
+
   // ------ object distance (reaching hand) ------ //
   mju_sub3(&residual[counter], reaching_hand, object_pos);
   mju_scl3(&residual[counter], &residual[counter], leaning);
@@ -203,11 +220,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_sub3(&residual[counter], reaching_hand, object_pos);
   counter += 3;
 
-  // ----- bracing hand on table ----- //
-  mju_sub3(&residual[counter], bracing_hand, ideal_brace);
-  counter += 3;
-
-  std::cerr << task_->target_position_[0] << std::flush;
+  task_->target_position_[0] = 0.0;  // DEBUG
 
   // sensor dim sanity check
   int user_sensor_dim = 0;
