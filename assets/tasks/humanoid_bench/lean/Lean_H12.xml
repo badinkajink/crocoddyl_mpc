@@ -6,7 +6,7 @@
 
     <keyframe>
         <key name="home" 
-         qpos="0 0 1.032
+         qpos="0.19 0 1.028
               1 0 0 0
               0 0 0 0 0 0
               0 0 0 0 0 0
@@ -41,8 +41,8 @@
         <user name="Control" dim="27" user="3 0.0 0 1.0 0.3"/>
 
         <!--        task specific cost terms-->
-        <user name="Brace Pos" dim="3" user="6 10.0 0.0 100.0 0.1"/>
-        <user name="Brace Force" dim="1" user="6 5.0 0.0 100.0 0.1"/>
+        <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
+        <user name="Brace Force" dim="1" user="6 15.0 0.0 100.0 0.1"/>
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
 
