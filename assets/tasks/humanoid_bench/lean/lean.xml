@@ -28,13 +28,19 @@
                   class="collision"/>
         </body>
         <!-- Object placed farther on table to require leaning -->
-        <body name="object" pos="1.2 0 0.95" euler='-0 0 -0'>
-            <freejoint name="free_object"/>
-            <inertial pos="0 0 0" mass="0.3" diaginertia="0.001 0.001 0.001"/>
-            <geom name="object" type="box" size=".05 .05 .05" rgba="0.67 0.73 0.78 1" class="visual"/>
-            <geom name="object_collision" type="box" size=".05 .05 .05" class="collision"/>
+        <!-- Detachable object - child of world initially -->
+        <body name="object_anchor" pos="1.2 0 0.95">
+            <joint name="object_anchor_joint" type="free" limited="false"/>
+            
+            <body name="object" pos="0 0 0">
+                <inertial pos="0 0 0" mass="0.3" diaginertia="0.001 0.001 0.001"/>
+                <!-- Add contype/conaffinity to control collision -->
+                <geom name="object" type="box" size=".05 .05 .05" rgba="0.67 0.73 0.78 1" 
+                    class="visual" contype="1" conaffinity="1"/>
+                <geom name="object_collision" type="box" size=".05 .05 .05" 
+                    class="collision" contype="1" conaffinity="1"/>
+            </body>
         </body>
-
         <!-- Target position visualization -->
         <body name="target" mocap="true" pos="1.2 0.0 0.95">
             <geom type="sphere" size="0.03" contype="0" conaffinity="0" rgba="0 1 0 .5"/>

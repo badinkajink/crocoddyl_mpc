@@ -4,6 +4,23 @@
     <include file="../../common.xml" />
     <include file="../assets/floor.xml" />
 
+<equality>
+    <!-- Connect is position-only, more stable than weld -->
+    <connect name="object_left_attach" 
+             body1="object_anchor" 
+             body2="left_wrist_yaw_link" 
+             anchor="0 0 0"
+             active="false" 
+             solref="0.01 0.5"/>  <!-- Spring-damper: stiffness/damping -->
+    
+    <connect name="object_right_attach" 
+             body1="object_anchor" 
+             body2="right_wrist_yaw_link" 
+             anchor="0 0 0"
+             active="false" 
+             solref="0.01 0.5"/>
+</equality>
+
     <keyframe>
         <key name="home" 
          qpos="0.19 0 1.028
@@ -24,7 +41,6 @@
         <numeric name="sampling_exploration" data="0.05"/>
         <numeric name="gradient_spline_points" data="5"/>
         <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
-
     </custom>
 
     <sensor>

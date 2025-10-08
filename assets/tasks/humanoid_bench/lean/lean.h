@@ -24,8 +24,27 @@ class lean : public Task {
     void Residual(const mjModel *model, const mjData *data,
                   double *residual) const override;
 
-   private:
-    lean *task_;
+    // Add mode enum
+    enum LeanMode {
+      kModeReach = 0,
+      kModeRetrieve,
+      kNumMode
+    };
+
+    private:
+      lean *task_;
+      friend class lean;
+
+      // Add mode state variable
+      LeanMode current_mode_ = kModeReach;
+      double mode_start_time_ = 0;
+      double last_transition_time_ = -1;
+
+      // Thresholds for mode transition
+      static constexpr double kHandDistThreshold = 0.08;  // meters
+      static constexpr double kContactStableTime = 0.0;  // seconds to wait before retrieve
+      static constexpr double kContactForceThreshold = 0.0;  // N
+      double contact_start_time_ = -1;
   };
 
   lean() : residual_(this) {
@@ -54,10 +73,11 @@ class lean : public Task {
     return &residual_;
   }
 
- private:
+private:
   ResidualFn residual_;
   std::array<double, 3> target_position_;
-  // std::array<double, 3> table_brace_position_;
+  int object_left_weld_id_ = -1;
+  int object_right_weld_id_ = -1;
 };
 
 class Lean_H12 : public lean {

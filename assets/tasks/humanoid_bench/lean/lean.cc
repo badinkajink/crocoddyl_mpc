@@ -28,13 +28,7 @@ namespace mjpc {
 void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
                                 double *residual) const {
   double const height_goal = parameters_[0];
-
   int counter = 0;
-
-  //------------- Reward for the lean task --------------//
-  double const hand_dist_penalty = 1.0;
-  double const brace_reward = 0.5;
-  double const success = 1000;
 
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
@@ -51,15 +45,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const *reaching_hand = left_reaches ? left_hand_pos : right_hand_pos;
   double const *bracing_hand = left_reaches ? right_hand_pos : left_hand_pos;
 
+  //------------- Reward calculation --------------//
+  double const hand_dist_penalty = 1.0;
+  double const brace_reward = 0.5;
+  double const success = 1000;
+  double const retrieve_reward = 1000;
+
   // ----- reaching hand position ----- //
   double hand_dist = mju_dist3(reaching_hand, object_pos);
-  double penalty_hand = hand_dist_penalty * hand_dist;
 
-  // ----- bracing hand (on table) ----- //
+  // ----- Contact forces ----- //
+  double *left_contact = SensorByName(model, data, "left_hand_contact");
+  double *right_contact = SensorByName(model, data, "right_hand_contact");
+  double brace_contact_force = left_reaches ? right_contact[0] : left_contact[0];
+  double reach_contact_force = left_reaches ? left_contact[0] : right_contact[0];
+
+  double reward = 0;
+
+  // Bracing position calculation; Position brace closer to robot and slightly lower to encourage weight transfer
   double const *table_pos = SensorByName(model, data, "table_surface_pos");
-
-  // Ideal brace position: on table, closer to robot base
-  // Position brace closer to robot and slightly lower to encourage weight transfer
   double *torso_pos = SensorByName(model, data, "torso_position");
   double torso_to_table_x = table_pos[0] - torso_pos[0];
   double ideal_brace[3] = {
@@ -67,13 +71,26 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       bracing_hand[1],  // Keep y close to current
       table_pos[2] + 0.02  // Lower - encourage pressing into table
   };
-  double brace_dist = mju_dist3(bracing_hand, ideal_brace);
-  double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);  // Success when hand reaches object
 
-  double reward_success = (hand_dist < 0.05) ? success : 0;
+  if (current_mode_ == kModeReach) {
+    double penalty_hand = hand_dist_penalty * hand_dist;
+    double brace_dist = mju_dist3(bracing_hand, ideal_brace);
+    double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);  // Success when hand reaches object
+    double reward_success = (hand_dist < kHandDistThreshold && reach_contact_force > kContactForceThreshold) ? success : 0;
+    reward = -penalty_hand + reward_brace + reward_success;
+    
+  } else if (current_mode_ == kModeRetrieve) {
+    double *torso_pos = SensorByName(model, data, "torso_position");
+    // Reward bringing object close to torso
+    double obj_to_torso_dist = mju_dist3(object_pos, torso_pos);
+    double reward_retrieve_dist = retrieve_reward * mju_exp(-2.0 * obj_to_torso_dist);
+    // Reward standing upright
+    double *torso_up = SensorByName(model, data, "torso_up");
+    double reward_upright = 100.0 * (torso_up[2] - 0.9);  // Want torso_up[2] close to 1
+    
+    reward = reward_retrieve_dist + reward_upright;
+  }
 
-  // Add to main reward
-  double reward = -penalty_hand + reward_brace + reward_success;
   //--------------- End of reward calculation -----------------//
 
   residual[counter++] = success - reward;
@@ -202,11 +219,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_sub3(&residual[counter], bracing_hand, ideal_brace);
   counter += 3;
 
-  // ----- bracing hand contact force ----- //
-  double *left_contact = SensorByName(model, data, "left_hand_contact");
-  double *right_contact = SensorByName(model, data, "right_hand_contact");
-  double brace_contact_force = left_reaches ? right_contact[0] : left_contact[0];
-
   // Want significant downward force (tune desired force via weight in XML)
   double desired_brace_force = 15.0;  // N
   residual[counter++] = desired_brace_force - brace_contact_force;
@@ -240,21 +252,124 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 // -------- Transition for humanoid_bench lean task -------- //
 // ------------------------------------------------------------ //
 void lean::TransitionLocked(mjModel *model, mjData *data) {
-  double const *object_pos = SensorByName(model, data, "object_pos");
-  double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
-  double hand_dist = mju_dist3(right_hand_pos, object_pos);
-  
-  if (hand_dist < 0.05) {  // consider task as solved
-    // set random target position (farther away to require leaning)
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_x(1.1, 1.3);
-    std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.95};
-    printf("New target position: %f, %f, %f\n", target_position_[0],
-           target_position_[1], target_position_[2]);
+  // Handle data reset
+  if (data->time < residual_.last_transition_time_ || 
+      residual_.last_transition_time_ == -1) {
+    residual_.last_transition_time_ = data->time;
+    residual_.current_mode_ = ResidualFn::kModeReach;
+    residual_.contact_start_time_ = -1;
   }
+
+  // Get hand and object info
+  double const *left_hand_pos = SensorByName(model, data, "left_hand_pos");
+  double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
+  double const *object_pos = SensorByName(model, data, "object_pos");
+
+  double left_obj_dist = mju_dist3(left_hand_pos, object_pos);
+  double right_obj_dist = mju_dist3(right_hand_pos, object_pos);
+  bool left_reaches = left_obj_dist < right_obj_dist;
+
+  // Get contact force on reaching hand
+  double *left_contact = SensorByName(model, data, "left_hand_contact");
+  double *right_contact = SensorByName(model, data, "right_hand_contact");
+  double reach_contact_force = left_reaches ? left_contact[0] : right_contact[0];
+  
+  double hand_dist = left_reaches ? left_obj_dist : right_obj_dist;
+
+  // Mode transitions
+  if (residual_.current_mode_ == ResidualFn::kModeReach) {
+    // Check if hand is in stable contact with object
+    bool in_contact = (hand_dist < ResidualFn::kHandDistThreshold) && 
+                     (reach_contact_force >= ResidualFn::kContactForceThreshold);
+    if (in_contact) {
+      std::cout << (left_reaches ? "LEFT" : "RIGHT") << " reach hand distance: " << hand_dist << std::endl;
+      std::cout << (left_reaches ? "LEFT" : "RIGHT") << " reach contact force: " << reach_contact_force << std::endl;
+      std::cout << (left_reaches ? "LEFT" : "RIGHT") << " in_contact: " << in_contact << std::endl;
+      if (residual_.contact_start_time_ < 0) {
+        residual_.contact_start_time_ = data->time;
+      } else if (data->time - residual_.contact_start_time_ >= ResidualFn::kContactStableTime) {
+        // Stable contact achieved, switch to retrieve mode
+        residual_.current_mode_ = ResidualFn::kModeRetrieve;
+        residual_.mode_start_time_ = data->time;
+        // Get object and hand body IDs
+        int object_anchor_id = mj_name2id(model, mjOBJ_BODY, "object_anchor");
+        int hand_body_id = mj_name2id(model, mjOBJ_BODY, 
+            left_reaches ? "left_wrist_yaw_link" : "right_wrist_yaw_link");
+        // Get hand position at attachment point (0.17m forward)
+
+        if (object_anchor_id >= 0 && hand_body_id >= 0) {
+          int obj_qpos_adr = model->jnt_qposadr[model->body_jntadr[object_anchor_id]];
+          int obj_qvel_adr = model->body_dofadr[object_anchor_id];
+          int hand_qvel_adr = model->body_dofadr[hand_body_id];
+          
+          // CHANGED: Use wrist body position, not hand site position
+          double *hand_body_pos = data->xpos + 3 * hand_body_id;
+          
+          if (obj_qpos_adr >= 0) {
+            // Move object_anchor to WRIST position (where weld connects)
+            mju_copy3(data->qpos + obj_qpos_adr, hand_body_pos);
+            
+            // Match orientation to hand body
+            double *hand_quat = data->xquat + 4 * hand_body_id;
+            mju_copy4(data->qpos + obj_qpos_adr + 3, hand_quat);
+            
+            printf("Moved object_anchor to wrist position: [%.3f, %.3f, %.3f]\n",
+                  hand_body_pos[0], hand_body_pos[1], hand_body_pos[2]);
+          }
+          
+          if (obj_qvel_adr >= 0 && hand_qvel_adr >= 0) {
+            // Match velocities
+            mju_copy3(data->qvel + obj_qvel_adr, data->qvel + hand_qvel_adr);
+            mju_copy3(data->qvel + obj_qvel_adr + 3, data->qvel + hand_qvel_adr + 3);
+          }
+
+          // DISABLE OBJECT COLLISION
+          int obj_geom_id = mj_name2id(model, mjOBJ_GEOM, "object_collision");
+          if (obj_geom_id >= 0) {
+            // Set contype and conaffinity to 0 (no collision)
+            model->geom_contype[obj_geom_id] = 0;
+            model->geom_conaffinity[obj_geom_id] = 0;
+            printf("Disabled object collision\n");
+          }
+          // Update kinematics with new position/velocity
+          mj_kinematics(model, data);
+          mj_comPos(model, data);
+          
+          printf("After repositioning:\n");
+          printf("  Object anchor pos: [%.3f, %.3f, %.3f]\n", 
+                data->xpos[3*object_anchor_id], data->xpos[3*object_anchor_id+1], 
+                data->xpos[3*object_anchor_id+2]);
+          printf("  Hand body pos: [%.3f, %.3f, %.3f]\n",
+                data->xpos[3*hand_body_id], data->xpos[3*hand_body_id+1], 
+                data->xpos[3*hand_body_id+2]);
+        }
+        
+        // NOW activate weld - positions should match
+        int weld_id = left_reaches ? object_left_weld_id_ : object_right_weld_id_;
+        if (weld_id >= 0) {
+          data->eq_active[weld_id] = 1;
+          printf("Activated weld to %s hand\n", left_reaches ? "LEFT" : "RIGHT");
+        }
+        printf("Switching to RETRIEVE mode at time %.2f\n", data->time);
+      }
+    } else {
+      // Lost contact, reset timer
+      residual_.contact_start_time_ = -1;
+    }
+  } else if (residual_.current_mode_ == ResidualFn::kModeRetrieve) {
+    // Check if object brought to torso
+    double *torso_pos = SensorByName(model, data, "torso_position");
+    double obj_to_torso_dist = mju_dist3(object_pos, torso_pos);
+    
+    if (obj_to_torso_dist < 0.2) {
+      printf("Object retrieved successfully at time %.2f\n", data->time);
+      // Could switch to a new mode or reset here
+    }
+  }
+
+  // Update mocap target
   mju_copy3(data->mocap_pos, target_position_.data());
+  residual_.last_transition_time_ = data->time;
 }
 
 void lean::ResetLocked(const mjModel *model) {
@@ -265,5 +380,21 @@ void lean::ResetLocked(const mjModel *model) {
   target_position_ = {dis_x(gen), dis_y(gen), 0.95};
   printf("New target position: %f, %f, %f\n", target_position_[0],
          target_position_[1], target_position_[2]);
+  
+  // NEW: Find both weld constraint IDs
+  object_left_weld_id_ = mj_name2id(model, mjOBJ_EQUALITY, "object_left_attach");
+  object_right_weld_id_ = mj_name2id(model, mjOBJ_EQUALITY, "object_right_attach");
+  
+  if (object_left_weld_id_ < 0) {
+    printf("Warning: object_left_attach constraint not found\n");
+  }
+  if (object_right_weld_id_ < 0) {
+    printf("Warning: object_right_attach constraint not found\n");
+  }
+  
+  // Reset mode state
+  residual_.current_mode_ = ResidualFn::kModeReach;
+  residual_.contact_start_time_ = -1;
+  residual_.last_transition_time_ = -1;
 }
 }  // namespace mjpc
