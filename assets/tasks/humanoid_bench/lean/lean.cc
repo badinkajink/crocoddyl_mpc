@@ -73,6 +73,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   };
 
   if (current_mode_ == kModeReach) {
+    std::cout << (left_reaches ? "RIGHT" : "LEFT") << " brace force: " << brace_contact_force << std::endl;
+    std::cout << (left_reaches ? "LEFT" : "RIGHT") << " reach contact force: " << reach_contact_force << std::endl;
     double penalty_hand = hand_dist_penalty * hand_dist;
     double brace_dist = mju_dist3(bracing_hand, ideal_brace);
     double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);  // Success when hand reaches object
@@ -80,6 +82,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     reward = -penalty_hand + reward_brace + reward_success;
     
   } else if (current_mode_ == kModeRetrieve) {
+    std::cout << (left_reaches ? "RIGHT" : "LEFT") << " brace force: " << brace_contact_force << std::endl;
     double *torso_pos = SensorByName(model, data, "torso_position");
     // Reward bringing object close to torso
     double obj_to_torso_dist = mju_dist3(object_pos, torso_pos);

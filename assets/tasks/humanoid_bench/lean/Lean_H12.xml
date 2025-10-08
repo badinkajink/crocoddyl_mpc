@@ -4,22 +4,23 @@
     <include file="../../common.xml" />
     <include file="../assets/floor.xml" />
 
-<equality>
-    <!-- Connect is position-only, more stable than weld -->
-    <connect name="object_left_attach" 
-             body1="object_anchor" 
-             body2="left_wrist_yaw_link" 
-             anchor="0 0 0"
-             active="false" 
-             solref="0.01 0.5"/>  <!-- Spring-damper: stiffness/damping -->
-    
-    <connect name="object_right_attach" 
-             body1="object_anchor" 
-             body2="right_wrist_yaw_link" 
-             anchor="0 0 0"
-             active="false" 
-             solref="0.01 0.5"/>
-</equality>
+    <equality>
+        <!-- Attach object_anchor to left hand -->
+        <weld name="object_left_attach" 
+            body1="object_anchor" 
+            body2="left_wrist_yaw_link" 
+            active="false" 
+            solref="0.002 1"
+            solimp="0.99 0.999 0.0001"/>
+        
+        <!-- Attach object_anchor to right hand -->
+        <weld name="object_right_attach" 
+            body1="object_anchor" 
+            body2="right_wrist_yaw_link" 
+            active="false" 
+            solref="0.002 1"
+            solimp="0.99 0.999 0.0001"/>
+    </equality>
 
     <keyframe>
         <key name="home" 
