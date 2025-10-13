@@ -69,12 +69,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double ideal_brace[3] = {
       torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
       bracing_hand[1],  // Keep y close to current
-      table_pos[2] + 0.02  // Lower - encourage pressing into table
+      table_pos[2] - 0.02  // Lower - encourage pressing into table
   };
 
   if (current_mode_ == kModeReach) {
-    std::cout << (left_reaches ? "RIGHT" : "LEFT") << " brace force: " << brace_contact_force << std::endl;
-    std::cout << (left_reaches ? "LEFT" : "RIGHT") << " reach contact force: " << reach_contact_force << std::endl;
     double penalty_hand = hand_dist_penalty * hand_dist;
     double brace_dist = mju_dist3(bracing_hand, ideal_brace);
     double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);  // Success when hand reaches object
@@ -82,7 +80,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     reward = -penalty_hand + reward_brace + reward_success;
     
   } else if (current_mode_ == kModeRetrieve) {
-    std::cout << (left_reaches ? "RIGHT" : "LEFT") << " brace force: " << brace_contact_force << std::endl;
     double *torso_pos = SensorByName(model, data, "torso_position");
     // Reward bringing object close to torso
     double obj_to_torso_dist = mju_dist3(object_pos, torso_pos);
@@ -266,6 +263,10 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   // Get hand and object info
   double const *left_hand_pos = SensorByName(model, data, "left_hand_pos");
   double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
+  int left_left_finger_act = mj_name2id(model, mjOBJ_ACTUATOR, "left_left_finger");
+  int left_right_finger_act = mj_name2id(model, mjOBJ_ACTUATOR, "left_right_finger");
+  int right_left_finger_act = mj_name2id(model, mjOBJ_ACTUATOR, "right_left_finger");
+  int right_right_finger_act = mj_name2id(model, mjOBJ_ACTUATOR, "right_right_finger");
   double const *object_pos = SensorByName(model, data, "object_pos");
 
   double left_obj_dist = mju_dist3(left_hand_pos, object_pos);
@@ -276,85 +277,52 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   double *left_contact = SensorByName(model, data, "left_hand_contact");
   double *right_contact = SensorByName(model, data, "right_hand_contact");
   double reach_contact_force = left_reaches ? left_contact[0] : right_contact[0];
+  // double brace_contact_force = left_reaches ? right_contact[0] : left_contact[0];
   
   double hand_dist = left_reaches ? left_obj_dist : right_obj_dist;
+  // Determine desired gripper positions based on mode
+  double left_gripper_target = (residual_.current_mode_ == ResidualFn::kModeRetrieve && 
+                                left_reaches) ? 0.0 : 0.035;
+  double right_gripper_target = (residual_.current_mode_ == ResidualFn::kModeRetrieve && 
+                                 !left_reaches) ? 0.0 : 0.035;
+  
+  // Lock gripper controls by setting both ctrl limits to desired value
+  if (left_left_finger_act_ >= 0) {
+    model->actuator_ctrlrange[2*left_left_finger_act_] = left_gripper_target;
+    model->actuator_ctrlrange[2*left_left_finger_act_+1] = left_gripper_target;
+    data->ctrl[left_left_finger_act_] = left_gripper_target;
+  }
+  if (left_right_finger_act_ >= 0) {
+    model->actuator_ctrlrange[2*left_right_finger_act_] = left_gripper_target;
+    model->actuator_ctrlrange[2*left_right_finger_act_+1] = left_gripper_target;
+    data->ctrl[left_right_finger_act_] = left_gripper_target;
+  }
+  if (right_left_finger_act_ >= 0) {
+    model->actuator_ctrlrange[2*right_left_finger_act_] = right_gripper_target;
+    model->actuator_ctrlrange[2*right_left_finger_act_+1] = right_gripper_target;
+    data->ctrl[right_left_finger_act_] = right_gripper_target;
+  }
+  if (right_right_finger_act_ >= 0) {
+    model->actuator_ctrlrange[2*right_right_finger_act_] = right_gripper_target;
+    model->actuator_ctrlrange[2*right_right_finger_act_+1] = right_gripper_target;
+    data->ctrl[right_right_finger_act_] = right_gripper_target;
+  }
 
   // Mode transitions
   if (residual_.current_mode_ == ResidualFn::kModeReach) {
-    // Check if hand is in stable contact with object
+    // print brace force
+    // std::cout << (left_reaches ? "RIGHT" : "LEFT") << " brace force: " << brace_contact_force << std::endl;
+    // Keep grippers OPEN during reach
+    if (left_left_finger_act >= 0) data->ctrl[left_left_finger_act] = 0.03;  // Open
+    if (left_right_finger_act >= 0) data->ctrl[left_right_finger_act] = 0.03;
+    if (right_left_finger_act >= 0) data->ctrl[right_left_finger_act] = 0.03;
+    if (right_right_finger_act >= 0) data->ctrl[right_right_finger_act] = 0.03;
     bool in_contact = (hand_dist < ResidualFn::kHandDistThreshold) && 
                      (reach_contact_force >= ResidualFn::kContactForceThreshold);
     if (in_contact) {
-      std::cout << (left_reaches ? "LEFT" : "RIGHT") << " reach hand distance: " << hand_dist << std::endl;
-      std::cout << (left_reaches ? "LEFT" : "RIGHT") << " reach contact force: " << reach_contact_force << std::endl;
-      std::cout << (left_reaches ? "LEFT" : "RIGHT") << " in_contact: " << in_contact << std::endl;
-      if (residual_.contact_start_time_ < 0) {
-        residual_.contact_start_time_ = data->time;
-      } else if (data->time - residual_.contact_start_time_ >= ResidualFn::kContactStableTime) {
-        // Stable contact achieved, switch to retrieve mode
         residual_.current_mode_ = ResidualFn::kModeRetrieve;
         residual_.mode_start_time_ = data->time;
-        // Get object and hand body IDs
-        int object_anchor_id = mj_name2id(model, mjOBJ_BODY, "object_anchor");
-        int hand_body_id = mj_name2id(model, mjOBJ_BODY, 
-            left_reaches ? "left_wrist_yaw_link" : "right_wrist_yaw_link");
-        // Get hand position at attachment point (0.17m forward)
-
-        if (object_anchor_id >= 0 && hand_body_id >= 0) {
-          int obj_qpos_adr = model->jnt_qposadr[model->body_jntadr[object_anchor_id]];
-          int obj_qvel_adr = model->body_dofadr[object_anchor_id];
-          int hand_qvel_adr = model->body_dofadr[hand_body_id];
-          
-          // CHANGED: Use wrist body position, not hand site position
-          double *hand_body_pos = data->xpos + 3 * hand_body_id;
-          
-          if (obj_qpos_adr >= 0) {
-            // Move object_anchor to WRIST position (where weld connects)
-            mju_copy3(data->qpos + obj_qpos_adr, hand_body_pos);
-            
-            // Match orientation to hand body
-            double *hand_quat = data->xquat + 4 * hand_body_id;
-            mju_copy4(data->qpos + obj_qpos_adr + 3, hand_quat);
-            
-            printf("Moved object_anchor to wrist position: [%.3f, %.3f, %.3f]\n",
-                  hand_body_pos[0], hand_body_pos[1], hand_body_pos[2]);
-          }
-          
-          if (obj_qvel_adr >= 0 && hand_qvel_adr >= 0) {
-            // Match velocities
-            mju_copy3(data->qvel + obj_qvel_adr, data->qvel + hand_qvel_adr);
-            mju_copy3(data->qvel + obj_qvel_adr + 3, data->qvel + hand_qvel_adr + 3);
-          }
-
-          // DISABLE OBJECT COLLISION
-          int obj_geom_id = mj_name2id(model, mjOBJ_GEOM, "object_collision");
-          if (obj_geom_id >= 0) {
-            // Set contype and conaffinity to 0 (no collision)
-            model->geom_contype[obj_geom_id] = 0;
-            model->geom_conaffinity[obj_geom_id] = 0;
-            printf("Disabled object collision\n");
-          }
-          // Update kinematics with new position/velocity
-          mj_kinematics(model, data);
-          mj_comPos(model, data);
-          
-          printf("After repositioning:\n");
-          printf("  Object anchor pos: [%.3f, %.3f, %.3f]\n", 
-                data->xpos[3*object_anchor_id], data->xpos[3*object_anchor_id+1], 
-                data->xpos[3*object_anchor_id+2]);
-          printf("  Hand body pos: [%.3f, %.3f, %.3f]\n",
-                data->xpos[3*hand_body_id], data->xpos[3*hand_body_id+1], 
-                data->xpos[3*hand_body_id+2]);
-        }
-        
-        // NOW activate weld - positions should match
-        int weld_id = left_reaches ? object_left_weld_id_ : object_right_weld_id_;
-        if (weld_id >= 0) {
-          data->eq_active[weld_id] = 1;
-          printf("Activated weld to %s hand\n", left_reaches ? "LEFT" : "RIGHT");
-        }
         printf("Switching to RETRIEVE mode at time %.2f\n", data->time);
-      }
     } else {
       // Lost contact, reset timer
       residual_.contact_start_time_ = -1;
@@ -363,7 +331,19 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // Check if object brought to torso
     double *torso_pos = SensorByName(model, data, "torso_position");
     double obj_to_torso_dist = mju_dist3(object_pos, torso_pos);
-    
+    if (left_reaches) {
+      if (left_left_finger_act >= 0) data->ctrl[left_left_finger_act] = 0.0;  // Closed
+      if (left_right_finger_act >= 0) data->ctrl[left_right_finger_act] = 0.0;
+      // Keep right gripper open
+      if (right_left_finger_act >= 0) data->ctrl[right_left_finger_act] = 0.03;
+      if (right_right_finger_act >= 0) data->ctrl[right_right_finger_act] = 0.03;
+    } else {
+      if (right_left_finger_act >= 0) data->ctrl[right_left_finger_act] = 0.0;  // Closed
+      if (right_right_finger_act >= 0) data->ctrl[right_right_finger_act] = 0.0;
+      // Keep left gripper open
+      if (left_left_finger_act >= 0) data->ctrl[left_left_finger_act] = 0.03;
+      if (left_right_finger_act >= 0) data->ctrl[left_right_finger_act] = 0.03;
+    }
     if (obj_to_torso_dist < 0.2) {
       printf("Object retrieved successfully at time %.2f\n", data->time);
       // Could switch to a new mode or reset here
@@ -384,20 +364,23 @@ void lean::ResetLocked(const mjModel *model) {
   printf("New target position: %f, %f, %f\n", target_position_[0],
          target_position_[1], target_position_[2]);
   
-  // NEW: Find both weld constraint IDs
-  object_left_weld_id_ = mj_name2id(model, mjOBJ_EQUALITY, "object_left_attach");
-  object_right_weld_id_ = mj_name2id(model, mjOBJ_EQUALITY, "object_right_attach");
-  
-  if (object_left_weld_id_ < 0) {
-    printf("Warning: object_left_attach constraint not found\n");
-  }
-  if (object_right_weld_id_ < 0) {
-    printf("Warning: object_right_attach constraint not found\n");
-  }
-  
+  // Cache gripper actuator IDs
+  left_left_finger_act_ = mj_name2id(model, mjOBJ_ACTUATOR, "left_left_finger");
+  left_right_finger_act_ = mj_name2id(model, mjOBJ_ACTUATOR, "left_right_finger");
+  right_left_finger_act_ = mj_name2id(model, mjOBJ_ACTUATOR, "right_left_finger");
+  right_right_finger_act_ = mj_name2id(model, mjOBJ_ACTUATOR, "right_right_finger");
+ 
   // Reset mode state
   residual_.current_mode_ = ResidualFn::kModeReach;
   residual_.contact_start_time_ = -1;
   residual_.last_transition_time_ = -1;
+
+  // DEBUG: Print joint order
+  // printf("\nJoint order for qpos:\n");
+  // for (int i = 0; i < model->njnt; i++) {
+  //   const char* jnt_name = mj_id2name(model, mjOBJ_JOINT, i);
+  //   int qpos_adr = model->jnt_qposadr[i];
+  //   printf("  Joint %d: %s (qpos index %d)\n", i, jnt_name ? jnt_name : "unnamed", qpos_adr);
+  // }
 }
 }  // namespace mjpc

@@ -41,7 +41,7 @@ class lean : public Task {
       double last_transition_time_ = -1;
 
       // Thresholds for mode transition
-      static constexpr double kHandDistThreshold = 0.08;  // meters
+      static constexpr double kHandDistThreshold = 0.0;  // meters
       static constexpr double kContactStableTime = 0.0;  // seconds to wait before retrieve
       static constexpr double kContactForceThreshold = 0.0;  // N
       double contact_start_time_ = -1;
@@ -76,8 +76,12 @@ class lean : public Task {
 private:
   ResidualFn residual_;
   std::array<double, 3> target_position_;
-  int object_left_weld_id_ = -1;
-  int object_right_weld_id_ = -1;
+  // Gripper actuator IDs
+  int left_left_finger_act_ = -1;
+  int left_right_finger_act_ = -1;
+  int right_left_finger_act_ = -1;
+  int right_right_finger_act_ = -1;
+
 };
 
 class Lean_H12 : public lean {
