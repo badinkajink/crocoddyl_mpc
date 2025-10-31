@@ -93,6 +93,15 @@ class Lean_H12 : public lean {
   }
 };
 
+class Lean_H12_Hands : public lean {
+ public:
+  std::string Name() const override { return "Lean H12 Hands"; }
+
+  std::string XmlPath() const override {
+    return GetModelPath("humanoid_bench/lean/Lean_H12_Hands.xml");
+  }
+};
+
 }  // namespace mjpc
 
 #endif  // MJPC_TASKS_HUMANOID_BENCH_LEAN_LEAN_H_

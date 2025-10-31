@@ -1,0 +1,87 @@
+<mujoco model="Lean H12">
+    <include file="../h1_2/h1_2_modified.xml"/>
+    <include file="lean.xml"/>
+    <include file="../../common.xml" />
+    <include file="../assets/floor.xml" />
+
+    <keyframe>
+        <key name="home"
+        qpos="0.19 0 1.028
+            1 0 0 0
+            0 0 0 0 0 0
+            0 0 0 0 0 0
+            0
+            0 0 0 0 0 0 0
+            0.03 0.03
+            0 0 0 0 0 0 0
+            0.03 0.03
+            1.2 0 0.95 1 0 0 0"/>
+    </keyframe>
+    
+    <custom>
+        <numeric name="agent_planner" data="2"/>
+        <numeric name="agent_horizon" data="1.0"/>
+        <numeric name="agent_timestep" data="0.015"/>
+        <numeric name="sampling_spline_points" data="3"/>
+        <numeric name="sampling_exploration" data="0.05"/>
+        <numeric name="gradient_spline_points" data="5"/>
+        <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
+    </custom>
+
+    <sensor>
+        <!--        cost terms for lean task-->
+        <user name="humanoid_bench" dim="1" user="6 0.0 0.0 100.0 0.01"/>
+        <user name="Height" dim="1" user="6 100.0 0.0 100.0 0.1"/>
+        <user name="CoM Vel." dim="2" user="0 10.0 0.0 100.0"/>
+        <user name="Joint Vel." dim="31" user="0 0.01 0.0 0.1"/>
+        <user name="Balance" dim="2" user="1 5.0 0.0 25.0 0.02 4.0"/>
+        <user name="Torso Forward Tilt" dim="1" user="6 10.0 0.0 25.0 0.1"/>
+        <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 25.0 0.1"/>
+        <user name="Posture" dim="31" user="0 0.015 0 1.0"/>
+        <user name="Velocity" dim="2" user="7 0.625 0 25.0 0.2 4.0"/>
+        <user name="Control" dim="31" user="3 0.0 0 1.0 0.3"/>
+
+        <!--        task specific cost terms-->
+        <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
+        <user name="Brace Force" dim="1" user="6 15.0 0.0 100.0 0.1"/>
+        <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
+        <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
+
+        <!--        traces-->
+        <framepos name="trace0" objtype="body" objname="torso_link"/>
+
+        <!-- residual -->
+        <framepos name="torso_position" objtype="body" objname="torso_link"/>
+        <framepos name="head_position" objtype="body" objname="torso_link"/>
+        <subtreecom name="torso_subcom" body="torso_link"/>
+        <subtreelinvel name="torso_subtreelinvel" body="torso_link"/>
+        <framepos name="foot_right_pos" objtype="body" objname="right_ankle_roll_link"/>
+        <framepos name="foot_left_pos" objtype="body" objname="left_ankle_roll_link"/>
+        <framepos name="pelvis_position" objtype="body" objname="pelvis"/>
+        <framezaxis name="torso_up" objtype="xbody" objname="torso_link"/>
+        <framezaxis name="pelvis_up" objtype="xbody" objname="pelvis"/>
+        <framezaxis name="foot_right_up" objtype="xbody" objname="right_ankle_roll_link"/>
+        <framezaxis name="foot_left_up" objtype="xbody" objname="left_ankle_roll_link"/>
+        <framexaxis name="torso_forward" objtype="xbody" objname="torso_link"/>
+        <framexaxis name="pelvis_forward" objtype="xbody" objname="pelvis"/>
+        <framexaxis name="foot_right_forward" objtype="xbody" objname="right_ankle_roll_link"/>
+        <framexaxis name="foot_left_forward" objtype="xbody" objname="left_ankle_roll_link"/>
+        <subtreelinvel name="waist_lower_subcomvel" body="pelvis"/>
+        <framelinvel name="torso_velocity" objtype="body" objname="torso_link"/>
+        <framelinvel name="foot_right_velocity" objtype="body" objname="right_ankle_roll_link"/>
+        <framelinvel name="foot_left_velocity" objtype="body" objname="left_ankle_roll_link"/>
+        <subtreelinvel name="torso_subcomvel" body="torso_link"/>
+        <subtreelinvel name="foot_right_vel" body="right_ankle_roll_link"/>
+        <subtreelinvel name="foot_left_vel" body="left_ankle_roll_link"/>
+
+        <framepos name="object_pos" objtype="body" objname="object"/>
+        <framepos name="table_surface_pos" objtype="geom" objname="table_top"/>
+
+        <framepos name="left_hand_pos" objtype="site" objname="left_hand"/>
+        <framepos name="right_hand_pos" objtype="site" objname="right_hand"/>
+        <framelinvel name="left_hand_vel" objtype="site" objname="left_hand"/>
+        <framelinvel name="right_hand_vel" objtype="site" objname="right_hand"/>
+        <touch name="left_hand_contact" site="left_hand"/>
+        <touch name="right_hand_contact" site="right_hand"/>
+    </sensor>
+</mujoco>
