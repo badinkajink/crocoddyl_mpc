@@ -74,8 +74,51 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   double penalty_hand = hand_dist_penalty * hand_dist;
   double brace_dist = mju_dist3(bracing_hand, ideal_brace);
-  double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);  // Success when hand reaches object
+  double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);
   double reward_success = (hand_dist < kHandDistThreshold && reach_contact_force > kContactForceThreshold) ? success : 0;
+  
+  // // ========== PALM BRACING INTEGRATION (H12_Hands only) ========== //
+  // // Check if we have palm sensors (indicates H12_Hands model)
+  // bool has_palm_sensors = false;
+  // for (int i = 0; i < model->nsensor; i++) {
+  //   if (std::string(model->names + model->name_sensoradr[i]) == "left_palm_pos") {
+  //     has_palm_sensors = true;
+  //     break;
+  //   }
+  // }
+  
+  // double palm_bracing_bonus = 0.0;
+  // if (has_palm_sensors) {
+  //   // Get palm position and normal for bracing hand
+  //   double const *left_palm_pos = SensorByName(model, data, "left_palm_pos");
+  //   double const *right_palm_pos = SensorByName(model, data, "right_palm_pos");
+  //   double const *bracing_palm = left_reaches ? right_palm_pos : left_palm_pos;
+    
+  //   double const *left_palm_normal = SensorByName(model, data, "left_palm_normal");
+  //   double const *right_palm_normal = SensorByName(model, data, "right_palm_normal");
+  //   double const *bracing_palm_normal = left_reaches ? right_palm_normal : left_palm_normal;
+    
+  //   double *left_palm_contact = SensorByName(model, data, "left_palm_contact");
+  //   double *right_palm_contact = SensorByName(model, data, "right_palm_contact");
+  //   double palm_contact_force = left_reaches ? right_palm_contact[0] : left_palm_contact[0];
+    
+  //   // Palm orientation: want palm flat on table (normal pointing up [0,0,1])
+  //   double table_normal[3] = {0, 0, 1};
+  //   double palm_alignment = mju_dot3(bracing_palm_normal, table_normal);
+    
+  //   // Palm height: should be at table surface
+  //   double palm_height_error = mju_abs(bracing_palm[2] - table_pos[2]);
+    
+  //   // Bonus for good palm bracing (flat, in contact, at right height)
+  //   double flatness_score = mju_max(0.0, palm_alignment);  // 0 to 1
+  //   double contact_score = (palm_contact_force > 1.0) ? 1.0 : 0.0;
+  //   double height_score = mju_exp(-10.0 * palm_height_error);
+    
+  //   palm_bracing_bonus = 0.3 * flatness_score * contact_score * height_score;
+  // }
+  // // ========== END PALM BRACING INTEGRATION ========== //
+  
+  // reward = -penalty_hand + reward_brace + reward_success + palm_bracing_bonus;
   reward = -penalty_hand + reward_brace + reward_success;
 
   //--------------- End of reward calculation -----------------//
@@ -218,6 +261,49 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ----- reaching hand distance to object ----- //
   mju_sub3(&residual[counter], reaching_hand, object_pos);
   counter += 3;
+
+  // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
+  // // Check if we have elbow sensors (indicates H12_Hands model)
+  // bool has_elbow_sensors = false;
+  // for (int i = 0; i < model->nsensor; i++) {
+  //   if (std::string(model->names + model->name_sensoradr[i]) == "left_elbow_pos") {
+  //     has_elbow_sensors = true;
+  //     break;
+  //   }
+  // }
+  
+  // if (has_elbow_sensors) {
+  //   // Get elbow positions for bracing arm
+  //   double const *left_elbow_pos = SensorByName(model, data, "left_elbow_pos");
+  //   double const *right_elbow_pos = SensorByName(model, data, "right_elbow_pos");
+  //   double const *bracing_elbow = left_reaches ? right_elbow_pos : left_elbow_pos;
+    
+  //   // Get elbow orientation (z-axis should point along forearm)
+  //   double const *left_elbow_zaxis = SensorByName(model, data, "left_elbow_zaxis");
+  //   double const *right_elbow_zaxis = SensorByName(model, data, "right_elbow_zaxis");
+  //   double const *bracing_elbow_zaxis = left_reaches ? right_elbow_zaxis : left_elbow_zaxis;
+    
+  //   // Ideal forearm position: between palm and elbow, on table surface
+  //   double ideal_forearm[3] = {
+  //       (bracing_palm[0] + bracing_elbow[0]) * 0.5,
+  //       bracing_hand[1],
+  //       table_pos[2]  // On table surface
+  //   };
+    
+  //   // Distance from ideal forearm contact point
+  //   mju_sub3(&residual[counter], bracing_elbow, ideal_forearm);
+  //   counter += 3;
+    
+  //   // Forearm orientation: want forearm parallel to table (z-axis perpendicular to table normal)
+  //   // If forearm is flat, dot product with table normal should be ~0
+  //   double table_normal[3] = {0, 0, 1};
+  //   double forearm_alignment = mju_abs(mju_dot3(bracing_elbow_zaxis, table_normal));
+  //   residual[counter++] = forearm_alignment;  // Should be close to 0 when parallel
+    
+  //   // Optional: Check for forearm contact (if you add touch sensor)
+  //   // This would require adding a touch sensor to the elbow_link geoms
+  // }
+  // // ========== END FOREARM BRACING ========== //
 
   task_->target_position_[0] = 0.0;  // DEBUG
 

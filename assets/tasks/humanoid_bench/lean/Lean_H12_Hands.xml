@@ -96,6 +96,11 @@
         <touch name="left_palm_contact" site="left_palm_center"/>
         <touch name="right_palm_contact" site="right_palm_center"/>
 
+        <framepos name="left_elbow_pos" objtype="body" objname="left_elbow_link"/>
+        <framepos name="right_elbow_pos" objtype="body" objname="right_elbow_link"/>
+        <framezaxis name="left_elbow_zaxis" objtype="body" objname="left_elbow_link"/>
+        <framezaxis name="right_elbow_zaxis" objtype="body" objname="right_elbow_link"/>
+
         <gyro name="imu-angular-velocity" site="imu" noise="5e-4" cutoff="34.9"/>
         <accelerometer name="imu-linear-acceleration" site="imu" noise="1e-2" cutoff="157"/>
 
