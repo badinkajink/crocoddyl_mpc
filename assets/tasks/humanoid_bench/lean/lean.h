@@ -36,15 +36,15 @@ class lean : public Task {
       friend class lean;
 
       // Add mode state variable
-      LeanMode current_mode_ = kModeReach;
-      double mode_start_time_ = 0;
-      double last_transition_time_ = -1;
+      // LeanMode current_mode_ = kModeReach;
+      // double mode_start_time_ = 0;
+      // double last_transition_time_ = -1;
 
       // Thresholds for mode transition
       static constexpr double kHandDistThreshold = 0.0;  // meters
       static constexpr double kContactStableTime = 0.0;  // seconds to wait before retrieve
       static constexpr double kContactForceThreshold = 0.0;  // N
-      double contact_start_time_ = -1;
+      // double contact_start_time_ = -1;
   };
 
   lean() : residual_(this) {
@@ -77,10 +77,10 @@ private:
   ResidualFn residual_;
   std::array<double, 3> target_position_;
   // Gripper actuator IDs
-  int left_left_finger_act_ = -1;
-  int left_right_finger_act_ = -1;
-  int right_left_finger_act_ = -1;
-  int right_right_finger_act_ = -1;
+  // int left_left_finger_act_ = -1;
+  // int left_right_finger_act_ = -1;
+  // int right_left_finger_act_ = -1;
+  // int right_right_finger_act_ = -1;
 
 };
 

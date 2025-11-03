@@ -49,7 +49,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const hand_dist_penalty = 1.0;
   double const brace_reward = 0.5;
   double const success = 1000;
-  double const retrieve_reward = 1000;
+  // double const retrieve_reward = 1000;
 
   // ----- reaching hand position ----- //
   double hand_dist = mju_dist3(reaching_hand, object_pos);
