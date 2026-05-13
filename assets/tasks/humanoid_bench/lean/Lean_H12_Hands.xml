@@ -26,6 +26,7 @@
         <numeric name="sampling_exploration" data="0.05"/>
         <numeric name="gradient_spline_points" data="5"/>
         <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
+        <numeric name="residual_Strategy" data="0 0 9" />
     </custom>
 
     <sensor>
@@ -35,8 +36,8 @@
         <user name="CoM Vel." dim="2" user="0 10.0 0.0 100.0"/>
         <user name="Joint Vel." dim="27" user="0 0.01 0.0 0.1"/>
         <!-- <user name="Joint Vel." dim="51" user="0 0.01 0.0 0.1"/> -->
-        <user name="Balance" dim="2" user="1 5.0 0.0 25.0 0.02 4.0"/>
-        <user name="Torso Forward Tilt" dim="1" user="6 10.0 0.0 25.0 0.1"/>
+        <user name="Balance" dim="2" user="6 20.0 0.0 100.0 0.02"/>
+        <user name="Torso Forward Tilt" dim="1" user="6 3.0 0.0 25.0 0.1"/>
         <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 25.0 0.1"/>
         <user name="Posture" dim="27" user="0 0.015 0 1.0"/>
         <!-- <user name="Posture" dim="51" user="0 0.015 0 1.0"/> -->
@@ -46,9 +47,11 @@
 
         <!--        task specific cost terms-->
         <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
-        <user name="Brace Force" dim="1" user="6 15.0 0.0 100.0 0.1"/>
+        <user name="Brace Force" dim="1" user="6 5.0 0.0 100.0 15.0"/>
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
+        <user name="Foot Stability" dim="4" user="6 10.0 0.0 100.0 0.05"/>
+        <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>

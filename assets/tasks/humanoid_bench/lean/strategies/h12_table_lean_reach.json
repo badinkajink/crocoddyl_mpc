@@ -1,0 +1,100 @@
+[
+    {
+        "contacts": [
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+        ],
+        "facing_target": [],
+        "name": "stand_up",
+        "success_sustain_time": 2.5,
+        "target_distance_tolerance": 0.3,
+        "time_limit": 10.0,
+        "weight": {}
+    },
+    {
+        "contacts": [
+            {
+                "body1": 21,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
+                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos2": [0.65, 0.09, 0.95]
+            },
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+        ],
+        "facing_target": [0.65, 0.09],
+        "name": "arm_extend",
+        "success_sustain_time": 1.0,
+        "target_distance_tolerance": 0.25,
+        "time_limit": 10.0,
+        "weight": {}
+    },
+    {
+        "contacts": [
+            {
+                "body1": 21,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
+                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos2": [0.82, 0.09, 0.90]
+            },
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+        ],
+        "facing_target": [0.82, 0.09],
+        "name": "lean_plant",
+        "success_sustain_time": 0.5,
+        "target_distance_tolerance": 0.20,
+        "time_limit": 15.0,
+        "weight": {}
+    },
+    {
+        "contacts": [
+            {
+                "body1": 21,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
+                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos2": [0.90, 0.09, 0.90]
+            },
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
+            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
+             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+        ],
+        "facing_target": [0.90, 0.09],
+        "name": "lean_reach",
+        "success_sustain_time": 30.0,
+        "target_distance_tolerance": 0.25,
+        "time_limit": 60.0,
+        "weight": {}
+    }
+]

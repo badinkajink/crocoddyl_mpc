@@ -5,6 +5,7 @@
 #include <random>
 
 #include "mujoco/mujoco.h"
+#include "mjpc/tasks/humanoid/interact/contact_keyframe.h"
 
 namespace mjpc {
 // ------------------ Residuals for humanoid lean task ------------
@@ -202,7 +203,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Vector from torso to object (desired lean direction)
   double reach_dir[3];
   mju_sub3(reach_dir, object_pos, torso_pos);
-  // double reach_dist = mju_normalize3(reach_dir);
+  mju_normalize3(reach_dir);
 
   // Want torso forward axis to align with reach direction
   // dot product should be close to 1
@@ -249,8 +250,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_sub3(&residual[counter], bracing_hand, ideal_brace);
   counter += 3;
 
-  // Want significant downward force (tune desired force via weight in XML)
-  double desired_brace_force = 15.0;  // N
+  // Only want brace force when actively bracing (not during stand_up where all contacts are inactive)
+  bool is_active_contact =
+      (residual_keyframe_.contact_pairs[0].body1 != mjpc::humanoid::kNotSelectedInteract);
+  double desired_brace_force = is_active_contact ? 15.0 : 0.0;
   residual[counter++] = desired_brace_force - brace_contact_force;
 
   // ------ object distance (reaching hand) ------ //
@@ -261,6 +264,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ----- reaching hand distance to object ----- //
   mju_sub3(&residual[counter], reaching_hand, object_pos);
   counter += 3;
+
+  // ----- foot stability: penalize horizontal foot velocity ----- //
+  // Prevents the planner from using leg steps to reduce arm costs
+  double *foot_right_vel_s = SensorByName(model, data, "foot_right_vel");
+  double *foot_left_vel_s = SensorByName(model, data, "foot_left_vel");
+  residual[counter++] = foot_right_vel_s[0];
+  residual[counter++] = foot_right_vel_s[1];
+  residual[counter++] = foot_left_vel_s[0];
+  residual[counter++] = foot_left_vel_s[1];
+
+  // ----- contact keyframe residual ----- //
+  ContactResidual(model, data, residual, &counter);
 
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
   // // Check if we have elbow sensors (indicates H12_Hands model)
@@ -305,8 +320,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // }
   // // ========== END FOREARM BRACING ========== //
 
-  task_->target_position_[0] = 0.0;  // DEBUG
-
   // sensor dim sanity check
   int user_sensor_dim = 0;
   for (int i = 0; i < model->nsensor; i++) {
@@ -322,15 +335,33 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   }
 }
 
+void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
+                                       double *residual, int *counter) const {
+  using mjpc::humanoid::kNotSelectedInteract;
+  using mjpc::humanoid::kNumberOfContactPairsInteract;
+  for (int i = 0; i < kNumberOfContactPairsInteract; i++) {
+    const mjpc::humanoid::ContactPair& contact = residual_keyframe_.contact_pairs[i];
+    if (contact.body1 != kNotSelectedInteract &&
+        contact.body2 != kNotSelectedInteract &&
+        contact.body1 < model->nbody &&
+        contact.body2 < model->nbody) {
+      double dist[3] = {0.};
+      contact.GetDistance(dist, data);
+      for (int j = 0; j < 3; j++) residual[(*counter)++] = mju_abs(dist[j]);
+    } else {
+      for (int j = 0; j < 3; j++) residual[(*counter)++] = 0;
+    }
+  }
+}
+
 // -------- Transition for humanoid_bench lean task -------- //
 // ------------------------------------------------------------ //
 void lean::TransitionLocked(mjModel *model, mjData *data) {
+  // keep mocap target updated for the existing hand-reach residuals
   double const *object_pos = SensorByName(model, data, "object_pos");
   double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
   double hand_dist = mju_dist3(right_hand_pos, object_pos);
-
-  if (hand_dist < 0.05) {  // consider task as solved
-    // set random target position (farther away to require leaning)
+  if (hand_dist < 0.05) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis_x(1.1, 1.3);
@@ -340,6 +371,49 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
            target_position_[1], target_position_[2]);
   }
   mju_copy3(data->mocap_pos, target_position_.data());
+
+  // strategy-based contact keyframe progression
+  const auto kStrategyNames = GetStrategyNames();
+  int requested_strategy =
+      (int)std::round(parameters[kLeanStrategyParameterIndex]);
+  requested_strategy = std::max(
+      0, std::min(requested_strategy, (int)kStrategyNames.size() - 1));
+
+  if (!motion_strategy_.HasKeyframes() ||
+      requested_strategy != current_strategy_) {
+    current_strategy_ = requested_strategy;
+    motion_strategy_.ClearKeyframes();
+    motion_strategy_.LoadStrategy(kStrategyNames[current_strategy_],
+                                  kLeanStrategyFilePath);
+    motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+    return;
+  }
+
+  const mjpc::humanoid::ContactKeyframe& current_kf =
+      motion_strategy_.GetCurrentKeyframe();
+  const double total_distance = motion_strategy_.CalculateTotalKeyframeDistance(
+      data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
+
+  if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
+          current_kf.time_limit &&
+      total_distance > current_kf.target_distance_tolerance) {
+    motion_strategy_.Reset();
+    residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+    motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+  } else if (total_distance <= current_kf.target_distance_tolerance &&
+             data->time -
+                     motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
+                 current_kf.success_sustain_time) {
+    motion_strategy_.NextKeyframe();
+    residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+    motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+  } else if (total_distance > current_kf.target_distance_tolerance) {
+    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+  }
 }
 
 void lean::ResetLocked(const mjModel *model) {

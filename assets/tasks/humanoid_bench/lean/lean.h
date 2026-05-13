@@ -4,12 +4,21 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <vector>
 
 #include "mjpc/task.h"
 #include "mjpc/utilities.h"
+#include "mjpc/tasks/humanoid/interact/contact_keyframe.h"
+#include "mjpc/tasks/humanoid/interact/motion_strategy.h"
 #include "mujoco/mujoco.h"
 
 namespace mjpc {
+
+constexpr int kLeanStrategyParameterIndex = 1;
+
+constexpr char kLeanStrategyFilePath[] =
+    SOURCE_DIR "/mjpc/tasks/humanoid_bench/lean/strategies/";
+
 class lean : public Task {
  public:
   std::string Name() const override = 0;
@@ -18,36 +27,36 @@ class lean : public Task {
 
   class ResidualFn : public mjpc::BaseResidualFn {
    public:
-    explicit ResidualFn(const lean *task)
-        : mjpc::BaseResidualFn(task), task_(const_cast<lean *>(task)) {}
+    explicit ResidualFn(const lean *task,
+                        const mjpc::humanoid::ContactKeyframe& kf =
+                            mjpc::humanoid::ContactKeyframe())
+        : mjpc::BaseResidualFn(task),
+          residual_keyframe_(kf) {}
 
     void Residual(const mjModel *model, const mjData *data,
                   double *residual) const override;
 
-    // Add mode enum
     enum LeanMode {
       kModeReach = 0,
       kModeRetrieve,
       kNumMode
     };
 
-    private:
-      lean *task_;
-      friend class lean;
+   protected:
+    mjpc::humanoid::ContactKeyframe residual_keyframe_;
 
-      // Add mode state variable
-      // LeanMode current_mode_ = kModeReach;
-      // double mode_start_time_ = 0;
-      // double last_transition_time_ = -1;
+   private:
+    friend class lean;
 
-      // Thresholds for mode transition
-      static constexpr double kHandDistThreshold = 0.0;  // meters
-      static constexpr double kContactStableTime = 0.0;  // seconds to wait before retrieve
-      static constexpr double kContactForceThreshold = 0.0;  // N
-      // double contact_start_time_ = -1;
+    static constexpr double kHandDistThreshold = 0.0;
+    static constexpr double kContactStableTime = 0.0;
+    static constexpr double kContactForceThreshold = 0.0;
+
+    void ContactResidual(const mjModel *model, const mjData *data,
+                         double *residual, int *counter) const;
   };
 
-  lean() : residual_(this) {
+  lean() : residual_(this), current_strategy_(-1) {
     target_position_ = {1.2, 0.0, 0.95};
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -60,28 +69,22 @@ class lean : public Task {
 
   void ResetLocked(const mjModel *model) override;
 
+  virtual std::vector<std::string> GetStrategyNames() const {
+    return {"h12_table_lean_reach", "h12_table_lean_reach_extended"};
+  }
+
  protected:
-  std::unique_ptr<mjpc::ResidualFn> ResidualLocked() const
-
-      override {
-    return std::make_unique<ResidualFn>(this);
+  std::unique_ptr<mjpc::ResidualFn> ResidualLocked() const override {
+    return std::make_unique<ResidualFn>(this, residual_.residual_keyframe_);
   }
 
-  ResidualFn *InternalResidual()
+  ResidualFn *InternalResidual() override { return &residual_; }
 
-      override {
-    return &residual_;
-  }
-
-private:
+ private:
   ResidualFn residual_;
   std::array<double, 3> target_position_;
-  // Gripper actuator IDs
-  // int left_left_finger_act_ = -1;
-  // int left_right_finger_act_ = -1;
-  // int right_left_finger_act_ = -1;
-  // int right_right_finger_act_ = -1;
-
+  mjpc::humanoid::MotionStrategy motion_strategy_;
+  int current_strategy_;
 };
 
 class Lean_H12 : public lean {
@@ -99,6 +102,10 @@ class Lean_H12_Hands : public lean {
 
   std::string XmlPath() const override {
     return GetModelPath("humanoid_bench/lean/Lean_H12_Hands.xml");
+  }
+
+  std::vector<std::string> GetStrategyNames() const override {
+    return {"h12_hands_table_lean_reach", "h12_hands_table_lean_reach_extended"};
   }
 };
 
