@@ -38,13 +38,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const *left_hand_pos = SensorByName(model, data, "left_hand_pos");
   double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
 
-  double left_obj_dist = mju_dist3(left_hand_pos, object_pos);
-  double right_obj_dist = mju_dist3(right_hand_pos, object_pos);
-
-  // Closer hand reaches, farther hand braces
-  bool left_reaches = left_obj_dist < right_obj_dist;
-  double const *reaching_hand = left_reaches ? left_hand_pos : right_hand_pos;
-  double const *bracing_hand = left_reaches ? right_hand_pos : left_hand_pos;
+  // Right arm always braces on the table; left arm always reaches for the
+  // object. body1=21 in the contact keyframes targets the right hand body, so
+  // the reaching/bracing assignment must stay fixed — dynamic switching based
+  // on object position causes both arms to be pulled toward the table
+  // simultaneously, creating an irresolvable contradiction.
+  constexpr bool left_reaches = true;
+  double const *reaching_hand = left_hand_pos;
+  double const *bracing_hand  = right_hand_pos;
 
   //------------- Reward calculation --------------//
   double const hand_dist_penalty = 1.0;
@@ -187,9 +188,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_add3(pcp, vec, center);
   pcp[2] = 1.0e-3;
 
-  // is leaning - modified to be less strict than standing
+  // is leaning - modified to be less strict than standing.
+  // floored at 0.3 so balance never fully turns off when falling.
   double leaning =
       torso_height / mju_sqrt(torso_height * torso_height + 0.65 * 0.65) - 0.2;
+  leaning = mju_max(leaning, 0.3);
 
   mju_sub(&residual[counter], capture_point, pcp, 2);
   mju_scl(&residual[counter], &residual[counter], leaning, 2);
@@ -215,6 +218,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *pelvis_up = SensorByName(model, data, "pelvis_up");
   double target_pelvis_tilt = 0.85;  // Slight forward tilt allowed
   residual[counter++] = pelvis_up[2] - target_pelvis_tilt;
+
+  // ----- foot up-vectors: prevent ankle roll ----- //
+  double *foot_right_up = SensorByName(model, data, "foot_right_up");
+  double *foot_left_up  = SensorByName(model, data, "foot_left_up");
+  residual[counter++] = mju_abs(foot_right_up[2] - 1.0);
+  residual[counter++] = mju_abs(foot_left_up[2]  - 1.0);
+
+  // ----- waist yaw: stop planner from yawing torso to swing arm ----- //
+  // torso_joint is the 13th actuated DOF (nu index 12), home = 0.
+  // Confirmed from ResetLocked joint-order print: qpos index 19 = 7 + 12.
+  residual[counter++] = data->qpos[7 + 12] - model->key_qpos[7 + 12];
+
+  // ----- hip yaw + roll: prevent planner exploiting hip rotation to
+  // reposition the torso/arm during lean (same exploitation mode as waist yaw).
+  // Nu indices: L_hip_yaw=0, L_hip_roll=2, R_hip_yaw=6, R_hip_roll=8.
+  residual[counter++] = data->qpos[7 + 0] - model->key_qpos[7 + 0];
+  residual[counter++] = data->qpos[7 + 2] - model->key_qpos[7 + 2];
+  residual[counter++] = data->qpos[7 + 6] - model->key_qpos[7 + 6];
+  residual[counter++] = data->qpos[7 + 8] - model->key_qpos[7 + 8];
 
   // ----- posture ----- //
   // Reduced weight vs push task to allow more deviation for leaning
@@ -265,14 +287,36 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_sub3(&residual[counter], reaching_hand, object_pos);
   counter += 3;
 
-  // ----- foot stability: penalize horizontal foot velocity ----- //
-  // Prevents the planner from using leg steps to reduce arm costs
-  double *foot_right_vel_s = SensorByName(model, data, "foot_right_vel");
-  double *foot_left_vel_s = SensorByName(model, data, "foot_left_vel");
-  residual[counter++] = foot_right_vel_s[0];
-  residual[counter++] = foot_right_vel_s[1];
-  residual[counter++] = foot_left_vel_s[0];
-  residual[counter++] = foot_left_vel_s[1];
+  // ----- foot stability: restoring force toward home XY position ----- //
+  // Position-based (not velocity-based) so there's a continuous gradient even
+  // when the foot is stationary but displaced. Home positions derived from the
+  // H1_2 kinematic chain at the home keyframe (qpos x=0.19, all joints=0).
+  // Right foot freed during leg-lift stages so the backward kick can emerge.
+  static constexpr double kRightFootHomeXY[2] = {0.19, -0.163};
+  static constexpr double kLeftFootHomeXY[2]  = {0.19,  0.163};
+
+  int active_contact_count = 0;
+  for (const auto& cp : residual_keyframe_.contact_pairs) {
+    if (cp.body1 != mjpc::humanoid::kNotSelectedInteract &&
+        cp.body2 != mjpc::humanoid::kNotSelectedInteract) {
+      active_contact_count++;
+    }
+  }
+  bool is_leg_lift_stage = (active_contact_count >= 3);
+
+  residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[0] - kRightFootHomeXY[0]);
+  residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[1] - kRightFootHomeXY[1]);
+  residual[counter++] = foot_left_pos[0] - kLeftFootHomeXY[0];
+  residual[counter++] = foot_left_pos[1] - kLeftFootHomeXY[1];
+
+  // ----- hip clearance from table front face ----- //
+  // table body is at world x=0.9, half-size 0.5 → front face at x=0.40.
+  // penalise the pelvis entering within 0.08m of that face.
+  double *pelvis_pos_3d = SensorByName(model, data, "pelvis_position");
+  const double *table_surf = SensorByName(model, data, "table_surface_pos");
+  double table_front_x = table_surf[0] - 0.5;
+  double hip_penalty = mju_max(0.0, pelvis_pos_3d[0] - (table_front_x - 0.08));
+  residual[counter++] = is_active_contact ? hip_penalty : 0.0;
 
   // ----- contact keyframe residual ----- //
   ContactResidual(model, data, residual, &counter);
@@ -357,6 +401,40 @@ void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
 // -------- Transition for humanoid_bench lean task -------- //
 // ------------------------------------------------------------ //
 void lean::TransitionLocked(mjModel *model, mjData *data) {
+  // ---- DEBUG: print leg stability diagnostics every ~0.5 s ---- //
+  static int debug_tick = 0;
+  if (++debug_tick % 33 == 0) {  // ~0.5 s at timestep=0.015
+    double *foot_right_up = SensorByName(model, data, "foot_right_up");
+    double *foot_left_up  = SensorByName(model, data, "foot_left_up");
+    double *torso_up      = SensorByName(model, data, "torso_up");
+    double torso_h        = SensorByName(model, data, "torso_position")[2];
+    double leaning        = torso_h / mju_sqrt(torso_h * torso_h + 0.65 * 0.65) - 0.2;
+
+    // largest joint velocity (which DOF is flailing)
+    int worst_dof = 0;
+    double worst_vel = 0;
+    for (int i = 0; i < model->nu; i++) {
+      double v = mju_abs(data->qvel[6 + i]);
+      if (v > worst_vel) { worst_vel = v; worst_dof = i; }
+    }
+    const char *worst_name = mj_id2name(model, mjOBJ_JOINT, worst_dof);
+
+    double const *obj_pos_dbg = SensorByName(model, data, "object_pos");
+    double const *lh = SensorByName(model, data, "left_hand_pos");
+    double const *rh = SensorByName(model, data, "right_hand_pos");
+    double ld = mju_dist3(lh, obj_pos_dbg);
+    double rd = mju_dist3(rh, obj_pos_dbg);
+    printf("[LEAN DBG t=%.2f] leaning=%.3f | torso_up_z=%.3f | "
+           "rfoot_up_z=%.3f lfoot_up_z=%.3f | "
+           "obj_y=%.3f L_dist=%.2f R_dist=%.2f | "
+           "worst_dof=%d(%s) vel=%.2f rad/s\n",
+           data->time, leaning, torso_up[2],
+           foot_right_up[2], foot_left_up[2],
+           obj_pos_dbg[1], ld, rd,
+           worst_dof, worst_name ? worst_name : "?", worst_vel);
+  }
+  // ---- END DEBUG ---- //
+
   // keep mocap target updated for the existing hand-reach residuals
   double const *object_pos = SensorByName(model, data, "object_pos");
   double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");

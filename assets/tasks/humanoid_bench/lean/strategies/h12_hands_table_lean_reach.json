@@ -27,7 +27,7 @@
                 "geom1": 0,
                 "geom2": 0,
                 "local_pos1": [0.17, 0.0, 0.0],
-                "local_pos2": [0.65, 0.09, 0.95]
+                "local_pos2": [0.55, -0.163, 0.95]
             },
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
              "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
@@ -38,7 +38,7 @@
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
              "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
         ],
-        "facing_target": [0.65, 0.09],
+        "facing_target": [0.55, 0.09],
         "name": "arm_extend",
         "success_sustain_time": 1.0,
         "target_distance_tolerance": 0.25,
@@ -53,7 +53,7 @@
                 "geom1": 0,
                 "geom2": 0,
                 "local_pos1": [0.17, 0.0, 0.0],
-                "local_pos2": [0.82, 0.09, 0.90]
+                "local_pos2": [0.58, -0.163, 0.90]
             },
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
              "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
@@ -64,7 +64,7 @@
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
              "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
         ],
-        "facing_target": [0.82, 0.09],
+        "facing_target": [0.58, 0.09],
         "name": "lean_plant",
         "success_sustain_time": 0.5,
         "target_distance_tolerance": 0.20,
@@ -79,7 +79,7 @@
                 "geom1": 0,
                 "geom2": 0,
                 "local_pos1": [0.17, 0.0, 0.0],
-                "local_pos2": [0.90, 0.09, 0.90]
+                "local_pos2": [0.62, -0.163, 0.90]
             },
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
              "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
@@ -90,7 +90,7 @@
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
              "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
         ],
-        "facing_target": [0.90, 0.09],
+        "facing_target": [0.62, 0.09],
         "name": "lean_reach",
         "success_sustain_time": 30.0,
         "target_distance_tolerance": 0.25,

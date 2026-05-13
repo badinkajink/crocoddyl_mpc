@@ -52,6 +52,13 @@
         <user name="Balance" dim="2" user="6 20.0 0.0 100.0 0.02"/>
         <user name="Torso Forward Tilt" dim="1" user="6 3.0 0.0 25.0 0.1"/>
         <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 25.0 0.1"/>
+        <user name="Foot Right Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
+        <user name="Foot Left Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
+        <user name="Waist Yaw" dim="1" user="6 30.0 0.0 100.0 0.1"/>
+        <user name="Hip Yaw L" dim="1" user="6 20.0 0.0 100.0 0.1"/>
+        <user name="Hip Roll L" dim="1" user="6 20.0 0.0 100.0 0.1"/>
+        <user name="Hip Yaw R" dim="1" user="6 20.0 0.0 100.0 0.1"/>
+        <user name="Hip Roll R" dim="1" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Posture" dim="27" user="0 0.015 0 1.0"/>
         <!-- <user name="Posture" dim="31" user="0 0.015 0 1.0"/> -->
         <user name="Velocity" dim="2" user="7 0.625 0 25.0 0.2 4.0"/>
@@ -63,11 +70,14 @@
         <user name="Brace Force" dim="1" user="6 5.0 0.0 100.0 15.0"/>
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
-        <user name="Foot Stability" dim="4" user="6 10.0 0.0 100.0 0.05"/>
+        <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
+        <user name="Hip Clearance" dim="1" user="6 40.0 0.0 100.0 0.1"/>
         <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>
+        <framepos name="trace1" objtype="body" objname="right_ankle_roll_link"/>
+        <framepos name="trace2" objtype="body" objname="left_ankle_roll_link"/>
 
         <!-- residual -->
         <framepos name="torso_position" objtype="body" objname="torso_link"/>
