@@ -22,11 +22,11 @@
     {
         "contacts": [
             {
-                "body1": 28,
+                "body1": 40,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos1": [0.054, 0.0, 0.0],
                 "local_pos2": [0.55, -0.163, 0.70]
             },
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
@@ -48,11 +48,11 @@
     {
         "contacts": [
             {
-                "body1": 28,
+                "body1": 40,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos1": [0.054, 0.0, 0.0],
                 "local_pos2": [0.58, -0.163, 0.65]
             },
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
@@ -74,11 +74,11 @@
     {
         "contacts": [
             {
-                "body1": 28,
+                "body1": 40,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos1": [0.054, 0.0, 0.0],
                 "local_pos2": [0.62, -0.163, 0.65]
             },
             {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
@@ -100,15 +100,15 @@
     {
         "contacts": [
             {
-                "body1": 28,
+                "body1": 40,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos1": [0.054, 0.0, 0.0],
                 "local_pos2": [0.62, -0.163, 0.65]
             },
             {
-                "body1": 25,
+                "body1": 37,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
@@ -138,15 +138,15 @@
     {
         "contacts": [
             {
-                "body1": 28,
+                "body1": 40,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.17, 0.0, 0.0],
+                "local_pos1": [0.054, 0.0, 0.0],
                 "local_pos2": [0.75, -0.163, 0.65]
             },
             {
-                "body1": 25,
+                "body1": 37,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,

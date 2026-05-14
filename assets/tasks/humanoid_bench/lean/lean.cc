@@ -92,49 +92,36 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double reward_brace = brace_reward * mju_exp(-2.0 * brace_dist);
   double reward_success = (hand_dist < kHandDistThreshold && reach_contact_force > kContactForceThreshold) ? success : 0;
   
-  // // ========== PALM BRACING INTEGRATION (H12_Hands only) ========== //
-  // // Check if we have palm sensors (indicates H12_Hands model)
-  // bool has_palm_sensors = false;
-  // for (int i = 0; i < model->nsensor; i++) {
-  //   if (std::string(model->names + model->name_sensoradr[i]) == "left_palm_pos") {
-  //     has_palm_sensors = true;
-  //     break;
-  //   }
-  // }
-  
-  // double palm_bracing_bonus = 0.0;
-  // if (has_palm_sensors) {
-  //   // Get palm position and normal for bracing hand
-  //   double const *left_palm_pos = SensorByName(model, data, "left_palm_pos");
-  //   double const *right_palm_pos = SensorByName(model, data, "right_palm_pos");
-  //   double const *bracing_palm = left_reaches ? right_palm_pos : left_palm_pos;
-    
-  //   double const *left_palm_normal = SensorByName(model, data, "left_palm_normal");
-  //   double const *right_palm_normal = SensorByName(model, data, "right_palm_normal");
-  //   double const *bracing_palm_normal = left_reaches ? right_palm_normal : left_palm_normal;
-    
-  //   double *left_palm_contact = SensorByName(model, data, "left_palm_contact");
-  //   double *right_palm_contact = SensorByName(model, data, "right_palm_contact");
-  //   double palm_contact_force = left_reaches ? right_palm_contact[0] : left_palm_contact[0];
-    
-  //   // Palm orientation: want palm flat on table (normal pointing up [0,0,1])
-  //   double table_normal[3] = {0, 0, 1};
-  //   double palm_alignment = mju_dot3(bracing_palm_normal, table_normal);
-    
-  //   // Palm height: should be at table surface
-  //   double palm_height_error = mju_abs(bracing_palm[2] - table_pos[2]);
-    
-  //   // Bonus for good palm bracing (flat, in contact, at right height)
-  //   double flatness_score = mju_max(0.0, palm_alignment);  // 0 to 1
-  //   double contact_score = (palm_contact_force > 1.0) ? 1.0 : 0.0;
-  //   double height_score = mju_exp(-10.0 * palm_height_error);
-    
-  //   palm_bracing_bonus = 0.3 * flatness_score * contact_score * height_score;
-  // }
-  // // ========== END PALM BRACING INTEGRATION ========== //
-  
-  // reward = -penalty_hand + reward_brace + reward_success + palm_bracing_bonus;
-  reward = -penalty_hand + reward_brace + reward_success;
+  // ========== PALM BRACING INTEGRATION (H12_Hands only) ========== //
+  // Check if we have palm sensors (indicates H12_Hands model)
+  bool has_palm_sensors = false;
+  for (int i = 0; i < model->nsensor; i++) {
+    if (std::string(model->names + model->name_sensoradr[i]) == "right_palm_pos") {
+      has_palm_sensors = true;
+      break;
+    }
+  }
+
+  double palm_bracing_bonus = 0.0;
+  if (has_palm_sensors && any_arm_contact) {
+    double const *right_palm_pos = SensorByName(model, data, "right_palm_pos");
+    double const *right_palm_normal = SensorByName(model, data, "right_palm_normal");
+    double *right_palm_contact = SensorByName(model, data, "right_palm_contact");
+
+    // Palm flat on table: z-axis of palm_center site should point up [0,0,1]
+    double table_normal[3] = {0, 0, 1};
+    double palm_alignment = mju_dot3(right_palm_normal, table_normal);
+
+    double palm_height_error = mju_abs(right_palm_pos[2] - table_pos[2]);
+    double contact_score = (right_palm_contact[0] > 1.0) ? 1.0 : 0.0;
+    double flatness_score = mju_max(0.0, palm_alignment);
+    double height_score = mju_exp(-10.0 * palm_height_error);
+
+    palm_bracing_bonus = 0.5 * flatness_score * contact_score * height_score;
+  }
+  // ========== END PALM BRACING INTEGRATION ========== //
+
+  reward = -penalty_hand + reward_brace + reward_success + palm_bracing_bonus;
 
   //--------------- End of reward calculation -----------------//
 
