@@ -13,7 +13,7 @@
             0
             0 0 0 0 0 0 0
             0 0 0 0 0 0 0
-            1.2 0 0.95 1 0 0 0"/>
+            1.2 0 0.88 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -72,6 +72,7 @@
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
         <user name="Hip Clearance" dim="1" user="6 40.0 0.0 100.0 0.1"/>
+        <user name="Leg Clearance" dim="2" user="6 40.0 0.0 100.0 0.1"/>
         <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
 
         <!--        traces-->
@@ -86,6 +87,8 @@
         <subtreelinvel name="torso_subtreelinvel" body="torso_link"/>
         <framepos name="foot_right_pos" objtype="body" objname="right_ankle_roll_link"/>
         <framepos name="foot_left_pos" objtype="body" objname="left_ankle_roll_link"/>
+        <framepos name="left_knee_pos" objtype="body" objname="left_knee_link"/>
+        <framepos name="right_knee_pos" objtype="body" objname="right_knee_link"/>
         <framepos name="pelvis_position" objtype="body" objname="pelvis"/>
         <framezaxis name="torso_up" objtype="xbody" objname="torso_link"/>
         <framezaxis name="pelvis_up" objtype="xbody" objname="pelvis"/>

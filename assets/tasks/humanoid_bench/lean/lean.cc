@@ -318,6 +318,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double hip_penalty = mju_max(0.0, pelvis_pos_3d[0] - (table_front_x - 0.08));
   residual[counter++] = is_active_contact ? hip_penalty : 0.0;
 
+  // ----- leg clearance from table front face ----- //
+  // Prevent knees (and below) from contacting the table front face.
+  double *left_knee_pos_3d  = SensorByName(model, data, "left_knee_pos");
+  double *right_knee_pos_3d = SensorByName(model, data, "right_knee_pos");
+  double left_knee_penalty  = mju_max(0.0, left_knee_pos_3d[0]  - (table_front_x - 0.06));
+  double right_knee_penalty = mju_max(0.0, right_knee_pos_3d[0] - (table_front_x - 0.06));
+  residual[counter++] = is_active_contact ? left_knee_penalty  : 0.0;
+  residual[counter++] = is_active_contact ? right_knee_penalty : 0.0;
+
   // ----- contact keyframe residual ----- //
   ContactResidual(model, data, residual, &counter);
 
@@ -424,14 +433,33 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     double const *rh = SensorByName(model, data, "right_hand_pos");
     double ld = mju_dist3(lh, obj_pos_dbg);
     double rd = mju_dist3(rh, obj_pos_dbg);
+    double *pelvis_pos_dbg   = SensorByName(model, data, "pelvis_position");
+    const double *tsurf_dbg  = SensorByName(model, data, "table_surface_pos");
+    double table_front_x_dbg = tsurf_dbg[0] - 0.5;
     printf("[LEAN DBG t=%.2f] leaning=%.3f | torso_up_z=%.3f | "
            "rfoot_up_z=%.3f lfoot_up_z=%.3f | "
            "obj_y=%.3f L_dist=%.2f R_dist=%.2f | "
+           "pelvis_x=%.3f(table_front=%.3f) | "
            "worst_dof=%d(%s) vel=%.2f rad/s\n",
            data->time, leaning, torso_up[2],
            foot_right_up[2], foot_left_up[2],
            obj_pos_dbg[1], ld, rd,
+           pelvis_pos_dbg[0], table_front_x_dbg,
            worst_dof, worst_name ? worst_name : "?", worst_vel);
+
+    // Print any contacts involving the table
+    int tbl_geom = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+    for (int c = 0; c < data->ncon; c++) {
+      const mjContact& con = data->contact[c];
+      if (con.geom1 == tbl_geom || con.geom2 == tbl_geom) {
+        int other_geom = (con.geom1 == tbl_geom) ? con.geom2 : con.geom1;
+        int other_body = model->geom_bodyid[other_geom];
+        const char *bn = mj_id2name(model, mjOBJ_BODY, other_body);
+        printf("  [TABLE CONTACT] body=%d(%s) geom=%d pos=(%.3f,%.3f,%.3f)\n",
+               other_body, bn ? bn : "?", other_geom,
+               con.pos[0], con.pos[1], con.pos[2]);
+      }
+    }
   }
   // ---- END DEBUG ---- //
 
@@ -444,7 +472,7 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis_x(1.1, 1.3);
     std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.95};
+    target_position_ = {dis_x(gen), dis_y(gen), 0.88};
     printf("New target position: %f, %f, %f\n", target_position_[0],
            target_position_[1], target_position_[2]);
   }
@@ -499,7 +527,7 @@ void lean::ResetLocked(const mjModel *model) {
   std::mt19937 gen(rd());
   std::uniform_real_distribution<> dis_x(1.1, 1.3);
   std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-  target_position_ = {dis_x(gen), dis_y(gen), 0.95};
+  target_position_ = {dis_x(gen), dis_y(gen), 0.88};
   printf("New target position: %f, %f, %f\n", target_position_[0],
          target_position_[1], target_position_[2]);
 
