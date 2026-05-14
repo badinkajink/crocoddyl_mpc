@@ -31,6 +31,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const height_goal = parameters_[0];
   int counter = 0;
 
+  // ----- stage detection: used throughout to gate residual scaling ----- //
+  int active_contact_count_early = 0;
+  for (const auto& cp : residual_keyframe_.contact_pairs) {
+    if (cp.body1 != mjpc::humanoid::kNotSelectedInteract &&
+        cp.body2 != mjpc::humanoid::kNotSelectedInteract) {
+      active_contact_count_early++;
+    }
+  }
+  // any_arm_contact: arm is on the table (stand_up has 0 contacts)
+  const bool any_arm_contact      = (active_contact_count_early >= 1);
+  // is_leg_lift_stage: arm + elbow + ankle contact (3 contacts)
+  const bool is_leg_lift_stage_early = (active_contact_count_early >= 3);
+
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
 
@@ -39,7 +52,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
 
   // Right arm always braces on the table; left arm always reaches for the
-  // object. body1=21 in the contact keyframes targets the right hand body, so
+  // object. body1=28 in the contact keyframes targets the right hand body, so
   // the reaching/bracing assignment must stay fixed — dynamic switching based
   // on object position causes both arms to be pulled toward the table
   // simultaneously, creating an irresolvable contradiction.
@@ -139,7 +152,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *head_position = SensorByName(model, data, "head_position");
   double head_feet_error =
       head_position[2] - 0.5 * (foot_right_pos[2] + foot_left_pos[2]);
-  residual[counter++] = head_feet_error - height_goal;
+  // During leg-lift/deep-lean the torso goes nearly horizontal so head drops
+  // well below the 1.65m goal. Scale down to 0.35x so the planner isn't
+  // fighting a huge height penalty while simultaneously trying to lean.
+  double height_scale = is_leg_lift_stage_early ? 0.35 : 1.0;
+  residual[counter++] = height_scale * (head_feet_error - height_goal);
 
   // ----- Balance: CoM-feet xy error ----- //
 
@@ -194,8 +211,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       torso_height / mju_sqrt(torso_height * torso_height + 0.65 * 0.65) - 0.2;
   leaning = mju_max(leaning, 0.3);
 
+  // When arm is on the table it provides forward support — relax balance so
+  // the planner doesn't fight the lean by sliding the left foot forward.
+  double balance_scale = any_arm_contact ? 0.35 : 1.0;
   mju_sub(&residual[counter], capture_point, pcp, 2);
-  mju_scl(&residual[counter], &residual[counter], leaning, 2);
+  mju_scl(&residual[counter], &residual[counter], leaning * balance_scale, 2);
 
   counter += 2;
 
@@ -213,11 +233,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double alignment = mju_dot3(torso_forward, reach_dir);
   residual[counter++] = 1.0 - alignment;
 
-  // ----- pelvis tilt (NEW) ----- //
-  // Allow pelvis to tilt slightly forward for stability during lean
+  // ----- pelvis tilt ----- //
+  // Upright stages: keep pelvis near-vertical (target 0.85).
+  // Leg-lift/deep-lean stages: unconstrained — the arm brace takes over and
+  // the torso needs to go near-horizontal.
   double *pelvis_up = SensorByName(model, data, "pelvis_up");
-  double target_pelvis_tilt = 0.85;  // Slight forward tilt allowed
-  residual[counter++] = pelvis_up[2] - target_pelvis_tilt;
+  residual[counter++] = is_leg_lift_stage_early ? 0.0 : (pelvis_up[2] - 0.85);
 
   // ----- foot up-vectors: prevent ankle roll ----- //
   double *foot_right_up = SensorByName(model, data, "foot_right_up");
@@ -291,41 +312,54 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Position-based (not velocity-based) so there's a continuous gradient even
   // when the foot is stationary but displaced. Home positions derived from the
   // H1_2 kinematic chain at the home keyframe (qpos x=0.19, all joints=0).
-  // Right foot freed during leg-lift stages so the backward kick can emerge.
+  // Right foot freed during leg-lift stages (right leg lifts, left foot is sole ground support).
   static constexpr double kRightFootHomeXY[2] = {0.19, -0.163};
   static constexpr double kLeftFootHomeXY[2]  = {0.19,  0.163};
 
-  int active_contact_count = 0;
-  for (const auto& cp : residual_keyframe_.contact_pairs) {
-    if (cp.body1 != mjpc::humanoid::kNotSelectedInteract &&
-        cp.body2 != mjpc::humanoid::kNotSelectedInteract) {
-      active_contact_count++;
-    }
-  }
-  bool is_leg_lift_stage = (active_contact_count >= 3);
+  bool is_leg_lift_stage = is_leg_lift_stage_early;
+
+  // Left foot is the primary ground anchor during all lean stages.
+  // Scale 4x as soon as the arm contacts the table, 5x during leg lift.
+  // This is needed because balance residual would otherwise slide the foot
+  // to reposition the COM — the arm provides the forward support instead.
+  double left_foot_scale = is_leg_lift_stage ? 5.0 : (any_arm_contact ? 4.0 : 1.0);
 
   residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[0] - kRightFootHomeXY[0]);
   residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[1] - kRightFootHomeXY[1]);
-  residual[counter++] = foot_left_pos[0] - kLeftFootHomeXY[0];
-  residual[counter++] = foot_left_pos[1] - kLeftFootHomeXY[1];
+  residual[counter++] = left_foot_scale * (foot_left_pos[0] - kLeftFootHomeXY[0]);
+  residual[counter++] = left_foot_scale * (foot_left_pos[1] - kLeftFootHomeXY[1]);
 
   // ----- hip clearance from table front face ----- //
   // table body is at world x=0.9, half-size 0.5 → front face at x=0.40.
   // penalise the pelvis entering within 0.08m of that face.
   double *pelvis_pos_3d = SensorByName(model, data, "pelvis_position");
   const double *table_surf = SensorByName(model, data, "table_surface_pos");
-  double table_front_x = table_surf[0] - 0.5;
+  double table_front_x = table_surf[0] - 0.7;
   double hip_penalty = mju_max(0.0, pelvis_pos_3d[0] - (table_front_x - 0.08));
-  residual[counter++] = is_active_contact ? hip_penalty : 0.0;
+  residual[counter++] = hip_penalty;
 
   // ----- leg clearance from table front face ----- //
-  // Prevent knees (and below) from contacting the table front face.
+  // Left: check mid-thigh x (midpoint of pelvis and knee) — thigh is at table
+  // height during lean so the knee-only check misses it.
+  // Right: knee x only (right leg lifts, so thigh constraint not needed there).
   double *left_knee_pos_3d  = SensorByName(model, data, "left_knee_pos");
   double *right_knee_pos_3d = SensorByName(model, data, "right_knee_pos");
-  double left_knee_penalty  = mju_max(0.0, left_knee_pos_3d[0]  - (table_front_x - 0.06));
+  double left_thigh_mid_x   = 0.5 * (pelvis_pos_3d[0] + left_knee_pos_3d[0]);
+  double left_thigh_penalty = mju_max(0.0, left_thigh_mid_x    - (table_front_x - 0.05));
   double right_knee_penalty = mju_max(0.0, right_knee_pos_3d[0] - (table_front_x - 0.06));
-  residual[counter++] = is_active_contact ? left_knee_penalty  : 0.0;
-  residual[counter++] = is_active_contact ? right_knee_penalty : 0.0;
+  residual[counter++] = left_thigh_penalty;
+  residual[counter++] = right_knee_penalty;
+
+  // ----- left leg anchor: prevent left knee from bending during leg lift ----- //
+  // During leg-lift stages the left leg is the sole ground support and must stay
+  // straight. Penalise the left knee dropping below standing height (~0.42m).
+  // Zero in all other stages.
+  residual[counter++] = is_leg_lift_stage ? mju_max(0.0, 0.42 - left_knee_pos_3d[2]) : 0.0;
+
+  // ----- right foot lift: reward foot off ground during leg-lift stages ----- //
+  // Penalises right foot below 0.25m when the right leg should be lifted.
+  // Zeroed in all other stages so it doesn't interfere with normal standing.
+  residual[counter++] = is_leg_lift_stage ? mju_max(0.0, 0.25 - foot_right_pos[2]) : 0.0;
 
   // ----- contact keyframe residual ----- //
   ContactResidual(model, data, residual, &counter);
@@ -435,7 +469,7 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     double rd = mju_dist3(rh, obj_pos_dbg);
     double *pelvis_pos_dbg   = SensorByName(model, data, "pelvis_position");
     const double *tsurf_dbg  = SensorByName(model, data, "table_surface_pos");
-    double table_front_x_dbg = tsurf_dbg[0] - 0.5;
+    double table_front_x_dbg = tsurf_dbg[0] - 0.7;
     printf("[LEAN DBG t=%.2f] leaning=%.3f | torso_up_z=%.3f | "
            "rfoot_up_z=%.3f lfoot_up_z=%.3f | "
            "obj_y=%.3f L_dist=%.2f R_dist=%.2f | "
@@ -465,14 +499,14 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
 
   // keep mocap target updated for the existing hand-reach residuals
   double const *object_pos = SensorByName(model, data, "object_pos");
-  double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
-  double hand_dist = mju_dist3(right_hand_pos, object_pos);
+  double const *left_hand_pos_tr = SensorByName(model, data, "left_hand_pos");
+  double hand_dist = mju_dist3(left_hand_pos_tr, object_pos);
   if (hand_dist < 0.05) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_x(1.1, 1.3);
+    std::uniform_real_distribution<> dis_x(1.4, 1.6);
     std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.88};
+    target_position_ = {dis_x(gen), dis_y(gen), 0.73};
     printf("New target position: %f, %f, %f\n", target_position_[0],
            target_position_[1], target_position_[2]);
   }
@@ -525,9 +559,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
 void lean::ResetLocked(const mjModel *model) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dis_x(1.1, 1.3);
+  std::uniform_real_distribution<> dis_x(1.4, 1.6);
   std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-  target_position_ = {dis_x(gen), dis_y(gen), 0.88};
+  target_position_ = {dis_x(gen), dis_y(gen), 0.73};
   printf("New target position: %f, %f, %f\n", target_position_[0],
          target_position_[1], target_position_[2]);
 

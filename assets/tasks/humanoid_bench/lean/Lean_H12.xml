@@ -13,7 +13,7 @@
             0
             0 0 0 0 0 0 0
             0 0 0 0 0 0 0
-            1.2 0 0.88 1 0 0 0"/>
+            1.5 0 0.73 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -71,8 +71,10 @@
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
-        <user name="Hip Clearance" dim="1" user="6 40.0 0.0 100.0 0.1"/>
-        <user name="Leg Clearance" dim="2" user="6 40.0 0.0 100.0 0.1"/>
+        <user name="Hip Clearance" dim="1" user="6 120.0 0.0 300.0 0.04"/>
+        <user name="Leg Clearance" dim="2" user="6 120.0 0.0 300.0 0.04"/>
+        <user name="Left Leg Anchor" dim="1" user="6 100.0 0.0 300.0 0.08"/>
+        <user name="Right Foot Lift" dim="1" user="6 60.0 0.0 100.0 0.3"/>
         <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
 
         <!--        traces-->

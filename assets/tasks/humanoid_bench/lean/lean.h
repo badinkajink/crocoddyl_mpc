@@ -57,12 +57,12 @@ class lean : public Task {
   };
 
   lean() : residual_(this), current_strategy_(-1) {
-    target_position_ = {1.2, 0.0, 0.95};
+    target_position_ = {1.5, 0.0, 0.73};
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_x(1.1, 1.3);
+    std::uniform_real_distribution<> dis_x(1.4, 1.6);
     std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.95};
+    target_position_ = {dis_x(gen), dis_y(gen), 0.73};
   }
 
   void TransitionLocked(mjModel *model, mjData *data) override;
