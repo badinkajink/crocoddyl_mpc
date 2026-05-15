@@ -19,12 +19,24 @@
     </keyframe>
 
     <custom>
-        <numeric name="agent_planner" data="2"/>
-        <numeric name="agent_horizon" data="1.0"/>
+        <!-- Planner: 0=Sampling 1=Gradient 2=iLQG 3=iLQS 4=Robust 5=CrossEntropy 6=SampleGradient.
+             Derivative-based planners (iLQG, iLQS) fail on contact-rich tasks because
+             dynamics gradients are noisy/discontinuous through contact. Sampling-based
+             planners handle contact cleanly. Cross Entropy (5) is the sweet spot. -->
+        <numeric name="agent_planner" data="5"/>
+        <!-- horizon 0.6s matches the Whole-Body MPC humanoid paper (arXiv 2503.04613)
+             and trims ~40% rollout cost vs 1.0s. The lean motion is slow (~0.3 m/s)
+             so 0.6s of lookahead is more than enough. -->
+        <numeric name="agent_horizon" data="0.6"/>
         <numeric name="agent_timestep" data="0.015"/>
         <numeric name="sampling_spline_points" data="3"/>
         <numeric name="sampling_exploration" data="0.05"/>
         <numeric name="gradient_spline_points" data="5"/>
+        <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites
+             with 30 rollouts. That's too few — one outlier sample dominates the
+             refit each step, producing the periodic Brace Force spikes. 6 elites
+             (~20%) smooths the mean policy without losing selection pressure. -->
+        <numeric name="n_elite" data="6"/>
         <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
         <numeric name="residual_Strategy" data="0 0 9" />
     </custom>
@@ -54,7 +66,10 @@
 
         <!--        task specific cost terms-->
         <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
-        <user name="Brace Force" dim="1" user="6 5.0 0.0 100.0 15.0"/>
+        <!-- Brace Force weight bumped 5.0 → 25.0 (Opt2Skill, arXiv 2409.20514).
+             Per-phase target is now read from strategy JSON brace_force_target,
+             falling back to this static 15.0 when JSON doesn't specify. -->
+        <user name="Brace Force" dim="1" user="6 25.0 0.0 100.0 15.0"/>
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
@@ -63,6 +78,10 @@
         <user name="Left Leg Anchor" dim="1" user="6 100.0 0.0 300.0 0.08"/>
         <user name="Right Foot Lift" dim="1" user="6 60.0 0.0 100.0 0.3"/>
         <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
+        <!-- Joint Vel. Limit: one-sided penalty for joint velocities above
+             85% of the URDF ω_max. Keeps MJPC plans within hardware-feasible
+             velocity envelope. Type 0 (quadratic), weight 5. -->
+        <user name="Joint Vel. Limit" dim="27" user="0 5.0 0.0 100.0"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>
@@ -132,4 +151,35 @@
         <touch name="right_shoulder_roll_sensor_6" site="right_shoulder_roll_sensor_6"/>
         <touch name="right_shoulder_roll_sensor_7" site="right_shoulder_roll_sensor_7"/>
     </sensor>
+
+    <!-- Strip non-essential collision pairs for real-time MPC (arXiv 2503.04613).
+         Only the right hand contacts the table; arm/pelvis/torso should not. -->
+    <contact>
+        <exclude body1="table" body2="left_shoulder_pitch_link"/>
+        <exclude body1="table" body2="left_shoulder_roll_link"/>
+        <exclude body1="table" body2="left_shoulder_yaw_link"/>
+        <exclude body1="table" body2="left_elbow_link"/>
+        <exclude body1="table" body2="left_wrist_roll_link"/>
+        <exclude body1="table" body2="left_wrist_pitch_link"/>
+        <exclude body1="table" body2="left_wrist_yaw_link"/>
+        <exclude body1="table" body2="pelvis"/>
+        <exclude body1="table" body2="torso_link"/>
+        <exclude body1="pelvis" body2="left_knee_link"/>
+        <exclude body1="pelvis" body2="right_knee_link"/>
+        <exclude body1="torso_link" body2="left_elbow_link"/>
+        <exclude body1="torso_link" body2="right_elbow_link"/>
+        <!-- adjacent arm-segment excludes (auto-injected) -->
+        <exclude body1="right_shoulder_pitch_link" body2="right_shoulder_roll_link"/>
+        <exclude body1="right_shoulder_roll_link" body2="right_shoulder_yaw_link"/>
+        <exclude body1="right_shoulder_yaw_link" body2="right_elbow_link"/>
+        <exclude body1="right_elbow_link" body2="right_wrist_roll_link"/>
+        <exclude body1="right_wrist_roll_link" body2="right_wrist_pitch_link"/>
+        <exclude body1="right_wrist_pitch_link" body2="right_wrist_yaw_link"/>
+        <exclude body1="left_shoulder_pitch_link" body2="left_shoulder_roll_link"/>
+        <exclude body1="left_shoulder_roll_link" body2="left_shoulder_yaw_link"/>
+        <exclude body1="left_shoulder_yaw_link" body2="left_elbow_link"/>
+        <exclude body1="left_elbow_link" body2="left_wrist_roll_link"/>
+        <exclude body1="left_wrist_roll_link" body2="left_wrist_pitch_link"/>
+        <exclude body1="left_wrist_pitch_link" body2="left_wrist_yaw_link"/>
+    </contact>
 </mujoco>

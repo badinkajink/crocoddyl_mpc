@@ -8,6 +8,21 @@
 #include "mjpc/tasks/humanoid/interact/contact_keyframe.h"
 
 namespace mjpc {
+
+namespace {
+// Target (post-ramp) reach + brace scales for each named phase. Kept in one
+// place so the residual and the transition logic can't drift out of sync.
+inline void PhaseTargetScales(const std::string& name,
+                              double& reach, double& brace_pos) {
+  reach = 1.0;
+  brace_pos = 1.0;
+  if (name == "stand_up")        { reach = 0.0; brace_pos = 0.0; }
+  else if (name == "arm_extend") { reach = 0.3; brace_pos = 1.0; }
+  else if (name == "lean_plant") { reach = 0.7; brace_pos = 1.0; }
+  // lean_reach / lean_reach_ext / leg_lift_arm_plant / deep_reach → 1.0/1.0.
+}
+}  // namespace
+
 // ------------------ Residuals for humanoid lean task ------------
 //   Number of residuals:
 //      Residual(0): humanoid_bench reward
@@ -43,6 +58,44 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   const bool any_arm_contact      = (active_contact_count_early >= 1);
   // is_leg_lift_stage: arm + elbow + ankle contact (3 contacts)
   const bool is_leg_lift_stage_early = (active_contact_count_early >= 3);
+
+  // ---- Phase-aware cost scales (fixes the "hip slam at t=0" bug) ----------
+  // The height-based `leaning` scalar below is ~1.0 when the robot is upright,
+  // which made the reach-toward-object cost fully active during stand_up.
+  // MJPC then planned a forward lunge from frame 0 and slammed the hip into
+  // the table. We gate reach + brace residuals on the keyframe name AND
+  // smoothly interpolate from the previous phase's scales over kPhaseRampSeconds.
+  // That smooth handoff is what stops the robot from snapping forward the
+  // instant the next phase's cost gradient switches on — i.e. the WBC-style
+  // "blend tasks, don't switch them" behaviour.
+  double target_reach_scale     = 1.0;
+  double target_brace_pos_scale = 1.0;
+  PhaseTargetScales(residual_keyframe_.name, target_reach_scale,
+                    target_brace_pos_scale);
+
+  // Smooth time-ramp from the previous phase's scales to the new ones.
+  //
+  // We pass the linear progression α = clamp(t/T, 0, 1) through a smoothstep
+  // curve s(α) = α² · (3 − 2α) before interpolating. Properties:
+  //   • s(0) = 0, s(1) = 1                      → matches endpoints
+  //   • s'(0) = s'(1) = 0                       → zero slope at endpoints
+  //   • C¹ continuous                            → cost gradient changes gradually
+  // The zero slopes are what stops the abrupt shove when a phase begins/ends:
+  // with linear lerp the cost gradient jumps from "rising at constant rate"
+  // to "constant" instantly, which MJPC reads as an impulsive cost change and
+  // plans a snap response. Smoothstep eases in and out symmetrically, which
+  // is the canonical "weight-based task transition" used in HQP-style WBC
+  // (see e.g. Liu et al., "Generalized hierarchical control" — task priority
+  // weights as continuous functions of time, not step changes).
+  double time_in_phase = mju_max(0.0, data->time - keyframe_start_time_);
+  double alpha_lin     = mju_min(time_in_phase / kPhaseRampSeconds, 1.0);
+  double alpha         = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
+  double phase_reach_scale =
+      prev_phase_reach_scale_ + alpha * (target_reach_scale -
+                                         prev_phase_reach_scale_);
+  double phase_brace_pos_scale =
+      prev_phase_brace_pos_scale_ + alpha * (target_brace_pos_scale -
+                                             prev_phase_brace_pos_scale_);
 
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
@@ -108,16 +161,26 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double const *right_palm_normal = SensorByName(model, data, "right_palm_normal");
     double *right_palm_contact = SensorByName(model, data, "right_palm_contact");
 
-    // Palm flat on table: z-axis of palm_center site should point up [0,0,1]
-    double table_normal[3] = {0, 0, 1};
-    double palm_alignment = mju_dot3(right_palm_normal, table_normal);
+    // Palm face-DOWN on the table is the human-like posture: the inside of
+    // the palm contacts the table, taking weight through the wrist/forearm.
+    // The right_palm_normal sensor is the +z axis of the palm_center site,
+    // which points OUT of the palm surface. When the palm is face-down, that
+    // outward normal points DOWN — i.e. opposite the table's upward normal.
+    // Reward alignment with [0,0,-1] (palm-out vector pointing into the
+    // ground) instead of [0,0,1] (which was rewarding back-of-hand-down,
+    // the bug the user reported).
+    double palm_down_target[3] = {0, 0, -1};
+    double palm_alignment = mju_dot3(right_palm_normal, palm_down_target);
 
     double palm_height_error = mju_abs(right_palm_pos[2] - table_pos[2]);
     double contact_score = (right_palm_contact[0] > 1.0) ? 1.0 : 0.0;
     double flatness_score = mju_max(0.0, palm_alignment);
     double height_score = mju_exp(-10.0 * palm_height_error);
 
-    palm_bracing_bonus = 0.5 * flatness_score * contact_score * height_score;
+    // Weight bumped 0.5 → 1.5 so the bonus is strong enough to actually
+    // drive the right_wrist_roll joint to twist palm-down. Below ~1.0 it
+    // was getting drowned out by Posture and Joint Vel. regularisers.
+    palm_bracing_bonus = 1.5 * flatness_score * contact_score * height_score;
   }
   // ========== END PALM BRACING INTEGRATION ========== //
 
@@ -278,21 +341,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // ----- bracing hand position on table ----- //
   mju_sub3(&residual[counter], bracing_hand, ideal_brace);
+  mju_scl3(&residual[counter], &residual[counter], phase_brace_pos_scale);
   counter += 3;
 
-  // Only want brace force when actively bracing (not during stand_up where all contacts are inactive)
+  // Per-phase brace-force reference (Opt2Skill, arXiv 2409.20514).
+  // If the strategy JSON for the current keyframe specifies brace_force_target
+  // (>= 0), use it. Otherwise fall back to the legacy default: 15 N when any
+  // contact pair is active, 0 N during contact-free phases (stand_up).
   bool is_active_contact =
       (residual_keyframe_.contact_pairs[0].body1 != mjpc::humanoid::kNotSelectedInteract);
-  double desired_brace_force = is_active_contact ? 15.0 : 0.0;
+  double desired_brace_force = residual_keyframe_.brace_force_target >= 0.0
+                                   ? residual_keyframe_.brace_force_target
+                                   : (is_active_contact ? 15.0 : 0.0);
   residual[counter++] = desired_brace_force - brace_contact_force;
 
   // ------ object distance (reaching hand) ------ //
+  // Phase-gated: zero during stand_up so the planner doesn't lunge.
   mju_sub3(&residual[counter], reaching_hand, object_pos);
-  mju_scl3(&residual[counter], &residual[counter], leaning);
+  mju_scl3(&residual[counter], &residual[counter],
+           phase_reach_scale * leaning);
   counter += 3;
 
   // ----- reaching hand distance to object ----- //
   mju_sub3(&residual[counter], reaching_hand, object_pos);
+  mju_scl3(&residual[counter], &residual[counter], phase_reach_scale);
   counter += 3;
 
   // ----- foot stability: restoring force toward home XY position ----- //
@@ -350,6 +422,43 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // ----- contact keyframe residual ----- //
   ContactResidual(model, data, residual, &counter);
+
+  // ----- Joint Velocity Limits ------------------------------------------ //
+  // One-sided residual that's zero when |qvel| ≤ 0.85·ω_max and grows
+  // linearly beyond. ω_max values are the per-joint velocity limits from
+  // the H1-2 URDF (h1_2.urdf <limit velocity="..."/>). Stops MJPC from
+  // planning trajectories that demand impossible joint speeds — important
+  // for sim2real because a plan that exceeds ω_max will fail on hardware
+  // regardless of how good the torque is. 0.85 leaves a 15% safety buffer.
+  //
+  // Index order = actuator order = the ctrlrange order in h1_2_pos.xml.
+  // Same indices work for both H1-2 and H1-2-Hands because both variants
+  // expose only these 27 actuated joints (fingers are unactuated in our
+  // Hands MJCF).
+  static constexpr double kJointVelLimit[27] = {
+      // L_hip_yaw, L_hip_pitch, L_hip_roll, L_knee, L_ank_p, L_ank_r
+      23.0, 23.0, 23.0, 14.0, 9.0, 9.0,
+      // R_hip_yaw, R_hip_pitch, R_hip_roll, R_knee, R_ank_p, R_ank_r
+      23.0, 23.0, 23.0, 14.0, 9.0, 9.0,
+      // torso
+      23.0,
+      // L_sho_p, L_sho_r, L_sho_y, L_elbow, L_wr_r, L_wr_p, L_wr_y
+      9.0, 9.0, 20.0, 20.0, 31.4, 31.4, 31.4,
+      // R_sho_p, R_sho_r, R_sho_y, R_elbow, R_wr_r, R_wr_p, R_wr_y
+      9.0, 9.0, 20.0, 20.0, 31.4, 31.4, 31.4,
+  };
+  // Walk actuators (always 27 here) and look up each joint's qvel index via
+  // jnt_dofadr — robust to the Hands variant inserting finger joints later
+  // in the qvel layout. MuJoCo stores the actuator's transmission target as
+  // actuator_trnid[2*i] (first slot is the joint id for joint-type
+  // transmissions, which is all of ours).
+  for (int i = 0; i < model->nu && i < 27; i++) {
+    int jntid  = model->actuator_trnid[2 * i];
+    int dofadr = model->jnt_dofadr[jntid];
+    double abs_vel = std::abs(data->qvel[dofadr]);
+    double threshold = 0.85 * kJointVelLimit[i];
+    residual[counter++] = std::max(0.0, abs_vel - threshold);
+  }
 
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
   // // Check if we have elbow sensors (indicates H12_Hands model)
@@ -506,6 +615,27 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   requested_strategy = std::max(
       0, std::min(requested_strategy, (int)kStrategyNames.size() - 1));
 
+  // Helper: snapshot the scales currently in effect (mid-ramp possible) so
+  // the next phase ramps smoothly out of them. The lerp matches what
+  // Residual() is doing, so prev_* always equals what the rollouts are
+  // actually seeing at the moment of transition.
+  auto SnapshotEffectiveScales = [&]() {
+    double r_t, b_t;
+    PhaseTargetScales(residual_.residual_keyframe_.name, r_t, b_t);
+    double dt = mju_max(0.0, data->time - residual_.keyframe_start_time_);
+    double alpha_lin =
+        mju_min(dt / ResidualFn::kPhaseRampSeconds, 1.0);
+    // Match the smoothstep used in Residual() so the snapshot equals what
+    // the rollouts were actually seeing at the moment of transition.
+    double alpha = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
+    residual_.prev_phase_reach_scale_ =
+        residual_.prev_phase_reach_scale_ +
+        alpha * (r_t - residual_.prev_phase_reach_scale_);
+    residual_.prev_phase_brace_pos_scale_ =
+        residual_.prev_phase_brace_pos_scale_ +
+        alpha * (b_t - residual_.prev_phase_brace_pos_scale_);
+  };
+
   if (!motion_strategy_.HasKeyframes() ||
       requested_strategy != current_strategy_) {
     current_strategy_ = requested_strategy;
@@ -515,6 +645,12 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+    // Cold start (or strategy switch): no previous phase, prev scales = 0
+    // so the first ramp climbs cleanly out of (0, 0) into stand_up's
+    // targets (which are also 0, 0 — i.e. no ramp during stand_up).
+    residual_.keyframe_start_time_      = data->time;
+    residual_.prev_phase_reach_scale_   = 0.0;
+    residual_.prev_phase_brace_pos_scale_ = 0.0;
     return;
   }
 
@@ -526,18 +662,26 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
           current_kf.time_limit &&
       total_distance > current_kf.target_distance_tolerance) {
+    // Time-limit reset (strategy restarts from keyframe 0). Save the scales
+    // that were just in effect so the next ramp blends from them.
+    SnapshotEffectiveScales();
     motion_strategy_.Reset();
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    residual_.keyframe_start_time_ = data->time;
   } else if (total_distance <= current_kf.target_distance_tolerance &&
              data->time -
                      motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
                  current_kf.success_sustain_time) {
+    // Normal phase advance — this is the path that fires after stand_up
+    // succeeds. Snapshot first so the new ramp starts from the old scales.
+    SnapshotEffectiveScales();
     motion_strategy_.NextKeyframe();
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    residual_.keyframe_start_time_ = data->time;
   } else if (total_distance > current_kf.target_distance_tolerance) {
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
   }

@@ -29,12 +29,24 @@ class lean : public Task {
    public:
     explicit ResidualFn(const lean *task,
                         const mjpc::humanoid::ContactKeyframe& kf =
-                            mjpc::humanoid::ContactKeyframe())
+                            mjpc::humanoid::ContactKeyframe(),
+                        mjtNum keyframe_start_time = 0.0,
+                        mjtNum prev_reach_scale = 0.0,
+                        mjtNum prev_brace_pos_scale = 0.0)
         : mjpc::BaseResidualFn(task),
-          residual_keyframe_(kf) {}
+          residual_keyframe_(kf),
+          keyframe_start_time_(keyframe_start_time),
+          prev_phase_reach_scale_(prev_reach_scale),
+          prev_phase_brace_pos_scale_(prev_brace_pos_scale) {}
 
     void Residual(const mjModel *model, const mjData *data,
                   double *residual) const override;
+
+    // Phase-transition ramp duration: the reach + brace cost scales smoothly
+    // interpolate from their previous-phase values to the new-phase values
+    // over this many seconds after each keyframe advance. 1.5s gives the
+    // robot time to absorb the new gradient instead of being shoved forward.
+    static constexpr mjtNum kPhaseRampSeconds = 1.5;
 
     enum LeanMode {
       kModeReach = 0,
@@ -44,6 +56,18 @@ class lean : public Task {
 
    protected:
     mjpc::humanoid::ContactKeyframe residual_keyframe_;
+
+    // ----- Phase-transition state -----------------------------------------
+    // `keyframe_start_time_`: wall time at which the current keyframe became
+    // active (set in TransitionLocked). The residual uses `data->time -
+    // keyframe_start_time_` to compute how far through the ramp we are.
+    // `prev_phase_*_scale_`: the scales that were in effect just before the
+    // last transition. Together they let Residual() lerp smoothly into the
+    // new phase's scales, which is the WBC-style smooth handoff the robot
+    // needs to avoid lurching when a contact cost switches on.
+    mjtNum keyframe_start_time_ = 0.0;
+    mjtNum prev_phase_reach_scale_ = 0.0;
+    mjtNum prev_phase_brace_pos_scale_ = 0.0;
 
    private:
     friend class lean;
@@ -75,7 +99,14 @@ class lean : public Task {
 
  protected:
   std::unique_ptr<mjpc::ResidualFn> ResidualLocked() const override {
-    return std::make_unique<ResidualFn>(this, residual_.residual_keyframe_);
+    // Copy the phase-transition timing state along with the keyframe so
+    // freshly-spawned residuals (one per rollout thread) see the same ramp
+    // progress as the canonical residual_.
+    return std::make_unique<ResidualFn>(
+        this, residual_.residual_keyframe_,
+        residual_.keyframe_start_time_,
+        residual_.prev_phase_reach_scale_,
+        residual_.prev_phase_brace_pos_scale_);
   }
 
   ResidualFn *InternalResidual() override { return &residual_; }

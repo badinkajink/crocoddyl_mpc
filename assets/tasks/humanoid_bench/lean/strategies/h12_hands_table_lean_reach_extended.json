@@ -1,23 +1,94 @@
 [
     {
         "contacts": [
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
         "facing_target": [],
         "name": "stand_up",
-        "success_sustain_time": 2.5,
+        "success_sustain_time": 5.0,
         "target_distance_tolerance": 0.3,
-        "time_limit": 10.0,
-        "weight": {}
+        "time_limit": 12.0,
+        "weight": {},
+        "brace_force_target": 0.0
     },
     {
         "contacts": [
@@ -26,24 +97,92 @@
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.054, 0.0, 0.0],
-                "local_pos2": [0.55, -0.163, 0.70]
+                "local_pos1": [
+                    0.054,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.55,
+                    -0.163,
+                    0.7
+                ]
             },
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
-        "facing_target": [0.55, 0.09],
+        "facing_target": [
+            0.55,
+            0.09
+        ],
         "name": "arm_extend",
         "success_sustain_time": 1.0,
         "target_distance_tolerance": 0.25,
         "time_limit": 10.0,
-        "weight": {}
+        "weight": {},
+        "brace_force_target": 0.0
     },
     {
         "contacts": [
@@ -52,24 +191,92 @@
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.054, 0.0, 0.0],
-                "local_pos2": [0.58, -0.163, 0.65]
+                "local_pos1": [
+                    0.054,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.58,
+                    -0.163,
+                    0.65
+                ]
             },
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
-        "facing_target": [0.58, 0.09],
+        "facing_target": [
+            0.58,
+            0.09
+        ],
         "name": "lean_plant",
         "success_sustain_time": 0.5,
-        "target_distance_tolerance": 0.20,
+        "target_distance_tolerance": 0.2,
         "time_limit": 15.0,
-        "weight": {}
+        "weight": {},
+        "brace_force_target": 8.0
     },
     {
         "contacts": [
@@ -78,24 +285,92 @@
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.054, 0.0, 0.0],
-                "local_pos2": [0.62, -0.163, 0.65]
+                "local_pos1": [
+                    0.054,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.62,
+                    -0.163,
+                    0.65
+                ]
             },
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
-        "facing_target": [0.62, 0.09],
+        "facing_target": [
+            0.62,
+            0.09
+        ],
         "name": "lean_reach",
         "success_sustain_time": 1.0,
         "target_distance_tolerance": 0.25,
         "time_limit": 60.0,
-        "weight": {}
+        "weight": {},
+        "brace_force_target": 15.0
     },
     {
         "contacts": [
@@ -104,36 +379,92 @@
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.054, 0.0, 0.0],
-                "local_pos2": [0.62, -0.163, 0.65]
+                "local_pos1": [
+                    0.054,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.62,
+                    -0.163,
+                    0.65
+                ]
             },
             {
                 "body1": 37,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.0, 0.0, 0.0],
-                "local_pos2": [0.52, -0.163, 0.65]
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.52,
+                    -0.163,
+                    0.65
+                ]
             },
             {
                 "body1": 13,
                 "body2": 1,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.0, 0.0, 0.0],
-                "local_pos2": [-0.3, -0.163, -0.35]
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    -0.3,
+                    -0.163,
+                    -0.35
+                ]
             },
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
-        "facing_target": [0.62, 0.09],
+        "facing_target": [
+            0.62,
+            0.09
+        ],
         "name": "leg_lift_arm_plant",
         "success_sustain_time": 0.3,
         "target_distance_tolerance": 0.45,
         "time_limit": 15.0,
-        "weight": {}
+        "weight": {},
+        "brace_force_target": 20.0
     },
     {
         "contacts": [
@@ -142,35 +473,91 @@
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.054, 0.0, 0.0],
-                "local_pos2": [0.75, -0.163, 0.65]
+                "local_pos1": [
+                    0.054,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.75,
+                    -0.163,
+                    0.65
+                ]
             },
             {
                 "body1": 37,
                 "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.0, 0.0, 0.0],
-                "local_pos2": [0.60, -0.163, 0.65]
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.6,
+                    -0.163,
+                    0.65
+                ]
             },
             {
                 "body1": 13,
                 "body2": 1,
                 "geom1": 0,
                 "geom2": 0,
-                "local_pos1": [0.0, 0.0, 0.0],
-                "local_pos2": [-0.35, -0.163, -0.30]
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    -0.35,
+                    -0.163,
+                    -0.3
+                ]
             },
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1,
-             "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
-        "facing_target": [0.75, 0.09],
+        "facing_target": [
+            0.75,
+            0.09
+        ],
         "name": "deep_reach",
         "success_sustain_time": 9999.0,
         "target_distance_tolerance": 0.55,
         "time_limit": 60.0,
-        "weight": {}
+        "weight": {},
+        "brace_force_target": 20.0
     }
 ]
