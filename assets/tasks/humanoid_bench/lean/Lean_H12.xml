@@ -67,7 +67,11 @@
 
         <!--        task specific cost terms-->
         <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
-        <user name="Brace Force" dim="1" user="6 5.0 0.0 100.0 15.0"/>
+        <!-- Brace Force weight bumped 5.0 → 25.0 (Opt2Skill insight,
+             arXiv 2409.20514): the reference must carry FORCE info, not
+             only kinematics, for contact-rich tasks to transfer. Target
+             still 15 N; MJPC will now actually track it. -->
+        <user name="Brace Force" dim="1" user="6 25.0 0.0 100.0 15.0"/>
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
@@ -118,4 +122,29 @@
         <touch name="left_hand_contact" site="left_hand"/>
         <touch name="right_hand_contact" site="right_hand"/>
     </sensor>
+
+    <!-- Strip non-essential collision pairs for real-time MPC.
+         arXiv 2503.04613 disabled upper-body collision for parts that
+         don't participate in contact. For h12_table_lean_reach, only
+         the right hand contacts the table; the left arm, the head, and
+         the pelvis-vs-table never collide in valid plans. -->
+    <contact>
+        <!-- left arm never contacts the table in single-arm lean -->
+        <exclude body1="table" body2="left_shoulder_pitch_link"/>
+        <exclude body1="table" body2="left_shoulder_roll_link"/>
+        <exclude body1="table" body2="left_shoulder_yaw_link"/>
+        <exclude body1="table" body2="left_elbow_link"/>
+        <exclude body1="table" body2="left_wrist_roll_link"/>
+        <exclude body1="table" body2="left_wrist_pitch_link"/>
+        <exclude body1="table" body2="left_wrist_yaw_link"/>
+        <!-- pelvis and torso never lean directly on the table -->
+        <exclude body1="table" body2="pelvis"/>
+        <exclude body1="table" body2="torso_link"/>
+        <!-- self-collision pruning across the kinematic chain
+             (these can't collide given the joint ranges) -->
+        <exclude body1="pelvis" body2="left_knee_link"/>
+        <exclude body1="pelvis" body2="right_knee_link"/>
+        <exclude body1="torso_link" body2="left_elbow_link"/>
+        <exclude body1="torso_link" body2="right_elbow_link"/>
+    </contact>
 </mujoco>
