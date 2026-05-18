@@ -4,6 +4,14 @@
     <include file="../../common.xml" />
     <include file="../assets/floor.xml" />
 
+    <!-- Use implicitfast integrator: MuJoCo-recommended default for
+         damping-heavy PD systems (mujoco.readthedocs.io/option#integrator).
+         Handles velocity-dependent forces (kv terms, joint damping)
+         implicitly, so position-actuated humanoids stay stable at the
+         control rates we run MJPC at. Euler (default) "quickly diverges"
+         on biped balance per the docs. -->
+    <option integrator="implicitfast"/>
+
     <keyframe>
         <key name="home"
         qpos="0.19 0 1.028
@@ -24,12 +32,22 @@
              dynamics gradients are noisy/discontinuous through contact. Sampling-based
              planners handle contact cleanly. Cross Entropy (5) is the sweet spot. -->
         <numeric name="agent_planner" data="5"/>
-        <!-- horizon 0.6s matches the Whole-Body MPC humanoid paper (arXiv 2503.04613)
-             and trims ~40% rollout cost vs 1.0s. The lean motion is slow (~0.3 m/s)
-             so 0.6s of lookahead is more than enough. -->
-        <numeric name="agent_horizon" data="0.6"/>
+        <!-- horizon restored to 1.0s (was 0.6) because the real-hardware-spec PD
+             gains (ankle kp=20, knee kp=200 — IsaacLab H1_CFG / Opt2Skill) are
+             too weak for MPC to recover balance within 0.6s of lookahead. 1.0s
+             lets the planner anticipate small drifts and apply the gradual
+             position offsets that turn into stabilising torques given the soft
+             PD. Sampling cost rises ~40% but balance is non-negotiable. -->
+        <numeric name="agent_horizon" data="1.0"/>
         <numeric name="agent_timestep" data="0.015"/>
         <numeric name="sampling_spline_points" data="3"/>
+        <!-- exploration kept at 0.05 (CrossEntropy noise std). An earlier
+             attempt to bump this to 0.12 made knee buckling worse: knee
+             ctrlrange is [-0.12, 2.19] (asymmetric), so σ=0.12 caused the
+             negative tail to clip at the lower bound and biased CEM elites
+             toward positive (= flexion) commands. Same story for hip_roll
+             [-0.43, 3.14]. Keep σ small relative to the tightest one-sided
+             ctrlrange (knee's -0.12) so samples stay in the unclipped band. -->
         <numeric name="sampling_exploration" data="0.05"/>
         <numeric name="gradient_spline_points" data="5"/>
         <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites
@@ -37,8 +55,15 @@
              refit each step, producing the periodic Brace Force spikes. 6 elites
              (~20%) smooths the mean policy without losing selection pressure. -->
         <numeric name="n_elite" data="6"/>
-        <numeric name="residual_Height Goal" data="1.65 0.0 1.5"/>
-        <numeric name="residual_Strategy" data="0 0 9" />
+        <!-- Default 1.70 matches the actual head-feet error at the home
+             pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
+             The old 1.65 made the Height residual +0.05 at home with cost
+             ~1.1 per timestep (~76 over the 1.0s horizon), pulling the head
+             down by 5 cm during the upright stand_up phase. Max raised to
+             2.0 so the slider can sweep above the home value if needed. -->
+        <numeric name="residual_Height Goal" data="1.70 0.0 2.0"/>
+        <!-- Default to extended strategy (index 1): see Lean_H12.xml. -->
+        <numeric name="residual_Strategy" data="1 0 9" />
     </custom>
 
     <sensor>
@@ -50,7 +75,9 @@
         <!-- <user name="Joint Vel." dim="51" user="0 0.01 0.0 0.1"/> -->
         <user name="Balance" dim="2" user="6 20.0 0.0 100.0 0.02"/>
         <user name="Torso Forward Tilt" dim="1" user="6 3.0 0.0 25.0 0.1"/>
-        <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 25.0 0.1"/>
+        <!-- BISECTION TEST #2 (2026-05-17): Pelvis Tilt weight 25 → 10 +
+             symmetric residual always. See Lean_H12.xml for rationale. -->
+        <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 50.0 0.1"/>
         <user name="Foot Right Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
         <user name="Foot Left Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
         <user name="Waist Yaw" dim="1" user="6 30.0 0.0 100.0 0.1"/>
@@ -65,17 +92,19 @@
         <!-- <user name="Control" dim="51" user="3 0.0 0 1.0 0.3"/> -->
 
         <!--        task specific cost terms-->
+        <!-- TEST #14: weight back to 30, Y clamped in lean.cc. -->
         <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
-        <!-- Brace Force weight bumped 5.0 → 25.0 (Opt2Skill, arXiv 2409.20514).
-             Per-phase target is now read from strategy JSON brace_force_target,
-             falling back to this static 15.0 when JSON doesn't specify. -->
+        <!-- Brace Force restored to 25 after Test #1 (BF=0) failed (robot
+             tipped backward). Brace force is load-bearing. -->
         <user name="Brace Force" dim="1" user="6 25.0 0.0 100.0 15.0"/>
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
         <user name="Hip Clearance" dim="1" user="6 120.0 0.0 300.0 0.04"/>
         <user name="Leg Clearance" dim="2" user="6 120.0 0.0 300.0 0.04"/>
+        <!-- TEST #17: weight back to 100 (see Lean_H12.xml). -->
         <user name="Left Leg Anchor" dim="1" user="6 100.0 0.0 300.0 0.08"/>
+        <!-- TEST #17: weight back to 60 (see Lean_H12.xml). -->
         <user name="Right Foot Lift" dim="1" user="6 60.0 0.0 100.0 0.3"/>
         <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
         <!-- Joint Vel. Limit: one-sided penalty for joint velocities above
@@ -90,7 +119,14 @@
 
         <!-- residual -->
         <framepos name="torso_position" objtype="body" objname="torso_link"/>
-        <framepos name="head_position" objtype="body" objname="torso_link"/>
+        <!-- head_position must point at the head site (z=+0.7 relative to
+             torso_link), not the torso_link body origin. The body origin sits
+             at pelvis_z ~1.028m, so the head_feet_error residual was off by
+             ~0.7m and the Height cost (weight 100) was pulling the robot to
+             extend ankles/knees by an unphysical amount. With the real-hardware
+             PD gains (ankle kp=20) the misalignment finally destabilises
+             standing balance. -->
+        <framepos name="head_position" objtype="site" objname="head"/>
         <subtreecom name="torso_subcom" body="torso_link"/>
         <subtreelinvel name="torso_subtreelinvel" body="torso_link"/>
         <framepos name="foot_right_pos" objtype="body" objname="right_ankle_roll_link"/>
@@ -162,8 +198,10 @@
         <exclude body1="table" body2="left_wrist_roll_link"/>
         <exclude body1="table" body2="left_wrist_pitch_link"/>
         <exclude body1="table" body2="left_wrist_yaw_link"/>
-        <exclude body1="table" body2="pelvis"/>
-        <exclude body1="table" body2="torso_link"/>
+        <!-- TEST #15 (2026-05-18): pelvis/torso table excludes removed
+             (see Lean_H12.xml). -->
+        <!-- <exclude body1="table" body2="pelvis"/> -->
+        <!-- <exclude body1="table" body2="torso_link"/> -->
         <exclude body1="pelvis" body2="left_knee_link"/>
         <exclude body1="pelvis" body2="right_knee_link"/>
         <exclude body1="torso_link" body2="left_elbow_link"/>

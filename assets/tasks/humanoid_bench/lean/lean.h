@@ -32,12 +32,14 @@ class lean : public Task {
                             mjpc::humanoid::ContactKeyframe(),
                         mjtNum keyframe_start_time = 0.0,
                         mjtNum prev_reach_scale = 0.0,
-                        mjtNum prev_brace_pos_scale = 0.0)
+                        mjtNum prev_brace_pos_scale = 0.0,
+                        mjtNum prev_posture_scale = 1.0)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
           keyframe_start_time_(keyframe_start_time),
           prev_phase_reach_scale_(prev_reach_scale),
-          prev_phase_brace_pos_scale_(prev_brace_pos_scale) {}
+          prev_phase_brace_pos_scale_(prev_brace_pos_scale),
+          prev_phase_posture_scale_(prev_posture_scale) {}
 
     void Residual(const mjModel *model, const mjData *data,
                   double *residual) const override;
@@ -68,6 +70,8 @@ class lean : public Task {
     mjtNum keyframe_start_time_ = 0.0;
     mjtNum prev_phase_reach_scale_ = 0.0;
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
+    // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.
+    mjtNum prev_phase_posture_scale_ = 1.0;
 
    private:
     friend class lean;
@@ -106,7 +110,8 @@ class lean : public Task {
         this, residual_.residual_keyframe_,
         residual_.keyframe_start_time_,
         residual_.prev_phase_reach_scale_,
-        residual_.prev_phase_brace_pos_scale_);
+        residual_.prev_phase_brace_pos_scale_,
+        residual_.prev_phase_posture_scale_);
   }
 
   ResidualFn *InternalResidual() override { return &residual_; }

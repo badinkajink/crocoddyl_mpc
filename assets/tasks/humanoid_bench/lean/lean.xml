@@ -12,7 +12,14 @@
     <worldbody>
         <body name="table" pos="1.1 0 0.20">
             <geom name="table_top" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="visual" material="wooden_cover"/>
-            <geom name="table_top_collision" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="collision"/>
+            <!-- Softer table contact: timeconst 20ms → 40ms (mujoco.readthedocs.io
+                 /modeling#solref), peak impedance 0.95→0.85. Halves the contact-
+                 impulse spike when the hand plants, giving MJPC ~2-3 control
+                 cycles (at 15ms each) to ramp Brace Force before the back-torque
+                 destabilises the torso. priority=1 ensures these params win over
+                 hand-side defaults in MuJoCo's contact-combination rule. -->
+            <geom name="table_top_collision" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="collision"
+                  priority="1" solref="0.04 1" solimp="0.85 0.95 0.001 0.5 2"/>
             <geom name="table_leg_1" type="box" pos="0.4 0.85 -0.05" size="0.05 0.05 0.4" class="visual"
                   material="dark_wooden_cover"/>
             <geom name="table_leg_2" type="box" pos="0.4 -0.85 -0.05" size="0.05 0.05 0.4" class="visual"

@@ -10,16 +10,52 @@
 namespace mjpc {
 
 namespace {
-// Target (post-ramp) reach + brace scales for each named phase. Kept in one
-// place so the residual and the transition logic can't drift out of sync.
+// Target (post-ramp) reach + brace + posture scales for each named phase. Kept
+// in one place so the residual and the transition logic can't drift out of
+// sync. Posture is boosted during stand_up because the audit-spec PD gains
+// (ankle kp=20, knee kp=200) aren't stiff enough on their own to pull a
+// drifted knee back to extension — the Posture cost has to do it via MPC.
+//
+// New two-step sequence: arm_plant → lean_forward. Splits the old merged
+// brace_and_lean phase so the bracing hand makes contact (with a small brace
+// force target supplied per-keyframe via JSON) BEFORE the torso commits to
+// the full forward lean. arm_plant tolerates only a small torso tilt so MPC
+// prioritises getting the hand on the table; lean_forward then unlocks the
+// full Torso Forward Tilt residual while the planted hand stays put.
 inline void PhaseTargetScales(const std::string& name,
-                              double& reach, double& brace_pos) {
+                              double& reach, double& brace_pos,
+                              double& posture) {
   reach = 1.0;
   brace_pos = 1.0;
-  if (name == "stand_up")        { reach = 0.0; brace_pos = 0.0; }
-  else if (name == "arm_extend") { reach = 0.3; brace_pos = 1.0; }
-  else if (name == "lean_plant") { reach = 0.7; brace_pos = 1.0; }
-  // lean_reach / lean_reach_ext / leg_lift_arm_plant / deep_reach → 1.0/1.0.
+  posture = 1.0;
+  // stand_up: pure stabilisation. Reach + brace cost go to 0 so the only
+  // signal pulling on the robot is balance + posture. Posture ×3 keeps legs
+  // extended at the audit-spec PD (knee + hip_pitch have no other home pull).
+  if (name == "stand_up") {
+    reach = 0.0; brace_pos = 0.0; posture = 3.0;
+  }
+  // arm_plant: get the bracing hand onto the table first. Torso tilt is
+  // softly allowed (reach=0.2) just enough for arm geometry, while the
+  // bracing-hand position residual is fully active. Brace force target (8N)
+  // is supplied per-keyframe via JSON brace_force_target.
+  else if (name == "arm_plant") {
+    reach = 0.2; brace_pos = 1.0; posture = 1.0;
+  }
+  // lean_forward: hand is now planted — unlock the full Torso Forward Tilt
+  // residual so the body commits to the lean. Bracing-hand position stays
+  // fully active to keep the hand on the table. Brace force target (15N)
+  // supplied per-keyframe via JSON.
+  else if (name == "lean_forward") {
+    reach = 1.0; brace_pos = 1.0; posture = 1.0;
+  }
+  // Legacy phase names kept for backwards compatibility — if a strategy still
+  // uses them, they ramp in like before.
+  else if (name == "brace_and_lean") {
+    reach = 1.0; brace_pos = 1.0; posture = 1.0;
+  }
+  else if (name == "arm_extend") { reach = 0.3; brace_pos = 1.0; posture = 1.0; }
+  else if (name == "lean_plant") { reach = 0.7; brace_pos = 1.0; posture = 1.0; }
+  // lean_reach / lean_reach_ext / leg_lift_arm_plant / deep_reach → 1.0/1.0/1.0.
 }
 }  // namespace
 
@@ -70,8 +106,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // "blend tasks, don't switch them" behaviour.
   double target_reach_scale     = 1.0;
   double target_brace_pos_scale = 1.0;
+  double target_posture_scale   = 1.0;
   PhaseTargetScales(residual_keyframe_.name, target_reach_scale,
-                    target_brace_pos_scale);
+                    target_brace_pos_scale, target_posture_scale);
 
   // Smooth time-ramp from the previous phase's scales to the new ones.
   //
@@ -96,6 +133,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double phase_brace_pos_scale =
       prev_phase_brace_pos_scale_ + alpha * (target_brace_pos_scale -
                                              prev_phase_brace_pos_scale_);
+  double phase_posture_scale =
+      prev_phase_posture_scale_ + alpha * (target_posture_scale -
+                                           prev_phase_posture_scale_);
 
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
@@ -130,14 +170,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   double reward = 0;
 
-  // Bracing position calculation; Position brace closer to robot and slightly lower to encourage weight transfer
+  // Bracing position calculation. Reverted Y-clamp (was test 14) → back
+  // to bracing_hand[1] (test 12 state). User confirmed test 14 introduced
+  // chaotic early-phase behaviour. Y free means no restoring force on
+  // lateral position; the eventual ~60s slip seen in test 12 is the
+  // known trade-off for accepting this baseline.
   double const *table_pos = SensorByName(model, data, "table_surface_pos");
   double *torso_pos = SensorByName(model, data, "torso_position");
   double torso_to_table_x = table_pos[0] - torso_pos[0];
   double ideal_brace[3] = {
       torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
-      bracing_hand[1],  // Keep y close to current
-      table_pos[2] - 0.02  // Lower - encourage pressing into table
+      bracing_hand[1],                         // Y free (test 12 baseline)
+      table_pos[2] - 0.02                      // Lower - encourage pressing into table
   };
 
   double penalty_hand = hand_dist_penalty * hand_dist;
@@ -202,10 +246,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *head_position = SensorByName(model, data, "head_position");
   double head_feet_error =
       head_position[2] - 0.5 * (foot_right_pos[2] + foot_left_pos[2]);
-  // During leg-lift/deep-lean the torso goes nearly horizontal so head drops
-  // well below the 1.65m goal. Scale down to 0.35x so the planner isn't
-  // fighting a huge height penalty while simultaneously trying to lean.
-  double height_scale = is_leg_lift_stage_early ? 0.35 : 1.0;
+  // TEST #8 (2026-05-17): Restore Height ×0.35 during arm contact
+  // (test 4's working setting). Combined with the foot-z anchors added
+  // in test 6 (Right Foot Lift penalises lift; Left Leg Anchor enforces
+  // both left knee height AND left foot on ground), the squat is the
+  // stable solution but now with feet anchored. Tests 6 (×0.7) and 7
+  // (×1.0) both failed because the planner can't stand-and-bend with
+  // kp_ankle=20 — it either tips forward (×0.7) or backward (×1.0).
+  // The squat IS the natural solution given the weak PD.
+  double height_scale = any_arm_contact ? 0.35 : 1.0;
   residual[counter++] = height_scale * (head_feet_error - height_goal);
 
   // ----- Balance: CoM-feet xy error ----- //
@@ -279,16 +328,44 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_normalize3(reach_dir);
 
   // Want torso forward axis to align with reach direction
-  // dot product should be close to 1
+  // dot product should be close to 1.
+  //
+  // Phase-gated by `phase_reach_scale`: during stand_up the reach-toward-object
+  // cost is supposed to be zero (we're stabilising, not leaning). Before this
+  // gate the residual was always active at weight 3, creating a continuous
+  // gradient pulling the torso to face the object. With the audit-spec ankle
+  // PD (kp=20), MPC didn't have the authority to suppress that gradient and
+  // the robot oscillated forward/back during stand_up.
   double alignment = mju_dot3(torso_forward, reach_dir);
-  residual[counter++] = 1.0 - alignment;
+  residual[counter++] = phase_reach_scale * (1.0 - alignment);
 
   // ----- pelvis tilt ----- //
-  // Upright stages: keep pelvis near-vertical (target 0.85).
-  // Leg-lift/deep-lean stages: unconstrained — the arm brace takes over and
-  // the torso needs to go near-horizontal.
+  // Phase-dependent residual that mixes two sensors:
+  //  • pelvis_up[2]      = cos(tilt magnitude) — symmetric in direction
+  //  • pelvis_forward[2] = -sin(pitch angle)   — DIRECTIONAL (forward = -,
+  //    backward = +)
+  // Round 7 fix used `pelvis_up[2] - target` everywhere, which is symmetric
+  // for any tilt direction. During lean_forward (target 0.85 = 32° tilt),
+  // backward tilt achieved the same target as forward tilt, and MPC chose
+  // backward to avoid the Hip-Clearance penalty on forward pelvis travel —
+  // the user saw the robot stand → plant hand → tip BACKWARD → fall on its
+  // back. Round 8 fix: switch the lean-phase branch to pelvis_forward[2]
+  // so the target -sin(32°)=-0.530 is only met by forward pitch; backward
+  // pitch gives residual +1.060 (cost ~9.6/step ≈ 640/horizon — overwhelming
+  // deterrent vs the ~3 Hip-Clearance penalty MPC was previously avoiding).
+  // Upright phases keep pelvis_up because the home pose is at pelvis_up=1.0
+  // so the residual is already 0 there and roll is also penalized.
+  // BISECTION TEST #2 (2026-05-17): reverted to symmetric residual
+  // ALWAYS. Pre-R8 form. The directional `pelvis_forward[2] − (−0.530)`
+  // in lean_forward was forcing 32° pitch regardless of CoM state; with
+  // weak ankle PD (kp=20) this over-committed the lean and let the planner
+  // exploit the pelvis-table exclude. Symmetric is permissive: any tilt
+  // (forward or backward) costs the same — MPC picks based on other terms.
   double *pelvis_up = SensorByName(model, data, "pelvis_up");
-  residual[counter++] = is_leg_lift_stage_early ? 0.0 : (pelvis_up[2] - 0.85);
+  double pelvis_tilt_residual = is_leg_lift_stage_early
+                                    ? 0.0
+                                    : (pelvis_up[2] - 1.0);
+  residual[counter++] = pelvis_tilt_residual;
 
   // ----- foot up-vectors: prevent ankle roll ----- //
   double *foot_right_up = SensorByName(model, data, "foot_right_up");
@@ -310,8 +387,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   residual[counter++] = data->qpos[7 + 8] - model->key_qpos[7 + 8];
 
   // ----- posture ----- //
-  // Reduced weight vs push task to allow more deviation for leaning
+  // Reduced weight vs push task to allow more deviation for leaning.
+  // Phase-scaled: ×3 during stand_up, ramps down to ×1 entering arm_extend.
+  // Why: the Posture cost is the ONLY signal that pulls knee + hip_pitch
+  // back to extension. Hip yaw/roll, waist yaw, foot up have dedicated
+  // residuals; knee + hip_pitch only get the general 27-dim Posture pull.
+  // At weight 0.015 with phase_posture_scale=1 it's too weak — once a knee
+  // drifts a few degrees, nothing pulls it back. During stand_up the boost
+  // gives Posture 9× more effective cost (quadratic), keeping legs extended.
   mju_sub(&residual[counter], data->qpos + 7, model->key_qpos + 7, model->nu);
+  mju_scl(&residual[counter], &residual[counter], phase_posture_scale,
+          model->nu);
   counter += model->nu;
 
   // com vel
@@ -369,11 +455,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // ----- foot stability: restoring force toward home XY position ----- //
   // Position-based (not velocity-based) so there's a continuous gradient even
-  // when the foot is stationary but displaced. Home positions derived from the
-  // H1_2 kinematic chain at the home keyframe (qpos x=0.19, all joints=0).
-  // Right foot freed during leg-lift stages (right leg lifts, left foot is sole ground support).
-  static constexpr double kRightFootHomeXY[2] = {0.19, -0.163};
-  static constexpr double kLeftFootHomeXY[2]  = {0.19,  0.163};
+  // when the foot is stationary but displaced. Home positions taken from the
+  // actual home-pose foot xipos (= body inertial frame, which is what the
+  // `framepos objtype="body"` sensor returns — NOT the kinematic xpos). At
+  // the H1-2 home keyframe the ankle_roll_link inertial offset places the
+  // foot COM at x = 0.2196, not pelvis_x = 0.19. The old 0.19 constant
+  // (copied from the pelvis qpos) made the residual +0.03 at home, adding
+  // a continuous 3 cm backward pull on both feet. Right foot freed during
+  // leg-lift stages (right leg lifts, left foot is sole ground support).
+  static constexpr double kRightFootHomeXY[2] = {0.2196, -0.163};
+  static constexpr double kLeftFootHomeXY[2]  = {0.2196,  0.163};
 
   bool is_leg_lift_stage = is_leg_lift_stage_early;
 
@@ -409,16 +500,32 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   residual[counter++] = left_thigh_penalty;
   residual[counter++] = right_knee_penalty;
 
-  // ----- left leg anchor: prevent left knee from bending during leg lift ----- //
-  // During leg-lift stages the left leg is the sole ground support and must stay
-  // straight. Penalise the left knee dropping below standing height (~0.42m).
-  // Zero in all other stages.
-  residual[counter++] = is_leg_lift_stage ? mju_max(0.0, 0.42 - left_knee_pos_3d[2]) : 0.0;
+  // ----- left leg anchor (left leg = sole anchor throughout the pipeline) //
+  // The user's pipeline: right arm braces + right leg lifts. Left leg is
+  // the ONLY anchor and must be straight (knee up at ~0.42m) AND foot on
+  // ground (z ≤ 0.05) during every phase that has any contact load on
+  // the table (arm_plant, lean_forward, leg_lift_arm_plant, deep_reach).
+  if (is_leg_lift_stage || any_arm_contact) {
+    residual[counter++] = mju_max(0.0, 0.42 - left_knee_pos_3d[2])
+                        + mju_max(0.0, foot_left_pos[2] - 0.05);
+  } else {
+    residual[counter++] = 0.0;
+  }
 
-  // ----- right foot lift: reward foot off ground during leg-lift stages ----- //
-  // Penalises right foot below 0.25m when the right leg should be lifted.
-  // Zeroed in all other stages so it doesn't interfere with normal standing.
-  residual[counter++] = is_leg_lift_stage ? mju_max(0.0, 0.25 - foot_right_pos[2]) : 0.0;
+  // ----- right foot: lift during leg-lift, ground during arm-only stages ----- //
+  // TEST #11: gentler leg lift. Target z reduced 0.25 → 0.15 (foot home is
+  // ~0.029, so this asks for ~12cm clearance). Combined with weight 60→20
+  // in XML and strategy ankle target reduced to local_z=-0.75 (world z≈0.15),
+  // the leg lift becomes a small backward foot extension instead of a yoga
+  // warrior 3 — small enough that weak ankle PD on the support leg can
+  // hold balance during the lift.
+  if (is_leg_lift_stage) {
+    residual[counter++] = mju_max(0.0, 0.15 - foot_right_pos[2]);
+  } else if (any_arm_contact) {
+    residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.05);
+  } else {
+    residual[counter++] = 0.0;
+  }
 
   // ----- contact keyframe residual ----- //
   ContactResidual(model, data, residual, &counter);
@@ -590,6 +697,45 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                con.pos[0], con.pos[1], con.pos[2]);
       }
     }
+    // ---- Biomechanics trace: confirms the Height-vs-squat hypothesis ----
+    // Want to know whether MPC is choosing the lean-without-squat strategy
+    // (knees ≈ 0, hip pitch ≈ 0, pelvis translates forward, CoM goes past
+    // midfoot) vs the squat-and-lean strategy (knees + hip pitch flexing,
+    // pelvis stays back). qpos indices follow the actuator order in
+    // lean.cc::kJointVelLimit: L_hip_pitch=1, L_knee=3, R_hip_pitch=7,
+    // R_knee=9 → qpos[7+i].
+    double L_hip_pitch_deg = data->qpos[7 + 1] * 180.0 / M_PI;
+    double L_knee_deg      = data->qpos[7 + 3] * 180.0 / M_PI;
+    double R_hip_pitch_deg = data->qpos[7 + 7] * 180.0 / M_PI;
+    double R_knee_deg      = data->qpos[7 + 9] * 180.0 / M_PI;
+    int pelvis_id = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    double com_x = (pelvis_id >= 0)
+                       ? data->subtree_com[3 * pelvis_id + 0]
+                       : 0.0;
+    double *foot_R = SensorByName(model, data, "foot_right_pos");
+    double *foot_L = SensorByName(model, data, "foot_left_pos");
+    double midfoot_x = 0.5 * (foot_R[0] + foot_L[0]);
+    double com_ahead = com_x - midfoot_x;  // >0 = CoM forward of feet
+    double head_z = SensorByName(model, data, "head_position")[2];
+    double foot_avg_z = 0.5 * (foot_R[2] + foot_L[2]);
+    double head_feet = head_z - foot_avg_z;
+    double *lhand = SensorByName(model, data, "left_hand_pos");
+    double *rhand = SensorByName(model, data, "right_hand_pos");
+    const std::string& phase_name = residual_.residual_keyframe_.name;
+    double t_in_phase = data->time - residual_.keyframe_start_time_;
+    // Added foot_R_z, foot_L_z to detect if a foot is lifting off ground
+    // (user reports "leg lifting before braced arm position" — verify).
+    printf("  [BIO  t=%.2f phase=%s(%.2fs)] "
+           "L_hipP=%6.1f L_knee=%6.1f R_hipP=%6.1f R_knee=%6.1f deg | "
+           "footR_z=%.3f footL_z=%.3f | "
+           "com_x=%.3f midfoot_x=%.3f Δ=%+.3f | "
+           "head_feet=%.3f | Lhand_x=%.3f Rhand=%.2f,%.2f,%.2f\n",
+           data->time, phase_name.c_str(), t_in_phase,
+           L_hip_pitch_deg, L_knee_deg, R_hip_pitch_deg, R_knee_deg,
+           foot_R[2], foot_L[2],
+           com_x, midfoot_x, com_ahead,
+           head_feet, lhand[0],
+           rhand[0], rhand[1], rhand[2]);
   }
   // ---- END DEBUG ---- //
 
@@ -600,7 +746,10 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   if (hand_dist < 0.05) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_x(1.4, 1.6);
+    // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4. Closer to
+    // robot so static reach is within natural-posture range; combined with
+    // kp_ankle 20→40 should let stand-and-lean be stable.
+    std::uniform_real_distribution<> dis_x(1.2, 1.4);
     std::uniform_real_distribution<> dis_y(-0.3, 0.3);
     target_position_ = {dis_x(gen), dis_y(gen), 0.73};
     printf("New target position: %f, %f, %f\n", target_position_[0],
@@ -620,8 +769,8 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   // Residual() is doing, so prev_* always equals what the rollouts are
   // actually seeing at the moment of transition.
   auto SnapshotEffectiveScales = [&]() {
-    double r_t, b_t;
-    PhaseTargetScales(residual_.residual_keyframe_.name, r_t, b_t);
+    double r_t, b_t, p_t;
+    PhaseTargetScales(residual_.residual_keyframe_.name, r_t, b_t, p_t);
     double dt = mju_max(0.0, data->time - residual_.keyframe_start_time_);
     double alpha_lin =
         mju_min(dt / ResidualFn::kPhaseRampSeconds, 1.0);
@@ -634,6 +783,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     residual_.prev_phase_brace_pos_scale_ =
         residual_.prev_phase_brace_pos_scale_ +
         alpha * (b_t - residual_.prev_phase_brace_pos_scale_);
+    residual_.prev_phase_posture_scale_ =
+        residual_.prev_phase_posture_scale_ +
+        alpha * (p_t - residual_.prev_phase_posture_scale_);
   };
 
   if (!motion_strategy_.HasKeyframes() ||
@@ -651,6 +803,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     residual_.keyframe_start_time_      = data->time;
     residual_.prev_phase_reach_scale_   = 0.0;
     residual_.prev_phase_brace_pos_scale_ = 0.0;
+    // Posture starts at 1.0 (the "default no-boost" level) so the first
+    // stand_up ramp climbs cleanly from 1.0 → 3.0 over kPhaseRampSeconds.
+    residual_.prev_phase_posture_scale_ = 1.0;
     return;
   }
 
