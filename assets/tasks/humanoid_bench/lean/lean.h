@@ -103,9 +103,41 @@ class lean : public Task {
 
   void ResetLocked(const mjModel *model) override;
 
+  // Slider layout (Lean H12) — user's 6-phase decomposition:
+  //   0  stand            — stand_up
+  //   1  arm_extend       — stand → arm_extend_standing (arm out, body upright)
+  //   2  lean_no_brace    — stand → extend → lean_with_arm_no_brace
+  //   3  brace_hand_lean  — stand → extend → lean → arm_plant → lean_forward
+  //   4  forearm_brace    — above + forearm_brace_lean (hand+elbow on table)
+  //   5  full_pipeline    — above + leg_lift_arm_plant (DEFAULT)
+  //
+  // Each slot is a literal truncation of the index-5 pipeline with the
+  // last phase forced indefinite (sustain/time_limit = 9999).
   virtual std::vector<std::string> GetStrategyNames() const {
-    return {"h12_table_lean_reach", "h12_table_lean_reach_extended"};
+    return {"h12_pipeline_stand",
+            "h12_pipeline_arm_extend",
+            "h12_pipeline_lean_no_brace",
+            "h12_pipeline_brace_hand_lean",
+            "h12_pipeline_forearm_brace",
+            "h12_pipeline_full_pipeline"};
   }
+
+  // Live per-phase weight blending --------------------------------------- //
+  // Per-phase keyframes in the strategy JSON carry a `weight: { name: val }`
+  // map. On phase advance we snapshot the live cost weights, compute the new
+  // phase's targets (JSON override OR XML default for missing keys), and ramp
+  // weight[] from snapshot → target over kPhaseRampSeconds using the same
+  // smoothstep curve the residual uses for reach/brace/posture scales.
+  // This lets the user isolate behaviours from the strategy file alone:
+  // setting "Brace Pos": 0 in a phase silences brace cost without recompiling.
+  // Missing keys preserve XML defaults so existing strategies (empty `{}`)
+  // keep their old behaviour.
+  void ApplyRampedWeights(const mjModel *model, const mjData *data);
+
+ private:
+  void SnapshotXmlDefaultWeights(const mjModel *model);
+  void PrepareNextPhaseWeights(const mjpc::humanoid::ContactKeyframe &kf);
+  void SnapshotCurrentWeightsAsPrev();
 
  protected:
   std::unique_ptr<mjpc::ResidualFn> ResidualLocked() const override {
@@ -128,6 +160,20 @@ class lean : public Task {
   std::array<double, 3> target_position_;
   mjpc::humanoid::MotionStrategy motion_strategy_;
   int current_strategy_;
+
+  // Weight-ramp state (parallel to ResidualFn::prev_phase_*_scale_):
+  //   xml_default_weights_  -- per-residual default from sensor user data,
+  //                            snapshot once in ResetLocked. Used as the
+  //                            fallback when a phase's JSON weight map
+  //                            doesn't include a particular residual name.
+  //   prev_phase_weights_   -- weight[] snapshot at the start of the current
+  //                            ramp. Captured mid-ramp so successive phase
+  //                            advances blend smoothly through whatever the
+  //                            rollouts were actually seeing.
+  //   next_phase_weights_   -- target weight[] for the current phase.
+  std::vector<double> xml_default_weights_;
+  std::vector<double> prev_phase_weights_;
+  std::vector<double> next_phase_weights_;
 };
 
 class Lean_H12 : public lean {
@@ -147,8 +193,14 @@ class Lean_H12_Hands : public lean {
     return GetModelPath("humanoid_bench/lean/Lean_H12_Hands.xml");
   }
 
+  // Mirrors Lean_H12::GetStrategyNames slot-for-slot.
   std::vector<std::string> GetStrategyNames() const override {
-    return {"h12_hands_table_lean_reach", "h12_hands_table_lean_reach_extended"};
+    return {"h12_hands_pipeline_stand",
+            "h12_hands_pipeline_arm_extend",
+            "h12_hands_pipeline_lean_no_brace",
+            "h12_hands_pipeline_brace_hand_lean",
+            "h12_hands_pipeline_forearm_brace",
+            "h12_hands_pipeline_full_pipeline"};
   }
 };
 

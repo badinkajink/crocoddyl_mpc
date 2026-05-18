@@ -48,6 +48,28 @@ inline void PhaseTargetScales(const std::string& name,
   else if (name == "lean_forward") {
     reach = 1.0; brace_pos = 1.0; posture = 1.0;
   }
+  // arm_extend_standing: body upright, right arm reaches forward to the
+  // table edge contact target. The strategy JSON also boosts Pelvis Tilt
+  // and zeroes Torso Forward Tilt so the body resists tipping while the
+  // arm extends. Posture×1.5 keeps the legs locked extended.
+  else if (name == "arm_extend_standing") {
+    reach = 1.0; brace_pos = 0.0; posture = 1.5;
+  }
+  // lean_with_arm_no_brace: arm stays out from the previous phase but the
+  // body now commits to a forward lean WITHOUT making table contact. This
+  // is the "lean-and-catch-yourself-just-in-time" beat; the contact lands
+  // in the next phase. Pelvis Tilt + Height gates allow the lean (see
+  // Residual()).
+  else if (name == "lean_with_arm_no_brace") {
+    reach = 1.0; brace_pos = 0.0; posture = 1.0;
+  }
+  // forearm_brace_lean: deeper braced lean with the elbow now on the
+  // table in addition to the hand. Behaves like lean_forward from a
+  // scaling standpoint; the extra elbow contact is just another
+  // ContactPair in the keyframe.
+  else if (name == "forearm_brace_lean") {
+    reach = 1.0; brace_pos = 1.0; posture = 1.0;
+  }
   // Legacy phase names kept for backwards compatibility — if a strategy still
   // uses them, they ramp in like before.
   else if (name == "brace_and_lean") {
@@ -92,6 +114,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   }
   // any_arm_contact: arm is on the table (stand_up has 0 contacts)
   const bool any_arm_contact      = (active_contact_count_early >= 1);
+  // is_lean_no_brace_phase: the "lean forward without bracing" beat. No
+  // contacts but the body IS supposed to tilt, so several gates (Pelvis
+  // Tilt, Height, Foot Stability) need to behave as if the arm were on
+  // the table even though it isn't yet. Keyed on phase name, not contact
+  // count, because the contact count is genuinely zero here.
+  const bool is_lean_no_brace_phase =
+      (residual_keyframe_.name == "lean_with_arm_no_brace");
+  const bool arm_contact_or_lean = any_arm_contact || is_lean_no_brace_phase;
   // ITER 36 (2026-05-18): is_leg_lift detection now PHASE-NAME based, not
   // contact-count based. Iter 36 adds the right elbow as a 3rd contact
   // primitive in lean_forward (forearm-on-table brace, more stable than
@@ -262,7 +292,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (×1.0) both failed because the planner can't stand-and-bend with
   // kp_ankle=20 — it either tips forward (×0.7) or backward (×1.0).
   // The squat IS the natural solution given the weak PD.
-  double height_scale = any_arm_contact ? 0.35 : 1.0;
+  double height_scale = arm_contact_or_lean ? 0.35 : 1.0;
   residual[counter++] = height_scale * (head_feet_error - height_goal);
 
   // ----- Balance: CoM-feet xy error ----- //
@@ -345,8 +375,46 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double balance_scale = is_leg_lift_stage_early
                              ? 1.0
                              : (1.0 - 0.65 * load_ratio);
+  // -------- Quadratic edge amplification ------------------------------- //
+  // The base Balance residual is `capture_point - pcp` (the CoM excursion
+  // past the support polygon). Squared-norm cost grows quadratically in
+  // excursion — but at the weights we run, that quadratic is still
+  // dominated by reach gradients when the CoM nears the support edge, so
+  // the body tips before Balance fights back.
+  //
+  // Solution: scale the Balance residual by an `edge_amplifier` that
+  // grows from 1× at 5 cm excursion (still in safe territory) up to ~10×
+  // at 10 cm (right at the line-support edge), with a smoothstep ramp in
+  // between. With squared cost, the peak penalty is ~100× the normal
+  // weight. That makes Balance steeper than reach near the limit so the
+  // planner has to find a balance-preserving posture (torso pull-back,
+  // hip flex, etc.) to keep the body upright while reach continues
+  // pulling.
+  //
+  // balance_scale already encodes "braced phases relax balance" (drops
+  // toward 0.35 at brace_force=120 N). Multiplying it through means
+  // braced phases naturally get a softer edge cap — the hand on the
+  // table is doing the support, so the edge amplifier should not bite as
+  // hard. Leg-lift bypasses by setting balance_scale = 1 already (which
+  // here means full amplification, but the user's intent during leg-lift
+  // is "shift CoM laterally onto planted foot" which exceeds the line
+  // support intentionally; for now we leave this unhandled — flag if
+  // leg_lift phase looks twitchy).
+  double cp_dx = capture_point[0] - pcp[0];
+  double cp_dy = capture_point[1] - pcp[1];
+  double balance_excursion = mju_sqrt(cp_dx * cp_dx + cp_dy * cp_dy);
+  constexpr double kEdgeInner = 0.05;       // m — amplifier still 1×
+  constexpr double kEdgeOuter = 0.10;       // m — amplifier saturated
+  constexpr double kEdgePeakAmplifier = 10.0;
+  double edge_t =
+      mju_min(1.0, mju_max(0.0, (balance_excursion - kEdgeInner) /
+                                    (kEdgeOuter - kEdgeInner)));
+  double edge_smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
+  double edge_amplifier = 1.0 + (kEdgePeakAmplifier - 1.0) * edge_smooth;
+
   mju_sub(&residual[counter], capture_point, pcp, 2);
-  mju_scl(&residual[counter], &residual[counter], leaning * balance_scale, 2);
+  mju_scl(&residual[counter], &residual[counter],
+          leaning * balance_scale * edge_amplifier, 2);
 
   counter += 2;
 
@@ -406,7 +474,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double pelvis_tilt_residual;
   if (is_leg_lift_stage_early) {
     pelvis_tilt_residual = 0.0;
-  } else if (any_arm_contact) {
+  } else if (arm_contact_or_lean) {
     pelvis_tilt_residual = mju_max(0.0, 0.5 - pelvis_up[2]);
   } else {
     pelvis_tilt_residual = pelvis_up[2] - 1.0;
@@ -507,6 +575,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // ------ object distance (reaching hand) ------ //
   // Phase-gated: zero during stand_up so the planner doesn't lunge.
+  // Reach gradient is intentionally NOT balance-capped — the planner
+  // should keep wanting to reach; Balance's edge_amplifier above is what
+  // forces the trade-off (steep edge penalty makes the planner find a
+  // counter-balanced posture rather than tipping).
   mju_sub3(&residual[counter], reaching_hand, object_pos);
   mju_scl3(&residual[counter], &residual[counter],
            phase_reach_scale * leaning);
@@ -536,7 +608,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Scale 4x as soon as the arm contacts the table, 5x during leg lift.
   // This is needed because balance residual would otherwise slide the foot
   // to reposition the COM — the arm provides the forward support instead.
-  double left_foot_scale = is_leg_lift_stage ? 5.0 : (any_arm_contact ? 4.0 : 1.0);
+  double left_foot_scale = is_leg_lift_stage
+                               ? 5.0
+                               : (arm_contact_or_lean ? 4.0 : 1.0);
 
   residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[0] - kRightFootHomeXY[0]);
   residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[1] - kRightFootHomeXY[1]);
@@ -574,7 +648,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the XML, a 5 cm heel-lift now costs 250 × (0.03)² = 0.22 vs 0.06
   // previously — small but the gradient is steeper near zero where it
   // matters for keeping the foot pressed down through the lean.
-  if (is_leg_lift_stage || any_arm_contact) {
+  if (is_leg_lift_stage || arm_contact_or_lean) {
     residual[counter++] = mju_max(0.0, 0.42 - left_knee_pos_3d[2])
                         + mju_max(0.0, foot_left_pos[2] - 0.02);
   } else {
@@ -598,7 +672,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   if (is_leg_lift_stage) {
     double ramped_lift_target = 0.03 * alpha;  // alpha = phase smoothstep
     residual[counter++] = mju_max(0.0, ramped_lift_target - foot_right_pos[2]);
-  } else if (any_arm_contact) {
+  } else if (arm_contact_or_lean) {
     residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.02);
   } else {
     residual[counter++] = 0.0;
@@ -806,8 +880,21 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     double *rhand = SensorByName(model, data, "right_hand_pos");
     const std::string& phase_name = residual_.residual_keyframe_.name;
     double t_in_phase = data->time - residual_.keyframe_start_time_;
+    // Strategy name (which JSON is loaded) — printed every debug tick so the
+    // user can identify which view is running without consulting the slider
+    // index → name mapping.
+    const auto strat_names_dbg = GetStrategyNames();
+    const char *strat_name =
+        (current_strategy_ >= 0 &&
+         current_strategy_ < (int)strat_names_dbg.size())
+            ? strat_names_dbg[current_strategy_].c_str()
+            : "?";
+    int strat_phase_idx = motion_strategy_.GetCurrentKeyframeIndex();
+    int strat_phase_count = motion_strategy_.GetKeyframesCount();
     // Added foot_R_z, foot_L_z to detect if a foot is lifting off ground
     // (user reports "leg lifting before braced arm position" — verify).
+    printf("  [STRAT %d:%s | kf %d/%d]\n", current_strategy_, strat_name,
+           strat_phase_idx + 1, strat_phase_count);
     printf("  [BIO  t=%.2f phase=%s(%.2fs)] "
            "L_hipP=%6.1f L_knee=%6.1f R_hipP=%6.1f R_knee=%6.1f deg | "
            "footR_z=%.3f footL_z=%.3f | "
@@ -900,6 +987,11 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // ITER 28: brace_force starts at 0 (stand_up target = 0) so the ramp
     // into arm_plant climbs cleanly from 0 to the keyframe target.
     residual_.prev_phase_brace_force_target_ = 0.0;
+    // Live weight ramp: jump straight to the first phase's targets (no
+    // pre-existing weight history on a fresh strategy load).
+    PrepareNextPhaseWeights(residual_.residual_keyframe_);
+    prev_phase_weights_ = next_phase_weights_;
+    ApplyRampedWeights(model, data);
     return;
   }
 
@@ -914,11 +1006,13 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // Time-limit reset (strategy restarts from keyframe 0). Save the scales
     // that were just in effect so the next ramp blends from them.
     SnapshotEffectiveScales();
+    SnapshotCurrentWeightsAsPrev();
     motion_strategy_.Reset();
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
     residual_.keyframe_start_time_ = data->time;
+    PrepareNextPhaseWeights(residual_.residual_keyframe_);
   } else if (total_distance <= current_kf.target_distance_tolerance &&
              data->time -
                      motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
@@ -926,17 +1020,91 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // Normal phase advance — this is the path that fires after stand_up
     // succeeds. Snapshot first so the new ramp starts from the old scales.
     SnapshotEffectiveScales();
+    SnapshotCurrentWeightsAsPrev();
     motion_strategy_.NextKeyframe();
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
     residual_.keyframe_start_time_ = data->time;
+    PrepareNextPhaseWeights(residual_.residual_keyframe_);
   } else if (total_distance > current_kf.target_distance_tolerance) {
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+  }
+
+  // Apply the smoothstep weight ramp every tick. This also propagates the
+  // current target weights into weight[] when no phase advance fired, which
+  // is what makes the live GUI cost sliders mirror the JSON values.
+  ApplyRampedWeights(model, data);
+}
+
+// ---------------- Live per-phase weight blending --------------------- //
+// All loops over weight[] must be bounded by `weight_names.size()` (== the
+// actual number of user-sensor cost terms), NOT `weight.size()` — the Task
+// base class resizes `weight` to `kMaxCostTerms` (128) regardless of the
+// real term count, while `weight_names` is sized to `num_term`. Indexing
+// `weight_names` past num_term reads uninitialised std::strings and
+// segfaults when the JSON map then calls .find(garbage).
+
+// Snapshot the XML default weights from sensor user data. Called once per
+// Reset so the fallback for "JSON omitted this residual" stays in sync with
+// the static XML weights (which Task::Reset itself populated into weight[]).
+void lean::SnapshotXmlDefaultWeights(const mjModel *model) {
+  const std::size_t n = weight_names.size();
+  xml_default_weights_.assign(n, 0.0);
+  for (std::size_t i = 0; i < n; ++i) xml_default_weights_[i] = weight[i];
+}
+
+// Build next_phase_weights_ from this phase's JSON weight map. Missing keys
+// fall back to the XML default snapshot. Unknown keys (typos) are silently
+// skipped — same forgiving behaviour as interact.cc.
+void lean::PrepareNextPhaseWeights(const mjpc::humanoid::ContactKeyframe &kf) {
+  const std::size_t n = weight_names.size();
+  if (next_phase_weights_.size() != n) next_phase_weights_.assign(n, 0.0);
+  if (xml_default_weights_.size() != n) xml_default_weights_.assign(n, 0.0);
+  for (std::size_t i = 0; i < n; ++i) {
+    const std::string &name = weight_names[i];
+    auto it = kf.weight.find(name);
+    next_phase_weights_[i] =
+        (it != kf.weight.end()) ? it->second : xml_default_weights_[i];
+  }
+}
+
+void lean::SnapshotCurrentWeightsAsPrev() {
+  const std::size_t n = weight_names.size();
+  prev_phase_weights_.assign(n, 0.0);
+  for (std::size_t i = 0; i < n; ++i) prev_phase_weights_[i] = weight[i];
+}
+
+// Lerp weight[] from prev → next using the same smoothstep curve the
+// residual uses for its phase scales, so the rollouts' cost surface evolves
+// continuously across phase boundaries.
+void lean::ApplyRampedWeights(const mjModel *model, const mjData *data) {
+  const std::size_t n = weight_names.size();
+  if (prev_phase_weights_.size() != n || next_phase_weights_.size() != n) {
+    return;
+  }
+  double dt = mju_max(0.0, data->time - residual_.keyframe_start_time_);
+  double alpha_lin = mju_min(dt / ResidualFn::kPhaseRampSeconds, 1.0);
+  double alpha = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
+  for (std::size_t i = 0; i < n; ++i) {
+    weight[i] = prev_phase_weights_[i] +
+                alpha * (next_phase_weights_[i] - prev_phase_weights_[i]);
   }
 }
 
 void lean::ResetLocked(const mjModel *model) {
+  // Capture the XML default weights AFTER Task::Reset has populated weight[]
+  // from sensor user data. These act as the fallback for any residual the
+  // current phase's JSON doesn't override, and as the prev/next initialisers
+  // before the first phase transition. All three vectors are sized to
+  // weight_names.size() (== num_term), NOT weight.size() (== kMaxCostTerms).
+  SnapshotXmlDefaultWeights(model);
+  prev_phase_weights_ = xml_default_weights_;
+  next_phase_weights_ = xml_default_weights_;
+  if (!residual_.residual_keyframe_.weight.empty()) {
+    PrepareNextPhaseWeights(residual_.residual_keyframe_);
+  }
+
   std::random_device rd;
   std::mt19937 gen(rd());
   // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4 (matches

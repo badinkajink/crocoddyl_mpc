@@ -62,8 +62,10 @@
              down by 5 cm during the upright stand_up phase. Max raised to
              2.0 so the slider can sweep above the home value if needed. -->
         <numeric name="residual_Height Goal" data="1.70 0.0 2.0"/>
-        <!-- Default to extended strategy (index 1): see Lean_H12.xml. -->
-        <numeric name="residual_Strategy" data="1 0 9" />
+        <!-- Slider maps to GetStrategyNames() in lean.h; default 5 = full
+             6-phase pipeline, indices 0-4 are progressive prefix slices of
+             it. See Lean_H12.xml for the full slot table. -->
+        <numeric name="residual_Strategy" data="5 0 5" />
     </custom>
 
     <sensor>

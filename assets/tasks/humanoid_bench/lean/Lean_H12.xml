@@ -79,13 +79,16 @@
              down by 5 cm during the upright stand_up phase. Max raised to
              2.0 so the slider can sweep above the home value if needed. -->
         <numeric name="residual_Height Goal" data="1.70 0.0 2.0"/>
-        <!-- Default to extended strategy (index 1): 5-phase pipeline
-             stand_up → arm_plant → lean_forward → leg_lift_arm_plant →
-             deep_reach. Matches the user's intended motion: stand straight,
-             lean while bracing right arm (wrist + elbow), reach with left,
-             THEN lift right leg backward for additional reach. Set 0 to
-             revert to the regular 3-phase strategy. -->
-        <numeric name="residual_Strategy" data="1 0 9" />
+        <!-- Slider → strategy (user's 6-phase decomposition):
+               0 = pipeline_stand             (stand_up)
+               1 = pipeline_arm_extend        (+ arm out, body upright)
+               2 = pipeline_lean_no_brace     (+ body tilts forward, arm out)
+               3 = pipeline_brace_hand_lean   (+ hand lands, deeper lean)
+               4 = pipeline_forearm_brace     (+ elbow lands, deeper lean)
+               5 = pipeline_full_pipeline     (+ right leg lifts) — DEFAULT
+             Each slot truncates the index-5 pipeline at one of the user's
+             6 phase boundaries; last keyframe of each is indefinite. -->
+        <numeric name="residual_Strategy" data="5 0 5" />
     </custom>
 
     <sensor>
