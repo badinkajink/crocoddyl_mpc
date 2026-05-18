@@ -291,26 +291,36 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   capture_point[2] = 1.0e-3;
 
   // project onto line segment
-
+  //
+  // ITER 40 (2026-05-18): during leg-lift phases, the right foot is OFF the
+  // ground — there's no two-foot support polygon. Project capture point onto
+  // the LEFT FOOT alone so the Balance residual pulls CoM laterally toward
+  // the planted leg (instead of toward the midpoint of an imaginary
+  // foot-to-foot line that no longer corresponds to actual support).
   double axis[3];
   double center[3];
   double vec[3];
   double pcp[3];
-  mju_sub3(axis, foot_right_pos, foot_left_pos);
-  axis[2] = 1.0e-3;
-  double length = 0.5 * mju_normalize3(axis) - 0.05;
-  mju_add3(center, foot_right_pos, foot_left_pos);
-  mju_scl3(center, center, 0.5);
-  mju_sub3(vec, capture_point, center);
+  if (is_leg_lift_stage_early) {
+    mju_copy3(pcp, foot_left_pos);
+    pcp[2] = 1.0e-3;
+  } else {
+    mju_sub3(axis, foot_right_pos, foot_left_pos);
+    axis[2] = 1.0e-3;
+    double length = 0.5 * mju_normalize3(axis) - 0.05;
+    mju_add3(center, foot_right_pos, foot_left_pos);
+    mju_scl3(center, center, 0.5);
+    mju_sub3(vec, capture_point, center);
 
-  // project onto axis
-  double t = mju_dot3(vec, axis);
+    // project onto axis
+    double t = mju_dot3(vec, axis);
 
-  // clamp
-  t = mju_max(-length, mju_min(length, t));
-  mju_scl3(vec, axis, t);
-  mju_add3(pcp, vec, center);
-  pcp[2] = 1.0e-3;
+    // clamp
+    t = mju_max(-length, mju_min(length, t));
+    mju_scl3(vec, axis, t);
+    mju_add3(pcp, vec, center);
+    pcp[2] = 1.0e-3;
+  }
 
   // is leaning - modified to be less strict than standing.
   // floored at 0.3 so balance never fully turns off when falling.
@@ -578,13 +588,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the leg lift becomes a small backward foot extension instead of a yoga
   // warrior 3 — small enough that weak ankle PD on the support leg can
   // hold balance during the lift.
-  // ITER 32 (2026-05-18): right-foot lift target reduced 0.15 → 0.05 (15cm
-   // → 5cm clearance) per user — the leg raise was looking exaggerated.
-   // 5 cm is enough to clearly indicate the balance shift to one-leg + arm
-   // support without going into a full leg extension. Iter 22 lower bound
-   // (0.02 m float) kept for arm-only stages.
+  // ITER 40 (2026-05-18): right-foot lift target RAMPS smoothly from 0
+  // to 0.03 m over kPhaseRampSeconds. User reported iter 39: body
+  // "started leg lift and so it tipped to the side" — the step-change in
+  // lift demand at phase entry didn't give MPC time to shift CoM laterally
+  // over the left (planted) foot before lifting. With the smoothstep ramp,
+  // MPC has 1.5 s to gradually move weight to left foot WHILE the lift
+  // target grows from 0 to 0.03 m.
   if (is_leg_lift_stage) {
-    residual[counter++] = mju_max(0.0, 0.05 - foot_right_pos[2]);
+    double ramped_lift_target = 0.03 * alpha;  // alpha = phase smoothstep
+    residual[counter++] = mju_max(0.0, ramped_lift_target - foot_right_pos[2]);
   } else if (any_arm_contact) {
     residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.02);
   } else {
