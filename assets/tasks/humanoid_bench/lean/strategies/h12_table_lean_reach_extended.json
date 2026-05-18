@@ -105,23 +105,23 @@
                 "local_pos2": [
                     0.62,
                     -0.163,
-                    0.65
+                    0.75
                 ]
             },
             {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
+                "body1": 7,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
                 "local_pos1": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
+                    0.22,
+                    0.163,
+                    0.03
                 ]
             },
             {
@@ -179,7 +179,7 @@
         "target_distance_tolerance": 0.3,
         "time_limit": 10.0,
         "weight": {},
-        "brace_force_target": 8.0
+        "brace_force_target": 60.0
     },
     {
         "contacts": [
@@ -196,23 +196,23 @@
                 "local_pos2": [
                     0.62,
                     -0.163,
-                    0.65
+                    0.75
                 ]
             },
             {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
+                "body1": 7,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
                 "local_pos1": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
+                    0.22,
+                    0.163,
+                    0.03
                 ]
             },
             {
@@ -266,11 +266,11 @@
         ],
         "facing_target": [],
         "name": "lean_forward",
-        "success_sustain_time": 9999.0,
+        "success_sustain_time": 8.0,
         "target_distance_tolerance": 0.25,
-        "time_limit": 9999.0,
+        "time_limit": 30.0,
         "weight": {},
-        "brace_force_target": 15.0
+        "brace_force_target": 70.0
     },
     {
         "contacts": [
@@ -287,7 +287,7 @@
                 "local_pos2": [
                     0.62,
                     -0.163,
-                    0.65
+                    0.75
                 ]
             },
             {
@@ -303,7 +303,7 @@
                 "local_pos2": [
                     0.52,
                     -0.163,
-                    0.65
+                    0.75
                 ]
             },
             {
@@ -323,19 +323,19 @@
                 ]
             },
             {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
+                "body1": 7,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
                 "local_pos1": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
+                    0.22,
+                    0.163,
+                    0.03
                 ]
             },
             {
@@ -361,7 +361,7 @@
         "target_distance_tolerance": 0.45,
         "time_limit": 9999.0,
         "weight": {},
-        "brace_force_target": 20.0
+        "brace_force_target": 70.0
     },
     {
         "contacts": [
@@ -378,7 +378,7 @@
                 "local_pos2": [
                     0.75,
                     -0.163,
-                    0.65
+                    0.75
                 ]
             },
             {
@@ -394,7 +394,7 @@
                 "local_pos2": [
                     0.6,
                     -0.163,
-                    0.65
+                    0.75
                 ]
             },
             {
@@ -414,19 +414,19 @@
                 ]
             },
             {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
+                "body1": 7,
+                "body2": 0,
+                "geom1": 0,
+                "geom2": 0,
                 "local_pos1": [
                     0.0,
                     0.0,
                     0.0
                 ],
                 "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
+                    0.22,
+                    0.163,
+                    0.03
                 ]
             },
             {
@@ -452,6 +452,6 @@
         "target_distance_tolerance": 0.55,
         "time_limit": 60.0,
         "weight": {},
-        "brace_force_target": 20.0
+        "brace_force_target": 70.0
     }
 ]

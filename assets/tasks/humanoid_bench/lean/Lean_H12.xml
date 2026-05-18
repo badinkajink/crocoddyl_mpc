@@ -97,14 +97,23 @@
         <!-- <user name="Joint Vel." dim="31" user="0 0.01 0.0 0.1"/> -->
         <user name="Balance" dim="2" user="6 20.0 0.0 100.0 0.02"/>
         <user name="Torso Forward Tilt" dim="1" user="6 3.0 0.0 25.0 0.1"/>
-        <!-- BISECTION TEST #2 (2026-05-17): Pelvis Tilt weight 25 → 10 +
-             lean.cc reverted to symmetric pelvis_up[2]-1.0 ALWAYS. The
-             R8/R9 directional forward-pitch residual was forcing 32° lean
-             regardless of CoM state; combined with weak ankle PD this
-             over-committed the lean. -->
-        <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 50.0 0.1"/>
-        <user name="Foot Right Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
-        <user name="Foot Left Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
+        <!-- ITER 37 (2026-05-18): Pelvis Tilt weight 50 → 100. Iter 36's
+             50 still let body drift past the 60° cap during dynamic
+             transients. Doubling to 100: 75° tilt costs ~16, 90° costs
+             ~41 — gives MPC strong recovery authority when body is
+             about to fall past the natural braced-lean ceiling. -->
+        <user name="Pelvis Tilt" dim="1" user="6 100.0 0.0 200.0 0.1"/>
+        <!-- ITER 30 (2026-05-18): foot-up weight 500 → 2000. Iter 29's 500
+             still wasn't dominant — heel still lifting per user. At 2000:
+             30° heel-lift costs ~134, 45° costs ~320. Now overwhelmingly
+             exceeds reach gradient (~45 at full extension), so MPC MUST
+             find a posture that keeps the foot flat. The available
+             alternative is deep hip-pitch flex (90°+), enabled by the
+             companion changes below: Pelvis Tilt residual goes to zero
+             during arm-contact phases, and Hip Clearance weight drops
+             120 → 40 so pelvis can duck under the table front edge. -->
+        <user name="Foot Right Up" dim="1" user="6 2000.0 0.0 3000.0 0.1"/>
+        <user name="Foot Left Up" dim="1" user="6 2000.0 0.0 3000.0 0.1"/>
         <user name="Waist Yaw" dim="1" user="6 30.0 0.0 100.0 0.1"/>
         <user name="Hip Yaw L" dim="1" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Hip Roll L" dim="1" user="6 20.0 0.0 100.0 0.1"/>
@@ -121,25 +130,54 @@
              given asymmetric reach targets). Y is clamped (not fixed)
              inside lean.cc to give the body room to twist for reaches. -->
         <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
-        <!-- Brace Force restored to 25 after Test #1 (BF=0) showed robot
-             tips BACKWARD without arm support — confirming the brace force
-             is load-bearing, not just sim2real polish. -->
+        <!-- ITER 22 (2026-05-18): Brace Force is now ONE-SIDED in lean.cc
+             (residual = max(0, target - actual)). Test 18's failure with
+             symmetric weight=75 doesn't apply — the planner is no longer
+             penalised for exceeding the target, only for under-supporting.
+             Combined with per-keyframe targets ramped 25 → 70 → 120 N in
+             the extended strategy JSON, MPC now has a clear gradient
+             saying "push DOWN harder, that's GOOD". Weight stays at 25
+             so the per-newton cost gradient is the same; the change is
+             that there's no longer a counter-gradient pulling it down. -->
         <user name="Brace Force" dim="1" user="6 25.0 0.0 100.0 15.0"/>
+        <!-- Reverted to 50 (test 21 Object Dist=30 was too weak — planner
+             stopped trying to fully extend the reach). Keep Contact=150
+             which DID help anchor the foot. -->
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
-        <user name="Hip Clearance" dim="1" user="6 120.0 0.0 300.0 0.04"/>
-        <user name="Leg Clearance" dim="2" user="6 120.0 0.0 300.0 0.04"/>
-        <!-- TEST #17: weight back to 100 (was bumped to 300 in test 15
-             because anchors weren't winning over Reach; with kp=80 the
-             PD itself does the balancing so anchors don't need to be
-             aggressive). -->
-        <user name="Left Leg Anchor" dim="1" user="6 100.0 0.0 300.0 0.08"/>
-        <!-- TEST #17: weight 200→60 (back to pre-test-15). With kp=80
-             the PD does the balancing; anchors are now suggestion not
-             enforcement. -->
-        <user name="Right Foot Lift" dim="1" user="6 60.0 0.0 100.0 0.3"/>
-        <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
+        <!-- ITER 30 (2026-05-18): Hip + Leg Clearance dropped 120 → 40.
+             The deep-bow posture (hip flex 90°, knees slightly bent) puts
+             the pelvis at ~x=0.566 — well past the previous 0.32 threshold,
+             with 120 weight that was a sustained cost of ~25/step blocking
+             the only flat-foot lean posture available. At weight 40 the
+             same overshoot costs ~8 — still nudges MPC away from physical
+             collision with the table front face, but doesn't prevent the
+             pelvis from ducking UNDER the table edge during a deep bow
+             (pelvis_z at 0.40 < table_z 0.55 → no actual collision).
+             Physical pelvis-table contact is still enabled as the hard
+             safety net (R12 removed those excludes). -->
+        <user name="Hip Clearance" dim="1" user="6 40.0 0.0 300.0 0.04"/>
+        <user name="Leg Clearance" dim="2" user="6 40.0 0.0 300.0 0.04"/>
+        <!-- ITER 22 (2026-05-18): Left Leg Anchor 100 → 250. Combined with
+             the tightened foot-float threshold in lean.cc (0.05 → 0.02 m),
+             this 2.5× boost makes the "left foot must stay pressed down"
+             constraint actually competitive with the reach gradient. -->
+        <user name="Left Leg Anchor" dim="1" user="6 250.0 0.0 500.0 0.08"/>
+        <!-- ITER 22 (2026-05-18): Right Foot Lift 60 → 180. Same reasoning
+             as Left Leg Anchor — the foot-anchor weights were too gentle
+             relative to reach; once arm contact triggered, the planner
+             was happy to lift the right foot to gain torso reach. -->
+        <user name="Right Foot Lift" dim="1" user="6 180.0 0.0 300.0 0.3"/>
+        <!-- ITER 37 (2026-05-18): Contact weight 400 → 1000. After iter 36
+             elbow-in-lean_forward was reverted (geometry infeasible — H1-2
+             forearm is 0.40 m but spec required 0.10 m compression), the
+             left-foot anchor in lean_forward is the only thing holding
+             standing leg position. Bumping to 1000 makes a 5 cm drift
+             cost ~12 (was 5 at weight 400), a 20 cm drift cost ~124 —
+             strong enough to actually anchor the leg during dynamic
+             lean transients without an explicit hard constraint. -->
+        <user name="Contact" dim="15" user="6 1000.0 0.0 2000.0 0.1"/>
         <!-- Joint Vel. Limit: one-sided penalty for joint velocities above
              85% of the URDF ω_max. Keeps MJPC plans within hardware-feasible
              velocity envelope — a plan that exceeds ω_max would simply not

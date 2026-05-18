@@ -92,8 +92,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   }
   // any_arm_contact: arm is on the table (stand_up has 0 contacts)
   const bool any_arm_contact      = (active_contact_count_early >= 1);
-  // is_leg_lift_stage: arm + elbow + ankle contact (3 contacts)
-  const bool is_leg_lift_stage_early = (active_contact_count_early >= 3);
+  // ITER 36 (2026-05-18): is_leg_lift detection now PHASE-NAME based, not
+  // contact-count based. Iter 36 adds the right elbow as a 3rd contact
+  // primitive in lean_forward (forearm-on-table brace, more stable than
+  // hand-only), which previously would have falsely tripped the count >= 3
+  // leg-lift check and lifted the right foot during what should be a
+  // stable braced lean. Now leg-lift behaviour fires only when the strategy
+  // explicitly enters the leg-lift phases.
+  const bool is_leg_lift_stage_early =
+      (residual_keyframe_.name == "leg_lift_arm_plant" ||
+       residual_keyframe_.name == "deep_reach");
 
   // ---- Phase-aware cost scales (fixes the "hip slam at t=0" bug) ----------
   // The height-based `leaning` scalar below is ~1.0 when the robot is upright,
@@ -310,9 +318,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       torso_height / mju_sqrt(torso_height * torso_height + 0.65 * 0.65) - 0.2;
   leaning = mju_max(leaning, 0.3);
 
-  // When arm is on the table it provides forward support — relax balance so
-  // the planner doesn't fight the lean by sliding the left foot forward.
-  double balance_scale = any_arm_contact ? 0.35 : 1.0;
+  // ITER 22 (2026-05-18): balance scale gated by EXPECTED LOAD on the brace
+  // arm, not just "is there contact at all".
+  //
+  // ITER 38 (2026-05-18): leg-lift phases get FULL balance authority. With
+  // only one foot on the ground (right foot lifted), balance is MORE
+  // critical, not less — even with strong arm brace, the support polygon
+  // collapses from feet-to-feet to a single foot + arm. WBC-style
+  // prioritisation says balance dominates during single-support phases.
+  // Two-foot lean phases (arm_plant / lean_forward) still load-gate so the
+  // bracing arm can take real load without balance fighting it.
+  double target_brace_force_now = residual_keyframe_.brace_force_target;
+  double load_ratio = (target_brace_force_now > 0.0)
+                          ? mju_min(1.0, target_brace_force_now / 120.0)
+                          : 0.0;
+  double balance_scale = is_leg_lift_stage_early
+                             ? 1.0
+                             : (1.0 - 0.65 * load_ratio);
   mju_sub(&residual[counter], capture_point, pcp, 2);
   mju_scl(&residual[counter], &residual[counter], leaning * balance_scale, 2);
 
@@ -362,9 +384,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // exploit the pelvis-table exclude. Symmetric is permissive: any tilt
   // (forward or backward) costs the same — MPC picks based on other terms.
   double *pelvis_up = SensorByName(model, data, "pelvis_up");
-  double pelvis_tilt_residual = is_leg_lift_stage_early
-                                    ? 0.0
-                                    : (pelvis_up[2] - 1.0);
+  // ITER 31 (2026-05-18): pelvis-tilt residual gives 60° of free forward
+  // bow during arm-contact phases, then penalises beyond. Iter 30 made it
+  // fully free (0°-90°+) which let the body collapse forward past
+  // sustainable balance per user report. 60° is the natural braced-lean
+  // depth a human uses on a counter (deep enough for arms to reach,
+  // shallow enough that brace arm + ankle PD can hold static balance).
+  // Threshold = cos(60°) = 0.5 → residual = max(0, 0.5 - pelvis_up[2]).
+  // Forward tilt up to 60° (pelvis_up ≥ 0.5) is free; deeper bow incurs
+  // increasing cost.
+  double pelvis_tilt_residual;
+  if (is_leg_lift_stage_early) {
+    pelvis_tilt_residual = 0.0;
+  } else if (any_arm_contact) {
+    pelvis_tilt_residual = mju_max(0.0, 0.5 - pelvis_up[2]);
+  } else {
+    pelvis_tilt_residual = pelvis_up[2] - 1.0;
+  }
   residual[counter++] = pelvis_tilt_residual;
 
   // ----- foot up-vectors: prevent ankle roll ----- //
@@ -431,15 +467,33 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   counter += 3;
 
   // Per-phase brace-force reference (Opt2Skill, arXiv 2409.20514).
-  // If the strategy JSON for the current keyframe specifies brace_force_target
-  // (>= 0), use it. Otherwise fall back to the legacy default: 15 N when any
-  // contact pair is active, 0 N during contact-free phases (stand_up).
+  // ITER 22 (2026-05-18): ONE-SIDED shortfall residual. The previous symmetric
+  // residual `desired - actual` was actively pushing MPC AWAY from any force
+  // exceeding the target — for arm_plant(target=8N) the planner was penalised
+  // ~100× harder for pushing 30N than for pushing 8N, even though more support
+  // is exactly what the body needs. Switching to `max(0, desired - actual)`
+  // means: pushing harder than the target is FREE, only under-supporting the
+  // brace incurs cost. Combined with the bumped per-phase targets in the
+  // strategy JSON (arm_plant 25 → lean_forward 70 → deep_reach 120) this
+  // tells MPC "transfer this much of body weight through the arm", matching
+  // Opt2Skill's contact-force tracking term (their eq. 12 is also one-sided).
   bool is_active_contact =
       (residual_keyframe_.contact_pairs[0].body1 != mjpc::humanoid::kNotSelectedInteract);
-  double desired_brace_force = residual_keyframe_.brace_force_target >= 0.0
+  double target_brace_force = residual_keyframe_.brace_force_target >= 0.0
                                    ? residual_keyframe_.brace_force_target
-                                   : (is_active_contact ? 15.0 : 0.0);
-  residual[counter++] = desired_brace_force - brace_contact_force;
+                                   : (is_active_contact ? 70.0 : 0.0);
+  // ITER 28 (2026-05-18): smoothstep ramp the brace_force target across phase
+  // boundaries — same machinery as phase_reach_scale etc. Without this, going
+  // from stand_up (target=0) → arm_plant (target=60) creates a step change
+  // in the cost gradient; MPC reads it as "you need 60 N right now" and plans
+  // an impulsive arm slam into the table. The 1.5 s smoothstep ramp gives MPC
+  // ~100 control cycles to bring the arm into contact and build force
+  // gradually, which spreads the contact impulse over enough time that the
+  // foot-lift transient (user-flagged in iter 27) becomes negligible.
+  double desired_brace_force =
+      prev_phase_brace_force_target_ +
+      alpha * (target_brace_force - prev_phase_brace_force_target_);
+  residual[counter++] = mju_max(0.0, desired_brace_force - brace_contact_force);
 
   // ------ object distance (reaching hand) ------ //
   // Phase-gated: zero during stand_up so the planner doesn't lunge.
@@ -502,12 +556,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // ----- left leg anchor (left leg = sole anchor throughout the pipeline) //
   // The user's pipeline: right arm braces + right leg lifts. Left leg is
-  // the ONLY anchor and must be straight (knee up at ~0.42m) AND foot on
-  // ground (z ≤ 0.05) during every phase that has any contact load on
-  // the table (arm_plant, lean_forward, leg_lift_arm_plant, deep_reach).
+  // the ONLY anchor and must be straight (knee up at ~0.42m) AND foot
+  // FIRMLY on the ground during every phase that has any contact load on
+  // the table.
+  // ITER 22 (2026-05-18): foot-lift tolerance tightened 0.05 → 0.02 (only
+  // 2 cm float allowed before penalty). With weight bumped 100 → 250 in
+  // the XML, a 5 cm heel-lift now costs 250 × (0.03)² = 0.22 vs 0.06
+  // previously — small but the gradient is steeper near zero where it
+  // matters for keeping the foot pressed down through the lean.
   if (is_leg_lift_stage || any_arm_contact) {
     residual[counter++] = mju_max(0.0, 0.42 - left_knee_pos_3d[2])
-                        + mju_max(0.0, foot_left_pos[2] - 0.05);
+                        + mju_max(0.0, foot_left_pos[2] - 0.02);
   } else {
     residual[counter++] = 0.0;
   }
@@ -519,10 +578,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the leg lift becomes a small backward foot extension instead of a yoga
   // warrior 3 — small enough that weak ankle PD on the support leg can
   // hold balance during the lift.
+  // ITER 32 (2026-05-18): right-foot lift target reduced 0.15 → 0.05 (15cm
+   // → 5cm clearance) per user — the leg raise was looking exaggerated.
+   // 5 cm is enough to clearly indicate the balance shift to one-leg + arm
+   // support without going into a full leg extension. Iter 22 lower bound
+   // (0.02 m float) kept for arm-only stages.
   if (is_leg_lift_stage) {
-    residual[counter++] = mju_max(0.0, 0.15 - foot_right_pos[2]);
+    residual[counter++] = mju_max(0.0, 0.05 - foot_right_pos[2]);
   } else if (any_arm_contact) {
-    residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.05);
+    residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.02);
   } else {
     residual[counter++] = 0.0;
   }
@@ -646,6 +710,12 @@ void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
 
 // -------- Transition for humanoid_bench lean task -------- //
 // ------------------------------------------------------------ //
+//
+// ITER 26 (2026-05-18): removed the iter-23 equality-weld toggle. Single-
+// point/SE3 pins on the foot felt unnatural (sway-spring behaviour); foot
+// anchoring is now done by real physics (gravcomp 0.97 → 0.90 gives ~49 N
+// of net body weight on each foot, enough friction to hold against the
+// soft cost gradients without artificial pins).
 void lean::TransitionLocked(mjModel *model, mjData *data) {
   // ---- DEBUG: print leg stability diagnostics every ~0.5 s ---- //
   static int debug_tick = 0;
@@ -751,7 +821,7 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // kp_ankle 20→40 should let stand-and-lean be stable.
     std::uniform_real_distribution<> dis_x(1.2, 1.4);
     std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.73};
+    target_position_ = {dis_x(gen), dis_y(gen), 0.83};
     printf("New target position: %f, %f, %f\n", target_position_[0],
            target_position_[1], target_position_[2]);
   }
@@ -786,6 +856,14 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     residual_.prev_phase_posture_scale_ =
         residual_.prev_phase_posture_scale_ +
         alpha * (p_t - residual_.prev_phase_posture_scale_);
+    // ITER 28: snapshot brace_force_target the same way so the next phase's
+    // ramp starts from the actual mid-ramp value rather than snapping.
+    double bf_t = residual_.residual_keyframe_.brace_force_target >= 0.0
+                      ? residual_.residual_keyframe_.brace_force_target
+                      : 0.0;
+    residual_.prev_phase_brace_force_target_ =
+        residual_.prev_phase_brace_force_target_ +
+        alpha * (bf_t - residual_.prev_phase_brace_force_target_);
   };
 
   if (!motion_strategy_.HasKeyframes() ||
@@ -806,6 +884,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // Posture starts at 1.0 (the "default no-boost" level) so the first
     // stand_up ramp climbs cleanly from 1.0 → 3.0 over kPhaseRampSeconds.
     residual_.prev_phase_posture_scale_ = 1.0;
+    // ITER 28: brace_force starts at 0 (stand_up target = 0) so the ramp
+    // into arm_plant climbs cleanly from 0 to the keyframe target.
+    residual_.prev_phase_brace_force_target_ = 0.0;
     return;
   }
 
@@ -845,9 +926,13 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
 void lean::ResetLocked(const mjModel *model) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dis_x(1.4, 1.6);
+  // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4 (matches
+  // the same fix in TransitionLocked above). Missing this caused the
+  // FIRST target on every reset to spawn far at [1.4, 1.6] — robot
+  // couldn't reach without losing balance, and user saw the tipping.
+  std::uniform_real_distribution<> dis_x(1.2, 1.4);
   std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-  target_position_ = {dis_x(gen), dis_y(gen), 0.73};
+  target_position_ = {dis_x(gen), dis_y(gen), 0.83};
   printf("New target position: %f, %f, %f\n", target_position_[0],
          target_position_[1], target_position_[2]);
 

@@ -75,11 +75,11 @@
         <!-- <user name="Joint Vel." dim="51" user="0 0.01 0.0 0.1"/> -->
         <user name="Balance" dim="2" user="6 20.0 0.0 100.0 0.02"/>
         <user name="Torso Forward Tilt" dim="1" user="6 3.0 0.0 25.0 0.1"/>
-        <!-- BISECTION TEST #2 (2026-05-17): Pelvis Tilt weight 25 → 10 +
-             symmetric residual always. See Lean_H12.xml for rationale. -->
-        <user name="Pelvis Tilt" dim="1" user="6 10.0 0.0 50.0 0.1"/>
-        <user name="Foot Right Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
-        <user name="Foot Left Up" dim="1" user="6 40.0 0.0 100.0 0.1"/>
+        <!-- ITER 37 (2026-05-18): Pelvis Tilt 50 → 100. See Lean_H12.xml. -->
+        <user name="Pelvis Tilt" dim="1" user="6 100.0 0.0 200.0 0.1"/>
+        <!-- ITER 30 (2026-05-18): foot-up weight 500 → 2000. See Lean_H12.xml. -->
+        <user name="Foot Right Up" dim="1" user="6 2000.0 0.0 3000.0 0.1"/>
+        <user name="Foot Left Up" dim="1" user="6 2000.0 0.0 3000.0 0.1"/>
         <user name="Waist Yaw" dim="1" user="6 30.0 0.0 100.0 0.1"/>
         <user name="Hip Yaw L" dim="1" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Hip Roll L" dim="1" user="6 20.0 0.0 100.0 0.1"/>
@@ -94,19 +94,20 @@
         <!--        task specific cost terms-->
         <!-- TEST #14: weight back to 30, Y clamped in lean.cc. -->
         <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
-        <!-- Brace Force restored to 25 after Test #1 (BF=0) failed (robot
-             tipped backward). Brace force is load-bearing. -->
+        <!-- Brace Force=25 (test 18 showed 75 made things worse). -->
         <user name="Brace Force" dim="1" user="6 25.0 0.0 100.0 15.0"/>
+        <!-- Reverted to 50 (see Lean_H12.xml). -->
         <user name="Object Dist" dim="3" user="6 50.0 0.0 100.0 0.1"/>
         <user name="Reaching Hand Dist" dim="3" user="6 20.0 0.0 100.0 0.1"/>
         <user name="Foot Stability" dim="4" user="6 15.0 0.0 100.0 0.1"/>
-        <user name="Hip Clearance" dim="1" user="6 120.0 0.0 300.0 0.04"/>
-        <user name="Leg Clearance" dim="2" user="6 120.0 0.0 300.0 0.04"/>
-        <!-- TEST #17: weight back to 100 (see Lean_H12.xml). -->
-        <user name="Left Leg Anchor" dim="1" user="6 100.0 0.0 300.0 0.08"/>
-        <!-- TEST #17: weight back to 60 (see Lean_H12.xml). -->
-        <user name="Right Foot Lift" dim="1" user="6 60.0 0.0 100.0 0.3"/>
-        <user name="Contact" dim="15" user="6 30.0 0.0 100.0 0.1"/>
+        <!-- ITER 30 (2026-05-18): Hip + Leg Clearance dropped 120 → 40.
+             See Lean_H12.xml for full rationale. -->
+        <user name="Hip Clearance" dim="1" user="6 40.0 0.0 300.0 0.04"/>
+        <user name="Leg Clearance" dim="2" user="6 40.0 0.0 300.0 0.04"/>
+        <user name="Left Leg Anchor" dim="1" user="6 250.0 0.0 500.0 0.08"/>
+        <user name="Right Foot Lift" dim="1" user="6 180.0 0.0 300.0 0.3"/>
+        <!-- ITER 37 (2026-05-18): Contact 400 → 1000. See Lean_H12.xml. -->
+        <user name="Contact" dim="15" user="6 1000.0 0.0 2000.0 0.1"/>
         <!-- Joint Vel. Limit: one-sided penalty for joint velocities above
              85% of the URDF ω_max. Keeps MJPC plans within hardware-feasible
              velocity envelope. Type 0 (quadratic), weight 5. -->

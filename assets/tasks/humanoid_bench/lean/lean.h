@@ -33,13 +33,15 @@ class lean : public Task {
                         mjtNum keyframe_start_time = 0.0,
                         mjtNum prev_reach_scale = 0.0,
                         mjtNum prev_brace_pos_scale = 0.0,
-                        mjtNum prev_posture_scale = 1.0)
+                        mjtNum prev_posture_scale = 1.0,
+                        mjtNum prev_brace_force_target = 0.0)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
           keyframe_start_time_(keyframe_start_time),
           prev_phase_reach_scale_(prev_reach_scale),
           prev_phase_brace_pos_scale_(prev_brace_pos_scale),
-          prev_phase_posture_scale_(prev_posture_scale) {}
+          prev_phase_posture_scale_(prev_posture_scale),
+          prev_phase_brace_force_target_(prev_brace_force_target) {}
 
     void Residual(const mjModel *model, const mjData *data,
                   double *residual) const override;
@@ -72,6 +74,10 @@ class lean : public Task {
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
     // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.
     mjtNum prev_phase_posture_scale_ = 1.0;
+    // ITER 28: previous phase's brace_force_target value, used to smoothstep
+    // the brace force demand across phase boundaries so MPC doesn't see a
+    // step change (which would plan an impulsive arm slam into the table).
+    mjtNum prev_phase_brace_force_target_ = 0.0;
 
    private:
     friend class lean;
@@ -85,12 +91,12 @@ class lean : public Task {
   };
 
   lean() : residual_(this), current_strategy_(-1) {
-    target_position_ = {1.5, 0.0, 0.73};
+    target_position_ = {1.5, 0.0, 0.83};
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis_x(1.4, 1.6);
     std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.73};
+    target_position_ = {dis_x(gen), dis_y(gen), 0.83};
   }
 
   void TransitionLocked(mjModel *model, mjData *data) override;
@@ -111,7 +117,8 @@ class lean : public Task {
         residual_.keyframe_start_time_,
         residual_.prev_phase_reach_scale_,
         residual_.prev_phase_brace_pos_scale_,
-        residual_.prev_phase_posture_scale_);
+        residual_.prev_phase_posture_scale_,
+        residual_.prev_phase_brace_force_target_);
   }
 
   ResidualFn *InternalResidual() override { return &residual_; }
