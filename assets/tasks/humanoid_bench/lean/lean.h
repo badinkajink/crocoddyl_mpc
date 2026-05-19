@@ -1,6 +1,7 @@
 #ifndef MJPC_TASKS_HUMANOID_BENCH_LEAN_LEAN_H_
 #define MJPC_TASKS_HUMANOID_BENCH_LEAN_LEAN_H_
 
+#include <map>
 #include <memory>
 #include <random>
 #include <string>
@@ -63,6 +64,13 @@ class lean : public Task {
     // interpolate from their previous-phase values to the new-phase values
     // over this many seconds after each keyframe advance. 1.5s gives the
     // robot time to absorb the new gradient instead of being shoved forward.
+    // Tried bumping to 3.0 to slow the arm swing during 2→3 — backfired:
+    // with MPC horizon 1.0s the lean_forward gradient stayed weak for ~2s
+    // while Height (head wants to stay high, weight 35 effective in
+    // arm_contact_or_lean) was full strength — body settled into a slight
+    // backward bend as the cheap local optimum. If arm swing is still too
+    // fast at 1.5s, a surgical fix (Brace Hand Velocity residual active
+    // only during arm_plant) is preferable to slowing every cost ramp.
     static constexpr mjtNum kPhaseRampSeconds = 1.5;
 
     enum LeanMode {
@@ -127,6 +135,14 @@ class lean : public Task {
   void TransitionLocked(mjModel *model, mjData *data) override;
 
   void ResetLocked(const mjModel *model) override;
+
+  // Populate phase-aware monitoring metrics (reach, CoP, ICP, brace force,
+  // saturation, etc.) for the Research GUI / headless analyzer. Reads the
+  // current keyframe + sensor stack; safe to call from the gRPC poll loop.
+  // See task.h ComputeMetrics for contract.
+  void ComputeMetrics(const mjModel *model, const mjData *data,
+                      std::map<std::string, double> *metrics,
+                      std::string *phase_name) const override;
 
   // Slider layout (Lean H12) — user's 6-phase decomposition:
   //   0  stand            — stand_up

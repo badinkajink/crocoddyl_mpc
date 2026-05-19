@@ -205,6 +205,22 @@
              velocity envelope — a plan that exceeds ω_max would simply not
              execute on the real robot. Type 0 (quadratic), weight 5. -->
         <user name="Joint Vel. Limit" dim="27" user="0 5.0 0.0 100.0"/>
+        <!-- Support Polygon: perpendicular offset of the capture point
+             from the REACH axis (midfoot → reach_target), 5 cm margin.
+             Active only when the bracing arm is on the table. Aligned
+             with the direction the body needs to advance, so forward
+             reach is free and only true lateral excursion (the original
+             brace-push bug) costs. See lean.cc Support Polygon block
+             for the full rationale + design history. -->
+        <user name="Support Polygon" dim="1" user="6 80.0 0.0 300.0 0.05"/>
+        <!-- Body Yaw: xy-projected alignment of torso_forward with the
+             reach direction. Decoupled from pitch (pitching changes
+             torso_forward's xy length but not its xy direction), so the
+             lean is unpenalised but world-frame body yaw — which has no
+             other direct cost in the stack — is. See lean.cc Body Yaw
+             block for diagnosis (planner uses foot-on-floor pivot to
+             yaw rigidly without paying any joint-level cost). -->
+        <user name="Body Yaw" dim="1" user="6 60.0 0.0 200.0 0.1"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>

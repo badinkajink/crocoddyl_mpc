@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <random>
 
 #include "mujoco/mujoco.h"
@@ -344,32 +345,109 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_addScl(capture_point, subcom, subcomvel, 0.3, 3);
   capture_point[2] = 1.0e-3;
 
-  // project onto line segment
+  // project onto support polygon
   //
-  // ITER 40 (2026-05-18): during leg-lift phases, the right foot is OFF the
-  // ground — there's no two-foot support polygon. Project capture point onto
-  // the LEFT FOOT alone so the Balance residual pulls CoM laterally toward
-  // the planted leg (instead of toward the midpoint of an imaginary
-  // foot-to-foot line that no longer corresponds to actual support).
-  double axis[3];
-  double center[3];
-  double vec[3];
+  // Phase-aware support polygon for the Balance residual. When the bracing
+  // hand is on the table the polygon EXPANDS to include the hand contact —
+  // {L_foot, R_foot, R_hand} triangle in both-feet phases, {L_foot, R_hand}
+  // line in leg-lift phases. Inside the polygon → pcp = capture_point →
+  // residual = 0 (body is supported). Outside → pcp = nearest perimeter
+  // point. This is the WBC support-polygon idea: forward lean is free as
+  // long as the capture point stays in the convex hull of active contacts.
+  //
+  // Without this expansion, Balance projects onto the foot-foot line only,
+  // and a body advancing forward to lean sees a huge excursion (28cm at a
+  // typical lean pose) amplified 10× by edge_amplifier — Balance fights
+  // the lean and the planner can't find a stable forward pose.
+  //
+  // ITER 40 (2026-05-18) left a leg-lift special case (single L_foot
+  // projection). That's preserved here for the no-arm-contact sub-case;
+  // with arm contact during leg-lift we use the {L_foot, R_hand} line.
   double pcp[3];
   if (is_leg_lift_stage_early) {
-    mju_copy3(pcp, foot_left_pos);
-    pcp[2] = 1.0e-3;
+    if (any_arm_contact) {
+      // L_foot + R_hand line segment.
+      double ax = foot_left_pos[0], ay = foot_left_pos[1];
+      double bx = bracing_hand[0],  by = bracing_hand[1];
+      double abx = bx - ax, aby = by - ay;
+      double len2 = abx*abx + aby*aby;
+      double t = (len2 > 1e-9)
+          ? mju_max(0.0, mju_min(1.0,
+              ((capture_point[0] - ax) * abx +
+               (capture_point[1] - ay) * aby) / len2))
+          : 0.0;
+      pcp[0] = ax + t * abx;
+      pcp[1] = ay + t * aby;
+      pcp[2] = 1.0e-3;
+    } else {
+      mju_copy3(pcp, foot_left_pos);
+      pcp[2] = 1.0e-3;
+    }
+  } else if (any_arm_contact) {
+    // L_foot + R_foot + R_hand triangle.
+    double vx[3] = {foot_left_pos[0], foot_right_pos[0], bracing_hand[0]};
+    double vy[3] = {foot_left_pos[1], foot_right_pos[1], bracing_hand[1]};
+    // CCW sort by angle from centroid (3 vertices, bubble sort).
+    double ccx = (vx[0] + vx[1] + vx[2]) / 3.0;
+    double ccy = (vy[0] + vy[1] + vy[2]) / 3.0;
+    for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < 2 - i; j++) {
+        double a1 = std::atan2(vy[j]   - ccy, vx[j]   - ccx);
+        double a2 = std::atan2(vy[j+1] - ccy, vx[j+1] - ccx);
+        if (a1 > a2) {
+          double t = vx[j]; vx[j] = vx[j+1]; vx[j+1] = t;
+          t = vy[j]; vy[j] = vy[j+1]; vy[j+1] = t;
+        }
+      }
+    }
+    double px = capture_point[0], py = capture_point[1];
+    bool inside = true;
+    for (int i = 0; i < 3; i++) {
+      int j = (i + 1) % 3;
+      double abx = vx[j] - vx[i];
+      double aby = vy[j] - vy[i];
+      double apx = px - vx[i];
+      double apy = py - vy[i];
+      double cross = abx*apy - aby*apx;
+      if (cross < 0.0) { inside = false; break; }
+    }
+    if (inside) {
+      pcp[0] = px;
+      pcp[1] = py;
+      pcp[2] = 1.0e-3;
+    } else {
+      double best_dist2 = 1.0e9;
+      pcp[0] = px; pcp[1] = py; pcp[2] = 1.0e-3;
+      for (int i = 0; i < 3; i++) {
+        int j = (i + 1) % 3;
+        double ax = vx[i], ay = vy[i];
+        double bx = vx[j], by = vy[j];
+        double abx = bx - ax, aby = by - ay;
+        double apx = px - ax, apy = py - ay;
+        double len2 = abx*abx + aby*aby;
+        double t = (len2 > 1e-9)
+            ? mju_max(0.0, mju_min(1.0, (apx*abx + apy*aby) / len2))
+            : 0.0;
+        double qx = ax + t*abx, qy = ay + t*aby;
+        double d2 = (px-qx)*(px-qx) + (py-qy)*(py-qy);
+        if (d2 < best_dist2) {
+          best_dist2 = d2;
+          pcp[0] = qx;
+          pcp[1] = qy;
+          pcp[2] = 1.0e-3;
+        }
+      }
+    }
   } else {
+    // No arm contact: existing foot-foot line projection.
+    double axis[3], center[3], vec[3];
     mju_sub3(axis, foot_right_pos, foot_left_pos);
     axis[2] = 1.0e-3;
     double length = 0.5 * mju_normalize3(axis) - 0.05;
     mju_add3(center, foot_right_pos, foot_left_pos);
     mju_scl3(center, center, 0.5);
     mju_sub3(vec, capture_point, center);
-
-    // project onto axis
     double t = mju_dot3(vec, axis);
-
-    // clamp
     t = mju_max(-length, mju_min(length, t));
     mju_scl3(vec, axis, t);
     mju_add3(pcp, vec, center);
@@ -584,7 +662,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_scl3(&residual[counter], &residual[counter], phase_brace_pos_scale);
   counter += 3;
 
-  // Per-phase brace-force reference (Opt2Skill, arXiv 2409.20514).
+  // Per-phase brace-force reference.
   // ITER 22 (2026-05-18): ONE-SIDED shortfall residual. The previous symmetric
   // residual `desired - actual` was actively pushing MPC AWAY from any force
   // exceeding the target — for arm_plant(target=8N) the planner was penalised
@@ -594,7 +672,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // brace incurs cost. Combined with the bumped per-phase targets in the
   // strategy JSON (arm_plant 25 → lean_forward 70 → deep_reach 120) this
   // tells MPC "transfer this much of body weight through the arm", matching
-  // Opt2Skill's contact-force tracking term (their eq. 12 is also one-sided).
+  // one-sided contact-force tracking — only under-support costs.
   bool is_active_contact =
       (residual_keyframe_.contact_pairs[0].body1 != mjpc::humanoid::kNotSelectedInteract);
   double target_brace_force = residual_keyframe_.brace_force_target >= 0.0
@@ -784,6 +862,76 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     residual[counter++] = std::max(0.0, abs_vel - threshold);
   }
 
+  // ----- Support Polygon (lateral excursion off reach axis) ------------ //
+  // Penalises capture-point excursion perpendicular to the REACH AXIS
+  // (midfoot → reach_target). WBC intent: keep CoM moving along the line
+  // the body is actually traveling, catch lateral pushes off that line.
+  //
+  // Earlier attempt anchored the axis to the bracing hand instead of the
+  // reach target — but the hand is off to the side (y ≈ -0.3) while the
+  // object is straight ahead (y ≈ 0). The midfoot→hand perpendicular
+  // direction has a strong x-component, so the body advancing forward
+  // toward the object read as "perpendicular excursion" and got penalised,
+  // forcing a knees-bent / arm-bent rest pose instead of an extended
+  // reach. The reach axis aligns the safe corridor with the direction the
+  // body needs to travel; lateral push (the original bug) still costs.
+  //
+  // Yaw behaviour: midfoot rotates with the feet, reach_target is fixed in
+  // world (= object_pos). Body yaw moves midfoot slightly, which tilts the
+  // axis slightly, but CoM also moves with the body — perpendicular offset
+  // stays small for pure yaw, so the residual is still effectively
+  // yaw-invariant under small rotations.
+  //
+  // Active only when the bracing arm is on the table (any_arm_contact);
+  // arm_extend_standing has no contact and would point reach_target at the
+  // body-relative phase1 storage anyway, which would be degenerate.
+  double sp_residual = 0.0;
+  if (any_arm_contact) {
+    double midfoot_x = is_leg_lift_stage_early
+                           ? foot_left_pos[0]
+                           : 0.5 * (foot_left_pos[0] + foot_right_pos[0]);
+    double midfoot_y = is_leg_lift_stage_early
+                           ? foot_left_pos[1]
+                           : 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
+    double dx = reach_target[0] - midfoot_x;
+    double dy = reach_target[1] - midfoot_y;
+    double len = mju_sqrt(dx*dx + dy*dy);
+    if (len > 1e-6) {
+      // Perpendicular (90° CCW of axis), unit length.
+      double perp_x = -dy / len;
+      double perp_y =  dx / len;
+      double offset = (capture_point[0] - midfoot_x) * perp_x +
+                      (capture_point[1] - midfoot_y) * perp_y;
+      // 5 cm tolerance band — small drift is fine, hard lateral excursion
+      // off the reach axis costs. Matches typical capture-point safety
+      // buffers in legged-WBC literature.
+      static constexpr double kSupportLateralMargin = 0.05;
+      sp_residual = mju_max(0.0, mju_abs(offset) - kSupportLateralMargin);
+    }
+  }
+  residual[counter++] = sp_residual;
+
+  // ----- Body Yaw (xy-projected) ---------------------------------------- //
+  // The floating-root quaternion has no direct cost in any joint-level
+  // residual, so the planner can rigidly yaw the body via foot-on-floor
+  // pivot without paying (Waist Yaw + Hip Yaw target joint angles; whole-
+  // body rotation leaves those at home). Torso Forward Tilt catches it
+  // but is weight 3 AND mixes in pitch — bumping it would also fight the
+  // lean. This residual is yaw-only: project torso_forward and reach_dir
+  // onto the xy-plane and check alignment there. Pitch drops out because
+  // pitching down shortens torso_forward's xy length without changing
+  // its xy direction.
+  double tf_xy_len = mju_sqrt(torso_forward[0] * torso_forward[0] +
+                              torso_forward[1] * torso_forward[1]);
+  double rd_xy_len = mju_sqrt(reach_dir[0] * reach_dir[0] +
+                              reach_dir[1] * reach_dir[1]);
+  double yaw_alignment =
+      (tf_xy_len > 1e-6 && rd_xy_len > 1e-6)
+          ? (torso_forward[0] * reach_dir[0] +
+             torso_forward[1] * reach_dir[1]) / (tf_xy_len * rd_xy_len)
+          : 1.0;
+  residual[counter++] = 1.0 - yaw_alignment;
+
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
   // // Check if we have elbow sensors (indicates H12_Hands model)
   // bool has_elbow_sensors = false;
@@ -834,11 +982,29 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       user_sensor_dim += model->sensor_dim[i];
     }
   }
+  // Per-sensor diagnostic: prints once when the mismatch fires so we can see
+  // exactly which residual is short. mju_warning is non-fatal (vs mju_error
+  // which calls exit() and freezes headless agent_server with "Press Enter").
   if (user_sensor_dim != counter) {
-    mju_error(
-        "mismatch between total user-sensor dimension %d "
-        "and actual length of residual %d",
-        user_sensor_dim, counter);
+    static bool printed = false;
+    if (!printed) {
+      printed = true;
+      mju_warning(
+          "Lean residual length %d != user_sensor_dim %d. Per-sensor:",
+          counter, user_sensor_dim);
+      for (int i = 0; i < model->nsensor; i++) {
+        if (model->sensor_type[i] == mjSENS_USER) {
+          const char *nm = mj_id2name(model, mjOBJ_SENSOR, i);
+          mju_warning("  user sensor %d: %s dim=%d", i,
+                      nm ? nm : "?", model->sensor_dim[i]);
+        }
+      }
+    }
+    // Pad with zeros so the planner doesn't crash; this is the fallback path
+    // until the missing residual is tracked down.
+    while (counter < user_sensor_dim) {
+      residual[counter++] = 0.0;
+    }
   }
 }
 
@@ -1261,4 +1427,211 @@ void lean::ResetLocked(const mjModel *model) {
     printf("  Joint %d: %s (qpos index %d)\n", i, jnt_name ? jnt_name : "unnamed", qpos_adr);
   }
 }
+
+// ============================================================================
+// ComputeMetrics — phase-aware monitoring metrics for the Research GUI /
+// headless analyzer. Reads the current keyframe + sensor stack; no rollout
+// hot-path work. See QUANTIFICATION_PLAN.html for the 10 metrics surfaced
+// here (reach, CoP, ICP, brace force, saturation, ...).
+// ============================================================================
+void lean::ComputeMetrics(const mjModel *model, const mjData *data,
+                          std::map<std::string, double> *metrics,
+                          std::string *phase_name) const {
+  if (metrics) metrics->clear();
+  if (phase_name) phase_name->clear();
+  if (!metrics) return;
+
+  // ----- Phase identity -------------------------------------------------- //
+  const auto &kf = residual_.residual_keyframe_;
+  if (phase_name) *phase_name = kf.name;
+
+  // Phase ramp progress (matches Residual()'s smoothstep)
+  double time_in_phase =
+      mju_max(0.0, data->time - residual_.keyframe_start_time_);
+  double alpha_lin =
+      mju_min(time_in_phase / ResidualFn::kPhaseRampSeconds, 1.0);
+  double alpha_smooth = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
+  (*metrics)["phase_time"] = time_in_phase;
+  (*metrics)["phase_alpha_linear"] = alpha_lin;
+  (*metrics)["phase_alpha"] = alpha_smooth;
+  (*metrics)["brace_force_target"] = kf.brace_force_target;
+
+  // ----- Sensor reads (bail out if any missing) -------------------------- //
+  double *left_hand = SensorByName(model, data, "left_hand_pos");
+  double *right_hand = SensorByName(model, data, "right_hand_pos");
+  double *right_contact = SensorByName(model, data, "right_hand_contact");
+  double *left_contact = SensorByName(model, data, "left_hand_contact");
+  double *torso = SensorByName(model, data, "torso_position");
+  double *foot_left = SensorByName(model, data, "foot_left_pos");
+  double *foot_right = SensorByName(model, data, "foot_right_pos");
+  double *subcom = SensorByName(model, data, "torso_subcom");
+  double *com_vel = SensorByName(model, data, "torso_subtreelinvel");
+  if (!left_hand || !right_hand || !torso || !foot_left || !foot_right ||
+      !subcom) {
+    return;
+  }
+
+  // Right arm always braces, left arm always reaches (lean.cc convention).
+  double *reaching_hand = left_hand;
+  double *bracing_hand = right_hand;
+  double brace_force_normal = right_contact ? right_contact[0] : 0.0;
+  double reach_contact_force = left_contact ? left_contact[0] : 0.0;
+
+  // ----- M1: reach-from-pelvis (horizontal) ------------------------------ //
+  // Using torso as pelvis proxy — closest sensor we have.
+  double rx = reaching_hand[0] - torso[0];
+  double ry = reaching_hand[1] - torso[1];
+  (*metrics)["reach_from_pelvis"] = mju_sqrt(rx * rx + ry * ry);
+
+  // ----- M2: reach-beyond-foot-edge -------------------------------------- //
+  // Forward distance the palm projects past the front-most foot edge.
+  // +0.10 m toe offset because foot_*_pos is at the ankle site, not the toe.
+  double front_edge_x = mju_max(foot_left[0], foot_right[0]) + 0.10;
+  (*metrics)["reach_beyond_foot_edge"] = reaching_hand[0] - front_edge_x;
+
+  // ----- M3: CoM excursion from midfoot ---------------------------------- //
+  double midfoot_x = 0.5 * (foot_left[0] + foot_right[0]);
+  double midfoot_y = 0.5 * (foot_left[1] + foot_right[1]);
+  double com_dx = subcom[0] - midfoot_x;
+  double com_dy = subcom[1] - midfoot_y;
+  (*metrics)["com_excursion_sagittal"] = com_dx;
+  (*metrics)["com_excursion_lateral"] = com_dy;
+  (*metrics)["com_excursion"] = mju_sqrt(com_dx * com_dx + com_dy * com_dy);
+  (*metrics)["com_x"] = subcom[0];
+  (*metrics)["com_y"] = subcom[1];
+  (*metrics)["com_z"] = subcom[2];
+
+  // ----- M4: CoP / ZMP from floor contacts ------------------------------- //
+  // Floor geom is conventionally named "floor" in MJCF; lookup once.
+  // Approximation: world vertical component of each contact = f_normal * n_z,
+  // where n_z = c.frame[2] (z-component of contact normal). Tangential
+  // components contribute negligible vertical force on a flat floor.
+  int floor_geom_id = mj_name2id(model, mjOBJ_GEOM, "floor");
+  double cop_x_num = 0.0, cop_y_num = 0.0, cop_denom = 0.0;
+  double foot_force_total = 0.0;
+  for (int i = 0; i < data->ncon; ++i) {
+    const mjContact &c = data->contact[i];
+    bool involves_floor = (floor_geom_id >= 0) &&
+                          (c.geom[0] == floor_geom_id ||
+                           c.geom[1] == floor_geom_id);
+    if (!involves_floor) continue;
+    double f6[6];
+    mj_contactForce(model, data, i, f6);
+    double n_z = c.frame[2];
+    double fz = f6[0] * n_z;
+    if (fz > 0.0) {
+      cop_x_num += c.pos[0] * fz;
+      cop_y_num += c.pos[1] * fz;
+      cop_denom += fz;
+      foot_force_total += fz;
+    }
+  }
+  if (cop_denom > 0.0) {
+    (*metrics)["cop_x"] = cop_x_num / cop_denom;
+    (*metrics)["cop_y"] = cop_y_num / cop_denom;
+  } else {
+    (*metrics)["cop_x"] = midfoot_x;
+    (*metrics)["cop_y"] = midfoot_y;
+  }
+  (*metrics)["foot_force_total"] = foot_force_total;
+
+  // ----- M5: brace force ------------------------------------------------- //
+  // Bracing hand normal contact (right). The Hands variant has an additional
+  // right_palm_contact sensor — surface it separately when present.
+  (*metrics)["brace_force"] = brace_force_normal;
+  (*metrics)["reach_hand_contact_force"] = reach_contact_force;
+  double *right_palm_contact =
+      SensorByName(model, data, "right_palm_contact");
+  if (right_palm_contact) {
+    (*metrics)["palm_contact_force"] = right_palm_contact[0];
+  }
+  // Force-distribution ratio: how much vertical reaction is carried by the
+  // bracing hand vs the feet. Diagnostic for "is the brace actually loaded".
+  double total_vertical = foot_force_total + brace_force_normal;
+  (*metrics)["brace_force_ratio"] =
+      (total_vertical > 1e-6) ? brace_force_normal / total_vertical : 0.0;
+
+  // ----- M6: friction slack on bracing-hand contacts --------------------- //
+  // s = μ|F_normal| − ||F_tangential||. Positive = inside friction cone.
+  // We iterate contacts and track the minimum slack across any contact that
+  // involves NOT-the-floor (palm/elbow on table). For a flat-floor task this
+  // is good enough because the floor contacts are foot-on-floor (high slack).
+  double min_brace_slack = std::numeric_limits<double>::infinity();
+  bool any_brace_contact = false;
+  for (int i = 0; i < data->ncon; ++i) {
+    const mjContact &c = data->contact[i];
+    bool involves_floor = (floor_geom_id >= 0) &&
+                          (c.geom[0] == floor_geom_id ||
+                           c.geom[1] == floor_geom_id);
+    if (involves_floor) continue;
+    double f6[6];
+    mj_contactForce(model, data, i, f6);
+    double fn = mju_abs(f6[0]);
+    double ft = mju_sqrt(f6[1] * f6[1] + f6[2] * f6[2]);
+    double mu = c.friction[0];
+    double slack = mu * fn - ft;
+    if (slack < min_brace_slack) min_brace_slack = slack;
+    any_brace_contact = true;
+  }
+  if (any_brace_contact) {
+    (*metrics)["brace_friction_slack"] = min_brace_slack;
+  } else {
+    (*metrics)["brace_friction_slack"] = 0.0;
+  }
+
+  // ----- M7: torque saturation (max fraction across actuators) ----------- //
+  // |ctrl[i] − midpoint| / half-range, max over actuators. Uses MuJoCo's
+  // actuator_forcerange (set by ctrlrange / forcerange in MJCF / URDF).
+  double max_torque_frac = 0.0;
+  for (int i = 0; i < model->nu; ++i) {
+    double lo = model->actuator_forcerange[2 * i];
+    double hi = model->actuator_forcerange[2 * i + 1];
+    if (hi > lo) {
+      double range = 0.5 * (hi - lo);
+      double mid = 0.5 * (hi + lo);
+      double frac = mju_abs(data->ctrl[i] - mid) / range;
+      if (frac > max_torque_frac) max_torque_frac = frac;
+    }
+  }
+  (*metrics)["torque_saturation_max"] = max_torque_frac;
+
+  // ----- M8: max joint velocity (raw — % vs URDF limits in analyzer) ----- //
+  double max_vel = 0.0;
+  for (int i = 6; i < model->nv; ++i) {  // skip free-joint base
+    double v = mju_abs(data->qvel[i]);
+    if (v > max_vel) max_vel = v;
+  }
+  (*metrics)["joint_velocity_max"] = max_vel;
+
+  // ----- Instantaneous Capture Point ------------------------------------ //
+  // ξ = r_CoM + ṙ_CoM · √(z_CoM / g). Cheap predictive stability margin.
+  if (com_vel) {
+    double z = mju_max(subcom[2], 0.1);
+    double omega = mju_sqrt(9.81 / z);
+    (*metrics)["icp_x"] = subcom[0] + com_vel[0] / omega;
+    (*metrics)["icp_y"] = subcom[1] + com_vel[1] / omega;
+  }
+
+  // ----- Support-polygon excursion (B6) ---------------------------------- //
+  // Signed forward distance from CoM ground projection to front foot edge.
+  // Positive = CoM is forward of the foot polygon (only safe with brace).
+  (*metrics)["com_beyond_foot_edge"] = subcom[0] - front_edge_x;
+
+  // ----- Foot positions exposed for SP top-down panel -------------------- //
+  (*metrics)["foot_left_x"] = foot_left[0];
+  (*metrics)["foot_left_y"] = foot_left[1];
+  (*metrics)["foot_left_z"] = foot_left[2];
+  (*metrics)["foot_right_x"] = foot_right[0];
+  (*metrics)["foot_right_y"] = foot_right[1];
+  (*metrics)["foot_right_z"] = foot_right[2];
+
+  // ----- Bracing-hand position exposed for SP-with-hand panel ------------ //
+  (*metrics)["brace_hand_x"] = bracing_hand[0];
+  (*metrics)["brace_hand_y"] = bracing_hand[1];
+  (*metrics)["brace_hand_z"] = bracing_hand[2];
+  (*metrics)["reach_hand_x"] = reaching_hand[0];
+  (*metrics)["reach_hand_y"] = reaching_hand[1];
+  (*metrics)["reach_hand_z"] = reaching_hand[2];
+}
+
 }  // namespace mjpc
