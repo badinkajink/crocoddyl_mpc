@@ -16,6 +16,13 @@ namespace mjpc {
 
 constexpr int kLeanStrategyParameterIndex = 1;
 
+// Manual-phase override. -1 (default) = auto-advance through keyframes
+// based on success_sustain_time + target_distance_tolerance. 0..N-1 =
+// hold at that keyframe index regardless of progress. Lets the user
+// scrub through the loaded strategy's phases without reloading (which
+// would reset to keyframe 0 and snap the body back through stand_up).
+constexpr int kLeanPhaseParameterIndex = 2;
+
 constexpr char kLeanStrategyFilePath[] =
     SOURCE_DIR "/mjpc/tasks/humanoid_bench/lean/strategies/";
 
@@ -34,14 +41,20 @@ class lean : public Task {
                         mjtNum prev_reach_scale = 0.0,
                         mjtNum prev_brace_pos_scale = 0.0,
                         mjtNum prev_posture_scale = 1.0,
-                        mjtNum prev_brace_force_target = 0.0)
+                        mjtNum prev_brace_force_target = 0.0,
+                        const bool* contact_pair_is_new = nullptr)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
           keyframe_start_time_(keyframe_start_time),
           prev_phase_reach_scale_(prev_reach_scale),
           prev_phase_brace_pos_scale_(prev_brace_pos_scale),
           prev_phase_posture_scale_(prev_posture_scale),
-          prev_phase_brace_force_target_(prev_brace_force_target) {}
+          prev_phase_brace_force_target_(prev_brace_force_target) {
+      for (int i = 0; i < 5; ++i) {
+        contact_pair_is_new_[i] =
+            contact_pair_is_new ? contact_pair_is_new[i] : false;
+      }
+    }
 
     void Residual(const mjModel *model, const mjData *data,
                   double *residual) const override;
@@ -78,6 +91,18 @@ class lean : public Task {
     // the brace force demand across phase boundaries so MPC doesn't see a
     // step change (which would plan an impulsive arm slam into the table).
     mjtNum prev_phase_brace_force_target_ = 0.0;
+
+    // Per-contact-pair "is new this phase" flags. true when a contact pair
+    // went from inactive (body1=-1) in the previous keyframe to active in
+    // the current one — i.e. a brand-new target that just appeared. Used
+    // by ContactResidual to multiply each newly-appeared pair's residual
+    // by smoothstep(t_in_phase / kPhaseRampSeconds) so the cost grows
+    // from 0 to full strength over the same 1.5s window as the weights.
+    // Without this, the planner sees the new contact target's gradient
+    // instantly and slams the body toward it (the 2→3 hand-slam-into-
+    // table failure mode). Pairs that were continuously active across
+    // the transition keep factor 1.0 throughout.
+    bool contact_pair_is_new_[5] = {false, false, false, false, false};
 
    private:
     friend class lean;
@@ -150,7 +175,8 @@ class lean : public Task {
         residual_.prev_phase_reach_scale_,
         residual_.prev_phase_brace_pos_scale_,
         residual_.prev_phase_posture_scale_,
-        residual_.prev_phase_brace_force_target_);
+        residual_.prev_phase_brace_force_target_,
+        residual_.contact_pair_is_new_);
   }
 
   ResidualFn *InternalResidual() override { return &residual_; }

@@ -215,6 +215,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // known trade-off for accepting this baseline.
   double const *table_pos = SensorByName(model, data, "table_surface_pos");
   double *torso_pos = SensorByName(model, data, "torso_position");
+
+  // ----- Phase-dependent reach target ------------------------------------//
+  // For most phases the reach residual targets the actual `object_pos`
+  // (set by mocap to wherever the next task object is). But during the
+  // posture-driven `arm_extend_standing` phase we DON'T want the body to
+  // twist toward an off-centre object — the goal is "arm forward, body
+  // squared up." So we override the target to a fixed point directly in
+  // front of the left shoulder. Reach gradient pulls the LEFT hand
+  // straight forward, no lateral component, no body-twist incentive.
+  //
+  // Position is computed in WORLD frame assuming body is upright (which
+  // is enforced by the JSON's Pelvis Tilt=300 boost during this phase):
+  //   x = torso_pos[0] + 0.55  → arm-length forward of the body
+  //   y = torso_pos[1] + 0.20  → at the left shoulder y-offset
+  //   z = torso_pos[2] − 0.05  → roughly shoulder height
+  double phase1_target_storage[3];
+  double const *reach_target = object_pos;
+  if (residual_keyframe_.name == "arm_extend_standing") {
+    phase1_target_storage[0] = torso_pos[0] + 0.55;
+    phase1_target_storage[1] = torso_pos[1] + 0.20;
+    phase1_target_storage[2] = torso_pos[2] - 0.05;
+    reach_target = phase1_target_storage;
+  }
+
   double torso_to_table_x = table_pos[0] - torso_pos[0];
   double ideal_brace[3] = {
       torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
@@ -375,34 +399,38 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double balance_scale = is_leg_lift_stage_early
                              ? 1.0
                              : (1.0 - 0.65 * load_ratio);
-  // -------- Quadratic edge amplification ------------------------------- //
-  // The base Balance residual is `capture_point - pcp` (the CoM excursion
-  // past the support polygon). Squared-norm cost grows quadratically in
-  // excursion — but at the weights we run, that quadratic is still
-  // dominated by reach gradients when the CoM nears the support edge, so
-  // the body tips before Balance fights back.
+  // -------- Directional Balance with quadratic edge amplification ------ //
+  // CoM excursion has 3 directions and they're physically asymmetric:
+  //   - FORWARD  (+x in world): the brace hand on the table catches this
+  //     fall. Allowed to grow more during braced phases — that's the
+  //     whole point of bracing. balance_scale (≈0.62 at brace=70 N)
+  //     relaxes the penalty here.
+  //   - BACKWARD (-x): NOT catchable by the hand brace. A vertical force
+  //     on the table provides zero backward restoring moment. Strict
+  //     penalty regardless of brace status.
+  //   - LATERAL (±y): also NOT catchable by a same-side hand brace
+  //     (think: pushing on a table to your right doesn't stop you
+  //     falling left). Strict penalty regardless of brace status.
   //
-  // Solution: scale the Balance residual by an `edge_amplifier` that
-  // grows from 1× at 5 cm excursion (still in safe territory) up to ~10×
-  // at 10 cm (right at the line-support edge), with a smoothstep ramp in
-  // between. With squared cost, the peak penalty is ~100× the normal
-  // weight. That makes Balance steeper than reach near the limit so the
-  // planner has to find a balance-preserving posture (torso pull-back,
-  // hip flex, etc.) to keep the body upright while reach continues
-  // pulling.
+  // Without this decomposition, the previous formulation gave the
+  // planner an escape route: amplifier was 10× in ALL directions, so
+  // to reduce edge cost the planner could pull CoM BACKWARD (hip flex
+  // back) until excursion was small again. Result: the body folded at
+  // the hips, sat back, and tipped over backward onto its butt — even
+  // though it was correctly bracing the hand forward. By making forward
+  // excursion cheap (per balance_scale) and backward/lateral strict, the
+  // backward escape disappears: pulling CoM behind the feet now costs
+  // more than leaning forward into the brace.
   //
-  // balance_scale already encodes "braced phases relax balance" (drops
-  // toward 0.35 at brace_force=120 N). Multiplying it through means
-  // braced phases naturally get a softer edge cap — the hand on the
-  // table is doing the support, so the edge amplifier should not bite as
-  // hard. Leg-lift bypasses by setting balance_scale = 1 already (which
-  // here means full amplification, but the user's intent during leg-lift
-  // is "shift CoM laterally onto planted foot" which exceeds the line
-  // support intentionally; for now we leave this unhandled — flag if
-  // leg_lift phase looks twitchy).
+  // Leg-lift: balance_scale=1.0 is forced, so forward also gets strict
+  // treatment (no brace, single-foot support — every direction is risky).
   double cp_dx = capture_point[0] - pcp[0];
   double cp_dy = capture_point[1] - pcp[1];
-  double balance_excursion = mju_sqrt(cp_dx * cp_dx + cp_dy * cp_dy);
+  double dir_scale_x = (cp_dx > 0.0) ? balance_scale : 1.0;
+  double dir_scale_y = 1.0;
+  double eff_dx = cp_dx * dir_scale_x;
+  double eff_dy = cp_dy * dir_scale_y;
+  double balance_excursion = mju_sqrt(eff_dx * eff_dx + eff_dy * eff_dy);
   constexpr double kEdgeInner = 0.05;       // m — amplifier still 1×
   constexpr double kEdgeOuter = 0.10;       // m — amplifier saturated
   constexpr double kEdgePeakAmplifier = 10.0;
@@ -412,19 +440,22 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double edge_smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
   double edge_amplifier = 1.0 + (kEdgePeakAmplifier - 1.0) * edge_smooth;
 
-  mju_sub(&residual[counter], capture_point, pcp, 2);
-  mju_scl(&residual[counter], &residual[counter],
-          leaning * balance_scale * edge_amplifier, 2);
-
+  // Per-axis residual: directional scale already includes balance_scale
+  // for forward, 1.0 for backward/lateral. NO outer multiplication by
+  // balance_scale (would double-count for forward, and incorrectly
+  // relax backward/lateral).
+  residual[counter + 0] = eff_dx * leaning * edge_amplifier;
+  residual[counter + 1] = eff_dy * leaning * edge_amplifier;
   counter += 2;
 
   // ----- torso forward tilt (direction-based) ----- //
   // Encourage forward lean to reach object
   double *torso_forward = SensorByName(model, data, "torso_forward");
 
-  // Vector from torso to object (desired lean direction)
+  // Vector from torso to reach_target (object for most phases, fixed
+  // forward point during arm_extend_standing). Drives Torso Forward Tilt.
   double reach_dir[3];
-  mju_sub3(reach_dir, object_pos, torso_pos);
+  mju_sub3(reach_dir, reach_target, torso_pos);
   mju_normalize3(reach_dir);
 
   // Want torso forward axis to align with reach direction
@@ -471,11 +502,20 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Threshold = cos(60°) = 0.5 → residual = max(0, 0.5 - pelvis_up[2]).
   // Forward tilt up to 60° (pelvis_up ≥ 0.5) is free; deeper bow incurs
   // increasing cost.
+  // Phase-aware lean cap:
+  //   lean_with_arm_no_brace → cos(30°) = 0.866 (shallow lean, no brace)
+  //   any other arm_contact_or_lean → cos(60°) = 0.5 (deep braced lean)
+  // Reason: phase 2 is unbraced — if we let it use the full 60° lean
+  // budget, it arrives at phase 3 already at the balance edge with no
+  // margin to land the hand. Capping at 30° leaves room for phase 3's
+  // brace landing to push deeper.
+  double pelvis_tilt_threshold =
+      is_lean_no_brace_phase ? 0.866 : 0.5;
   double pelvis_tilt_residual;
   if (is_leg_lift_stage_early) {
     pelvis_tilt_residual = 0.0;
   } else if (arm_contact_or_lean) {
-    pelvis_tilt_residual = mju_max(0.0, 0.5 - pelvis_up[2]);
+    pelvis_tilt_residual = mju_max(0.0, pelvis_tilt_threshold - pelvis_up[2]);
   } else {
     pelvis_tilt_residual = pelvis_up[2] - 1.0;
   }
@@ -579,13 +619,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // should keep wanting to reach; Balance's edge_amplifier above is what
   // forces the trade-off (steep edge penalty makes the planner find a
   // counter-balanced posture rather than tipping).
-  mju_sub3(&residual[counter], reaching_hand, object_pos);
+  // Target = `reach_target` (object for most phases, fixed forward point
+  // during arm_extend_standing — see top of Residual()).
+  mju_sub3(&residual[counter], reaching_hand, reach_target);
   mju_scl3(&residual[counter], &residual[counter],
            phase_reach_scale * leaning);
   counter += 3;
 
   // ----- reaching hand distance to object ----- //
-  mju_sub3(&residual[counter], reaching_hand, object_pos);
+  mju_sub3(&residual[counter], reaching_hand, reach_target);
   mju_scl3(&residual[counter], &residual[counter], phase_reach_scale);
   counter += 3;
 
@@ -674,6 +716,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     residual[counter++] = mju_max(0.0, ramped_lift_target - foot_right_pos[2]);
   } else if (arm_contact_or_lean) {
     residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.02);
+  } else {
+    residual[counter++] = 0.0;
+  }
+
+  // ----- pelvis forward over midfoot ------------------------------------//
+  // Forces ankle/torso-strategy lean instead of hip-flex squat. The
+  // planner's failure mode without this: to satisfy reach + brace
+  // gradients, it flexes the hip and bends the knees, pushing the
+  // pelvis BEHIND the feet (sit-back posture). That setup is one tiny
+  // perturbation away from a backward fall onto the butt.
+  //
+  // Residual = max(0, target_x − pelvis_x), where target_x = midfoot_x +
+  // 0.05 m. AT target_x or AHEAD → residual = 0 (free). BEHIND target_x
+  // → linear penalty, weight 100, sigma 0.05 → cost grows quadratically.
+  //
+  // Gated on arm_contact_or_lean (phases 2+). Phase 1 is excluded
+  // because the home pose already has pelvis 3 cm behind the feet by
+  // design — activating this in phase 1 would create constant forward
+  // pull that fights the "stay upright" intent.
+  if (arm_contact_or_lean) {
+    double midfoot_x = 0.5 * (foot_right_pos[0] + foot_left_pos[0]);
+    double pelvis_forward_target = midfoot_x + 0.05;
+    residual[counter++] =
+        mju_max(0.0, pelvis_forward_target - pelvis_pos_3d[0]);
   } else {
     residual[counter++] = 0.0;
   }
@@ -780,6 +846,13 @@ void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
                                        double *residual, int *counter) const {
   using mjpc::humanoid::kNotSelectedInteract;
   using mjpc::humanoid::kNumberOfContactPairsInteract;
+  // Per-pair age factor: newly-appeared pairs ramp in over kPhaseRampSeconds
+  // so the planner doesn't see the target gradient as a step change. Old
+  // pairs (continuously active across the phase boundary) get factor 1.0.
+  double t_in_phase = mju_max(0.0, data->time - keyframe_start_time_);
+  double phase_t_norm = mju_min(1.0, t_in_phase / kPhaseRampSeconds);
+  double phase_smoothstep =
+      phase_t_norm * phase_t_norm * (3.0 - 2.0 * phase_t_norm);
   for (int i = 0; i < kNumberOfContactPairsInteract; i++) {
     const mjpc::humanoid::ContactPair& contact = residual_keyframe_.contact_pairs[i];
     if (contact.body1 != kNotSelectedInteract &&
@@ -788,7 +861,10 @@ void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
         contact.body2 < model->nbody) {
       double dist[3] = {0.};
       contact.GetDistance(dist, data);
-      for (int j = 0; j < 3; j++) residual[(*counter)++] = mju_abs(dist[j]);
+      double age_factor = contact_pair_is_new_[i] ? phase_smoothstep : 1.0;
+      for (int j = 0; j < 3; j++) {
+        residual[(*counter)++] = age_factor * mju_abs(dist[j]);
+      }
     } else {
       for (int j = 0; j < 3; j++) residual[(*counter)++] = 0;
     }
@@ -934,6 +1010,24 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   requested_strategy = std::max(
       0, std::min(requested_strategy, (int)kStrategyNames.size() - 1));
 
+  // Helper: diff old vs new keyframe contact-pair activity and mark which
+  // pairs just appeared (active now, inactive before). ContactResidual
+  // uses these flags to ramp the new pair's residual contribution from 0
+  // → full over kPhaseRampSeconds so the planner doesn't see an
+  // instantaneous gradient toward the new contact target.
+  auto MarkNewlyAppearedContacts =
+      [&](const mjpc::humanoid::ContactKeyframe& old_kf,
+          const mjpc::humanoid::ContactKeyframe& new_kf) {
+        for (int i = 0; i < mjpc::humanoid::kNumberOfContactPairsInteract;
+             ++i) {
+          bool old_active = (old_kf.contact_pairs[i].body1 !=
+                             mjpc::humanoid::kNotSelectedInteract);
+          bool new_active = (new_kf.contact_pairs[i].body1 !=
+                             mjpc::humanoid::kNotSelectedInteract);
+          residual_.contact_pair_is_new_[i] = (new_active && !old_active);
+        }
+      };
+
   // Helper: snapshot the scales currently in effect (mid-ramp possible) so
   // the next phase ramps smoothly out of them. The lerp matches what
   // Residual() is doing, so prev_* always equals what the rollouts are
@@ -974,6 +1068,8 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                                   kLeanStrategyFilePath);
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    MarkNewlyAppearedContacts(residual_.residual_keyframe_,
+                              motion_strategy_.GetCurrentKeyframe());
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     // Cold start (or strategy switch): no previous phase, prev scales = 0
     // so the first ramp climbs cleanly out of (0, 0) into stand_up's
@@ -995,40 +1091,80 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     return;
   }
 
-  const mjpc::humanoid::ContactKeyframe& current_kf =
-      motion_strategy_.GetCurrentKeyframe();
-  const double total_distance = motion_strategy_.CalculateTotalKeyframeDistance(
-      data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
+  // ----- Manual phase scrubber ---------------------------------------- //
+  // residual_Phase parameter:
+  //   -1  → auto-advance (existing behaviour, runs below)
+  //   0..N-1 → hold at that keyframe index regardless of progress;
+  //            auto-advance disabled. Body state is preserved across
+  //            manual jumps — only the active keyframe changes, with
+  //            weights smoothstep-ramping into the new phase (the same
+  //            machinery the auto-advance uses).
+  int requested_phase =
+      (int)std::round(parameters[kLeanPhaseParameterIndex]);
+  bool manual_phase_mode = (requested_phase >= 0);
+  if (manual_phase_mode) {
+    int n_kf = motion_strategy_.GetKeyframesCount();
+    requested_phase = std::max(0, std::min(requested_phase, n_kf - 1));
+    int current_kf_idx = motion_strategy_.GetCurrentKeyframeIndex();
+    if (requested_phase != current_kf_idx) {
+      // Manual phase jump — same snapshot+ramp dance as auto-advance, so
+      // weights blend smoothly from the old phase's effective values into
+      // the new phase's targets over kPhaseRampSeconds. Body qpos/qvel
+      // are untouched; only the active keyframe (contact targets, brace
+      // force target, weight overrides) changes.
+      SnapshotEffectiveScales();
+      SnapshotCurrentWeightsAsPrev();
+      motion_strategy_.UpdateCurrentKeyframe(requested_phase);
+      MarkNewlyAppearedContacts(residual_.residual_keyframe_,
+                                motion_strategy_.GetCurrentKeyframe());
+      residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+      motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+      motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+      residual_.keyframe_start_time_ = data->time;
+      PrepareNextPhaseWeights(residual_.residual_keyframe_);
+    }
+    // Skip auto-advance entirely while in manual mode.
+  } else {
+    const mjpc::humanoid::ContactKeyframe& current_kf =
+        motion_strategy_.GetCurrentKeyframe();
+    const double total_distance =
+        motion_strategy_.CalculateTotalKeyframeDistance(
+            data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
 
-  if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
-          current_kf.time_limit &&
-      total_distance > current_kf.target_distance_tolerance) {
-    // Time-limit reset (strategy restarts from keyframe 0). Save the scales
-    // that were just in effect so the next ramp blends from them.
-    SnapshotEffectiveScales();
-    SnapshotCurrentWeightsAsPrev();
-    motion_strategy_.Reset();
-    residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
-    motion_strategy_.SetCurrentKeyframeStartTime(data->time);
-    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
-    residual_.keyframe_start_time_ = data->time;
-    PrepareNextPhaseWeights(residual_.residual_keyframe_);
-  } else if (total_distance <= current_kf.target_distance_tolerance &&
-             data->time -
-                     motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
-                 current_kf.success_sustain_time) {
-    // Normal phase advance — this is the path that fires after stand_up
-    // succeeds. Snapshot first so the new ramp starts from the old scales.
-    SnapshotEffectiveScales();
-    SnapshotCurrentWeightsAsPrev();
-    motion_strategy_.NextKeyframe();
-    residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
-    motion_strategy_.SetCurrentKeyframeStartTime(data->time);
-    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
-    residual_.keyframe_start_time_ = data->time;
-    PrepareNextPhaseWeights(residual_.residual_keyframe_);
-  } else if (total_distance > current_kf.target_distance_tolerance) {
-    motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
+            current_kf.time_limit &&
+        total_distance > current_kf.target_distance_tolerance) {
+      // Time-limit reset (strategy restarts from keyframe 0). Save the
+      // scales that were just in effect so the next ramp blends from them.
+      SnapshotEffectiveScales();
+      SnapshotCurrentWeightsAsPrev();
+      motion_strategy_.Reset();
+      MarkNewlyAppearedContacts(residual_.residual_keyframe_,
+                                motion_strategy_.GetCurrentKeyframe());
+      residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+      motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+      motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+      residual_.keyframe_start_time_ = data->time;
+      PrepareNextPhaseWeights(residual_.residual_keyframe_);
+    } else if (total_distance <= current_kf.target_distance_tolerance &&
+               data->time -
+                       motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
+                   current_kf.success_sustain_time) {
+      // Normal phase advance — this is the path that fires after stand_up
+      // succeeds. Snapshot first so the new ramp starts from the old scales.
+      SnapshotEffectiveScales();
+      SnapshotCurrentWeightsAsPrev();
+      motion_strategy_.NextKeyframe();
+      MarkNewlyAppearedContacts(residual_.residual_keyframe_,
+                                motion_strategy_.GetCurrentKeyframe());
+      residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+      motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+      motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+      residual_.keyframe_start_time_ = data->time;
+      PrepareNextPhaseWeights(residual_.residual_keyframe_);
+    } else if (total_distance > current_kf.target_distance_tolerance) {
+      motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    }
   }
 
   // Apply the smoothstep weight ramp every tick. This also propagates the

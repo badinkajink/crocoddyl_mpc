@@ -89,6 +89,15 @@
              Each slot truncates the index-5 pipeline at one of the user's
              6 phase boundaries; last keyframe of each is indefinite. -->
         <numeric name="residual_Strategy" data="5 0 5" />
+        <!-- Manual phase scrubber. -1 = auto-advance through keyframes
+             (default behaviour, runs the whole loaded pipeline). 0..6 =
+             hold at that keyframe index regardless of progress; auto-
+             advance disabled. Body state and weights smooth-ramp into
+             the new phase rather than reloading the strategy. Use this
+             to inspect transitions one-by-one (e.g. set Strategy=5 then
+             slide Phase 3→4→5) without the body snapping back to
+             stand_up on every strategy switch. -->
+        <numeric name="residual_Phase" data="-1 -1 6" />
     </custom>
 
     <sensor>
@@ -172,6 +181,16 @@
              relative to reach; once arm contact triggered, the planner
              was happy to lift the right foot to gain torso reach. -->
         <user name="Right Foot Lift" dim="1" user="6 180.0 0.0 300.0 0.3"/>
+        <!-- Pelvis Forward: penalises pelvis sitting behind the midfoot
+             line during braced/leaning phases. Without this, the planner
+             escapes forward reach demand by squatting + folding at the
+             hip (butt back, knees forward), which sets the body up to
+             tip backward. Residual = max(0, midfoot_x + 0.05 - pelvis_x)
+             so being AT or AHEAD of midfoot costs nothing; being behind
+             grows linearly. Gated on arm_contact_or_lean in lean.cc so
+             phase 1 (arm_extend_standing, body upright at home pose where
+             pelvis IS behind feet by 3 cm) doesn't get pulled forward. -->
+        <user name="Pelvis Forward" dim="1" user="6 100.0 0.0 300.0 0.05"/>
         <!-- ITER 37 (2026-05-18): Contact weight 400 → 1000. After iter 36
              elbow-in-lean_forward was reverted (geometry infeasible — H1-2
              forearm is 0.40 m but spec required 0.10 m compression), the

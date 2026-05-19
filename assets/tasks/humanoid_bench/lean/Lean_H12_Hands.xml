@@ -66,6 +66,8 @@
              6-phase pipeline, indices 0-4 are progressive prefix slices of
              it. See Lean_H12.xml for the full slot table. -->
         <numeric name="residual_Strategy" data="5 0 5" />
+        <!-- See Lean_H12.xml for the Phase slider semantics. -->
+        <numeric name="residual_Phase" data="-1 -1 6" />
     </custom>
 
     <sensor>
@@ -108,6 +110,9 @@
         <user name="Leg Clearance" dim="2" user="6 40.0 0.0 300.0 0.04"/>
         <user name="Left Leg Anchor" dim="1" user="6 250.0 0.0 500.0 0.08"/>
         <user name="Right Foot Lift" dim="1" user="6 180.0 0.0 300.0 0.3"/>
+        <!-- Pelvis Forward: see Lean_H12.xml for rationale. Pulls pelvis
+             to stay at or ahead of midfoot during braced/leaning phases. -->
+        <user name="Pelvis Forward" dim="1" user="6 100.0 0.0 300.0 0.05"/>
         <!-- ITER 37 (2026-05-18): Contact 400 → 1000. See Lean_H12.xml. -->
         <user name="Contact" dim="15" user="6 1000.0 0.0 2000.0 0.1"/>
         <!-- Joint Vel. Limit: one-sided penalty for joint velocities above
