@@ -1454,7 +1454,26 @@ void lean::ComputeMetrics(const mjModel *model, const mjData *data,
   (*metrics)["phase_time"] = time_in_phase;
   (*metrics)["phase_alpha_linear"] = alpha_lin;
   (*metrics)["phase_alpha"] = alpha_smooth;
-  (*metrics)["brace_force_target"] = kf.brace_force_target;
+
+  // Brace-force target — TWO values exposed so plots can show what's
+  // actually happening on the controller side:
+  //   brace_force_target_final = the keyframe's destination value
+  //                              (what the phase is heading toward).
+  //   brace_force_target       = the smoothstep-ramped value the
+  //                              residual is currently chasing.
+  // Without this distinction the plot's target line jumps in steps at
+  // each phase boundary even though the planner is actually pursuing a
+  // smooth ramp over kPhaseRampSeconds.
+  bool kf_active = (kf.contact_pairs[0].body1 !=
+                     mjpc::humanoid::kNotSelectedInteract);
+  double target_final = kf.brace_force_target >= 0.0
+                            ? kf.brace_force_target
+                            : (kf_active ? 70.0 : 0.0);
+  double ramped_target = residual_.prev_phase_brace_force_target_ +
+      alpha_smooth * (target_final -
+                       residual_.prev_phase_brace_force_target_);
+  (*metrics)["brace_force_target"] = ramped_target;
+  (*metrics)["brace_force_target_final"] = target_final;
 
   // ----- Sensor reads (bail out if any missing) -------------------------- //
   double *left_hand = SensorByName(model, data, "left_hand_pos");
@@ -1632,6 +1651,20 @@ void lean::ComputeMetrics(const mjModel *model, const mjData *data,
   (*metrics)["reach_hand_x"] = reaching_hand[0];
   (*metrics)["reach_hand_y"] = reaching_hand[1];
   (*metrics)["reach_hand_z"] = reaching_hand[2];
+
+  // ----- Target (object) position + palm-to-target distance. Saved on
+  // every row so post-analysis can compute exact reach success without
+  // having to recover the random spawn position from mjpc stdout.
+  double *object_pos_m = SensorByName(model, data, "object_pos");
+  if (object_pos_m) {
+    (*metrics)["target_x"] = object_pos_m[0];
+    (*metrics)["target_y"] = object_pos_m[1];
+    (*metrics)["target_z"] = object_pos_m[2];
+    double dx = reaching_hand[0] - object_pos_m[0];
+    double dy = reaching_hand[1] - object_pos_m[1];
+    double dz = reaching_hand[2] - object_pos_m[2];
+    (*metrics)["palm_to_target"] = mju_sqrt(dx*dx + dy*dy + dz*dz);
+  }
 }
 
 }  // namespace mjpc
