@@ -473,14 +473,14 @@
                     0.0
                 ],
                 "local_pos2": [
-                    0.62,
+                    0.8,
                     -0.163,
                     0.75
                 ]
             },
             {
-                "body1": 13,
-                "body2": 1,
+                "body1": 25,
+                "body2": 0,
                 "geom1": 0,
                 "geom2": 0,
                 "local_pos1": [
@@ -489,9 +489,9 @@
                     0.0
                 ],
                 "local_pos2": [
-                    -0.15,
+                    0.4,
                     -0.163,
-                    -0.9
+                    0.8
                 ]
             },
             {
@@ -548,7 +548,9 @@
         "success_sustain_time": 8.0,
         "target_distance_tolerance": 0.3,
         "time_limit": 15.0,
-        "weight": {},
+        "weight": {
+            "Height": 30.0
+        },
         "brace_force_target": 70.0
     },
     {
