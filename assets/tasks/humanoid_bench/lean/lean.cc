@@ -381,8 +381,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       // (capped 30%). At 70 N this sits ~5 cm off the foot — essentially the
       // iter-40 single-foot pin that held the lift stable, plus a small,
       // load-justified diagonal allowance.
+      // 2026-05-20 (option 2): scale by the MEASURED brace force, not just the
+      // target, and raise the cap 0.30 → 0.50. FK rollout after option 1 showed
+      // the stance hip stopped twisting but the stance KNEE then bent 25° — the
+      // balance demand relocated because Balance still believed the hand could
+      // only carry 30% toward itself. Crediting the support point by the force
+      // the arm is ACTUALLY transferring (≈ /body_weight 500 N) gives MPC the
+      // WBC-correct incentive: "push harder on the brace and I'll let the
+      // capture point sit toward your hand" — so the stance leg can stay
+      // straight AND square instead of squatting/twisting to balance. The
+      // per-phase target is kept as a floor so there's support credit before
+      // contact force builds (avoids a twist at lift onset). Cap 0.50 keeps the
+      // left foot the dominant support, so we don't re-open the over-promise
+      // that caused the original sideways tip (cap was 0.30 for that reason).
       double load_frac =
-          mju_min(0.3, residual_keyframe_.brace_force_target / 500.0);
+          mju_min(0.50,
+                  mju_max(brace_contact_force,
+                          residual_keyframe_.brace_force_target) / 500.0);
       double ax = foot_left_pos[0], ay = foot_left_pos[1];
       double bx = ax + load_frac * (bracing_hand[0] - ax);
       double by = ay + load_frac * (bracing_hand[1] - ay);
@@ -641,8 +656,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double hip_square_scale = is_leg_lift_stage_early
                                 ? 4.0
                                 : (arm_contact_or_lean ? 2.0 : 1.0);
-  residual[counter++] = hip_square_scale * (data->qpos[7 + 0] - model->key_qpos[7 + 0]);
-  residual[counter++] = hip_square_scale * (data->qpos[7 + 2] - model->key_qpos[7 + 2]);
+  // 2026-05-20: FK rollout (monitor/phase_snapshot.py) showed the slant is a
+  // leg-lift-phase phenomenon almost entirely on the STANCE (left) leg:
+  // L_hip_yaw swings to -21.8° and L_hip_roll to -11.5° in leg_lift_arm_plant,
+  // while staying within ±4° through all earlier phases. That hip-yaw twist IS
+  // the cross-legged look. The lifting (right) leg legitimately moves, so we
+  // square the STANCE hip far harder (×12) during leg-lift but leave the
+  // lifting hip at the base scale. User dir: stance leg vertical & square at
+  // all times; let MPC find the brace+CoP balance instead of twisting the leg.
+  double stance_square_scale =
+      is_leg_lift_stage_early ? 12.0 : hip_square_scale;
+  residual[counter++] = stance_square_scale * (data->qpos[7 + 0] - model->key_qpos[7 + 0]);
+  residual[counter++] = stance_square_scale * (data->qpos[7 + 2] - model->key_qpos[7 + 2]);
   residual[counter++] = hip_square_scale * (data->qpos[7 + 6] - model->key_qpos[7 + 6]);
   residual[counter++] = hip_square_scale * (data->qpos[7 + 8] - model->key_qpos[7 + 8]);
 
@@ -760,8 +785,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
                                ? 5.0
                                : (arm_contact_or_lean ? 4.0 : 1.0);
 
-  residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[0] - kRightFootHomeXY[0]);
-  residual[counter++] = is_leg_lift_stage ? 0.0 : (foot_right_pos[1] - kRightFootHomeXY[1]);
+  // 2026-05-20: FK rollout showed the base of support COLLAPSES during
+  // forearm_brace — the right foot creeps inward+forward (y -0.16→-0.03,
+  // x 0.22→0.38), shrinking the stance from 33cm to 12cm. Leg-lift then starts
+  // from a near-single-track base, which is what forces the stance hip to twist
+  // to balance. At the base scale (1.0) the anchor cost was ~0.7 — negligible.
+  // Anchor the right foot as firmly as the left while braced (×4) so the wide
+  // stance survives into leg-lift; still freed (0) once the right leg lifts.
+  double right_foot_scale = arm_contact_or_lean ? 4.0 : 1.0;
+  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - kRightFootHomeXY[0]);
+  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[1] - kRightFootHomeXY[1]);
   residual[counter++] = left_foot_scale * (foot_left_pos[0] - kLeftFootHomeXY[0]);
   residual[counter++] = left_foot_scale * (foot_left_pos[1] - kLeftFootHomeXY[1]);
 
@@ -979,6 +1012,68 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
              torso_forward[1] * reach_dir[1]) / (tf_xy_len * rd_xy_len)
           : 1.0;
   residual[counter++] = 1.0 - yaw_alignment;
+
+  // ----- Body must NOT lean on the table (the ARM braces, not the torso) - //
+  // User (2026-05-20): in the unbraced lean (mode 2) the robot was resting its
+  // pelvis / lower-torso on the tabletop to hold the lean. That free support
+  // is what suppressed the emergent counterbalance-arm posture — with the
+  // table holding the body up, the planner had no reason to balance the reach
+  // with the free arm (it counterbalanced contactlessly before, at this same
+  // Posture weight). The pelvis/torso↔table collision excludes are
+  // intentionally OFF so the body can't ghost through the edge (R12/test15),
+  // but nothing penalised RESTING on it. Penalise the normal contact force
+  // between the pelvis or torso and the table so the only thing allowed to
+  // bear load on the table is the bracing arm/elbow — forcing a contactless,
+  // CoM-balanced lean.
+  //
+  // GATED to `!any_arm_contact` (2026-05-20): active only in the UNBRACED
+  // phases (stand/extend = far from table → 0; lean_with_arm_no_brace = mode 2,
+  // the case we care about). It is DISABLED once the arm/elbow are braced
+  // (arm_plant / lean_forward / forearm_brace_lean / leg_lift / deep_reach):
+  // in those phases the deep forearm-brace pose legitimately brings the body
+  // low near the table, and an always-on penalty fought it — the forearm
+  // brace wouldn't establish and the leg lifted unsupported. The arm bears
+  // the table load there by design, so body-table proximity is not penalised.
+  double body_table_force = 0.0;
+  if (!any_arm_contact) {
+    int pelvis_bid = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    int torso_bid  = mj_name2id(model, mjOBJ_BODY, "torso_link");
+    int table_bid  = mj_name2id(model, mjOBJ_BODY, "table");
+    for (int ci = 0; ci < data->ncon; ci++) {
+      const mjContact* con = &data->contact[ci];
+      int b1 = model->geom_bodyid[con->geom1];
+      int b2 = model->geom_bodyid[con->geom2];
+      bool body_side  = (b1 == pelvis_bid || b1 == torso_bid ||
+                         b2 == pelvis_bid || b2 == torso_bid);
+      bool table_side = (b1 == table_bid || b2 == table_bid);
+      if (body_side && table_side) {
+        mjtNum f6[6];
+        mj_contactForce(model, data, ci, f6);
+        body_table_force += mju_abs(f6[0]);  // normal-force magnitude (N)
+      }
+    }
+  }
+  residual[counter++] = body_table_force;
+
+  // ----- Knees straight during leg-lift --------------------------------- //
+  // User (2026-05-20): the leg lift is only valuable if the STANDING leg is
+  // completely straight (no knee buckle) and only the lifting leg rises a
+  // little. The planner was buckling BOTH knees to lower the CoM for
+  // stability. The Left Leg Anchor only checks knee HEIGHT, which misses a
+  // buckle where the knee juts forward without dropping — so penalise the
+  // knee JOINT ANGLE directly (qpos 0 = straight, + = flexed). Strict on the
+  // standing (left) knee (×2, ~5° free), gentle on the lifting (right) knee
+  // (~14° free, it extends back). Active ONLY in leg-lift so it doesn't fight
+  // the two-foot braced squat in the earlier phases.
+  double left_knee_angle  = data->qpos[7 + 3];
+  double right_knee_angle = data->qpos[7 + 9];
+  if (is_leg_lift_stage_early) {
+    residual[counter++] = 2.0 * mju_max(0.0, left_knee_angle  - 0.08);
+    residual[counter++] =       mju_max(0.0, right_knee_angle - 0.25);
+  } else {
+    residual[counter++] = 0.0;
+    residual[counter++] = 0.0;
+  }
 
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
   // // Check if we have elbow sensors (indicates H12_Hands model)
