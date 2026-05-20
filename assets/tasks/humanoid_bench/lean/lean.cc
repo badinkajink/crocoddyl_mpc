@@ -366,9 +366,26 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double pcp[3];
   if (is_leg_lift_stage_early) {
     if (any_arm_contact) {
-      // L_foot + R_hand line segment.
+      // L_foot + LOAD-LIMITED step toward R_hand.
+      //
+      // REGRESSION FIX (2026-05-19): the full {L_foot, R_hand} diagonal used
+      // here previously over-promised lateral support during the single-foot
+      // lift. A flat forearm on the table carries only ~brace_force_target N
+      // (≈14% of body weight at 70 N), yet projecting onto the whole diagonal
+      // told the planner the CoM was "supported" anywhere along it — so it
+      // drifted the CoM off the planted left foot expecting hand support that
+      // physically wasn't there, and the body tipped sideways (user: "tips to
+      // the left"). The left foot is the ONLY contact that can arrest a
+      // lateral fall; the right-side hand cannot. So we extend the support
+      // point toward the hand only by load_frac = brace_force / body_weight
+      // (capped 30%). At 70 N this sits ~5 cm off the foot — essentially the
+      // iter-40 single-foot pin that held the lift stable, plus a small,
+      // load-justified diagonal allowance.
+      double load_frac =
+          mju_min(0.3, residual_keyframe_.brace_force_target / 500.0);
       double ax = foot_left_pos[0], ay = foot_left_pos[1];
-      double bx = bracing_hand[0],  by = bracing_hand[1];
+      double bx = ax + load_frac * (bracing_hand[0] - ax);
+      double by = ay + load_frac * (bracing_hand[1] - ay);
       double abx = bx - ax, aby = by - ay;
       double len2 = abx*abx + aby*aby;
       double t = (len2 > 1e-9)
@@ -613,10 +630,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ----- hip yaw + roll: prevent planner exploiting hip rotation to
   // reposition the torso/arm during lean (same exploitation mode as waist yaw).
   // Nu indices: L_hip_yaw=0, L_hip_roll=2, R_hip_yaw=6, R_hip_roll=8.
-  residual[counter++] = data->qpos[7 + 0] - model->key_qpos[7 + 0];
-  residual[counter++] = data->qpos[7 + 2] - model->key_qpos[7 + 2];
-  residual[counter++] = data->qpos[7 + 6] - model->key_qpos[7 + 6];
-  residual[counter++] = data->qpos[7 + 8] - model->key_qpos[7 + 8];
+  //
+  // 2026-05-19: at the base weight (20) these were overpowered by the
+  // balance/reach gradients during the lean — the planner twisted the legs to
+  // shuffle the CoM (user: "legs kinda twist on its own"). The leg lift only
+  // stays balanced from a SQUARE stance (support foot pointing straight
+  // forward, no splay), so we scale the squaring authority up while braced
+  // (×2) and harder during leg-lift (×4). Targets are home (key_qpos = facing
+  // front), so this drives the legs back to a clean forward stance.
+  double hip_square_scale = is_leg_lift_stage_early
+                                ? 4.0
+                                : (arm_contact_or_lean ? 2.0 : 1.0);
+  residual[counter++] = hip_square_scale * (data->qpos[7 + 0] - model->key_qpos[7 + 0]);
+  residual[counter++] = hip_square_scale * (data->qpos[7 + 2] - model->key_qpos[7 + 2]);
+  residual[counter++] = hip_square_scale * (data->qpos[7 + 6] - model->key_qpos[7 + 6]);
+  residual[counter++] = hip_square_scale * (data->qpos[7 + 8] - model->key_qpos[7 + 8]);
 
   // ----- posture ----- //
   // Reduced weight vs push task to allow more deviation for leaning.
@@ -790,7 +818,27 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // MPC has 1.5 s to gradually move weight to left foot WHILE the lift
   // target grows from 0 to 0.03 m.
   if (is_leg_lift_stage) {
-    double ramped_lift_target = 0.03 * alpha;  // alpha = phase smoothstep
+    // "Square the stance, THEN lift." (user 2026-05-19: the leg raise only
+    // works if the standing leg is straight and the foot faces front; the
+    // lifting leg alone goes back.) The lift target is gated by a readiness
+    // factor that stays ~0 while the support stance is twisted/bent and ramps
+    // to 1 only once it's squared, so MPC spends the early phase straightening
+    // the support leg instead of lifting from a twisted base (which tipped it).
+    //   - yaw_ready: from foot_left_forward[1] ≈ sin(foot_yaw). 1 when the
+    //     standing foot points within ~3° of straight-ahead, → 0 by ~10°.
+    //     World-frame, so it catches twist from root yaw, hip yaw, or ankle.
+    //   - knee_ready: 1 when the standing knee is straight (knee height ≥0.44),
+    //     → 0 when bent (≤0.38). Matches the 0.42 Left Leg Anchor target.
+    double *foot_left_fwd = SensorByName(model, data, "foot_left_forward");
+    double stance_yaw = mju_abs(foot_left_fwd[1]);
+    double yaw_t =
+        mju_min(1.0, mju_max(0.0, (stance_yaw - 0.05) / (0.18 - 0.05)));
+    double yaw_ready = 1.0 - yaw_t * yaw_t * (3.0 - 2.0 * yaw_t);
+    double knee_t = mju_min(
+        1.0, mju_max(0.0, (left_knee_pos_3d[2] - 0.38) / (0.44 - 0.38)));
+    double knee_ready = knee_t * knee_t * (3.0 - 2.0 * knee_t);
+    double readiness = yaw_ready * knee_ready;
+    double ramped_lift_target = 0.03 * alpha * readiness;
     residual[counter++] = mju_max(0.0, ramped_lift_target - foot_right_pos[2]);
   } else if (arm_contact_or_lean) {
     residual[counter++] = mju_max(0.0, foot_right_pos[2] - 0.02);
