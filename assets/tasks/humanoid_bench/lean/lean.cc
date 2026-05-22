@@ -176,6 +176,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       prev_phase_posture_scale_ + alpha * (target_posture_scale -
                                            prev_phase_posture_scale_);
 
+  // ----- Pose-library target keyframe ------------------------------------ //
+  // A standalone "simple task" strategy (stand / crouch / arms_sideways / …)
+  // names its phase after a model <key> keyframe. When a keyframe with that
+  // exact name exists, the Posture + Control costs track THAT pose instead of
+  // the home keyframe — turning the lean task into a selectable pose-library
+  // player. mj_name2id returns -1 when no keyframe matches, so every existing
+  // pipeline phase ("stand_up", "arm_plant", …) falls back to key 0 (home)
+  // and behaves exactly as before. The lookup is one hash probe per Residual
+  // call — negligible next to the ~10 std::string compares PhaseTargetScales
+  // already does.
+  int posture_key_id =
+      mj_name2id(model, mjOBJ_KEY, residual_keyframe_.name.c_str());
+  if (posture_key_id < 0) posture_key_id = 0;  // home
+  const mjtNum *posture_target = model->key_qpos + posture_key_id * model->nq;
+
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
 
@@ -241,10 +256,28 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   }
 
   double torso_to_table_x = table_pos[0] - torso_pos[0];
+  // 2026-05-20: pin the brace LATERALLY under the right shoulder instead of
+  // leaving Y free. FK rollout showed the brace hand drifting ~22 cm inboard
+  // toward centerline (hand y -0.107 while the right shoulder joint sits at
+  // torso_y -0.209) — an inboard brace gives almost no lateral support, so the
+  // {L_foot, R_hand} base is narrow and the body tips sideways (user-reported).
+  // Targeting torso_y - 0.24 places the palm just to the right of the shoulder
+  // joint → a near-vertical force path (plank-like) and a WIDE lateral base
+  // coupled with the left foot. The phase_brace_pos_scale ramp still gates this
+  // to the brace phases (it's 0 in stand/extend), so non-brace phases are
+  // unaffected. Pairs with the contact local_pos2 y = -0.24 in the strategy
+  // JSONs (hand + elbow share the same Y → forearm parallel to x, not slanted).
   double ideal_brace[3] = {
       torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
-      bracing_hand[1],                         // Y free (test 12 baseline)
-      table_pos[2] - 0.02                      // Lower - encourage pressing into table
+      torso_pos[1] - 0.24,                     // under/just-right-of R shoulder joint
+      // 2026-05-22: press TARGET 6 cm BELOW the surface (was -0.02). Under the
+      // real-robot (doc) ROM the bracing forearm stalled ~7 cm ABOVE the table:
+      // with the target only 2 cm under the surface the downward Brace-Pos pull
+      // faded before contact, so no contact + no brace force formed and the lean
+      // tipped. A deeper press target sustains the pull through to firm forearm
+      // contact (the table collision arrests the hand at the surface and converts
+      // the residual press into the brace force the Brace-Force cost rewards).
+      table_pos[2] - 0.06
   };
 
   double penalty_hand = hand_dist_penalty * hand_dist;
@@ -364,6 +397,46 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // projection). That's preserved here for the no-arm-contact sub-case;
   // with arm contact during leg-lift we use the {L_foot, R_hand} line.
   double pcp[3];
+  // Nearest point of the {L_foot, R_foot, R_hand} triangle to the capture
+  // point. Used by the two-foot braced phase below and, blended over the phase
+  // ramp, by the leg-lift transition so balance doesn't snap from triangle to
+  // single-foot segment the instant leg-lift begins (that snap stood the body
+  // up out of the brace — the user-reported "reset").
+  auto project_triangle = [&](const double L[3], const double Rf[3],
+                              const double Rh[3], double out[2]) {
+    double vx[3] = {L[0], Rf[0], Rh[0]};
+    double vy[3] = {L[1], Rf[1], Rh[1]};
+    double ccx = (vx[0] + vx[1] + vx[2]) / 3.0;
+    double ccy = (vy[0] + vy[1] + vy[2]) / 3.0;
+    for (int i = 0; i < 2; i++)
+      for (int j = 0; j < 2 - i; j++) {
+        double a1 = std::atan2(vy[j] - ccy, vx[j] - ccx);
+        double a2 = std::atan2(vy[j+1] - ccy, vx[j+1] - ccx);
+        if (a1 > a2) {
+          double tt = vx[j]; vx[j] = vx[j+1]; vx[j+1] = tt;
+          tt = vy[j]; vy[j] = vy[j+1]; vy[j+1] = tt;
+        }
+      }
+    double px = capture_point[0], py = capture_point[1];
+    bool inside = true;
+    for (int i = 0; i < 3; i++) {
+      int j = (i + 1) % 3;
+      double cross = (vx[j]-vx[i])*(py-vy[i]) - (vy[j]-vy[i])*(px-vx[i]);
+      if (cross < 0.0) { inside = false; break; }
+    }
+    if (inside) { out[0] = px; out[1] = py; return; }
+    double best = 1.0e9; out[0] = px; out[1] = py;
+    for (int i = 0; i < 3; i++) {
+      int j = (i + 1) % 3;
+      double ax = vx[i], ay = vy[i], abx = vx[j]-ax, aby = vy[j]-ay;
+      double len2 = abx*abx + aby*aby;
+      double tt = (len2 > 1e-9)
+          ? mju_max(0.0, mju_min(1.0, ((px-ax)*abx + (py-ay)*aby)/len2)) : 0.0;
+      double qx = ax + tt*abx, qy = ay + tt*aby;
+      double d2 = (px-qx)*(px-qx) + (py-qy)*(py-qy);
+      if (d2 < best) { best = d2; out[0] = qx; out[1] = qy; }
+    }
+  };
   if (is_leg_lift_stage_early) {
     if (any_arm_contact) {
       // L_foot + LOAD-LIMITED step toward R_hand.
@@ -408,8 +481,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
               ((capture_point[0] - ax) * abx +
                (capture_point[1] - ay) * aby) / len2))
           : 0.0;
-      pcp[0] = ax + t * abx;
-      pcp[1] = ay + t * aby;
+      double pcp_seg[2] = {ax + t * abx, ay + t * aby};
+      // 2026-05-20: blend the two-foot braced triangle -> single-foot segment
+      // over the phase ramp (alpha). At leg-lift entry (alpha=0) the support
+      // polygon is still the {L_foot,R_foot,R_hand} triangle the body was
+      // braced in, so the CoM target does NOT jump back and the body does not
+      // stand up; as the right foot actually lifts (alpha->1, in sync with the
+      // ramped lift target) it eases to the load-limited single-foot segment.
+      // This is what makes leg-lift CONTINUE from the brace (fixes the reset).
+      double pcp_tri[2];
+      project_triangle(foot_left_pos, foot_right_pos, bracing_hand, pcp_tri);
+      pcp[0] = (1.0 - alpha) * pcp_tri[0] + alpha * pcp_seg[0];
+      pcp[1] = (1.0 - alpha) * pcp_tri[1] + alpha * pcp_seg[1];
       pcp[2] = 1.0e-3;
     } else {
       mju_copy3(pcp, foot_left_pos);
@@ -506,9 +589,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double load_ratio = (target_brace_force_now > 0.0)
                           ? mju_min(1.0, target_brace_force_now / 120.0)
                           : 0.0;
-  double balance_scale = is_leg_lift_stage_early
-                             ? 1.0
-                             : (1.0 - 0.65 * load_ratio);
+  // 2026-05-20: ramp balance authority IN over the phase transition instead of
+  // snapping 0.62 -> 1.0 the instant leg-lift begins. The hard step suddenly
+  // over-penalised the forward-leaning braced CoM, so the planner stood the
+  // body upright out of the brace and then re-leaned (user: "it resets the
+  // sequence, pulls the arm back, gets up, then braces again"). alpha is the
+  // smoothstep phase ramp (0 at entry -> 1 after kPhaseRampSeconds), so leg-
+  // lift now CONTINUES from the brace and tightens balance to full single-
+  // support authority only as the foot actually lifts.
+  double braced_balance_scale = 1.0 - 0.65 * load_ratio;
+  double balance_scale =
+      is_leg_lift_stage_early
+          ? braced_balance_scale + alpha * (1.0 - braced_balance_scale)
+          : braced_balance_scale;
   // -------- Directional Balance with quadratic edge amplification ------ //
   // CoM excursion has 3 directions and they're physically asymmetric:
   //   - FORWARD  (+x in world): the brace hand on the table catches this
@@ -680,7 +773,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // At weight 0.015 with phase_posture_scale=1 it's too weak — once a knee
   // drifts a few degrees, nothing pulls it back. During stand_up the boost
   // gives Posture 9× more effective cost (quadratic), keeping legs extended.
-  mju_sub(&residual[counter], data->qpos + 7, model->key_qpos + 7, model->nu);
+  mju_sub(&residual[counter], data->qpos + 7, posture_target + 7, model->nu);
   mju_scl(&residual[counter], &residual[counter], phase_posture_scale,
           model->nu);
   counter += model->nu;
@@ -706,13 +799,27 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   counter += 2;
 
   // ----- control ----- //
-  mju_sub(&residual[counter], data->ctrl, model->key_qpos + 7,
-          model->nu);  // because of pos control
+  mju_sub(&residual[counter], data->ctrl, posture_target + 7,
+          model->nu);  // because of pos control (tracks pose-library key)
   counter += model->nu;
 
   // ----- bracing hand position on table ----- //
+  // Reach-to-contact, then FADE OUT (2026-05-22). `ideal_brace.z` sits 6 cm
+  // below the surface so the pull is strong enough to bring the forearm down to
+  // contact under the tight real-robot ROM. But a below-surface target keeps
+  // dragging the body onto the arm AFTER contact -- and the one-sided Brace
+  // Force cost lets the planner press arbitrarily hard for free -- giving a
+  // ~450 N entry slam and 0<->117 N on/off chatter. So fade the position pull as
+  // the MEASURED brace force approaches the per-phase target; past target the
+  // Brace Force cost alone holds a steady press. This is force feedback through
+  // the position gate: a force spike lowers the gate (less push) and a dropout
+  // raises it (more push), which damps the contact oscillation rather than
+  // driving it. Pre-contact (force 0) the gate is 1.0, so reaching is unchanged.
+  double brace_force_ref  = mju_max(15.0, residual_keyframe_.brace_force_target);
+  double brace_force_frac = mju_min(1.0, brace_contact_force / brace_force_ref);
+  double brace_pos_gate   = phase_brace_pos_scale * (1.0 - 0.85 * brace_force_frac);
   mju_sub3(&residual[counter], bracing_hand, ideal_brace);
-  mju_scl3(&residual[counter], &residual[counter], phase_brace_pos_scale);
+  mju_scl3(&residual[counter], &residual[counter], brace_pos_gate);
   counter += 3;
 
   // Per-phase brace-force reference.
@@ -1778,6 +1885,15 @@ void lean::ComputeMetrics(const mjModel *model, const mjData *data,
   // Signed forward distance from CoM ground projection to front foot edge.
   // Positive = CoM is forward of the foot polygon (only safe with brace).
   (*metrics)["com_beyond_foot_edge"] = subcom[0] - front_edge_x;
+
+  // ----- ZMP/CoP support-polygon excursion (B6b) ------------------------- //
+  // Same sign convention as com_beyond_foot_edge, but for the MEASURED ZMP
+  // (cop_x from M4) instead of the CoM. Positive = CoP forward of the front
+  // foot edge. Because cop_x is force-weighted over FLOOR contacts only, the
+  // ZMP stays pinned inside the feet even while the CoM pushes out over the
+  // table edge during a brace -- so the gap between the two margins is exactly
+  // the load the bracing hand is carrying.
+  (*metrics)["cop_beyond_foot_edge"] = (*metrics)["cop_x"] - front_edge_x;
 
   // ----- Foot positions exposed for SP top-down panel -------------------- //
   (*metrics)["foot_left_x"] = foot_left[0];

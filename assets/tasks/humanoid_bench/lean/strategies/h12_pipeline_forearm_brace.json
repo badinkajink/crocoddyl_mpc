@@ -1,556 +1,556 @@
 [
-    {
-        "contacts": [
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            }
+  {
+    "contacts": [
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
         ],
-        "facing_target": [],
-        "name": "stand_up",
-        "success_sustain_time": 5.0,
-        "target_distance_tolerance": 0.3,
-        "time_limit": 12.0,
-        "weight": {},
-        "brace_force_target": 0.0
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "facing_target": [],
+    "name": "stand_up",
+    "success_sustain_time": 5.0,
+    "target_distance_tolerance": 0.3,
+    "time_limit": 12.0,
+    "weight": {},
+    "brace_force_target": 0.0
+  },
+  {
+    "contacts": [
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "facing_target": [],
+    "name": "arm_extend_standing",
+    "success_sustain_time": 3.0,
+    "target_distance_tolerance": 0.3,
+    "time_limit": 10.0,
+    "weight": {
+      "Pelvis Tilt": 300.0,
+      "Torso Forward Tilt": 0.0,
+      "Foot Stability": 60.0,
+      "Object Dist": 80.0,
+      "Reaching Hand Dist": 40.0
     },
-    {
-        "contacts": [
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            }
+    "brace_force_target": 0.0
+  },
+  {
+    "contacts": [
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
         ],
-        "facing_target": [],
-        "name": "arm_extend_standing",
-        "success_sustain_time": 3.0,
-        "target_distance_tolerance": 0.3,
-        "time_limit": 10.0,
-        "weight": {
-            "Pelvis Tilt": 300.0,
-            "Torso Forward Tilt": 0.0,
-            "Foot Stability": 60.0,
-            "Object Dist": 80.0,
-            "Reaching Hand Dist": 40.0
-        },
-        "brace_force_target": 0.0
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "facing_target": [],
+    "name": "lean_with_arm_no_brace",
+    "success_sustain_time": 3.0,
+    "target_distance_tolerance": 0.3,
+    "time_limit": 10.0,
+    "weight": {},
+    "brace_force_target": 0.0
+  },
+  {
+    "contacts": [
+      {
+        "body1": 28,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.17,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.62,
+          -0.24,
+          0.75
+        ]
+      },
+      {
+        "body1": 7,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.22,
+          0.163,
+          0.03
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "facing_target": [],
+    "name": "arm_plant",
+    "success_sustain_time": 1.5,
+    "target_distance_tolerance": 0.3,
+    "time_limit": 10.0,
+    "weight": {},
+    "brace_force_target": 60.0
+  },
+  {
+    "contacts": [
+      {
+        "body1": 28,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.17,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.62,
+          -0.24,
+          0.75
+        ]
+      },
+      {
+        "body1": 7,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.22,
+          0.163,
+          0.03
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "facing_target": [],
+    "name": "lean_forward",
+    "success_sustain_time": 8.0,
+    "target_distance_tolerance": 0.25,
+    "time_limit": 30.0,
+    "weight": {},
+    "brace_force_target": 70.0
+  },
+  {
+    "contacts": [
+      {
+        "body1": 28,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.17,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.8,
+          -0.24,
+          0.75
+        ]
+      },
+      {
+        "body1": 25,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.4,
+          -0.24,
+          0.8
+        ]
+      },
+      {
+        "body1": 7,
+        "body2": 0,
+        "geom1": 0,
+        "geom2": 0,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.22,
+          0.163,
+          0.03
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "body1": -1,
+        "body2": -1,
+        "geom1": -1,
+        "geom2": -1,
+        "local_pos1": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "local_pos2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "facing_target": [],
+    "name": "forearm_brace_lean",
+    "success_sustain_time": 9999.0,
+    "target_distance_tolerance": 0.3,
+    "time_limit": 9999.0,
+    "weight": {
+      "Height": 30.0
     },
-    {
-        "contacts": [
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            }
-        ],
-        "facing_target": [],
-        "name": "lean_with_arm_no_brace",
-        "success_sustain_time": 3.0,
-        "target_distance_tolerance": 0.3,
-        "time_limit": 10.0,
-        "weight": {},
-        "brace_force_target": 0.0
-    },
-    {
-        "contacts": [
-            {
-                "body1": 28,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.17,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.62,
-                    -0.163,
-                    0.75
-                ]
-            },
-            {
-                "body1": 7,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.22,
-                    0.163,
-                    0.03
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            }
-        ],
-        "facing_target": [],
-        "name": "arm_plant",
-        "success_sustain_time": 1.5,
-        "target_distance_tolerance": 0.3,
-        "time_limit": 10.0,
-        "weight": {},
-        "brace_force_target": 60.0
-    },
-    {
-        "contacts": [
-            {
-                "body1": 28,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.17,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.62,
-                    -0.163,
-                    0.75
-                ]
-            },
-            {
-                "body1": 7,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.22,
-                    0.163,
-                    0.03
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            }
-        ],
-        "facing_target": [],
-        "name": "lean_forward",
-        "success_sustain_time": 8.0,
-        "target_distance_tolerance": 0.25,
-        "time_limit": 30.0,
-        "weight": {},
-        "brace_force_target": 70.0
-    },
-    {
-        "contacts": [
-            {
-                "body1": 28,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.17,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.8,
-                    -0.163,
-                    0.75
-                ]
-            },
-            {
-                "body1": 25,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.4,
-                    -0.163,
-                    0.8
-                ]
-            },
-            {
-                "body1": 7,
-                "body2": 0,
-                "geom1": 0,
-                "geom2": 0,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.22,
-                    0.163,
-                    0.03
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            {
-                "body1": -1,
-                "body2": -1,
-                "geom1": -1,
-                "geom2": -1,
-                "local_pos1": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "local_pos2": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            }
-        ],
-        "facing_target": [],
-        "name": "forearm_brace_lean",
-        "success_sustain_time": 9999.0,
-        "target_distance_tolerance": 0.3,
-        "time_limit": 9999.0,
-        "weight": {
-            "Height": 30.0
-        },
-        "brace_force_target": 70.0
-    }
+    "brace_force_target": 70.0
+  }
 ]

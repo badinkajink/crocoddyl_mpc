@@ -155,12 +155,29 @@ class lean : public Task {
   // Each slot is a literal truncation of the index-5 pipeline with the
   // last phase forced indefinite (sustain/time_limit = 9999).
   virtual std::vector<std::string> GetStrategyNames() const {
-    return {"h12_pipeline_stand",
+    return {// 0-5: the lean pipeline (unchanged; default Strategy=5)
+            "h12_pipeline_stand",
             "h12_pipeline_arm_extend",
             "h12_pipeline_lean_no_brace",
             "h12_pipeline_brace_hand_lean",
             "h12_pipeline_forearm_brace",
-            "h12_pipeline_full_pipeline"};
+            "h12_pipeline_full_pipeline",
+            // 6+: standalone single-skill tasks for incremental sim2real
+            // bring-up. Each is one indefinite phase. Pose tasks (crouch,
+            // arms_*, lean_*, torso_twist) name a model <key> keyframe that
+            // the Posture/Control costs track (see lean.cc pose-library
+            // block). Slide the Strategy parameter to select; raise the
+            // residual_Strategy slider max in Lean_H12.xml accordingly.
+            "h12_simple_stand",          // 6  balance hold at home pose
+            "h12_simple_reach_forward",  // 7  left arm forward, body squared
+            "h12_simple_crouch",         // 8  symmetric squat, torso upright
+            "h12_simple_arms_sideways",  // 9  bilateral lateral raise (T)
+            "h12_simple_arms_forward",   // 10 bilateral front raise
+            "h12_simple_arms_overhead",  // 11 both arms overhead
+            "h12_simple_single_arm_raise",  // 12 right arm to the side
+            "h12_simple_lean_left",      // 13 lateral weight-shift onto L
+            "h12_simple_lean_right",     // 14 lateral weight-shift onto R
+            "h12_simple_torso_twist"};   // 15 waist yaw to the left
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -235,14 +252,28 @@ class Lean_H12_Hands : public lean {
     return GetModelPath("humanoid_bench/lean/Lean_H12_Hands.xml");
   }
 
-  // Mirrors Lean_H12::GetStrategyNames slot-for-slot.
+  // Mirrors Lean_H12::GetStrategyNames slot-for-slot. NOTE: the Hands model's
+  // Posture cost (dim 27) does not reach the right arm (qpos[39:46] — the
+  // 12-DOF dexterous hands shift it), so right-arm pose tasks are partial on
+  // this variant until the Hands Posture dim is widened. Lower-body + left-arm
+  // poses (stand/crouch/lean_*/arms_forward-left) track correctly.
   std::vector<std::string> GetStrategyNames() const override {
     return {"h12_hands_pipeline_stand",
             "h12_hands_pipeline_arm_extend",
             "h12_hands_pipeline_lean_no_brace",
             "h12_hands_pipeline_brace_hand_lean",
             "h12_hands_pipeline_forearm_brace",
-            "h12_hands_pipeline_full_pipeline"};
+            "h12_hands_pipeline_full_pipeline",
+            "h12_hands_simple_stand",
+            "h12_hands_simple_reach_forward",
+            "h12_hands_simple_crouch",
+            "h12_hands_simple_arms_sideways",
+            "h12_hands_simple_arms_forward",
+            "h12_hands_simple_arms_overhead",
+            "h12_hands_simple_single_arm_raise",
+            "h12_hands_simple_lean_left",
+            "h12_hands_simple_lean_right",
+            "h12_hands_simple_torso_twist"};
   }
 };
 

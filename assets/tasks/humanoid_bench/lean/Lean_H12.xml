@@ -22,6 +22,20 @@
             0 0 0 0 0 0 0
             0 0 0 0 0 0 0
             1.5 0 0.73 1 0 0 0"/>
+        <!-- Pose-library targets for the standalone simple-task strategies
+             (Strategy 8-15). The phase name in each strategy JSON matches one
+             of these keyframe names; lean.cc points the Posture + Control
+             costs at the matching key. qpos = home with only the relevant
+             joints set (validated vs joint limits + self-collision by
+             strategies/_gen_simple_strategies.py). -->
+        <key name="crouch" qpos="0.19 0 1.028 1 0 0 0 0 -0.6 0 1 -0.4 0 0 -0.6 0 1 -0.4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="arms_sideways" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0 0 0 0 0 -1.5 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="arms_forward" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.5 0 0 0 0 0 0 -1.5 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="arms_overhead" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.8 0.25 0 0 0 0 0 2.8 -0.25 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="single_arm_raise" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.5 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="lean_left" qpos="0.19 0 1.028 1 0 0 0 0 0 -0.3 0 0 0 0 0 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="lean_right" qpos="0.19 0 1.028 1 0 0 0 0 0 0.3 0 0 0 0 0 0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="torso_twist" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -87,8 +101,13 @@
                4 = pipeline_forearm_brace     (+ elbow lands, deeper lean)
                5 = pipeline_full_pipeline     (+ right leg lifts) — DEFAULT
              Each slot truncates the index-5 pipeline at one of the user's
-             6 phase boundaries; last keyframe of each is indefinite. -->
-        <numeric name="residual_Strategy" data="5 0 5" />
+             6 phase boundaries; last keyframe of each is indefinite.
+             Indices 6-15 are the standalone single-skill tasks (see
+             GetStrategyNames in lean.h): 6 stand, 7 reach_forward, 8 crouch,
+             9 arms_sideways, 10 arms_forward, 11 arms_overhead,
+             12 single_arm_raise, 13 lean_left, 14 lean_right, 15 torso_twist.
+             Slider max raised 5 → 15 so these are reachable. -->
+        <numeric name="residual_Strategy" data="5 0 15" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
              (default behaviour, runs the whole loaded pipeline). 0..6 =
              hold at that keyframe index regardless of progress; auto-
@@ -97,7 +116,7 @@
              to inspect transitions one-by-one (e.g. set Strategy=5 then
              slide Phase 3→4→5) without the body snapping back to
              stand_up on every strategy switch. -->
-        <numeric name="residual_Phase" data="-1 -1 6" />
+        <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>
 
     <sensor>
@@ -141,7 +160,7 @@
         <!-- TEST #14: weight back to 30 (test 13's 50 was too rigid
              given asymmetric reach targets). Y is clamped (not fixed)
              inside lean.cc to give the body room to twist for reaches. -->
-        <user name="Brace Pos" dim="3" user="6 30.0 0.0 100.0 0.1"/>
+        <user name="Brace Pos" dim="3" user="6 80.0 0.0 100.0 0.1"/>
         <!-- ITER 22 (2026-05-18): Brace Force is now ONE-SIDED in lean.cc
              (residual = max(0, target - actual)). Test 18's failure with
              symmetric weight=75 doesn't apply — the planner is no longer
@@ -151,7 +170,7 @@
              saying "push DOWN harder, that's GOOD". Weight stays at 25
              so the per-newton cost gradient is the same; the change is
              that there's no longer a counter-gradient pulling it down. -->
-        <user name="Brace Force" dim="1" user="6 25.0 0.0 100.0 15.0"/>
+        <user name="Brace Force" dim="1" user="6 60.0 0.0 100.0 15.0"/>
         <!-- Reverted to 50 (test 21 Object Dist=30 was too weak — planner
              stopped trying to fully extend the reach). Keep Contact=150
              which DID help anchor the foot. -->

@@ -1,0 +1,93 @@
+[
+    {
+        "contacts": [
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        ],
+        "facing_target": [],
+        "name": "stand_up",
+        "success_sustain_time": 9999.0,
+        "target_distance_tolerance": 0.3,
+        "time_limit": 9999.0,
+        "weight": {},
+        "brace_force_target": 0.0
+    }
+]
