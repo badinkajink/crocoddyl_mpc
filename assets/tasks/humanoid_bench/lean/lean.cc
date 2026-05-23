@@ -1476,8 +1476,17 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
         alpha * (bf_t - residual_.prev_phase_brace_force_target_);
   };
 
-  if (!motion_strategy_.HasKeyframes() ||
-      requested_strategy != current_strategy_) {
+  bool cold_start = !motion_strategy_.HasKeyframes();
+  if (cold_start || requested_strategy != current_strategy_) {
+    // A live strategy switch (not the first load) eases into the new task:
+    // snapshot the scales + weights the rollouts currently see, so the new
+    // strategy ramps OUT of them over kPhaseRampSeconds instead of snapping.
+    // Reuses the exact machinery the manual Phase scrubber uses, so a
+    // task-select button press transitions calmly rather than lurching.
+    if (!cold_start) {
+      SnapshotEffectiveScales();
+      SnapshotCurrentWeightsAsPrev();
+    }
     current_strategy_ = requested_strategy;
     motion_strategy_.ClearKeyframes();
     motion_strategy_.LoadStrategy(kStrategyNames[current_strategy_],
@@ -1487,22 +1496,25 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     MarkNewlyAppearedContacts(residual_.residual_keyframe_,
                               motion_strategy_.GetCurrentKeyframe());
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
-    // Cold start (or strategy switch): no previous phase, prev scales = 0
-    // so the first ramp climbs cleanly out of (0, 0) into stand_up's
-    // targets (which are also 0, 0 — i.e. no ramp during stand_up).
-    residual_.keyframe_start_time_      = data->time;
-    residual_.prev_phase_reach_scale_   = 0.0;
-    residual_.prev_phase_brace_pos_scale_ = 0.0;
-    // Posture starts at 1.0 (the "default no-boost" level) so the first
-    // stand_up ramp climbs cleanly from 1.0 → 3.0 over kPhaseRampSeconds.
-    residual_.prev_phase_posture_scale_ = 1.0;
-    // ITER 28: brace_force starts at 0 (stand_up target = 0) so the ramp
-    // into arm_plant climbs cleanly from 0 to the keyframe target.
-    residual_.prev_phase_brace_force_target_ = 0.0;
-    // Live weight ramp: jump straight to the first phase's targets (no
-    // pre-existing weight history on a fresh strategy load).
-    PrepareNextPhaseWeights(residual_.residual_keyframe_);
-    prev_phase_weights_ = next_phase_weights_;
+    residual_.keyframe_start_time_ = data->time;
+    if (cold_start) {
+      // First load: no history to ramp from. Snap to the first phase's
+      // targets (prev scales = 0, posture = 1.0 "no-boost", brace_force = 0),
+      // exactly as before. stand_up's targets are also (0, 0) so there is no
+      // visible ramp on boot.
+      residual_.prev_phase_reach_scale_        = 0.0;
+      residual_.prev_phase_brace_pos_scale_    = 0.0;
+      residual_.prev_phase_posture_scale_      = 1.0;
+      residual_.prev_phase_brace_force_target_ = 0.0;
+      PrepareNextPhaseWeights(residual_.residual_keyframe_);
+      prev_phase_weights_ = next_phase_weights_;  // snap (no history)
+    } else {
+      // Live switch: prev_* scales + prev_phase_weights_ already hold the
+      // current effective values (snapshotted above). Only set the new
+      // targets; ApplyRampedWeights + the Residual() scale ramp carry the
+      // transition over kPhaseRampSeconds (alpha keyed off keyframe_start_time_).
+      PrepareNextPhaseWeights(residual_.residual_keyframe_);
+    }
     ApplyRampedWeights(model, data);
     return;
   }
