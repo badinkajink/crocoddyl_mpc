@@ -56,6 +56,16 @@ inline void PhaseTargetScales(const std::string& name,
   else if (name == "arm_extend_standing") {
     reach = 1.0; brace_pos = 0.0; posture = 1.5;
   }
+  // counterbalance_standing: dedicated STANDING counterbalance skill (Strategy
+  // 16). Like arm_extend_standing the left arm reaches forward and the feet
+  // stay planted, BUT the reach target is overridden to SHOULDER height (see
+  // Residual()) so the arm extends horizontally instead of reaching down toward
+  // the table-edge brace point — that downward, unreachable target was what
+  // made the arm tuck/crunch into the torso. Posture×1.0 (NOT 1.5) leaves the
+  // free (right) arm loose so it can swing back as an emergent counterweight.
+  else if (name == "counterbalance_standing") {
+    reach = 1.0; brace_pos = 0.0; posture = 1.0;
+  }
   // lean_with_arm_no_brace: arm stays out from the previous phase but the
   // body now commits to a forward lean WITHOUT making table contact. This
   // is the "lean-and-catch-yourself-just-in-time" beat; the contact lands
@@ -252,6 +262,31 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     phase1_target_storage[0] = torso_pos[0] + 0.55;
     phase1_target_storage[1] = torso_pos[1] + 0.20;
     phase1_target_storage[2] = torso_pos[2] - 0.05;
+    reach_target = phase1_target_storage;
+  }
+  // counterbalance_standing (Strategy 16): FOOT-ANCHORED (lean-invariant) reach
+  // target so a relaxed Pelvis Tilt lets the body PITCH FORWARD into a leaning
+  // counterbalance WITHOUT runaway. The feet stay planted, so this point is
+  // effectively world-fixed: as the torso bows toward it the reach error SHRINKS
+  // (self-limiting) — unlike a torso-relative target, which would translate
+  // forward with the lean and chase itself into a face-plant. Placed 0.70 m
+  // forward of midfoot — well beyond the upright arm's horizontal reach — so the
+  // body must lean forward AND fully EXTEND the left arm to get there. A nearer
+  // target (0.55) let the elbow stay folded; pushing it out straightens the reach
+  // so the hand extends further in front. The free right arm + hips swing back to
+  // counterbalance. z = 0.75 is BELOW torso (~1.03) so reach_dir points
+  // forward-DOWN — that is what lets `Torso Forward Tilt` (JSON weight, off in the
+  // upright variant) pitch the torso FORWARD into the reach instead of leaning
+  // back; a shoulder-height target gave reach_dir UP, so the only balance response
+  // to the forward arm was a BACKWARD lean (measured −7.5°). Forward distance and
+  // lean depth are the SAME knob: a further/lower target = deeper lean = bigger
+  // counter-arm swing. Pipeline's `arm_extend_standing` override (above) untouched.
+  else if (residual_keyframe_.name == "counterbalance_standing") {
+    double const *fl = SensorByName(model, data, "foot_left_pos");
+    double const *fr = SensorByName(model, data, "foot_right_pos");
+    phase1_target_storage[0] = 0.5 * (fl[0] + fr[0]) + 0.70;
+    phase1_target_storage[1] = 0.5 * (fl[1] + fr[1]) + 0.15;
+    phase1_target_storage[2] = 0.75;
     reach_target = phase1_target_storage;
   }
 

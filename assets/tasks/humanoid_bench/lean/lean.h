@@ -177,7 +177,9 @@ class lean : public Task {
             "h12_simple_single_arm_raise",  // 12 right arm to the side
             "h12_simple_lean_left",      // 13 lateral weight-shift onto L
             "h12_simple_lean_right",     // 14 lateral weight-shift onto R
-            "h12_simple_torso_twist"};   // 15 waist yaw to the left
+            "h12_simple_torso_twist",    // 15 waist yaw to the left
+            "h12_simple_counterbalance"};// 16 left-arm forward reach + emergent
+                                         //    right-arm/torso counterweight
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -273,7 +275,8 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_single_arm_raise",
             "h12_hands_simple_lean_left",
             "h12_hands_simple_lean_right",
-            "h12_hands_simple_torso_twist"};
+            "h12_hands_simple_torso_twist",
+            "h12_hands_simple_counterbalance"};  // 16 (mirrors Lean_H12 slot 16)
   }
 };
 

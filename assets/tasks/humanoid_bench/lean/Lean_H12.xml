@@ -107,7 +107,7 @@
              9 arms_sideways, 10 arms_forward, 11 arms_overhead,
              12 single_arm_raise, 13 lean_left, 14 lean_right, 15 torso_twist.
              Slider max raised 5 → 15 so these are reachable. -->
-        <numeric name="residual_Strategy" data="5 0 15" />
+        <numeric name="residual_Strategy" data="5 0 16" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
              (default behaviour, runs the whole loaded pipeline). 0..6 =
              hold at that keyframe index regardless of progress; auto-

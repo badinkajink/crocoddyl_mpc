@@ -79,7 +79,7 @@
              6-phase pipeline, indices 0-4 are progressive prefix slices of
              it. Indices 6-15 are the standalone simple-task strategies (see
              Lean_H12.xml + GetStrategyNames). Max raised 5 → 15. -->
-        <numeric name="residual_Strategy" data="5 0 15" />
+        <numeric name="residual_Strategy" data="5 0 16" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>
