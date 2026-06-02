@@ -98,7 +98,10 @@ POSE_WEIGHTS = {
 }
 # non-pose tasks (track home key 0 / use existing reach machinery)
 SPECIAL = {
-    "stand": {"name": "stand_up", "weight": {}},
+    # stand = pure upright hold: zero ALL lean/table/brace costs (else it inherits
+    # the lean task defaults incl. Object Dist -> drags the robot toward a table
+    # that isn't in the twin scene). Same cost map as arms_forward, home pose.
+    "stand": {"name": "stand_up", "weight": merged(Posture=8.0)},
     "reach_forward": {"name": "arm_extend_standing",
                       "weight": {"Pelvis Tilt": 300.0, "Torso Forward Tilt": 0.0,
                                  "Foot Stability": 60.0, "Object Dist": 80.0,

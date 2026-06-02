@@ -87,7 +87,25 @@
         "success_sustain_time": 9999.0,
         "target_distance_tolerance": 0.3,
         "time_limit": 9999.0,
-        "weight": {},
+        "weight": {
+            "humanoid_bench": 0.0,
+            "Object Dist": 0.0,
+            "Reaching Hand Dist": 0.0,
+            "Brace Pos": 0.0,
+            "Brace Force": 0.0,
+            "Contact": 0.0,
+            "Left Leg Anchor": 0.0,
+            "Right Foot Lift": 0.0,
+            "Pelvis Forward": 0.0,
+            "Support Polygon": 0.0,
+            "Body Yaw": 0.0,
+            "Body Table Clearance": 0.0,
+            "Hip Clearance": 0.0,
+            "Leg Clearance": 0.0,
+            "Torso Forward Tilt": 0.0,
+            "Posture": 12.0,
+            "Balance": 1.5
+        },
         "brace_force_target": 0.0
     }
 ]

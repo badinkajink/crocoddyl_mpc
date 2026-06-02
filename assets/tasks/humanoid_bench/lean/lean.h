@@ -150,7 +150,15 @@ class lean : public Task {
   //   2  lean_no_brace    — stand → extend → lean_with_arm_no_brace
   //   3  brace_hand_lean  — stand → extend → lean → arm_plant → lean_forward
   //   4  forearm_brace    — above + forearm_brace_lean (hand+elbow on table)
-  //   5  full_pipeline    — above + leg_lift_arm_plant (DEFAULT)
+  //   5  full_pipeline    — identical to slot 4 now: ends in a HELD two-foot
+  //                         braced lean (DEFAULT).
+  //
+  // DESIGN (2026-05-26): the leg-lift phase (leg_lift_arm_plant) is DROPPED
+  // permanently. BOTH feet stay stable on the ground through EVERY phase of
+  // the pipeline. The only lower-body motion allowed is WBC-driven foot
+  // re-placement / hip twist IN SERVICE OF the brace (to hold balance while
+  // reaching/leaning) — never lifting a leg off the floor. No strategy JSON
+  // contains leg_lift_arm_plant anymore, so slot 5 == slot 4.
   //
   // Each slot is a literal truncation of the index-5 pipeline with the
   // last phase forced indefinite (sustain/time_limit = 9999).

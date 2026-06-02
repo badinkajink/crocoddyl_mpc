@@ -133,13 +133,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   const bool is_lean_no_brace_phase =
       (residual_keyframe_.name == "lean_with_arm_no_brace");
   const bool arm_contact_or_lean = any_arm_contact || is_lean_no_brace_phase;
-  // ITER 36 (2026-05-18): is_leg_lift detection now PHASE-NAME based, not
-  // contact-count based. Iter 36 adds the right elbow as a 3rd contact
-  // primitive in lean_forward (forearm-on-table brace, more stable than
-  // hand-only), which previously would have falsely tripped the count >= 3
-  // leg-lift check and lifted the right foot during what should be a
-  // stable braced lean. Now leg-lift behaviour fires only when the strategy
-  // explicitly enters the leg-lift phases.
+  // ITER 36 (2026-05-18): is_leg_lift detection is PHASE-NAME based (keyed on
+  // the active keyframe name), not contact-count based.
+  //
+  // DESIGN (2026-05-26): the leg-lift phase is DROPPED permanently — both feet
+  // stay grounded through the whole pipeline (see the lean.h header). NO
+  // strategy JSON contains "leg_lift_arm_plant" / "deep_reach" anymore, so
+  // is_leg_lift_stage_early is now ALWAYS FALSE and every `is_leg_lift_stage`
+  // branch below is DORMANT (kept as vestigial history, not removed) — the
+  // grounded branch (both feet anchored) always runs. Any future single-
+  // support move must come from a WBC/balance decision, not this hard gate.
   const bool is_leg_lift_stage_early =
       (residual_keyframe_.name == "leg_lift_arm_plant" ||
        residual_keyframe_.name == "deep_reach");
@@ -410,6 +413,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *subcomvel = SensorByName(model, data, "torso_subcomvel");
 
   double capture_point[3];
+  // Horizon kept at 0.3 s. A 0.45 s preview was trialed (2026-05-26) to fight the
+  // forward-velocity overshoot at brace commit, but a 10-run trace showed it did
+  // NOT improve the hold rate (still 8/10) and produced lower-quality holds (one
+  // barely-leaning +2 deg, one drifting -8 deg lateral), so it was reverted.
   mju_addScl(capture_point, subcom, subcomvel, 0.3, 3);
   capture_point[2] = 1.0e-3;
 
@@ -534,9 +541,31 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       pcp[2] = 1.0e-3;
     }
   } else if (any_arm_contact) {
-    // L_foot + R_foot + R_hand triangle.
-    double vx[3] = {foot_left_pos[0], foot_right_pos[0], bracing_hand[0]};
-    double vy[3] = {foot_left_pos[1], foot_right_pos[1], bracing_hand[1]};
+    // L_foot + R_foot + R_hand triangle, with a LOAD-LIMITED hand vertex.
+    //
+    // MARGIN FIX (2026-05-26): the hand vertex used bracing_hand UNCONDITIONALLY
+    // the instant a phase merely DECLARED an arm contact. That told Balance the
+    // CoM was supported all the way out to the hand (x≈0.62) BEFORE the hand was
+    // pressing, so the planner advanced the CoM forward into support that wasn't
+    // bearing load yet and pitched past the brace — a multi-run GUI-cadence trace
+    // measured a ~60% FORWARD fall at the brace-commit instant (~13.3 s).
+    // Fix mirrors the proven leg-lift load_frac logic above: step the third
+    // vertex from the midfoot toward the real hand only by MEASURED brace force /
+    // body weight. force≈0 → vertex≈midfoot → triangle collapses to the foot
+    // line → CoM must stay over the feet (no forward over-commit → no faceplant);
+    // as force builds → vertex extends → forward lean opens up exactly as far as
+    // the load justifies. The arm still REACHES the table independently (Reaching
+    // Hand Dist / Object Dist), so the hand can touch and start pressing with the
+    // CoM back — then this gate opens and the CoM advances into a real brace.
+    // No floor here (unlike leg-lift): the whole point is zero forward credit
+    // until the hand actually presses. divisor 140 N ≈ a solid brace, cap 0.9.
+    double midfoot_x = 0.5 * (foot_left_pos[0] + foot_right_pos[0]);
+    double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
+    double hand_load_frac = mju_min(0.9, brace_contact_force / 140.0);
+    double hand_vert_x = midfoot_x + hand_load_frac * (bracing_hand[0] - midfoot_x);
+    double hand_vert_y = midfoot_y + hand_load_frac * (bracing_hand[1] - midfoot_y);
+    double vx[3] = {foot_left_pos[0], foot_right_pos[0], hand_vert_x};
+    double vy[3] = {foot_left_pos[1], foot_right_pos[1], hand_vert_y};
     // CCW sort by angle from centroid (3 vertices, bubble sort).
     double ccx = (vx[0] + vx[1] + vx[2]) / 3.0;
     double ccy = (vy[0] + vy[1] + vy[2]) / 3.0;
@@ -620,19 +649,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // prioritisation says balance dominates during single-support phases.
   // Two-foot lean phases (arm_plant / lean_forward) still load-gate so the
   // bracing arm can take real load without balance fighting it.
-  double target_brace_force_now = residual_keyframe_.brace_force_target;
-  double load_ratio = (target_brace_force_now > 0.0)
-                          ? mju_min(1.0, target_brace_force_now / 120.0)
-                          : 0.0;
-  // 2026-05-20: ramp balance authority IN over the phase transition instead of
-  // snapping 0.62 -> 1.0 the instant leg-lift begins. The hard step suddenly
-  // over-penalised the forward-leaning braced CoM, so the planner stood the
-  // body upright out of the brace and then re-leaned (user: "it resets the
-  // sequence, pulls the arm back, gets up, then braces again"). alpha is the
-  // smoothstep phase ramp (0 at entry -> 1 after kPhaseRampSeconds), so leg-
-  // lift now CONTINUES from the brace and tightens balance to full single-
-  // support authority only as the foot actually lifts.
-  double braced_balance_scale = 1.0 - 0.65 * load_ratio;
+  // 2026-05-26: balance authority during the braced two-foot phase is now a
+  // CONSTANT, DECOUPLED from the brace-force target. It used to be
+  // 1 - 0.65*(target/120) — "the harder I intend to brace, the less I enforce
+  // balance." That made sense only while the support triangle was
+  // unconditionally open to the hand (balance had to be muted or it fought the
+  // lean). Now the triangle's hand vertex is LOAD-LIMITED by MEASURED force (see
+  // the any_arm_contact branch above), so a supported forward lean is already
+  // permitted geometrically and balance no longer needs muting. Worse, the old
+  // coupling meant raising brace_force_target (to carry a DEEPER lean) silently
+  // CUT balance authority and reopened the forward OVERSHOOT a multi-run
+  // GUI-cadence trace caught faceplanting ~60% of rollouts (CoM out to +159 mm).
+  // Softening the coefficient 0.65 -> 0.35 took the hold rate 40% -> 80% (10-run
+  // trace); pinning it to a constant 0.80 here removes the brace-force coupling
+  // so brace force and balance authority can be tuned INDEPENDENTLY — the brace
+  // can now be made to carry real load (a vertical hand force forward of the CoM
+  // is a nose-up restoring moment) WITHOUT giving back balance authority.
+  double braced_balance_scale = 0.80;
   double balance_scale =
       is_leg_lift_stage_early
           ? braced_balance_scale + alpha * (1.0 - braced_balance_scale)
@@ -884,7 +917,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double desired_brace_force =
       prev_phase_brace_force_target_ +
       alpha * (target_brace_force - prev_phase_brace_force_target_);
-  residual[counter++] = mju_max(0.0, desired_brace_force - brace_contact_force);
+  // PROXIMITY GATE (2026-05-26): only demand brace force once the bracing hand
+  // is NEAR its table target. Un-gated, max(0, desired-actual) is a large
+  // constant error whenever the forearm isn't in contact, so the planner can
+  // only shrink it by pushing FORWARD to chase a contact it can't seat in
+  // real time — a forward dive into a fall (user: "leans in to brace, falls
+  // forward fast, right leg up"). Brace Pos (above) still pulls the forearm to
+  // the table un-gated, so there is no chicken-and-egg: position drives the
+  // approach; the force demand ramps in (smoothstep) only over the last ~15 cm.
+  double brace_reach_gap = mju_dist3(bracing_hand, ideal_brace);
+  double bgg = mju_min(1.0, brace_reach_gap / 0.15);
+  double brace_force_prox_gate = 1.0 - bgg * bgg * (3.0 - 2.0 * bgg);
+  residual[counter++] = brace_force_prox_gate *
+                        mju_max(0.0, desired_brace_force - brace_contact_force);
 
   // ------ object distance (reaching hand) ------ //
   // Phase-gated: zero during stand_up so the planner doesn't lunge.
@@ -912,8 +957,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the H1-2 home keyframe the ankle_roll_link inertial offset places the
   // foot COM at x = 0.2196, not pelvis_x = 0.19. The old 0.19 constant
   // (copied from the pelvis qpos) made the residual +0.03 at home, adding
-  // a continuous 3 cm backward pull on both feet. Right foot freed during
-  // leg-lift stages (right leg lifts, left foot is sole ground support).
+  // a continuous 3 cm backward pull on both feet. (2026-05-26: leg-lift is
+  // DROPPED — both feet stay grounded; the "right foot freed" branch below is
+  // dormant. See is_leg_lift_stage_early and the lean.h header.)
   static constexpr double kRightFootHomeXY[2] = {0.2196, -0.163};
   static constexpr double kLeftFootHomeXY[2]  = {0.2196,  0.163};
 
@@ -929,11 +975,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // 2026-05-20: FK rollout showed the base of support COLLAPSES during
   // forearm_brace — the right foot creeps inward+forward (y -0.16→-0.03,
-  // x 0.22→0.38), shrinking the stance from 33cm to 12cm. Leg-lift then starts
-  // from a near-single-track base, which is what forces the stance hip to twist
-  // to balance. At the base scale (1.0) the anchor cost was ~0.7 — negligible.
-  // Anchor the right foot as firmly as the left while braced (×4) so the wide
-  // stance survives into leg-lift; still freed (0) once the right leg lifts.
+  // x 0.22→0.38), shrinking the stance from 33cm to 12cm. Anchor the right
+  // foot as firmly as the left while braced (×4) so the wide stance holds.
+  // 2026-05-26: leg-lift DROPPED → the right foot is NEVER freed; both feet
+  // stay grounded (the `is_leg_lift_stage ? 0.0 : ...` below always takes the
+  // anchored branch). WBC may still nudge foot placement to hold balance.
   double right_foot_scale = arm_contact_or_lean ? 4.0 : 1.0;
   residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - kRightFootHomeXY[0]);
   residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[1] - kRightFootHomeXY[1]);
@@ -952,7 +998,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ----- leg clearance from table front face ----- //
   // Left: check mid-thigh x (midpoint of pelvis and knee) — thigh is at table
   // height during lean so the knee-only check misses it.
-  // Right: knee x only (right leg lifts, so thigh constraint not needed there).
+  // Right: knee x only (clearance check; right leg now stays grounded too).
   double *left_knee_pos_3d  = SensorByName(model, data, "left_knee_pos");
   double *right_knee_pos_3d = SensorByName(model, data, "right_knee_pos");
   double left_thigh_mid_x   = 0.5 * (pelvis_pos_3d[0] + left_knee_pos_3d[0]);
@@ -961,9 +1007,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   residual[counter++] = left_thigh_penalty;
   residual[counter++] = right_knee_penalty;
 
-  // ----- left leg anchor (left leg = sole anchor throughout the pipeline) //
-  // The user's pipeline: right arm braces + right leg lifts. Left leg is
-  // the ONLY anchor and must be straight (knee up at ~0.42m) AND foot
+  // ----- left leg anchor (left knee straight + left foot planted) --------- //
+  // The pipeline: right arm braces while BOTH feet stay grounded — leg-lift is
+  // DROPPED (2026-05-26), no leg leaves the floor. Keep the left knee straight
+  // (up at ~0.42m) AND foot
   // FIRMLY on the ground during every phase that has any contact load on
   // the table.
   // ITER 22 (2026-05-18): foot-lift tolerance tightened 0.05 → 0.02 (only

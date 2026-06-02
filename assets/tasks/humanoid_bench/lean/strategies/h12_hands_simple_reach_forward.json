@@ -92,7 +92,9 @@
             "Torso Forward Tilt": 0.0,
             "Foot Stability": 60.0,
             "Object Dist": 80.0,
-            "Reaching Hand Dist": 40.0
+            "Reaching Hand Dist": 40.0,
+            "Posture": 12.0,
+            "Balance": 1.5
         },
         "brace_force_target": 0.0
     }

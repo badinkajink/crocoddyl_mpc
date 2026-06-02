@@ -103,7 +103,8 @@
             "Hip Clearance": 0.0,
             "Leg Clearance": 0.0,
             "Torso Forward Tilt": 0.0,
-            "Posture": 8.0
+            "Posture": 12.0,
+            "Balance": 1.5
         },
         "brace_force_target": 0.0
     }

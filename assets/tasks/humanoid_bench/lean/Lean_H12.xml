@@ -21,21 +21,21 @@
             0
             0 0 0 0 0 0 0
             0 0 0 0 0 0 0
-            1.5 0 0.73 1 0 0 0"/>
+            1.5 0 0.75 1 0 0 0"/>
         <!-- Pose-library targets for the standalone simple-task strategies
              (Strategy 8-15). The phase name in each strategy JSON matches one
              of these keyframe names; lean.cc points the Posture + Control
              costs at the matching key. qpos = home with only the relevant
              joints set (validated vs joint limits + self-collision by
              strategies/_gen_simple_strategies.py). -->
-        <key name="crouch" qpos="0.19 0 1.028 1 0 0 0 0 -0.4 0 0.7 -0.3 0 0 -0.4 0 0.7 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="arms_sideways" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0 0 0 0 0 -1.5 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="arms_forward" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.3 0 0 0 0 0 0 -1.3 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="arms_overhead" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.9 0 0 0 0 0 0 -2.9 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="single_arm_raise" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.5 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="lean_left" qpos="0.19 0 1.028 1 0 0 0 0 0 0.3 0 0 0 0 0 0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="lean_right" qpos="0.19 0 1.028 1 0 0 0 0 0 -0.3 0 0 0 0 0 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
-        <key name="torso_twist" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.73 1 0 0 0"/>
+        <key name="crouch" qpos="0.19 0 1.028 1 0 0 0 0 -0.4 0 0.7 -0.3 0 0 -0.4 0 0.7 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="arms_sideways" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0 0 0 0 0 -1.5 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="arms_forward" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.3 0 0 0 0 0 0 -1.3 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="arms_overhead" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.9 0 0 0 0 0 0 -2.9 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="single_arm_raise" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.5 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="lean_left" qpos="0.19 0 1.028 1 0 0 0 0 0 0.3 0 0 0 0 0 0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="lean_right" qpos="0.19 0 1.028 1 0 0 0 0 0 -0.3 0 0 0 0 0 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="torso_twist" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -99,9 +99,14 @@
                2 = pipeline_lean_no_brace     (+ body tilts forward, arm out)
                3 = pipeline_brace_hand_lean   (+ hand lands, deeper lean)
                4 = pipeline_forearm_brace     (+ elbow lands, deeper lean)
-               5 = pipeline_full_pipeline     (+ right leg lifts) — DEFAULT
+               5 = pipeline_full_pipeline     (= forearm_brace; held two-foot
+                   braced lean) — DEFAULT
+             DESIGN (2026-05-26): the leg-lift phase is DROPPED — BOTH feet
+             stay grounded through every phase; only WBC-driven foot
+             re-placement / hip twist for the brace is allowed, never a leg
+             lift. So slot 5 now == slot 4.
              Each slot truncates the index-5 pipeline at one of the user's
-             6 phase boundaries; last keyframe of each is indefinite.
+             phase boundaries; last keyframe of each is indefinite.
              Indices 6-15 are the standalone single-skill tasks (see
              GetStrategyNames in lean.h): 6 stand, 7 reach_forward, 8 crouch,
              9 arms_sideways, 10 arms_forward, 11 arms_overhead,
