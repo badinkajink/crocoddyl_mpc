@@ -10,14 +10,20 @@
          implicitly, so position-actuated humanoids stay stable at the
          control rates we run MJPC at. Euler (default) "quickly diverges"
          on biped balance per the docs. -->
-    <!-- CONTACT ALIGNED TO TWIN 2026-06-04 (the deferred Title-7 fix): impratio 10->1 +
-         cone elliptic->pyramidal == the twin's MuJoCo defaults. impratio 10 solved contacts
-         as if the feet grip hard, so the planner committed to crouch/weight-shifts assuming a
-         planted stance foot; the twin (impratio 1) slips -> asymmetric crouch (one knee bends,
-         a foot slides) -> topple. Aligning makes the planner predict the twin's actual foot slip.
+    <!-- CONTACT (Title-7), CORRECTED 2026-06-05: impratio 1 -> 100. The 2026-06-04 "1"
+         was wrong on two counts: (a) it matched the SLIPPY setting, not the twin's intent --
+         the team's own h1_2_pos.xml sets impratio=100 "to prevent contact slipping for stable,
+         non-jerky control" and explicitly cites arXiv:2503.04613; only the handless twin
+         lacked the line (now also set to 100); (b) at impratio=1 a SAMPLED rollout predicts
+         ONE stochastic foot-slip realization while the twin produces a DIFFERENT one, so the
+         planner cannot predict its own contact -> asymmetric crouch (one knee bends, a foot
+         slides) -> topple, exactly the live symptom. impratio=100 makes contact deterministic
+         on BOTH sides so rollouts match the twin. arXiv:2503.04613 Fig.4 = impratio=100 is the
+         single headline contact fix (default 1 -> nonphysical slip -> jerky/dangerous targets).
+         cone pyramidal KEPT (twin/team default; elliptic ~15% costlier, no accuracy gain here).
          integrator KEPT implicitfast (Euler diverges on biped balance per the docs, above).
          CAVEAT: the table-lean pipeline (0-5) brace was tuned at impratio 10 -> re-validate it. -->
-    <option integrator="implicitfast" cone="pyramidal" impratio="1"/>
+    <option integrator="implicitfast" cone="pyramidal" impratio="100"/>
 
     <keyframe>
         <key name="home"
@@ -93,6 +99,11 @@
              (~20%) smooths the mean policy without losing selection pressure
              (iCEM-style recommendation: small but not tiny). -->
         <numeric name="n_elite" data="6"/>
+        <!-- Free-standing UPRIGHT gain (2026-06-05): scales the sharpened sin(tilt)
+             pelvis-upright residual (lean.cc free-standing branch). 1.0 = the fix
+             (linear, pulls torso erect); 0 = legacy cos-flat behaviour for A/B.
+             Lower toward 0.3-0.5 if the stand over-stiffens/oscillates. -->
+        <numeric name="upright_gain" data="1.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
@@ -346,5 +357,11 @@
         <exclude body1="left_elbow_link" body2="left_wrist_roll_link"/>
         <exclude body1="left_wrist_roll_link" body2="left_wrist_pitch_link"/>
         <exclude body1="left_wrist_pitch_link" body2="left_wrist_yaw_link"/>
+        <!-- skip-one roll<->yaw self-overlap (the wrist geoms overlap ~1.8cm at rest; the
+             consecutive-pair excludes above miss it). Harmless at impratio<=10 but explodes
+             to ~125kN at impratio=100 (internal force, net-zero on CoM, but numerically ugly
+             and a parity gap vs the handless twin which has no wrist collision geoms). 2026-06-05. -->
+        <exclude body1="right_wrist_roll_link" body2="right_wrist_yaw_link"/>
+        <exclude body1="left_wrist_roll_link" body2="left_wrist_yaw_link"/>
     </contact>
 </mujoco>

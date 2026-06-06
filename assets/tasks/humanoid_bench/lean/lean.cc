@@ -800,7 +800,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   } else if (arm_contact_or_lean) {
     pelvis_tilt_residual = mju_max(0.0, pelvis_tilt_threshold - pelvis_up[2]);
   } else {
-    pelvis_tilt_residual = pelvis_up[2] - 1.0;
+    // FREE-STANDING upright (stand/crouch/arms_*): the legacy residual
+    // pelvis_up[2]-1 == cos(tilt)-1 is QUADRATICALLY FLAT near vertical, so a
+    // ~17deg counterbalance lean cost almost nothing and the planner parked
+    // there (butt-back, arms-forward) on the decoupled twin -> metastable, then
+    // toppled. Root-caused 2026-06-05. Replace with sin(tilt) (horizontal
+    // magnitude of the pelvis up-vector), which is ~LINEAR near vertical (~6x
+    // sharper at 17deg) -> pulls the torso erect. Scaled by the `upright_gain`
+    // numeric so it is tunable/reversible WITHOUT a recompile:
+    //   gain  > 0 : sharpened linear term * gain  (default 1.0 = the fix)
+    //   gain <= 0 : exact legacy cos-flat behaviour (clean A/B baseline)
+    // The arm-contact/lean branch above is UNTOUCHED -> table-brace lean intact.
+    double upright_gain = GetNumberOrDefault(1.0, model, "upright_gain");
+    if (upright_gain <= 0.0) {
+      pelvis_tilt_residual = pelvis_up[2] - 1.0;
+    } else {
+      double sin_tilt =
+          mju_sqrt(mju_max(0.0, 1.0 - pelvis_up[2] * pelvis_up[2]));
+      pelvis_tilt_residual = upright_gain * sin_tilt;
+    }
   }
   residual[counter++] = pelvis_tilt_residual;
 

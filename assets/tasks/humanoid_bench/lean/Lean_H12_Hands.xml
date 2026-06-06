@@ -10,7 +10,9 @@
          implicitly, so position-actuated humanoids stay stable at the
          control rates we run MJPC at. Euler (default) "quickly diverges"
          on biped balance per the docs. -->
-    <option integrator="implicitfast" cone="pyramidal" impratio="1"/>
+    <!-- impratio 1 -> 100 (2026-06-05, Title-7): match twin + h1_2_pos_hands.xml; kill
+         nonphysical foot slip so sampled rollouts predict the twin's contact (arXiv:2503.04613 Fig.4). -->
+    <option integrator="implicitfast" cone="pyramidal" impratio="100"/>
 
     <keyframe>
         <key name="home"
@@ -68,6 +70,9 @@
              refit each step, producing the periodic Brace Force spikes. 6 elites
              (~20%) smooths the mean policy without losing selection pressure. -->
         <numeric name="n_elite" data="6"/>
+        <!-- Free-standing UPRIGHT gain (2026-06-05): scales the sharpened sin(tilt)
+             pelvis-upright residual. 1.0 = fix; 0 = legacy cos-flat for A/B. -->
+        <numeric name="upright_gain" data="1.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
@@ -252,5 +257,8 @@
         <exclude body1="left_elbow_link" body2="left_wrist_roll_link"/>
         <exclude body1="left_wrist_roll_link" body2="left_wrist_pitch_link"/>
         <exclude body1="left_wrist_pitch_link" body2="left_wrist_yaw_link"/>
+        <!-- skip-one roll<->yaw self-overlap, explodes to ~125kN at impratio=100 (2026-06-05). -->
+        <exclude body1="right_wrist_roll_link" body2="right_wrist_yaw_link"/>
+        <exclude body1="left_wrist_roll_link" body2="left_wrist_yaw_link"/>
     </contact>
 </mujoco>
