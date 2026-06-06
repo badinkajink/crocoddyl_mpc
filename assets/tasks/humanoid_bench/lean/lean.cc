@@ -697,7 +697,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // treatment (no brace, single-foot support — every direction is risky).
   double cp_dx = capture_point[0] - pcp[0];
   double cp_dy = capture_point[1] - pcp[1];
-  double dir_scale_x = (cp_dx > 0.0) ? balance_scale : 1.0;
+  // FREE-STANDING FIX (2026-06-04): balance_scale (0.80) discounts a FORWARD capture-
+  // point excursion because a table hand-brace provides a nose-up restoring moment that
+  // catches the forward fall. The free-standing tasks (stand/crouch/arms/lean_l-r) have
+  // NO table — arm_contact_or_lean is false — so that discount lets the CoM drift forward
+  // unchecked into nothing => the persistent ~15° forward lean that topples. With no brace,
+  // penalize forward as strictly as backward (symmetric => keep CoM centered, no escape
+  // direction). Table-lean pipeline (arm_contact_or_lean == true) is unchanged.
+  double fwd_scale = arm_contact_or_lean ? balance_scale : 1.0;
+  double dir_scale_x = (cp_dx > 0.0) ? fwd_scale : 1.0;
   double dir_scale_y = 1.0;
   double eff_dx = cp_dx * dir_scale_x;
   double eff_dy = cp_dy * dir_scale_y;
@@ -709,6 +717,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       mju_min(1.0, mju_max(0.0, (balance_excursion - kEdgeInner) /
                                     (kEdgeOuter - kEdgeInner)));
   double edge_smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
+  // The 10x edge amplifier is the SUPPORT-POLYGON BARRIER (restoring authority that ramps up as the
+  // capture point nears the foot edge) -- NOT a knife-edge bug. Removing it for free-standing (tried
+  // 2026-06-05) deleted the balance restoring force -> faceplant in 3s. KEEP it. The correct cause-B
+  // is the SYMMETRIC barrier (fwd_scale=1.0 for no-brace, above) WITH this amplifier intact.
   double edge_amplifier = 1.0 + (kEdgePeakAmplifier - 1.0) * edge_smooth;
 
   // Per-axis residual: directional scale already includes balance_scale

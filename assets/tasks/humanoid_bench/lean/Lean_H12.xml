@@ -10,7 +10,14 @@
          implicitly, so position-actuated humanoids stay stable at the
          control rates we run MJPC at. Euler (default) "quickly diverges"
          on biped balance per the docs. -->
-    <option integrator="implicitfast" cone="elliptic" impratio="10"/>
+    <!-- CONTACT ALIGNED TO TWIN 2026-06-04 (the deferred Title-7 fix): impratio 10->1 +
+         cone elliptic->pyramidal == the twin's MuJoCo defaults. impratio 10 solved contacts
+         as if the feet grip hard, so the planner committed to crouch/weight-shifts assuming a
+         planted stance foot; the twin (impratio 1) slips -> asymmetric crouch (one knee bends,
+         a foot slides) -> topple. Aligning makes the planner predict the twin's actual foot slip.
+         integrator KEPT implicitfast (Euler diverges on biped balance per the docs, above).
+         CAVEAT: the table-lean pipeline (0-5) brace was tuned at impratio 10 -> re-validate it. -->
+    <option integrator="implicitfast" cone="pyramidal" impratio="1"/>
 
     <keyframe>
         <key name="home"

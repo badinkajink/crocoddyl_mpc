@@ -10,7 +10,7 @@
          implicitly, so position-actuated humanoids stay stable at the
          control rates we run MJPC at. Euler (default) "quickly diverges"
          on biped balance per the docs. -->
-    <option integrator="implicitfast" cone="elliptic" impratio="10"/>
+    <option integrator="implicitfast" cone="pyramidal" impratio="1"/>
 
     <keyframe>
         <key name="home"
