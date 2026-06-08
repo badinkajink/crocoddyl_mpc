@@ -874,6 +874,22 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_sub(&residual[counter], data->qpos + 7, posture_target + 7, model->nu);
   mju_scl(&residual[counter], &residual[counter], phase_posture_scale,
           model->nu);
+  // ----- targeted knee + hip-pitch extension anchor (free-standing only) -----
+  // The general 27-dim Posture pull is the ONLY signal holding knee + hip_pitch
+  // to the keyframe (see comment above), and at its effective weight it is too
+  // weak: over the 1s horizon the sampler slowly trades leg extension for a lower
+  // CoM and the legs creep open until collapse (the ~30-90s stand/crouch sink,
+  // 2026-06-06 research). Amplify ONLY the leg entries (hip_pitch nu-idx 1/7,
+  // knee 3/9) inside the Posture residual so the legs hold their keyframe target
+  // (straight for stand, 0.7 for crouch) WITHOUT over-constraining the 23 other
+  // DOFs -- raising GLOBAL Posture did that and caused the asymmetric crouch.
+  // Gated to free-standing (arm_contact_or_lean == false) so the table-lean
+  // brace tasks 0-5 are byte-identical. Tunable: <numeric name="leg_extension_gain">
+  // (1.0 = off / unchanged; sweep up if it still creeps, down if it over-stiffens).
+  if (!arm_contact_or_lean) {
+    const double leg_gain = GetNumberOrDefault(2.5, model, "leg_extension_gain");
+    for (int li : {1, 3, 7, 9}) residual[counter + li] *= leg_gain;
+  }
   counter += model->nu;
 
   // com vel

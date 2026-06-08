@@ -54,7 +54,10 @@
              position offsets that turn into stabilising torques given the soft
              PD. Sampling cost rises ~40% but balance is non-negotiable. -->
         <numeric name="agent_horizon" data="1.0"/>
-        <numeric name="agent_timestep" data="0.015"/>
+        <!-- agent_timestep 0.015 -> 0.010 (2026-06-07): sim2sim fix, see Lean_H12.xml.
+             Planner rolls out at this dt (agent.cc:288); 0.015 mis-predicts the 5ms twin ->
+             live crouch/fall; 0.010 closes the gap while staying fast enough (~53/s). -->
+        <numeric name="agent_timestep" data="0.010"/>
         <numeric name="sampling_spline_points" data="3"/>
         <!-- exploration kept at 0.05 (CrossEntropy noise std). An earlier
              attempt to bump this to 0.12 made knee buckling worse: knee
@@ -73,6 +76,9 @@
         <!-- Free-standing UPRIGHT gain (2026-06-05): scales the sharpened sin(tilt)
              pelvis-upright residual. 1.0 = fix; 0 = legacy cos-flat for A/B. -->
         <numeric name="upright_gain" data="1.0"/>
+        <!-- Targeted knee+hip-pitch extension anchor (2026-06-06): stops the free-standing
+             knee-creep sink without global-Posture asymmetry. 1.0 = off. -->
+        <numeric name="leg_extension_gain" data="3.5"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost

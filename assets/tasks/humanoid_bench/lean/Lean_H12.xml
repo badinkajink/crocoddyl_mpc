@@ -29,12 +29,17 @@
         <key name="home"
         qpos="0.19 0 1.028
             1 0 0 0
-            0 0 0 0 0 0
-            0 0 0 0 0 0
+            0 0 0.07 0 0 0
+            0 0 -0.07 0 0 0
             0
             0 0 0 0 0 0 0
             0 0 0 0 0 0 0
             1.5 0 0.75 1 0 0 0"/>
+        <!-- hip_roll splayed +/-0.07 (2026-06-06): wider stance = bigger lateral support
+             polygon so the ankle can hold STRAIGHT legs without twisting/failing (the
+             stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
+             laterally; this is the research's lateral-margin lever. Stand targets this home
+             pose, so it widens the stand stance. Revert: set both hip_roll back to 0. -->
         <!-- Pose-library targets for the standalone simple-task strategies
              (Strategy 8-15). The phase name in each strategy JSON matches one
              of these keyframe names; lean.cc points the Posture + Control
@@ -82,7 +87,19 @@
              position offsets that turn into stabilising torques given the soft
              PD. Sampling cost rises ~40% but balance is non-negotiable. -->
         <numeric name="agent_horizon" data="1.0"/>
-        <numeric name="agent_timestep" data="0.015"/>
+        <!-- agent_timestep 0.015 -> 0.010 (2026-06-07): THE sim2sim fix for the live
+             twin crouch-and-fall. agent.cc:288 sets model.opt.timestep = agent_timestep,
+             so the planner ROLLS OUT (predicts) at this dt. At 0.015 (15ms) the planner
+             mis-predicts how the twin (which runs physics at 5ms + external PD) tracks its
+             position targets -> the policy slowly fails to hold the twin -> the ~80s crouch
+             topple (reproduced exactly on the closed-loop discriminator vs scene_handless).
+             Halving to 0.010 closes most of the 3x prediction gap (twin holds 95s on the
+             disc, incl. 30ms latency + IMU-reconstructed state) while staying fast enough:
+             0.005 (full match) triples per-iter cost -> planner drops below the ~50/s it
+             needs to stay reactive and falls again. 0.010 is the accuracy/throughput sweet
+             spot (live plans ~53-67/s here). Sampling-only; no feedback gains. Keep the
+             planner well-fed (>=~50/s): high --plan_threads, don't let the twin starve it. -->
+        <numeric name="agent_timestep" data="0.010"/>
         <numeric name="sampling_spline_points" data="3"/>
         <!-- exploration kept at 0.05 (CrossEntropy noise std). An earlier
              attempt to bump this to 0.12 made knee buckling worse: knee
@@ -104,6 +121,11 @@
              (linear, pulls torso erect); 0 = legacy cos-flat behaviour for A/B.
              Lower toward 0.3-0.5 if the stand over-stiffens/oscillates. -->
         <numeric name="upright_gain" data="1.0"/>
+        <!-- Targeted knee+hip-pitch extension anchor (2026-06-06): amplifies ONLY the
+             leg entries of the free-standing Posture residual (lean.cc) so the legs hold
+             their keyframe target (straight=stand, 0.7=crouch) and stop the slow knee-creep
+             sink, WITHOUT the asymmetry that raising global Posture caused. 1.0 = off. -->
+        <numeric name="leg_extension_gain" data="3.5"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
