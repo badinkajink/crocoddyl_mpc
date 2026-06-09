@@ -105,7 +105,10 @@
             "Torso Forward Tilt": 0.0,
             "Posture": 12.0,
             "Balance": 1.5,
-            "Symmetry": 60.0
+            "Symmetry": 200.0,
+            "Base Height": 300.0,
+            "Angular Momentum": 0.0,
+            "Lateral Center": 150.0
         },
         "brace_force_target": 0.0
     }

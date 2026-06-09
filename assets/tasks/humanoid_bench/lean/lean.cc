@@ -1360,6 +1360,92 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     residual[counter++] = 0.0;
   }
 
+  // ----- Base-height anchor (free-standing anti-sink) ------------------- //
+  // After the strut is removed (Symmetry), the residual failure is a SYMMETRIC
+  // CoM SINK: the planner lowers the base for stability (Balance rewards a low
+  // CoM) with nothing holding standing height, so stand slowly crouches and
+  // topples (~76s live), and the squat sinks instead of re-rising on its
+  // ascent. Anchor the base height: penalise the base dropping BELOW the active
+  // phase keyframe's base z (posture_target[2]) -- a CoM-height proxy that does
+  // NOT freeze individual joints (the planner picks HOW to hold height), unlike
+  // stiffening the knee posture (leg_extension_gain 5.5 OVER-stiffened and broke
+  // stand in the headless gate). One-sided (max(0, target - z)): only the SINK
+  // is penalised, never being tall, so it adds no cost while held. Scaled x10 so
+  // a metre-deviation maps to a joint-angle-like residual (sane JSON weights).
+  //   STAND: posture_target[2] = home key z = 1.028 = correct standing height.
+  //   CROUCH/SQUAT: all keyframes share the nominal base z 1.028 (the real
+  //   bent-leg height comes from FK, not qpos[2]), so this anchor is WRONG for
+  //   them -> kept OFF via JSON weight 0 (crouch already holds; squat-ascent
+  //   needs a per-phase FK-derived target, a follow-on). Gated free-standing;
+  //   brace/lean use the existing Height term -> byte-identical.
+  if (!arm_contact_or_lean) {
+    residual[counter++] = 10.0 * mju_max(0.0, posture_target[2] - data->qpos[2]);
+  } else {
+    residual[counter++] = 0.0;
+  }
+
+  // ----- Centroidal angular momentum (hip / Horak-Nashner strategy) ----- //
+  // Regulating whole-body angular momentum about the CoM toward zero gives the
+  // sampling planner the active whole-body ("hip") balance strategy that the
+  // ankle (capture-point Balance) and the static L/R Symmetry term do not: it
+  // penalises the TRANSIENT rotational mode that lets an incipient tip grow into
+  // the one-leg passive-column "strut", so the planner instead nulls momentum
+  // with a coordinated hip/trunk rotation and can RETRIEVE to symmetric when
+  // nudged. Pairs with Balance (linear-momentum/ankle) and Symmetry (static
+  // pose) -- it is the dynamic rotational complement, NOT a replacement.
+  // SAMPLING-LEGAL: penalises only the STATE L_cm over the rollout horizon --
+  // no feedback law, no Jacobian, no dL/dt. data->subtree_angmom is ALREADY
+  // populated by the forward pass: mj_sensorVel calls mj_subtreeVel because the
+  // model has <subtreelinvel> sensors (the Balance term above reads
+  // torso_subtreelinvel), and that one call fills subtree_linvel AND
+  // subtree_angmom for every body. So the read is O(0) and thread-safe
+  // (read-only of this rollout thread's own mjData; NO mj_forward). "pelvis" is
+  // the floating-base root body, so its subtree == the whole robot and
+  // subtree_angmom[3*pelvis] == the centroidal angular momentum [Lx,Ly,Lz]
+  // about the whole-body CoM (world frame, kg.m^2/s). Scaled x0.1 so a fall-rate
+  // momentum (~10) maps to an O(1) residual. Gated free-standing so
+  // brace/lean/retrieve stay byte-identical; default XML weight 0 (opt-in via
+  // strategy JSON key "Angular Momentum").
+  if (!arm_contact_or_lean) {
+    int pelvis_id = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
+    const mjtNum *angmom = data->subtree_angmom + 3 * pelvis_id;
+    residual[counter++] = 0.1 * angmom[0];
+    residual[counter++] = 0.1 * angmom[1];
+    residual[counter++] = 0.1 * angmom[2];
+  } else {
+    residual[counter++] = 0.0;
+    residual[counter++] = 0.0;
+    residual[counter++] = 0.0;
+  }
+
+  // ----- Lateral CoM centering (the frontal-plane balance Balance OMITS) ----- //
+  // ROOT CAUSE of the systematic rightward lean (2026-06-09 live trace): the
+  // capture-point Balance term projects the capture point onto the support
+  // polygon, which for free-standing is the {L_foot, R_foot} LINE. A lateral
+  // CoM shift TOWARD a foot stays ON that line -> projects to itself -> residual
+  // ~ 0 -> UNPENALISED. So Balance constrains fore-aft excursion and polygon
+  // EXIT, but lateral CoM CENTERING between the feet is structurally free. A
+  // sub-threshold sideways seed then drifts (unopposed) until the CoM sits over
+  // one foot: that leg loads and its knee buckles while the unloaded leg locks
+  // straight into the passive "strut" -- a positive feedback that the live trace
+  // shows as roll +0.6 -> +3 deg with the right hip_roll torque 2.3x the left.
+  // This term closes that gap: penalise the torso-subtree CoM's LATERAL (y)
+  // offset from the foot midpoint (same CoM proxy + foot sensors Balance already
+  // uses, all fetched above). Quadratic -> gradient 0 at centre, so it opposes a
+  // SUSTAINED drift without fighting a legitimate transient lateral push-recovery
+  // or the normal ankle/hip-roll micro-corrections. x10 so a ~metre maps to a
+  // joint-angle-like residual (sane JSON weights, matches Base Height). Gated
+  // free-standing (leg-lift / lean / retrieve legitimately stand off-centre);
+  // XML default weight 0 -> OFF unless a strategy opts in via JSON "Lateral
+  // Center", so every other task stays byte-identical.
+  if (!arm_contact_or_lean) {
+    double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
+    residual[counter++] = 10.0 * (subcom[1] - midfoot_y);
+  } else {
+    residual[counter++] = 0.0;
+  }
+
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
   // // Check if we have elbow sensors (indicates H12_Hands model)
   // bool has_elbow_sensors = false;

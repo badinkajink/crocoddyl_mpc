@@ -107,7 +107,10 @@
             "Height": 0.0,
             "Knees Straight": 0.0,
             "Balance": 1.5,
-            "Symmetry": 60.0
+            "Symmetry": 60.0,
+            "Base Height": 0.0,
+            "Angular Momentum": 0.0,
+            "Lateral Center": 150.0
         },
         "brace_force_target": 0.0
     }

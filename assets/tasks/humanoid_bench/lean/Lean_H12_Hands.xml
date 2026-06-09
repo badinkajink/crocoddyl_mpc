@@ -158,6 +158,9 @@
         <user name="Body Table Clearance" dim="1" user="6 5.0 0.0 200.0 20.0"/>
         <user name="Knees Straight" dim="2" user="6 40.0 0.0 300.0 0.25"/>
         <user name="Symmetry" dim="2" user="0 0.0 0.0 100.0"/>
+        <user name="Base Height" dim="1" user="0 0.0 0.0 100.0"/>
+        <user name="Angular Momentum" dim="3" user="0 0.0 0.0 100.0"/>
+        <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>
