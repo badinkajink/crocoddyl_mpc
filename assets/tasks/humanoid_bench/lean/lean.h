@@ -43,6 +43,7 @@ class lean : public Task {
                         mjtNum prev_brace_pos_scale = 0.0,
                         mjtNum prev_posture_scale = 1.0,
                         mjtNum prev_brace_force_target = 0.0,
+                        int prev_posture_key_id = 0,
                         const bool* contact_pair_is_new = nullptr)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
@@ -50,7 +51,8 @@ class lean : public Task {
           prev_phase_reach_scale_(prev_reach_scale),
           prev_phase_brace_pos_scale_(prev_brace_pos_scale),
           prev_phase_posture_scale_(prev_posture_scale),
-          prev_phase_brace_force_target_(prev_brace_force_target) {
+          prev_phase_brace_force_target_(prev_brace_force_target),
+          prev_posture_key_id_(prev_posture_key_id) {
       for (int i = 0; i < 5; ++i) {
         contact_pair_is_new_[i] =
             contact_pair_is_new ? contact_pair_is_new[i] : false;
@@ -72,6 +74,25 @@ class lean : public Task {
     // fast at 1.5s, a surgical fix (Brace Hand Velocity residual active
     // only during arm_plant) is preferable to slowing every cost ramp.
     static constexpr mjtNum kPhaseRampSeconds = 1.5;
+
+    // STAND-UP-only target-pose ramp duration (see the asymmetric target ramp
+    // in lean.cc). Deliberately LONGER than kPhaseRampSeconds: at the live
+    // ~60/s plan rate, straightening the legs from a crouch over only 1.5s
+    // still launches the body backward on the second cycle (squat fell ~28s).
+    // Spreading the leg extension over 3s lets the sampler keep the capture
+    // point under the feet the whole way up. Only used when a phase transition
+    // moves the target pose CLOSER to home (standing up); descents still snap.
+    static constexpr mjtNum kAscentTargetRampSeconds = 3.0;
+
+    // Crouch-DOWN target-pose ramp duration. Much SHORTER than the ascent ramp:
+    // a pure snap folds the legs so fast the upper body overshoots into a
+    // forward pitch (the recurring squat descent fall), but the slow ascent
+    // ramp on a descent lets the robot catch the target and kills the
+    // stabilising spring (forward pitch at ~2.6s). 0.6s threads the needle: the
+    // target still leads the robot (spring preserved) yet the fold is spread
+    // over ~0.6s instead of instantaneous, capping the overshoot. So short that
+    // single-phase pose strategies (which settle for seconds) are unaffected.
+    static constexpr mjtNum kDescentTargetRampSeconds = 0.6;
 
     enum LeanMode {
       kModeReach = 0,
@@ -99,6 +120,14 @@ class lean : public Task {
     // the brace force demand across phase boundaries so MPC doesn't see a
     // step change (which would plan an impulsive arm slam into the table).
     mjtNum prev_phase_brace_force_target_ = 0.0;
+
+    // Previous phase's posture keyframe id (model <key> index), captured at
+    // every transition (SnapshotEffectiveScales) so Residual() can ramp the
+    // TARGET pose from it to the current keyframe over kPhaseRampSeconds —
+    // parallels prev_phase_posture_scale_ but for the pose itself, not its
+    // weight. 0 = home on cold start. Only matters when consecutive phases name
+    // DIFFERENT keyframes (cyclic squat); pipeline phases all resolve to home.
+    int prev_posture_key_id_ = 0;
 
     // Per-contact-pair "is new this phase" flags. true when a contact pair
     // went from inactive (body1=-1) in the previous keyframe to active in
@@ -186,8 +215,11 @@ class lean : public Task {
             "h12_simple_lean_left",      // 13 lateral weight-shift onto L
             "h12_simple_lean_right",     // 14 lateral weight-shift onto R
             "h12_simple_torso_twist",    // 15 waist yaw to the left
-            "h12_simple_counterbalance"};// 16 left-arm forward reach + emergent
+            "h12_simple_counterbalance", // 16 left-arm forward reach + emergent
                                          //    right-arm/torso counterweight
+            "h12_simple_squat"};         // 17 cyclic squat: crouch(5s)->stand(5s)->loop
+                                         //    2-phase strategy; phase machine wraps
+                                         //    via NextKeyframe() modulo (motion_strategy.cc)
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -219,6 +251,7 @@ class lean : public Task {
         residual_.prev_phase_brace_pos_scale_,
         residual_.prev_phase_posture_scale_,
         residual_.prev_phase_brace_force_target_,
+        residual_.prev_posture_key_id_,
         residual_.contact_pair_is_new_);
   }
 
@@ -284,7 +317,8 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_lean_left",
             "h12_hands_simple_lean_right",
             "h12_hands_simple_torso_twist",
-            "h12_hands_simple_counterbalance"};  // 16 (mirrors Lean_H12 slot 16)
+            "h12_hands_simple_counterbalance",  // 16 (mirrors Lean_H12 slot 16)
+            "h12_hands_simple_squat"};  // 17 cyclic squat (mirrors Lean_H12 slot 17)
   }
 };
 

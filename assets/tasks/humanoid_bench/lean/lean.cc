@@ -199,6 +199,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // and behaves exactly as before. The lookup is one hash probe per Residual
   // call — negligible next to the ~10 std::string compares PhaseTargetScales
   // already does.
+  // REVERTED 2026-06-08: the squat target-pose ramp (asymmetric stand-up/crouch
+  // ramp) is OFF — restored to the original instantaneous SNAP. The ramp ran in
+  // this hot residual path for EVERY strategy (incl. single-phase crouch/stand/
+  // arms) and was suspected of regressing the live crouch (one-knee-locked slow
+  // creep) even though headless held. Snap = exactly the accepted behaviour.
+  // The prev_posture_key_id_ plumbing (lean.h, SnapshotEffectiveScales) is left
+  // in place but UNUSED; re-enable the ramp here only behind a per-strategy gate
+  // that provably never touches single-phase strategies. See [[project_squat_strategy]].
   int posture_key_id =
       mj_name2id(model, mjOBJ_KEY, residual_keyframe_.name.c_str());
   if (posture_key_id < 0) posture_key_id = 0;  // home
@@ -887,7 +895,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // brace tasks 0-5 are byte-identical. Tunable: <numeric name="leg_extension_gain">
   // (1.0 = off / unchanged; sweep up if it still creeps, down if it over-stiffens).
   if (!arm_contact_or_lean) {
-    const double leg_gain = GetNumberOrDefault(2.5, model, "leg_extension_gain");
+    double leg_gain = GetNumberOrDefault(2.5, model, "leg_extension_gain");
+    // Bent-knee holds (crouch/squat) need a STRONGER symmetric leg anchor than
+    // straight-knee holds (stand/arms). At the live plan rate the saddle-unstable
+    // symmetric crouch breaks into an asymmetric one-leg PROP — one knee drives to
+    // its -0.12 ctrl floor while the other over-flexes — unless the bilateral
+    // knee+hip-pitch pull is stiff enough to outweigh the balance benefit of
+    // propping. Gate on a bent TARGET knee (posture_target L/R knee, nu-idx 3/9 =
+    // qpos 7+3 / 7+9, > 0.3 rad) so straight-knee strategies hit neither branch and
+    // stay byte-identical to the accepted stand/arms (NO regression). Tunable.
+    if (posture_target[7 + 3] > 0.3 || posture_target[7 + 9] > 0.3)
+      leg_gain = GetNumberOrDefault(6.0, model, "crouch_leg_extension_gain");
     for (int li : {1, 3, 7, 9}) residual[counter + li] *= leg_gain;
   }
   counter += model->nu;
@@ -1310,6 +1328,38 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     residual[counter++] = 0.0;
   }
 
+  // ----- Leg LEFT/RIGHT symmetry (kill the one-knee strut) -------------- //
+  // The recurring free-standing failure (stand/crouch/squat) is a one-leg
+  // "strut": one knee locks near its lower stop as a passive support while the
+  // other balances, then both sink and the robot topples (~70-160 s live). By
+  // construction the strut is a large LEFT/RIGHT difference in the sagittal leg
+  // joints (knee + hip-pitch). No existing term penalises that DIFFERENCE:
+  // Posture penalises each leg's ABSOLUTE deviation from the keyframe, so a
+  // matched bent stance and a strut can cost nearly the same in Posture while
+  // the strut wins on Balance (offloading one leg to a free passive column is
+  // genuinely lower-cost). This quadratic penalty on (L - R) makes the
+  // asymmetric strut strictly more expensive than a symmetric stance WITHOUT
+  // pinning the absolute pose: the legs may still flex *together* for balance,
+  // and tiny micro-asymmetries stay nearly free (quadratic gradient -> 0 at 0)
+  // so it does not over-constrain the lateral ankle/hip balance.
+  //   knee_L = qpos[7+3], knee_R = qpos[7+9]; hipPitch_L = qpos[7+1],
+  //   hipPitch_R = qpos[7+7] (verified vs body-tree joint order + Knees
+  //   Straight above). Only the sagittal pair: ankle is the primary balance
+  //   actuator (asymmetry there is normal), and hip-roll/yaw are mirror-signed
+  //   (the widened stance is +/-0.12), so neither belongs in an (L - R) term.
+  // GATED to free-standing (!arm_contact_or_lean): leg-lift / lean / retrieve
+  // legitimately stand on one leg, so symmetry is zeroed there. With the XML
+  // default weight 0 the term is OFF for every strategy that does not opt in
+  // via its JSON weight map ("Symmetry": w), so all other tasks stay
+  // byte-identical (zero weight AND/OR zero residual = zero cost).
+  if (!arm_contact_or_lean) {
+    residual[counter++] = data->qpos[7 + 3] - data->qpos[7 + 9];  // knee L-R
+    residual[counter++] = data->qpos[7 + 1] - data->qpos[7 + 7];  // hipPitch L-R
+  } else {
+    residual[counter++] = 0.0;
+    residual[counter++] = 0.0;
+  }
+
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
   // // Check if we have elbow sensors (indicates H12_Hands model)
   // bool has_elbow_sensors = false;
@@ -1602,6 +1652,14 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     residual_.prev_phase_brace_force_target_ =
         residual_.prev_phase_brace_force_target_ +
         alpha * (bf_t - residual_.prev_phase_brace_force_target_);
+    // Capture the posture keyframe id of the phase we are LEAVING so Residual()
+    // ramps the target pose OUT of it into the new phase (parallels the scale
+    // snapshots above). Transitions here fire post-settle (sustain >> ramp) so
+    // the leaving keyframe == the effective target; mid-ramp scrubs accept a
+    // small target discontinuity, same as the pre-existing scale snapshot.
+    int leaving_key = mj_name2id(model, mjOBJ_KEY,
+                                 residual_.residual_keyframe_.name.c_str());
+    residual_.prev_posture_key_id_ = (leaving_key < 0) ? 0 : leaving_key;
   };
 
   bool cold_start = !motion_strategy_.HasKeyframes();
@@ -1634,6 +1692,7 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       residual_.prev_phase_brace_pos_scale_    = 0.0;
       residual_.prev_phase_posture_scale_      = 1.0;
       residual_.prev_phase_brace_force_target_ = 0.0;
+      residual_.prev_posture_key_id_           = 0;  // home: gentle boot ramp
       PrepareNextPhaseWeights(residual_.residual_keyframe_);
       prev_phase_weights_ = next_phase_weights_;  // snap (no history)
     } else {

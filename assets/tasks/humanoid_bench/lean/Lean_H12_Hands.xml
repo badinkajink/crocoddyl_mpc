@@ -32,6 +32,7 @@
              (dim 27) only reaches qpos[7:34], so right-arm pose targets are
              not driven on this variant — lower-body + left-arm poses track. -->
         <key name="crouch" qpos="0.19 0 1.028 1 0 0 0 0 -0.4 0 0.7 -0.3 0 0 -0.4 0 0.7 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="squat_mid" qpos="0.19 0 1.028 1 0 0 0 0 -0.2 0 0.35 -0.15 0 0 -0.2 0 0.35 -0.15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="arms_sideways" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="arms_forward" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="arms_overhead" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
@@ -79,6 +80,7 @@
         <!-- Targeted knee+hip-pitch extension anchor (2026-06-06): stops the free-standing
              knee-creep sink without global-Posture asymmetry. 1.0 = off. -->
         <numeric name="leg_extension_gain" data="3.5"/>
+        <numeric name="crouch_leg_extension_gain" data="4.5"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
@@ -92,7 +94,7 @@
              adjustment for the brace, never a leg lift). Indices 0-4 are
              progressive prefix slices. Indices 6-16 are the standalone
              simple-task strategies (see Lean_H12.xml + GetStrategyNames). -->
-        <numeric name="residual_Strategy" data="5 0 16" />
+        <numeric name="residual_Strategy" data="5 0 17" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>
@@ -155,6 +157,7 @@
         <user name="Body Yaw" dim="1" user="6 60.0 0.0 200.0 0.1"/>
         <user name="Body Table Clearance" dim="1" user="6 5.0 0.0 200.0 20.0"/>
         <user name="Knees Straight" dim="2" user="6 40.0 0.0 300.0 0.25"/>
+        <user name="Symmetry" dim="2" user="0 0.0 0.0 100.0"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>

@@ -104,7 +104,8 @@
             "Leg Clearance": 0.0,
             "Torso Forward Tilt": 0.0,
             "Posture": 12.0,
-            "Balance": 1.5
+            "Balance": 1.5,
+            "Symmetry": 60.0
         },
         "brace_force_target": 0.0
     }

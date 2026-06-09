@@ -106,7 +106,8 @@
             "Posture": 12.0,
             "Height": 0.0,
             "Knees Straight": 0.0,
-            "Balance": 1.5
+            "Balance": 1.5,
+            "Symmetry": 60.0
         },
         "brace_force_target": 0.0
     }
