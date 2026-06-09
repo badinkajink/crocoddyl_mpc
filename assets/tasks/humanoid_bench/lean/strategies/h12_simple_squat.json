@@ -107,7 +107,7 @@
             "Height": 0.0,
             "Knees Straight": 0.0,
             "Balance": 4.0,
-            "Symmetry": 0.0
+            "Symmetry": 160.0
         },
         "brace_force_target": 0.0
     },
@@ -219,7 +219,7 @@
             "Height": 0.0,
             "Knees Straight": 0.0,
             "Balance": 4.0,
-            "Symmetry": 0.0
+            "Symmetry": 160.0
         },
         "brace_force_target": 0.0
     },
@@ -331,7 +331,7 @@
             "Height": 0.0,
             "Knees Straight": 0.0,
             "Balance": 4.0,
-            "Symmetry": 0.0
+            "Symmetry": 160.0
         },
         "brace_force_target": 0.0
     },
@@ -443,7 +443,7 @@
             "Height": 0.0,
             "Knees Straight": 0.0,
             "Balance": 4.0,
-            "Symmetry": 0.0
+            "Symmetry": 160.0
         },
         "brace_force_target": 0.0
     }
