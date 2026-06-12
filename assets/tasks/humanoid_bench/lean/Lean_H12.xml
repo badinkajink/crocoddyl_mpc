@@ -40,8 +40,8 @@
              Routed by the name-match at lean.cc:210; HOME stays byte-identical so the
              table-lean tasks 0-5 (which also fall back to home) are unchanged. Revert: delete
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
-        <key name="stand_up" qpos="0.19 0 1.00 1 0 0 0 0 -0.2 0.12 0.35 -0.15 0 0 -0.2 -0.12 0.35 -0.15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="stand"    qpos="0.19 0 1.00 1 0 0 0 0 -0.2 0.12 0.35 -0.15 0 0 -0.2 -0.12 0.35 -0.15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="stand_up" qpos="0.19 0 0.98 1 0 0 0 0 -0.14 0.12 0.35 -0.21 0 0 -0.14 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="stand"    qpos="0.19 0 0.98 1 0 0 0 0 -0.14 0.12 0.35 -0.21 0 0 -0.14 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- hip_roll splayed +/-0.07 (2026-06-06): wider stance = bigger lateral support
              polygon so the ankle can hold STRAIGHT legs without twisting/failing (the
              stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
@@ -60,7 +60,7 @@
              combined with the lean.cc target-pose ramp this keeps the live
              ~60/s planner from injecting a momentum kick it cannot recover.
              Wide stance (hip_roll +/-0.07) kept. -->
-        <key name="squat_mid" qpos="0.19 0 1.00 1 0 0 0 0 -0.2 0.12 0.35 -0.15 0 0 -0.2 -0.12 0.35 -0.15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="squat_mid" qpos="0.19 0 1.00 1 0 0 0 0 -0.14 0.12 0.35 -0.21 0 0 -0.14 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- squat_q1 / squat_q3: QUARTER and THREE-QUARTER crouch staging poses
              for the cyclic squat (idx 17). With squat_mid these split the deep
              crouch<->stand traverse into quarter steps so each descent SNAP and
@@ -148,7 +148,7 @@
              ~1.1 per timestep (~76 over the 1.0s horizon), pulling the head
              down by 5 cm during the upright stand_up phase. Max raised to
              2.0 so the slider can sweep above the home value if needed. -->
-        <numeric name="residual_Height Goal" data="1.67 0.0 2.0"/>
+        <numeric name="residual_Height Goal" data="1.68 0.0 2.0"/>
         <!-- Slider → strategy (user's 6-phase decomposition):
                0 = pipeline_stand             (stand_up)
                1 = pipeline_arm_extend        (+ arm out, body upright)

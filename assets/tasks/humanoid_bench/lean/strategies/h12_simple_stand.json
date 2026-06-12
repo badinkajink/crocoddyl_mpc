@@ -106,9 +106,25 @@
             "Posture": 12.0,
             "Balance": 1.5,
             "Symmetry": 200.0,
-            "Base Height": 300.0,
+            "Base Height": 450.0,
             "Angular Momentum": 0.0,
-            "Lateral Center": 150.0
+            "Lateral Center": 150.0,
+            "Height": 100.0,
+            "CoM Vel.": 10.0,
+            "Joint Vel.": 0.01,
+            "Pelvis Tilt": 100.0,
+            "Foot Right Up": 2000.0,
+            "Foot Left Up": 2000.0,
+            "Waist Yaw": 30.0,
+            "Hip Yaw L": 20.0,
+            "Hip Roll L": 20.0,
+            "Hip Yaw R": 20.0,
+            "Hip Roll R": 20.0,
+            "Velocity": 0.625,
+            "Control": 0.05,
+            "Foot Stability": 15.0,
+            "Joint Vel. Limit": 5.0,
+            "Knees Straight": 40.0
         },
         "brace_force_target": 0.0
     }

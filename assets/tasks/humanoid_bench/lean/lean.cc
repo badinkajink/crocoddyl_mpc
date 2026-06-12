@@ -211,6 +211,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       mj_name2id(model, mjOBJ_KEY, residual_keyframe_.name.c_str());
   if (posture_key_id < 0) posture_key_id = 0;  // home
   const mjtNum *posture_target = model->key_qpos + posture_key_id * model->nq;
+  // one-shot forensic: the hand-off snap survived 6 cost fixes -- verify LIVE which
+  // keyframe the residual actually pulls toward (assumed 'stand' knee=0.35 z=0.98)
+  static int dbg_last_key = -999;
+  if (posture_key_id != dbg_last_key) {
+    dbg_last_key = posture_key_id;
+    std::fprintf(stderr,
+                 "[lean-residual] posture keyframe: name='%s' id=%d z=%.3f kneeL=%.3f kneeR=%.3f\n",
+                 residual_keyframe_.name.c_str(), posture_key_id,
+                 posture_target[2], posture_target[7 + 3], posture_target[7 + 9]);
+  }
 
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
@@ -1171,17 +1181,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Same indices work for both H1-2 and H1-2-Hands because both variants
   // expose only these 27 actuated joints (fingers are unactuated in our
   // Hands MJCF).
+  // DEPLOYED-ENVELOPE PARITY (2026-06-12): the binding limit on hardware is the
+  // SAFETY LAYER's velocity estop (default_safety_full.yaml velocity_ratio x URDF,
+  // h12_safety_layer/core/joint_limits.py), which latches and cuts ALL motors --
+  // three runs in a row died to mid-recovery arm/leg swings the old URDF-only
+  // numbers considered free (RshP estop 4.5 rad/s vs old threshold 0.85*9=7.65).
+  // Each entry = min(URDF, estop): hips .20/.25/.20*23, knee .60*14, ankles
+  // 3.0*9 (URDF binds), torso .15*23, sho_p/r .50*9, sho_y .50*20, elbow .30*20,
+  // wrists .30*31.4. The 0.85 factor below keeps a 15% buffer UNDER the estop.
   static constexpr double kJointVelLimit[27] = {
       // L_hip_yaw, L_hip_pitch, L_hip_roll, L_knee, L_ank_p, L_ank_r
-      23.0, 23.0, 23.0, 14.0, 9.0, 9.0,
+      4.6, 5.75, 4.6, 8.4, 9.0, 9.0,
       // R_hip_yaw, R_hip_pitch, R_hip_roll, R_knee, R_ank_p, R_ank_r
-      23.0, 23.0, 23.0, 14.0, 9.0, 9.0,
+      4.6, 5.75, 4.6, 8.4, 9.0, 9.0,
       // torso
-      23.0,
+      3.45,
       // L_sho_p, L_sho_r, L_sho_y, L_elbow, L_wr_r, L_wr_p, L_wr_y
-      9.0, 9.0, 20.0, 20.0, 31.4, 31.4, 31.4,
+      4.5, 4.5, 10.0, 6.0, 9.42, 9.42, 9.42,
       // R_sho_p, R_sho_r, R_sho_y, R_elbow, R_wr_r, R_wr_p, R_wr_y
-      9.0, 9.0, 20.0, 20.0, 31.4, 31.4, 31.4,
+      4.5, 4.5, 10.0, 6.0, 9.42, 9.42, 9.42,
   };
   // Walk actuators (always 27 here) and look up each joint's qvel index via
   // jnt_dofadr — robust to the Hands variant inserting finger joints later
@@ -1562,7 +1580,8 @@ void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
 void lean::TransitionLocked(mjModel *model, mjData *data) {
   // ---- DEBUG: print leg stability diagnostics every ~0.5 s ---- //
   static int debug_tick = 0;
-  if (++debug_tick % 33 == 0) {  // ~0.5 s at timestep=0.015
+  static const bool lean_dbg = (std::getenv("LEAN_DEBUG") != nullptr);
+  if (lean_dbg && ++debug_tick % 33 == 0) {  // ~0.5 s; set LEAN_DEBUG=1 to enable
     double *foot_right_up = SensorByName(model, data, "foot_right_up");
     double *foot_left_up  = SensorByName(model, data, "foot_left_up");
     double *torso_up      = SensorByName(model, data, "torso_up");
