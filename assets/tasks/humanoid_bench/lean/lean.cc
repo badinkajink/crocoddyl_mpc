@@ -438,6 +438,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mju_addScl(capture_point, subcom, subcomvel, 0.3, 3);
   capture_point[2] = 1.0e-3;
 
+  // CoM fore-aft sim2real correction (2026-06-13). The REAL robot's CoM sits ahead of the
+  // model's (un-sysid'd mass), so a model-centered CoM leaves the REAL CoM forward -> the
+  // robot leans forward and the ankles range-limit trying to pull it back. `com_x_offset`
+  // (model numeric, meters, default 0) biases this balance target: it tells the planner the
+  // CoM is this much further FORWARD (world +x = robot-forward for the facing-+x stand), so
+  // the planner holds the actual CoM that much BACK. RAISE it if the real robot leans forward;
+  // the value that makes it stand upright == the real CoM forward offset (doubles as a sysid
+  // measurement). XML-tunable -> no rebuild to change the value; default 0 = exact prior behavior.
+  {
+    int com_off_id = mj_name2id(model, mjOBJ_NUMERIC, "com_x_offset");
+    if (com_off_id >= 0) capture_point[0] += model->numeric_data[model->numeric_adr[com_off_id]];
+  }
+
   // project onto support polygon
   //
   // Phase-aware support polygon for the Balance residual. When the bracing

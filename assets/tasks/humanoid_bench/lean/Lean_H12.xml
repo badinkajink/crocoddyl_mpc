@@ -40,8 +40,8 @@
              Routed by the name-match at lean.cc:210; HOME stays byte-identical so the
              table-lean tasks 0-5 (which also fall back to home) are unchanged. Revert: delete
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
-        <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.14 0.12 0.35 -0.21 0 0 -0.14 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.14 0.12 0.35 -0.21 0 0 -0.14 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- hip_roll splayed +/-0.07 (2026-06-06): wider stance = bigger lateral support
              polygon so the ankle can hold STRAIGHT legs without twisting/failing (the
              stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
@@ -142,6 +142,11 @@
              sink, WITHOUT the asymmetry that raising global Posture caused. 1.0 = off. -->
         <numeric name="leg_extension_gain" data="3.5"/>
         <numeric name="crouch_leg_extension_gain" data="4.5"/>
+        <!-- com_x_offset (2026-06-13): meters to bias the fore-aft CoM balance target.
+             RAISE if the REAL robot leans forward (compensates the real CoM sitting ahead of
+             the un-sysid'd model). The value that stands it upright == the real CoM forward
+             offset. XML-tunable, no rebuild. Default 0 = exact prior behavior. Try ~0.04. -->
+        <numeric name="com_x_offset" data="0.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
