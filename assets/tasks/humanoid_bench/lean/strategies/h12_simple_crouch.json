@@ -108,9 +108,14 @@
             "Knees Straight": 0.0,
             "Balance": 1.5,
             "Symmetry": 60.0,
-            "Base Height": 0.0,
+            "Base Height": 200.0,
             "Angular Momentum": 1.0,
-            "Lateral Center": 150.0
+            "Lateral Center": 150.0,
+            "Waist Yaw": 30.0,
+            "Hip Yaw L": 20.0,
+            "Hip Roll L": 20.0,
+            "Hip Yaw R": 20.0,
+            "Hip Roll R": 20.0
         },
         "brace_force_target": 0.0
     }

@@ -217,9 +217,15 @@ class lean : public Task {
             "h12_simple_torso_twist",    // 15 waist yaw to the left
             "h12_simple_counterbalance", // 16 left-arm forward reach + emergent
                                          //    right-arm/torso counterweight
-            "h12_simple_squat"};         // 17 cyclic squat: crouch(5s)->stand(5s)->loop
+            "h12_simple_squat",          // 17 cyclic squat: crouch(5s)->stand(5s)->loop
                                          //    2-phase strategy; phase machine wraps
                                          //    via NextKeyframe() modulo (motion_strategy.cc)
+            "h12_simple_squatter"};      // 18 native squatter: 2-phase stand_up<->crouch
+                                         //    auto-cycle reusing strat 6 (stand) + strat 8
+                                         //    (crouch) weight blocks VERBATIM. The MJPC-side
+                                         //    twin of the node's --strategy 18 sequencer
+                                         //    (h12_control_node.cc), so the planner/monitor/
+                                         //    analyzer can drive the squat natively.
   }
 
   // Live per-phase weight blending --------------------------------------- //
