@@ -9,7 +9,7 @@
         ],
         "facing_target": [],
         "name": "stand_up",
-        "success_sustain_time": 5.0,
+        "success_sustain_time": 15.0,
         "target_distance_tolerance": 0.3,
         "time_limit": 9999.0,
         "weight": {
