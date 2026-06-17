@@ -44,6 +44,7 @@ class lean : public Task {
                         mjtNum prev_posture_scale = 1.0,
                         mjtNum prev_brace_force_target = 0.0,
                         int prev_posture_key_id = 0,
+                        int num_phases = 1,
                         const bool* contact_pair_is_new = nullptr)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
@@ -52,7 +53,8 @@ class lean : public Task {
           prev_phase_brace_pos_scale_(prev_brace_pos_scale),
           prev_phase_posture_scale_(prev_posture_scale),
           prev_phase_brace_force_target_(prev_brace_force_target),
-          prev_posture_key_id_(prev_posture_key_id) {
+          prev_posture_key_id_(prev_posture_key_id),
+          num_phases_(num_phases) {
       for (int i = 0; i < 5; ++i) {
         contact_pair_is_new_[i] =
             contact_pair_is_new ? contact_pair_is_new[i] : false;
@@ -128,6 +130,13 @@ class lean : public Task {
     // weight. 0 = home on cold start. Only matters when consecutive phases name
     // DIFFERENT keyframes (cyclic squat); pipeline phases all resolve to home.
     int prev_posture_key_id_ = 0;
+
+    // Number of phases (keyframes) in the active strategy; set in TransitionLocked
+    // from motion_strategy_.GetKeyframesCount(). The target-pose ramp in Residual()
+    // is GATED on num_phases_ > 1 so single-phase strategies (stand/crouch/arms)
+    // never enter the ramp branch -- byte-identical to before. This is the
+    // per-strategy gate the 2026-06-08 revert note (lean.cc) said the ramp needed.
+    int num_phases_ = 1;
 
     // Per-contact-pair "is new this phase" flags. true when a contact pair
     // went from inactive (body1=-1) in the previous keyframe to active in
@@ -220,12 +229,24 @@ class lean : public Task {
             "h12_simple_squat",          // 17 cyclic squat: crouch(5s)->stand(5s)->loop
                                          //    2-phase strategy; phase machine wraps
                                          //    via NextKeyframe() modulo (motion_strategy.cc)
-            "h12_simple_squatter"};      // 18 native squatter: 2-phase stand_up<->crouch
+            "h12_simple_squatter",       // 18 native squatter: 2-phase stand_up<->crouch
                                          //    auto-cycle reusing strat 6 (stand) + strat 8
                                          //    (crouch) weight blocks VERBATIM. The MJPC-side
                                          //    twin of the node's --strategy 18 sequencer
                                          //    (h12_control_node.cc), so the planner/monitor/
                                          //    analyzer can drive the squat natively.
+            "h12_simple_jab"};           // 19 standing boxing jab: 3-phase
+                                         //    stand_up -> jab_guard -> jab_extend auto-cycle. A
+                                         //    stand_up LEAD-IN (gentle 3s ramp from home, like the
+                                         //    stand/squatter strategies) settles the legs/balance
+                                         //    FIRST, THEN the arms raise to guard, THEN the RIGHT
+                                         //    arm punches straight forward (shoulder_pitch -1.0,
+                                         //    elbow straightens) and retracts. The lead-in is what
+                                         //    gives the real robot a proper home->stand->guard
+                                         //    transition (raising arms straight from home spun it).
+                                         //    WBC base = strat 6 (stand) weights, Posture 60 for
+                                         //    punch authority; asymmetric arms are free (Symmetry
+                                         //    penalizes only legs). Slow, deliberate cadence.
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -258,6 +279,7 @@ class lean : public Task {
         residual_.prev_phase_posture_scale_,
         residual_.prev_phase_brace_force_target_,
         residual_.prev_posture_key_id_,
+        residual_.num_phases_,
         residual_.contact_pair_is_new_);
   }
 
@@ -324,7 +346,11 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_lean_right",
             "h12_hands_simple_torso_twist",
             "h12_hands_simple_counterbalance",  // 16 (mirrors Lean_H12 slot 16)
-            "h12_hands_simple_squat"};  // 17 cyclic squat (mirrors Lean_H12 slot 17)
+            "h12_hands_simple_squat",   // 17 cyclic squat (mirrors Lean_H12 slot 17)
+            "h12_hands_simple_squatter",  // 18 native squatter (mirrors Lean_H12 slot 18)
+            "h12_hands_simple_jab"};    // 19 standing boxing jab (mirrors Lean_H12 slot 19).
+                                        //    Right-arm punch tracks only partially on the
+                                        //    Hands model (Posture dim 27 misses the right arm).
   }
 };
 

@@ -222,6 +222,39 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
                  posture_target[2], posture_target[7 + 3], posture_target[7 + 9]);
   }
 
+  // ----- GENERAL target-pose ramp (re-enabled 2026-06-16, behind the per-strategy
+  //       gate the 2026-06-08 revert note above requires) --------------------- //
+  // On a phase transition, ease the posture target from the keyframe we LEFT
+  // (prev_posture_key_id_, captured at every transition) into the new one over a
+  // smoothstep window -- the "blend tasks, don't switch them" idea the weight ramp
+  // already uses, applied to the pose itself. Because it lives in the planner's OWN
+  // cost, the MJPC GUI, the twin and the real robot glide identically -- unlike a
+  // node-side, plant-only command blend, this opens no sim2real gap. Ramp duration
+  // = the entered phase's JSON target_ramp_sec when >=0, else kPhaseRampSeconds.
+  //   GATED num_phases_ > 1: single-phase strategies (stand/crouch/arms) never take
+  //   this branch -> byte-identical. WINDOW-GATED: only runs while alpha<1 (the
+  //   ~ramp_dur right after a transition), into a stack buffer, so steady state and
+  //   every snap phase (target_ramp_sec==0) pay nothing -- the unconditional version
+  //   that ran for EVERY residual call of EVERY strategy is what got reverted.
+  mjtNum ramped_posture_target[64];
+  if (num_phases_ > 1 && prev_posture_key_id_ != posture_key_id &&
+      model->nq <= 64) {
+    double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
+                          ? residual_keyframe_.target_ramp_sec
+                          : kPhaseRampSeconds;
+    if (ramp_dur > 1e-9 && time_in_phase < ramp_dur) {
+      double ra_lin = mju_min(time_in_phase / ramp_dur, 1.0);
+      double ra = ra_lin * ra_lin * (3.0 - 2.0 * ra_lin);  // smoothstep
+      const mjtNum *from_target =
+          model->key_qpos + prev_posture_key_id_ * model->nq;
+      for (int i = 0; i < model->nq; i++) {
+        ramped_posture_target[i] =
+            from_target[i] + ra * (posture_target[i] - from_target[i]);
+      }
+      posture_target = ramped_posture_target;
+    }
+  }
+
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
 
@@ -1795,6 +1828,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     motion_strategy_.ClearKeyframes();
     motion_strategy_.LoadStrategy(kStrategyNames[current_strategy_],
                                   kLeanStrategyFilePath);
+    // Gate the target-pose ramp (Residual): >1 phase => cyclic strategy gets the
+    // smooth transitions; 1 => single-phase, the ramp stays disabled (byte-identical).
+    residual_.num_phases_ = motion_strategy_.GetKeyframesCount();
     motion_strategy_.SetCurrentKeyframeStartTime(data->time);
     motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
     MarkNewlyAppearedContacts(residual_.residual_keyframe_,

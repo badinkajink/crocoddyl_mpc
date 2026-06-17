@@ -54,6 +54,17 @@
              joints set (validated vs joint limits + self-collision by
              strategies/_gen_simple_strategies.py). -->
         <key name="crouch" qpos="0.19 0 0.97 1 0 0 0 0 -0.4 0.12 0.7 -0.3 0 0 -0.4 -0.12 0.7 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- crouch_mid: TRUE midpoint between stand_up (knee 0.35, z 1.020) and crouch
+             (knee 0.70, z 0.97) for the NATIVE squatter (strategy 18, h12_simple_squatter.json).
+             Staging pose on BOTH the descent and the ascent so each stand<->crouch transition is
+             HALVED: standing up no longer snaps the full 0.35 rad and launches the body forward
+             (the ~t20s 9deg->39deg->86deg fall), and the descent pauses here so the gantry harness
+             can be paid out on real hardware. Monotonic z (0.995, between 1.020 and 0.97) keeps the
+             Base-Height anchor (lean.cc:1413) from fighting the descent. Wide stance hip_roll
+             +/-0.12 kept. Leg triad = mean(stand_up, crouch): hip_pitch -0.325, knee 0.525,
+             ankle_pitch -0.255. Distinct from the parked strat-17 squat_mid/q3 (do NOT reuse those:
+             squat_q3 z=1.028 would pull the base UP mid-descent). -->
+        <key name="crouch_mid" qpos="0.19 0 0.995 1 0 0 0 0 -0.325 0.12 0.525 -0.255 0 0 -0.325 -0.12 0.525 -0.255 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- squat_mid: HALF-crouch staging pose for the cyclic squat strategy
              (idx 17). Halves the leg flexion (hip_pitch -0.2, knee 0.35, ankle
              -0.15) so the crouch<->stand transition passes through a mid pose;
@@ -78,6 +89,14 @@
         <key name="lean_left" qpos="0.19 0 1.028 1 0 0 0 0 0 0.3 0 0 0 0 0 0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="lean_right" qpos="0.19 0 1.028 1 0 0 0 0 0 -0.3 0 0 0 0 0 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="torso_twist" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- jab (strategy 19): standing boxing jab. Both arms up in a guard
+             (elbows bent -1.0 rad, fists at chin height); the RIGHT arm punches
+             straight forward (shoulder_pitch -1.0, elbow straightens to 0) then
+             retracts. Left arm held identical in both frames = the static guard.
+             Legs/base = the proven "stand" pose. Right fist travels +0.23 m
+             forward at shoulder height; whole-body CoM shifts <2 mm. -->
+        <key name="jab_guard"  qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.30 0.15 0 -1.00 0 0 0 -0.30 -0.15 0 -1.00 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_extend" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.30 0.15 0 -1.00 0 0 0 -1.00 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -173,9 +192,11 @@
              9 arms_sideways, 10 arms_forward, 11 arms_overhead,
              12 single_arm_raise, 13 lean_left, 14 lean_right, 15 torso_twist,
              16 counterbalance, 17 squat (cyclic), 18 squatter (native
-             stand<->crouch auto-cycle, made of strat 6 + 8).
-             Slider max raised 5 → 18 so these are reachable. -->
-        <numeric name="residual_Strategy" data="5 0 18" />
+             stand<->crouch auto-cycle, made of strat 6 + 8),
+             19 jab (standing boxing jab: left arm guard, right arm punches
+             forward and retracts; 2-phase jab_guard<->jab_extend auto-cycle).
+             Slider max raised 5 → 19 so these are reachable. -->
+        <numeric name="residual_Strategy" data="5 0 19" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
              (default behaviour, runs the whole loaded pipeline). 0..6 =
              hold at that keyframe index regardless of progress; auto-

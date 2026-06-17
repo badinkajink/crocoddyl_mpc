@@ -40,6 +40,13 @@
         <key name="lean_left" qpos="0.19 0 1.028 1 0 0 0 0 0 0.3 0 0 0 0 0 0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="lean_right" qpos="0.19 0 1.028 1 0 0 0 0 0 -0.3 0 0 0 0 0 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="torso_twist" qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- jab (strategy 19): standing boxing jab — left arm guard, right arm
+             punches forward then retracts. Hands-model qpos (right arm shifted to
+             idx 39+ by the 12-DOF left hand). NOTE: the Hands Posture cost (dim 27)
+             does not reach the right arm, so the right-arm punch tracks only
+             partially on this variant (mirrors arms_overhead/single_arm_raise). -->
+        <key name="jab_guard" qpos="0.19 0 1.02 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 -0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_extend" qpos="0.19 0 1.02 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
 
     <custom>
@@ -94,8 +101,9 @@
              adjustment for the brace, never a leg lift). Indices 0-4 are
              progressive prefix slices. Indices 6-16 are the standalone
              simple-task strategies (see Lean_H12.xml + GetStrategyNames).
-             18 = native squatter (stand<->crouch auto-cycle, strat 6 + 8). -->
-        <numeric name="residual_Strategy" data="5 0 18" />
+             18 = native squatter (stand<->crouch auto-cycle, strat 6 + 8).
+             19 = jab (standing boxing jab: left guard, right arm punches). -->
+        <numeric name="residual_Strategy" data="5 0 19" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>
