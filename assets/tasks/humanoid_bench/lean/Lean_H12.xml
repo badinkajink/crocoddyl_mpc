@@ -95,8 +95,17 @@
              retracts. Left arm held identical in both frames = the static guard.
              Legs/base = the proven "stand" pose. Right fist travels +0.23 m
              forward at shoulder height; whole-body CoM shifts <2 mm. -->
-        <key name="jab_guard"  qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.30 0.15 0 -1.00 0 0 0 -0.30 -0.15 0 -1.00 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jab_extend" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.30 0.15 0 -1.00 0 0 0 -1.00 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- jab keyframes use a CENTERED stand pose (hip_pitch -0.18, ankle_pitch
+             -0.29) instead of the shared stand_up's hip -0.25/ankle -0.21. fk_analyze
+             showed the stand_up pose plants the feet ~6cm ahead of the CoM => CoM
+             22mm BEHIND the heels => statically tipped backward => the cold-start
+             topples backward (~3s) on the faithful twin. The reduced hip_pitch both
+             moves the CoM inside the support AND cuts the back-pitch the hip target
+             induces during the ramp; the ankle compensates to keep the foot flat at
+             z=1.020. Scoped to the jab (stand-6/squatter keep their stand_up). -->
+        <key name="jab_stand"  qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_guard"  qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.30 0.15 0 -1.00 0 0 0 -0.30 -0.15 0 -1.00 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_extend" qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.30 0.15 0 -1.00 0 0 0 -1.00 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -194,7 +203,9 @@
              16 counterbalance, 17 squat (cyclic), 18 squatter (native
              stand<->crouch auto-cycle, made of strat 6 + 8),
              19 jab (standing boxing jab: left arm guard, right arm punches
-             forward and retracts; 2-phase jab_guard<->jab_extend auto-cycle).
+             forward and retracts; 3-phase stand_up->jab_guard->jab_extend
+             auto-cycle with a stand lead-in; jab_extend gets a dedicated
+             right-hand forward reach reward so the punch fully extends).
              Slider max raised 5 → 19 so these are reachable. -->
         <numeric name="residual_Strategy" data="5 0 19" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
@@ -331,7 +342,7 @@
         <user name="Body Yaw" dim="1" user="6 60.0 0.0 200.0 0.1"/>
         <user name="Body Table Clearance" dim="1" user="6 5.0 0.0 200.0 20.0"/>
         <user name="Knees Straight" dim="2" user="6 40.0 0.0 300.0 0.25"/>
-        <user name="Symmetry" dim="2" user="0 0.0 0.0 100.0"/>
+        <user name="Symmetry" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Base Height" dim="1" user="0 0.0 0.0 100.0"/>
         <user name="Angular Momentum" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>

@@ -343,6 +343,44 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     phase1_target_storage[2] = 0.75;
     reach_target = phase1_target_storage;
   }
+  // jab_extend (Strategy 19): the RIGHT arm punches straight forward. Posture
+  // alone (one arm joint out of ~30) is too weak a reward for the warm-started
+  // policy to commit to the big shoulder excursion — it leaves the arms hovering
+  // near the guard pose (user report: "guard held for a minute, never jabs").
+  // Give the punch a DEDICATED reach reward: repoint the reaching hand to the
+  // RIGHT fist and target a fixed point one arm-length forward of the right
+  // shoulder at shoulder height — a mirror of the proven arm_extend_standing
+  // forward override with y flipped to the right side. The reach residual
+  // (Reaching Hand Dist, enabled ONLY in the jab_extend JSON phase) then pulls
+  // the fist out with a steep, targeted gradient the warm-start mean drifts
+  // toward; the left arm holds guard via Posture. Gated on the keyframe name so
+  // no other strategy's reach assignment is touched (left_reaches stays true
+  // everywhere else).
+  else if (residual_keyframe_.name == "jab_extend") {
+    reaching_hand = right_hand_pos;
+    // Target = the FK-measured location of the right fist at FULL straight
+    // extension, expressed relative to torso_position. Measured (jab_fk.py,
+    // build Lean_H12) for the jab_extend keyframe: fist is dx=+0.498, dy=-0.085,
+    // dz=+0.366 from torso_position (torso sits at z~1.225, the extended fist at
+    // z~1.59 — torso_position is well BELOW the shoulder, so a torso_z-0.05
+    // "shoulder height" guess like arm_extend_standing uses puts the target
+    // ~0.4 m too LOW and the planner punches DOWN with a bent elbow). x pushed a
+    // touch past 0.498 to demand the elbow fully straighten rather than fold to
+    // hit a nearer point. Torso stays upright (Pelvis Tilt=100) so this pulls
+    // ARM extension, not a forward lean.
+    // GENTLE target: the natural full-extension fist point (FK dx+0.498), NOT
+    // pushed beyond. On the faithful deploy twin a more aggressive forward pull
+    // (dx 0.62 + high reach weight) made the planner counterbalance backward and
+    // OVERSHOOT into a backward topple at the punch. The jab sits on a marginal
+    // stand, so the punch must stay a small perturbation: a modest reach weight
+    // (35, set in the jab_extend JSON) toward this natural point gives a visible
+    // forward jab without driving the CoM past the balance margin. Torso held
+    // upright by Pelvis Tilt=100.
+    phase1_target_storage[0] = torso_pos[0] + 0.58;   // just PAST full reach -> forces full straight extension
+    phase1_target_storage[1] = torso_pos[1] - 0.09;   // natural extended-arm y
+    phase1_target_storage[2] = torso_pos[2] + 0.37;   // extended-fist height
+    reach_target = phase1_target_storage;
+  }
 
   double torso_to_table_x = table_pos[0] - torso_pos[0];
   // 2026-05-20: pin the brace LATERALLY under the right shoulder instead of
@@ -1419,7 +1457,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   if (!arm_contact_or_lean) {
     residual[counter++] = data->qpos[7 + 3] - data->qpos[7 + 9];  // knee L-R
     residual[counter++] = data->qpos[7 + 1] - data->qpos[7 + 7];  // hipPitch L-R
+    // anklePitch L-R: the SAGITTAL ankle. joint_forensics on the cold-start
+    // backward fall (strat 19) showed the one-leg strut hides HERE — L/R
+    // ankle_pitch diverged 13.9deg while knee diverged only 5.2deg. The
+    // original term excluded "ankle" reasoning about the LATERAL ankle_roll
+    // (asymmetry there is normal); ankle_PITCH is fore/aft and must stay
+    // symmetric for a square stance, so penalising its (L-R) closes the
+    // strut's last escape. Quadratic => tiny asymmetries stay ~free.
+    residual[counter++] = data->qpos[7 + 4] - data->qpos[7 + 10]; // anklePitch L-R
   } else {
+    residual[counter++] = 0.0;
     residual[counter++] = 0.0;
     residual[counter++] = 0.0;
   }

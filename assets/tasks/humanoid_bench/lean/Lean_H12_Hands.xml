@@ -45,8 +45,9 @@
              idx 39+ by the 12-DOF left hand). NOTE: the Hands Posture cost (dim 27)
              does not reach the right arm, so the right-arm punch tracks only
              partially on this variant (mirrors arms_overhead/single_arm_raise). -->
-        <key name="jab_guard" qpos="0.19 0 1.02 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 -0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jab_extend" qpos="0.19 0 1.02 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_stand" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_guard" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 -0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_extend" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
 
     <custom>
@@ -166,7 +167,7 @@
         <user name="Body Yaw" dim="1" user="6 60.0 0.0 200.0 0.1"/>
         <user name="Body Table Clearance" dim="1" user="6 5.0 0.0 200.0 20.0"/>
         <user name="Knees Straight" dim="2" user="6 40.0 0.0 300.0 0.25"/>
-        <user name="Symmetry" dim="2" user="0 0.0 0.0 100.0"/>
+        <user name="Symmetry" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Base Height" dim="1" user="0 0.0 0.0 100.0"/>
         <user name="Angular Momentum" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>
