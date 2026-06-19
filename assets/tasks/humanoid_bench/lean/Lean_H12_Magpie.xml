@@ -1,5 +1,5 @@
-<mujoco model="Lean H12">
-    <include file="../h1_2/h1_2_modified.xml"/>
+<mujoco model="Lean H12 Magpie">
+    <include file="../h1_2/h1_2_modified_magpie.xml"/>
     <include file="lean.xml"/>
     <include file="../../common.xml" />
     <include file="../assets/floor.xml" />

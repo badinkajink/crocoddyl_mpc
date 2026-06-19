@@ -1,0 +1,38 @@
+--- h1_2_modified.xml	2026-06-18 15:59:33.626576622 -0600
++++ h1_2_modified_magpie.xml	2026-06-18 15:59:36.820597461 -0600
+@@ -1,4 +1,4 @@
+-<mujoco model="Unitree H1_2 Handless With Position Actuators">
++<mujoco model="Unitree H1_2 + Magpie Grippers (fixed mass) With Position Actuators">
+   <compiler angle="radian" meshdir="meshes/" autolimits="true"/>
+ 
+   <default>
+@@ -272,6 +272,14 @@
+                       <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
+                       <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
+                       <site name="left_hand" pos="0.17 0 0.0" size="0.01" rgba="0 1 0 1"/>
++                      <!-- Magpie gripper: FIXED mass-only (rigidly attached, NOT actuated).
++                           mass/CoM/inertia computed from h1_2_magpie.xml in this wrist frame
++                           (0.506 kg, ~15 cm beyond wrist). Off-bus: opened/closed by the
++                           separate magpie_msgs controller, not by MJPC. Keeps nu=27 / nq=41. -->
++                      <body name="left_magpie_gripper" pos="0.14692 0 0.00106">
++                        <inertial pos="0 0 0" mass="0.5056" fullinertia="1.326980e-03 9.652411e-04 2.238433e-03 5.461942e-10 3.969939e-05 -1.784337e-12"/>
++                        <geom type="box" size="0.03 0.045 0.05" contype="0" conaffinity="0" group="1" density="0" rgba="0.05 0.05 0.05 1"/>
++                      </body>
+                     </body>
+                   </body>
+                 </body>
+@@ -323,6 +331,14 @@
+                       <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
+                       <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
+                       <site name="right_hand" pos="0.17 0 0" size="0.01" rgba="0 1 0 1"/>
++                      <!-- Magpie gripper: FIXED mass-only (rigidly attached, NOT actuated).
++                           mass/CoM/inertia computed from h1_2_magpie.xml in this wrist frame
++                           (0.506 kg, ~15 cm beyond wrist). Off-bus: opened/closed by the
++                           separate magpie_msgs controller, not by MJPC. Keeps nu=27 / nq=41. -->
++                      <body name="right_magpie_gripper" pos="0.14692 0 0.00106">
++                        <inertial pos="0 0 0" mass="0.5056" fullinertia="1.326980e-03 9.652411e-04 2.238433e-03 5.461942e-10 3.969939e-05 -1.784337e-12"/>
++                        <geom type="box" size="0.03 0.045 0.05" contype="0" conaffinity="0" group="1" density="0" rgba="0.05 0.05 0.05 1"/>
++                      </body>
+                     </body>
+                   </body>
+                 </body>

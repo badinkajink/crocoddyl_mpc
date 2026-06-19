@@ -235,7 +235,7 @@ class lean : public Task {
                                          //    twin of the node's --strategy 18 sequencer
                                          //    (h12_control_node.cc), so the planner/monitor/
                                          //    analyzer can drive the squat natively.
-            "h12_simple_jab"};           // 19 standing boxing jab: 3-phase
+            "h12_simple_jab",            // 19 standing boxing jab: 3-phase
                                          //    stand_up -> jab_guard -> jab_extend auto-cycle. A
                                          //    stand_up LEAD-IN (gentle 3s ramp from home, like the
                                          //    stand/squatter strategies) settles the legs/balance
@@ -247,6 +247,18 @@ class lean : public Task {
                                          //    WBC base = strat 6 (stand) weights, Posture 60 for
                                          //    punch authority; asymmetric arms are free (Symmetry
                                          //    penalizes only legs). Slow, deliberate cadence.
+            "h12_simple_stumble"};       // 20 stumble: gait-clock STEPPING. A
+                                         //    stand_up LEAD-IN settles balance, THEN a continuous
+                                         //    gait clock alternates the feet (antiphase, ~1.6 Hz,
+                                         //    duty 0.65, 6 cm step) so the robot STEPS IN PLACE to
+                                         //    stay up ("stumble") and WALKS when a desired CoM
+                                         //    velocity is commanded (nav-package hook in lean.cc).
+                                         //    Unlike every other lean strategy (both feet planted,
+                                         //    ankle-only balance) it RELOCATES the support polygon
+                                         //    under the CoM -> escapes the weak-ankle ceiling. New
+                                         //    Gait + Step Place cost terms, name-gated; Symmetry/
+                                         //    Lateral Center/Knees OFF (stepping breaks the static-
+                                         //    stance symmetry on purpose).
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -315,6 +327,20 @@ class Lean_H12 : public lean {
   }
 };
 
+// Identical to Lean_H12 (same strategies/costs/weights, nu=27, nq=41) but the
+// model carries the two fixed magpie grippers as ~0.506 kg mass-only bodies at
+// the wrists. Load with --task "Lean H12 Magpie" when the grippers are mounted;
+// fall back to "Lean H12" when they're removed. The grippers are NOT actuated
+// here -- open/close is owned by the separate magpie_msgs controller.
+class Lean_H12_Magpie : public lean {
+ public:
+  std::string Name() const override { return "Lean H12 Magpie"; }
+
+  std::string XmlPath() const override {
+    return GetModelPath("humanoid_bench/lean/Lean_H12_Magpie.xml");
+  }
+};
+
 class Lean_H12_Hands : public lean {
  public:
   std::string Name() const override { return "Lean H12 Hands"; }
@@ -348,9 +374,10 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_counterbalance",  // 16 (mirrors Lean_H12 slot 16)
             "h12_hands_simple_squat",   // 17 cyclic squat (mirrors Lean_H12 slot 17)
             "h12_hands_simple_squatter",  // 18 native squatter (mirrors Lean_H12 slot 18)
-            "h12_hands_simple_jab"};    // 19 standing boxing jab (mirrors Lean_H12 slot 19).
+            "h12_hands_simple_jab",     // 19 standing boxing jab (mirrors Lean_H12 slot 19).
                                         //    Right-arm punch tracks only partially on the
                                         //    Hands model (Posture dim 27 misses the right arm).
+            "h12_hands_simple_stumble"};  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
   }
 };
 

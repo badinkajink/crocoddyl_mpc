@@ -255,6 +255,66 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     }
   }
 
+  // ==================== STUMBLE: gait clock + swing-leg JOINT reference ===== //
+  // Strategy 20 "stumble" stepping. (Full rationale at the Gait/Step Place
+  // residual terms near the end of this function.) The gait CLOCK and the swing-
+  // leg JOINT reference are computed HERE -- before the Posture cost reads
+  // posture_target -- so the swing leg's hip/knee/ankle TARGETS fold up each
+  // cycle and the strong, well-behaved Posture cost DRIVES the foot off the
+  // ground. That turns stepping into a TRACKING problem (which sampling MPC
+  // solves trivially, like every pose strategy tracking a keyframe) instead of a
+  // SEARCH problem -- the planner will not spontaneously cross the cost barrier
+  // of a half-formed step out of the stable-stand local minimum at calm
+  // exploration. The Cartesian Gait/Step Place terms at the END of the function
+  // refine foot height + xy placement, reusing g_amp/g_bump_* computed here.
+  // NAME-GATED on "stumble": every other strategy (0-19) skips this block and
+  // its two end-of-function residual terms default to weight 0 -> byte-identical.
+  mjtNum stumble_posture_target[64];  // private swing-leg reference (stumble only)
+  const bool is_stumble = (residual_keyframe_.name.rfind("stumble", 0) == 0);
+  // gait parameters (constexpr -> tune by edit+rebuild; nav drives only kDesVel*)
+  constexpr double kCadenceHz  = 0.8;   // steps/s per foot (slower -> swing fits fewer
+                                        // spline knots, so it steps at a stand-tolerable
+                                        // bandwidth: spline 8 destabilises even a plain
+                                        // stand, spline<=5 holds. 2026-06-18.)
+  constexpr double kDutyRatio  = 0.70;  // stance fraction (more double-support = steadier)
+  constexpr double kStepHeight = 0.022; // swing-foot peak Cartesian clearance [m] (gentle shuffle)
+  constexpr double kAmpRampSec = 4.5;   // ease the gait in over the first 4.5 s of the phase
+  constexpr double kDesVelX    = 0.0;   // desired CoM velocity [m/s] world x -- NAV HOOK
+  constexpr double kDesVelY    = 0.0;   // desired CoM velocity [m/s] world y -- NAV HOOK
+  // swing-leg JOINT-space lift offsets [rad] at full bump (added to the keyframe
+  // target): fold the leg up so the foot clears ground. hip flexes back, knee
+  // bends, ankle holds the sole level. This is what BOOTSTRAPS the step; the
+  // leg hip_pitch/knee entries are additionally leg-gain-amplified by the
+  // Posture cost, so even a modest Posture weight tracks the swing crisply.
+  constexpr double kSwingHip   = 0.11;  // hip_pitch: more negative -> thigh lifts (gentler)
+  constexpr double kSwingKnee  = 0.20;  // knee: more positive -> shank folds up (gentler)
+  constexpr double kSwingAnk   = 0.08;  // ankle_pitch: more negative -> foot stays level
+  double g_amp = 0.0, g_bump_l = 0.0, g_bump_r = 0.0;
+  if (is_stumble) {
+    double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
+    g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);              // smoothstep ramp 0->1
+    double ph_l = std::fmod(data->time * kCadenceHz,       1.0);  // L foot phase
+    double ph_r = std::fmod(data->time * kCadenceHz + 0.5, 1.0);  // R antiphase
+    g_bump_l = (ph_l < kDutyRatio) ? 0.0
+        : std::sin(mjPI * (ph_l - kDutyRatio) / (1.0 - kDutyRatio));
+    g_bump_r = (ph_r < kDutyRatio) ? 0.0
+        : std::sin(mjPI * (ph_r - kDutyRatio) / (1.0 - kDutyRatio));
+    if (model->nq <= 64) {
+      for (int i = 0; i < model->nq; i++)
+        stumble_posture_target[i] = posture_target[i];
+      double ll = g_amp * g_bump_l, lr = g_amp * g_bump_r;    // 0..1 lift per leg
+      // L leg joints: qpos 7+1 hip_pitch, 7+3 knee, 7+4 ankle_pitch
+      stumble_posture_target[7 + 1] -= kSwingHip  * ll;
+      stumble_posture_target[7 + 3] += kSwingKnee * ll;
+      stumble_posture_target[7 + 4] -= kSwingAnk  * ll;
+      // R leg joints: qpos 7+7 hip_pitch, 7+9 knee, 7+10 ankle_pitch
+      stumble_posture_target[7 + 7]  -= kSwingHip  * lr;
+      stumble_posture_target[7 + 9]  += kSwingKnee * lr;
+      stumble_posture_target[7 + 10] -= kSwingAnk  * lr;
+      posture_target = stumble_posture_target;
+    }
+  }
+
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
 
@@ -1552,9 +1612,112 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Center", so every other task stays byte-identical.
   if (!arm_contact_or_lean) {
     double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
-    residual[counter++] = 10.0 * (subcom[1] - midfoot_y);
+    // STUMBLE: rock the CoM toward the STANCE foot as the other foot swings --
+    // you cannot raise a LOADED foot, so the weight must shift off it first.
+    // (g_bump_r - g_bump_l) is -bump when the LEFT foot swings (shift CoM to the
+    // -y RIGHT stance foot) and +bump when the RIGHT swings; 0 in double support
+    // (stay centred). This gait-synced weight-shift reference is what converts
+    // the folded-swing-leg Posture into a REAL step; the planner finds the hip-
+    // roll / ankle to achieve it. Only for stumble; every other strategy keeps
+    // the plain centred target (and weight 0 unless it opts in). --- //
+    constexpr double kLatShift = 0.07;   // CoM lateral rock amplitude [m]
+    double lat_tgt = midfoot_y +
+        (is_stumble ? kLatShift * g_amp * (g_bump_r - g_bump_l) : 0.0);
+    residual[counter++] = 10.0 * (subcom[1] - lat_tgt);
   } else {
     residual[counter++] = 0.0;
+  }
+
+  // ============ STUMBLE: Cartesian Gait + Step Place refinement ============ //
+  // Strategy 20 "stumble" stepping. The gait clock + swing-leg JOINT reference
+  // that BOOTSTRAP the step (via the Posture cost) were computed near the TOP of
+  // this function; here we add the two Cartesian refinement terms that ground
+  // the motion in task space, reusing g_amp / g_bump_l / g_bump_r. Both are the
+  // LAST two <user> sensors (Gait dim 2, Step Place dim 4), XML default weight 0,
+  // and write 0 for every non-stumble strategy -> strategies 0-19 stay byte-
+  // identical (zero residual AND zero weight => zero cost), exactly the Symmetry/
+  // Angular Momentum/Lateral Center opt-in pattern above.
+  //
+  // WHY STEPPING (not more ankle gain): the documented H1-2 limiter is ankle
+  // under-authority -- the ankle saturates once the CoP reaches the support-
+  // polygon edge, so a large capture-point excursion is UNRECOVERABLE by ankle
+  // torque (the ~56%-marginal stand / one-leg-strut ceiling every other lean
+  // strategy hits). Stepping RELOCATES the support polygon under the falling CoM
+  // (N-step capturability, Koolen/Pratt), extending the recoverable region far
+  // beyond the ankle limit -- the gradient-free win for a weak-ankle robot.
+  if (is_stumble) {
+    double amp = kStepHeight * g_amp;   // ramped Cartesian step height [m]
+    // --- Gait foot-height (dim 2): reinforce the SWING foot rising its bump in
+    //     task space; STANCE foot untracked (residual 0). Ground reference = the
+    //     lower (planted) foot, so it auto-calibrates with no hard-coded foot z. --- //
+    double ref_z = mju_min(foot_left_pos[2], foot_right_pos[2]);
+    residual[counter++] =
+        (g_bump_l > 0.0) ? (foot_left_pos[2]  - ref_z - amp * g_bump_l) : 0.0;
+    residual[counter++] =
+        (g_bump_r > 0.0) ? (foot_right_pos[2] - ref_z - amp * g_bump_r) : 0.0;
+
+    // --- Step Place (dim 4): aim each SWING foot's xy at a capture-point /
+    //     Raibert target: x_foot = com_xy + nominal_offset
+    //                            + (com_vel - v_des)*sqrt(z/g) + v_des*T_stance.
+    //     v_des=0, balanced -> nominal stance (march in place); a push -> target
+    //     shifts into the push -> recovery STEP; v_des>0 -> feet step in the
+    //     commanded direction -> walk (the nav hook). Stance foot untracked. --- //
+    int pelvis_id = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
+    const mjtNum *com_pos = data->subtree_com + 3 * pelvis_id;     // whole-body CoM xyz
+    double const *com_vel = SensorByName(model, data, "waist_lower_subcomvel");
+    double z_com     = mju_max(0.5, com_pos[2]);
+    double tau_cap   = mju_sqrt(z_com / 9.81);     // sqrt(z/g): capture-point time const
+    double t_stance  = kDutyRatio / kCadenceHz;    // stance duration [s]
+    // CLAMP the capture offset to a physical step reach. Unclamped, an incipient
+    // topple spikes com_vel -> the foot target explodes metres away -> the swing
+    // leg FLINGS to chase it (seen as 0.5 m foot-height spikes that then caused
+    // the fall). A real step can only reach ~+/-0.22 m, so clamp there: the term
+    // still biases the step toward the capture point for recovery, but can never
+    // command an unreachable lunge.
+    constexpr double kStepReach = 0.22;   // max single-step xy reach [m]
+    double off_x = (com_vel[0] - kDesVelX) * tau_cap + kDesVelX * t_stance;
+    double off_y = (com_vel[1] - kDesVelY) * tau_cap + kDesVelY * t_stance;
+    off_x = mju_max(-kStepReach, mju_min(kStepReach, off_x));
+    off_y = mju_max(-kStepReach, mju_min(kStepReach, off_y));
+    // nominal foot offsets from the CoM at the standing stance (measured ~0.064 m
+    // fore, +/-0.26 m lateral). Biased to 0.09 fore so the feet land slightly
+    // AHEAD of the CoM -- countering the documented H1-2 forward CoM lean (~3-4 cm
+    // ahead) that topples the static stand. CoM-relative so the stance translates
+    // when walking.
+    constexpr double kStanceOffX = 0.09;
+    constexpr double kStanceOffY = 0.26;
+    residual[counter++] = (g_bump_l > 0.0)
+        ? (foot_left_pos[0]  - (com_pos[0] + kStanceOffX + off_x)) : 0.0;
+    residual[counter++] = (g_bump_l > 0.0)
+        ? (foot_left_pos[1]  - (com_pos[1] + kStanceOffY + off_y)) : 0.0;
+    residual[counter++] = (g_bump_r > 0.0)
+        ? (foot_right_pos[0] - (com_pos[0] + kStanceOffX + off_x)) : 0.0;
+    residual[counter++] = (g_bump_r > 0.0)
+        ? (foot_right_pos[1] - (com_pos[1] - kStanceOffY + off_y)) : 0.0;
+
+    // --- Foot Slip (dim 2): penalize the STANCE foot SLIDING horizontally (gated
+    //     on bump==0 = the planted foot). The reference MuJoCo Playground humanoid
+    //     relies on this (G1 feet_slip cost): a sampling planner has no learned
+    //     recovery reflex, so a stance foot that skids during the weight-shift
+    //     builds the exact lateral momentum that topples a weak-ankle stepper --
+    //     killing the slip at the source beats reacting to it via the capture
+    //     point. (Source: Playground g1/joystick.py _cost_feet_slip.) --- //
+    double const *vfl = SensorByName(model, data, "foot_left_velocity");
+    double const *vfr = SensorByName(model, data, "foot_right_velocity");
+    residual[counter++] =
+        (g_bump_l > 0.0) ? 0.0 : mju_sqrt(vfl[0]*vfl[0] + vfl[1]*vfl[1]);
+    residual[counter++] =
+        (g_bump_r > 0.0) ? 0.0 : mju_sqrt(vfr[0]*vfr[0] + vfr[1]*vfr[1]);
+  } else {
+    residual[counter++] = 0.0;  // Gait L
+    residual[counter++] = 0.0;  // Gait R
+    residual[counter++] = 0.0;  // Step Place Lx
+    residual[counter++] = 0.0;  // Step Place Ly
+    residual[counter++] = 0.0;  // Step Place Rx
+    residual[counter++] = 0.0;  // Step Place Ry
+    residual[counter++] = 0.0;  // Foot Slip L
+    residual[counter++] = 0.0;  // Foot Slip R
   }
 
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //

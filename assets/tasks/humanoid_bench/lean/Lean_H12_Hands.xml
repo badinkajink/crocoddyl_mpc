@@ -48,6 +48,11 @@
         <key name="jab_stand" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="jab_guard" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 -0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="jab_extend" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- stumble_march (strategy 20, Hands variant): the validated stand pose
+             (hip -0.25 / knee 0.35 / ankle -0.21, z=1.02), arms at home. Mirrors
+             the Lean_H12 stumble_march; the Gait/Step Place costs are model-
+             agnostic (foot sensors + CoM), so stepping works on both models. -->
+        <key name="stumble_march" qpos="0.19 0 1.02 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
 
     <custom>
@@ -104,7 +109,7 @@
              simple-task strategies (see Lean_H12.xml + GetStrategyNames).
              18 = native squatter (stand<->crouch auto-cycle, strat 6 + 8).
              19 = jab (standing boxing jab: left guard, right arm punches). -->
-        <numeric name="residual_Strategy" data="5 0 19" />
+        <numeric name="residual_Strategy" data="5 0 20" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>
@@ -171,6 +176,12 @@
         <user name="Base Height" dim="1" user="0 0.0 0.0 100.0"/>
         <user name="Angular Momentum" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>
+        <!-- Gait / Step Place: strategy-20 "stumble" stepping (mirrors Lean_H12).
+             Default weight 0 (inert for 0-19); name-gated in lean.cc. MUST stay
+             the LAST two <user> sensors so the residual append order matches. -->
+        <user name="Gait" dim="2" user="0 0.0 0.0 100.0"/>
+        <user name="Step Place" dim="4" user="0 0.0 0.0 100.0"/>
+        <user name="Foot Slip" dim="2" user="0 0.0 0.0 100.0"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>
