@@ -289,16 +289,67 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   constexpr double kSwingHip   = 0.11;  // hip_pitch: more negative -> thigh lifts (gentler)
   constexpr double kSwingKnee  = 0.20;  // knee: more positive -> shank folds up (gentler)
   constexpr double kSwingAnk   = 0.08;  // ankle_pitch: more negative -> foot stays level
+  // ---- BALANCE-GATED stepping (2026-06-19) ----
+  // Instead of marching CONTINUOUSLY (the old time-ramp that pinned g_amp at 1),
+  // STAND STILL (bent-knee, g_amp=0) and ramp the stepping in ONLY while balance
+  // is being lost -- then ease back to a still stand once recovered. "Losing
+  // balance" = base TILT or FORE-AFT CoM speed past a deadband. LATERAL CoM speed
+  // is deliberately EXCLUDED: that is the step's own weight-shift rock, which would
+  // self-trigger and never settle. Toggle off with model numeric
+  // stumble_balance_gated=0 to restore the old always-on march (A/B, no rebuild).
+  constexpr double kArmSec   = 2.0;   // arm the gate this long after engage (calm bring-up)
+  constexpr double kTiltDead = 0.10;  // rad (~5.7deg): below this = balanced -> no stepping
+  constexpr double kTiltFull = 0.17;  // rad (~9.7deg): full stepping authority
+  constexpr double kVxDead   = 0.12;  // m/s fore-aft: below this = balanced
+  constexpr double kVxFull   = 0.30;  // m/s: full stepping (meets the hard capture-step trigger)
   double g_amp = 0.0, g_bump_l = 0.0, g_bump_r = 0.0;
   if (is_stumble) {
-    double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
-    g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);              // smoothstep ramp 0->1
+    // gait CLOCK always runs; only the AMPLITUDE g_amp decides whether it steps.
     double ph_l = std::fmod(data->time * kCadenceHz,       1.0);  // L foot phase
     double ph_r = std::fmod(data->time * kCadenceHz + 0.5, 1.0);  // R antiphase
     g_bump_l = (ph_l < kDutyRatio) ? 0.0
         : std::sin(mjPI * (ph_l - kDutyRatio) / (1.0 - kDutyRatio));
     g_bump_r = (ph_r < kDutyRatio) ? 0.0
         : std::sin(mjPI * (ph_r - kDutyRatio) / (1.0 - kDutyRatio));
+    double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
+    double const *flp  = SensorByName(model, data, "foot_left_pos");
+    double const *frp  = SensorByName(model, data, "foot_right_pos");
+    // --- AMPLITUDE: balance-gated (default) or legacy continuous march ---
+    int bg_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_balance_gated");
+    bool balance_gated =
+        (bg_id < 0) || (model->numeric_data[model->numeric_adr[bg_id]] > 0.5);
+    if (balance_gated) {
+      double const *tup = SensorByName(model, data, "torso_up");
+      double tilt = tup ? std::acos(mju_max(-1.0, mju_min(1.0, tup[2]))) : 0.0;
+      double vx   = cvel ? std::fabs(cvel[0]) : 0.0;
+      double imb_t = (tilt - kTiltDead) / (kTiltFull - kTiltDead);
+      double imb_v = (vx   - kVxDead)   / (kVxFull   - kVxDead);
+      double imb = mju_max(0.0, mju_min(1.0, mju_max(imb_t, imb_v)));
+      imb = imb * imb * (3.0 - 2.0 * imb);                 // smoothstep
+      double arm = mju_min(time_in_phase / kArmSec, 1.0);
+      arm = arm * arm * (3.0 - 2.0 * arm);                 // calm bring-up, no spurious step
+      g_amp = arm * imb;                                   // 0 = stand still, 1 = full stepping
+    } else {
+      double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
+      g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);         // legacy continuous march
+    }
+    // --- REACTIVE capture-step (hard push / burst recovery, 2026-06-18) ---
+    // A hard FORWARD/BACKWARD shove topples the weak ankle before the gait clock
+    // offers a swing window; force the TRAILING foot into swing immediately so a
+    // catch-step plants past the falling CoM. Fires in BOTH modes. Gated on |vx|
+    // (steady stepping rock is LATERAL, vx~0) -> inert at the balanced baseline.
+    {
+      constexpr double kPushTrig = 0.30;   // m/s fore-aft; above steady-gait vx
+      if (cvel && flp && frp && std::fabs(cvel[0]) > kPushTrig) {
+        double recov = mju_min(1.0, (std::fabs(cvel[0]) - kPushTrig) / 0.30);
+        g_amp = mju_max(g_amp, 1.0);       // full swing authority during recovery
+        // vx>0 (falling forward) -> swing the REAR foot (lower x) forward to catch;
+        // vx<0 (falling back) -> swing the FRONT foot (higher x) back to catch.
+        bool stepL = (cvel[0] > 0.0) ? (flp[0] <= frp[0]) : (flp[0] >= frp[0]);
+        if (stepL) g_bump_l = mju_max(g_bump_l, recov);
+        else       g_bump_r = mju_max(g_bump_r, recov);
+      }
+    }
     if (model->nq <= 64) {
       for (int i = 0; i < model->nq; i++)
         stumble_posture_target[i] = posture_target[i];
@@ -1675,7 +1726,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // the fall). A real step can only reach ~+/-0.22 m, so clamp there: the term
     // still biases the step toward the capture point for recovery, but can never
     // command an unreachable lunge.
-    constexpr double kStepReach = 0.22;   // max single-step xy reach [m]
+    constexpr double kStepReach = 0.30;   // max single-step xy reach [m] (0.22->0.30
+                                          // 2026-06-18: bigger CATCH-STEP for push
+                                          // recovery; forward shoves need a longer
+                                          // reach to plant the foot ahead of the CoM)
     double off_x = (com_vel[0] - kDesVelX) * tau_cap + kDesVelX * t_stance;
     double off_y = (com_vel[1] - kDesVelY) * tau_cap + kDesVelY * t_stance;
     off_x = mju_max(-kStepReach, mju_min(kStepReach, off_x));
@@ -1685,14 +1739,28 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // AHEAD of the CoM -- countering the documented H1-2 forward CoM lean (~3-4 cm
     // ahead) that topples the static stand. CoM-relative so the stance translates
     // when walking.
-    constexpr double kStanceOffX = 0.09;
+    constexpr double kStanceOffX = 0.13;   // 0.09->0.13 (2026-06-18): plant feet a
+                                           // touch further AHEAD of the CoM -> CoM sits
+                                           // further BEHIND the front of the support ->
+                                           // more forward-push margin (forward = the
+                                           // weak axis: ankle can't hold a fwd CoM).
     constexpr double kStanceOffY = 0.26;
+    // NOTE (2026-06-18): a STAGGERED/braced stance (L foot fore, R foot aft, via a
+    // staggered stumble_march keyframe + kStagger here) was TESTED to ~double the
+    // fore-aft support polygon (0.26->0.46 m). It improved the static baseline (4/4)
+    // but did NOT improve fwd/back PUSH survival and slightly hurt lateral -> REVERTED.
+    // Root cause: fore-aft recovery is reaction-BANDWIDTH limited (the planner doesn't
+    // exploit the bigger base / use the ankle headroom fast enough at spline 5), not
+    // support-geometry limited. The remaining principled lever is the HIP/arm
+    // angular-momentum strategy (ankle->HIP->step hierarchy) — unbuilt. The foot is
+    // already reference-grade fore-aft (G1 0.17 m / H1 0.20 m) so do NOT lengthen it.
+    constexpr double kStagL = 0.0, kStagR = 0.0;   // stagger off (see note)
     residual[counter++] = (g_bump_l > 0.0)
-        ? (foot_left_pos[0]  - (com_pos[0] + kStanceOffX + off_x)) : 0.0;
+        ? (foot_left_pos[0]  - (com_pos[0] + kStanceOffX + kStagL + off_x)) : 0.0;
     residual[counter++] = (g_bump_l > 0.0)
         ? (foot_left_pos[1]  - (com_pos[1] + kStanceOffY + off_y)) : 0.0;
     residual[counter++] = (g_bump_r > 0.0)
-        ? (foot_right_pos[0] - (com_pos[0] + kStanceOffX + off_x)) : 0.0;
+        ? (foot_right_pos[0] - (com_pos[0] + kStanceOffX + kStagR + off_x)) : 0.0;
     residual[counter++] = (g_bump_r > 0.0)
         ? (foot_right_pos[1] - (com_pos[1] - kStanceOffY + off_y)) : 0.0;
 

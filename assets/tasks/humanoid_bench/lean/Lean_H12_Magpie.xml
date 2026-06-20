@@ -181,6 +181,11 @@
              the un-sysid'd model). The value that stands it upright == the real CoM forward
              offset. XML-tunable, no rebuild. Default 0 = exact prior behavior. Try ~0.04. -->
         <numeric name="com_x_offset" data="0.0"/>
+        <!-- stumble_balance_gated (2026-06-19, strategy 20 only): 1 = STAND STILL
+             (bent-knee) and step ONLY when balance is being lost (tilt / fore-aft
+             CoM speed past a deadband), easing back to a still stand on recovery.
+             0 = legacy ALWAYS-ON in-place march. XML-tunable, no rebuild. -->
+        <numeric name="stumble_balance_gated" data="1.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
