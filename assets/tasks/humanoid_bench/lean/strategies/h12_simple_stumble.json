@@ -106,7 +106,7 @@
             "Torso Forward Tilt": 0.0,
             "Posture": 12.0,
             "Balance": 10.0,
-            "Symmetry": 0.0,
+            "Symmetry": 200.0,
             "Base Height": 220.0,
             "Angular Momentum": 8.0,
             "Lateral Center": 75.0,
@@ -125,7 +125,7 @@
             "Control": 0.05,
             "Foot Stability": 2.0,
             "Joint Vel. Limit": 5.0,
-            "Knees Straight": 0.0,
+            "Knees Straight": 80.0,
             "Gait": 25.0,
             "Step Place": 6.0,
             "Foot Slip": 25.0

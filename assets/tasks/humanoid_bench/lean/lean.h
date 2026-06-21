@@ -182,6 +182,13 @@ class lean : public Task {
                       std::map<std::string, double> *metrics,
                       std::string *phase_name) const override;
 
+  // Per-strategy planner model-numeric overrides (e.g. sampling_spline_points).
+  // See task.h PlannerNumericOverrides for the contract. Keyed by strategy NAME
+  // (GetStrategyNames()[strategy]) so the override follows the strategy across
+  // the Lean_H12 / Lean_H12_Hands model variants.
+  std::map<std::string, double> PlannerNumericOverrides(
+      int strategy) const override;
+
   // Slider layout (Lean H12) — user's 6-phase decomposition:
   //   0  stand            — stand_up
   //   1  arm_extend       — stand → arm_extend_standing (arm out, body upright)
@@ -247,7 +254,7 @@ class lean : public Task {
                                          //    WBC base = strat 6 (stand) weights, Posture 60 for
                                          //    punch authority; asymmetric arms are free (Symmetry
                                          //    penalizes only legs). Slow, deliberate cadence.
-            "h12_simple_stumble"};       // 20 stumble: gait-clock STEPPING. A
+            "h12_simple_stumble",        // 20 stumble: gait-clock STEPPING. A
                                          //    stand_up LEAD-IN settles balance, THEN a continuous
                                          //    gait clock alternates the feet (antiphase, ~1.6 Hz,
                                          //    duty 0.65, 6 cm step) so the robot STEPS IN PLACE to
@@ -259,6 +266,18 @@ class lean : public Task {
                                          //    Gait + Step Place cost terms, name-gated; Symmetry/
                                          //    Lateral Center/Knees OFF (stepping breaks the static-
                                          //    stance symmetry on purpose).
+            "h12_simple_reach"};         // 21 reach-to-target: standalone REACH
+                                         //    primitive. A stand_up LEAD-IN (reach_stand)
+                                         //    settles balance, THEN the nearer hand reaches an
+                                         //    EXTERNAL target (object_pos mocap = the `reach_target`
+                                         //    numeric, or a vision/nav input) while the body stays
+                                         //    upright and the feet planted -- no lean, no brace. The
+                                         //    target is auto-clamped to a balance-safe workspace box
+                                         //    (lean.cc reach_to_target): in-reach => hand on target,
+                                         //    out-of-reach => fully-extended arm, still standing
+                                         //    (the beyond-reach regime is LEAN's job). The reusable
+                                         //    base primitive for pick/retrieve; the lean pipeline is
+                                         //    this reach + brace + whole-body pitch for FAR targets.
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -377,7 +396,8 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_jab",     // 19 standing boxing jab (mirrors Lean_H12 slot 19).
                                         //    Right-arm punch tracks only partially on the
                                         //    Hands model (Posture dim 27 misses the right arm).
-            "h12_hands_simple_stumble"};  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
+            "h12_hands_simple_stumble",  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
+            "h12_hands_simple_reach"};   // 21 reach-to-target (mirrors Lean_H12 slot 21).
   }
 };
 

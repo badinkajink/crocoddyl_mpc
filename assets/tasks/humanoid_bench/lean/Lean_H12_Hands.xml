@@ -61,6 +61,31 @@
              dynamics gradients are noisy/discontinuous through contact. Sampling-based
              planners handle contact cleanly. Cross Entropy (5) is the sweet spot. -->
         <numeric name="agent_planner" data="5"/>
+        <!-- reach_hand (2026-06-20, strategy 21 only): 0 = AUTO (nearer hand),
+             1 = force LEFT, 2 = force RIGHT (keeps the other arm free for a
+             future brace/grasp). XML-tunable, no rebuild. -->
+        <numeric name="reach_hand" data="0"/>
+        <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
+             omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
+             (capture-point excursion, m). danger>catch_trig => step toward the fall;
+             danger>=catch_full => full-authority snap. LOWER catch_trig = steps earlier
+             (more decisive, risk false-steps); RAISE = waits longer. XML-tunable, no rebuild. -->
+        <numeric name="catch_trig" data="0.06"/>
+        <numeric name="catch_full" data="0.12"/>
+        <!-- stance_off_x (2026-06-20, strategy 20): feet planted this far AHEAD of
+             the CoM (m). LOWER -> CoM more centred -> better BACKWARD margin; HIGHER
+             -> more forward margin. XML-tunable, no rebuild. -->
+        <numeric name="stance_off_x" data="0.13"/>
+        <!-- lean_nominal_x (2026-06-20, strategy 20): the steady forward-lean
+             torso_up[0] at rest (~sin(3-4deg)). Subtracted from tilt so the catch-step
+             is SYMMETRIC about equilibrium (fixes late/wrong-way BACKWARD catch). -->
+        <numeric name="lean_nominal_x" data="0.06"/>
+        <!-- recover_pitch_gain / recover_roll_gain (2026-06-20, strategy 20): the
+             HIP/ARM angular-momentum RECOVERY tier. Targets counter-momentum =
+             gain * capture_excursion (throw torso+arms opposite the fall) so the CoM
+             is hauled back flat-footed BEFORE a step. 0 = off. XML-tunable, no rebuild. -->
+        <numeric name="recover_pitch_gain" data="-35.0"/>
+        <numeric name="recover_roll_gain" data="0.0"/>
         <!-- horizon restored to 1.0s (was 0.6) because the real-hardware-spec PD
              gains (ankle kp=20, knee kp=200 — IsaacLab H1_CFG / Opt2Skill) are
              too weak for MPC to recover balance within 0.6s of lookahead. 1.0s
@@ -109,7 +134,7 @@
              simple-task strategies (see Lean_H12.xml + GetStrategyNames).
              18 = native squatter (stand<->crouch auto-cycle, strat 6 + 8).
              19 = jab (standing boxing jab: left guard, right arm punches). -->
-        <numeric name="residual_Strategy" data="5 0 20" />
+        <numeric name="residual_Strategy" data="5 0 21" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>

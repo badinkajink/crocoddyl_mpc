@@ -66,6 +66,17 @@ inline void PhaseTargetScales(const std::string& name,
   else if (name == "counterbalance_standing") {
     reach = 1.0; brace_pos = 0.0; posture = 1.0;
   }
+  // reach_to_target: standalone "reach an input target" primitive (Strategy 21).
+  // Like arm_extend_standing the chosen hand reaches toward a world point and
+  // the feet stay planted with NO brace, but the target is the EXTERNAL mocap
+  // object (object_pos, clamped to a balance-safe workspace — see Residual())
+  // instead of a fixed forward pose. posture=1.0 (NOT 1.5): the legs are locked
+  // by dedicated terms (Knees Straight / Base Height / Symmetry in the JSON),
+  // so a low global Posture leaves the reaching ARM free to extend (the jab
+  // lesson — a high Posture parks the limb at its rest pose).
+  else if (name == "reach_to_target") {
+    reach = 1.0; brace_pos = 0.0; posture = 1.0;
+  }
   // lean_with_arm_no_brace: arm stays out from the previous phase but the
   // body now commits to a forward lean WITHOUT making table contact. This
   // is the "lean-and-catch-yourself-just-in-time" beat; the contact lands
@@ -289,20 +300,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   constexpr double kSwingHip   = 0.11;  // hip_pitch: more negative -> thigh lifts (gentler)
   constexpr double kSwingKnee  = 0.20;  // knee: more positive -> shank folds up (gentler)
   constexpr double kSwingAnk   = 0.08;  // ankle_pitch: more negative -> foot stays level
-  // ---- BALANCE-GATED stepping (2026-06-19) ----
-  // Instead of marching CONTINUOUSLY (the old time-ramp that pinned g_amp at 1),
-  // STAND STILL (bent-knee, g_amp=0) and ramp the stepping in ONLY while balance
-  // is being lost -- then ease back to a still stand once recovered. "Losing
-  // balance" = base TILT or FORE-AFT CoM speed past a deadband. LATERAL CoM speed
-  // is deliberately EXCLUDED: that is the step's own weight-shift rock, which would
-  // self-trigger and never settle. Toggle off with model numeric
+  // ---- BALANCE-GATED stepping (2026-06-19; signed-danger gate 2026-06-20) ----
+  // STAND STILL (bent-knee, g_amp=0) and ramp the gait in ONLY while balance is
+  // genuinely being lost; ease back to a still stand once recovered. "Losing
+  // balance" = the SIGNED capture-point danger (computed once below) crossing
+  // catch_trig -- the SAME quantity the catch-step + hip/arm tier use. The old
+  // gate keyed on ABSOLUTE base tilt (deadband 5.7deg) + ABSOLUTE |vx|, which the
+  // real-robot bring-up settle (leans ~8.7deg) and recovery motion both exceed ->
+  // it MARCHED while settling ("never stood still") and kept marching through the
+  // recovery ("kept twisting legs"); the twin settles ~3-4deg so it never showed
+  // it (live-only). Signed danger is recovery-aware: a settling/recovering lean is
+  // NOT treated as imbalance. Toggle off with model numeric
   // stumble_balance_gated=0 to restore the old always-on march (A/B, no rebuild).
-  constexpr double kArmSec   = 2.0;   // arm the gate this long after engage (calm bring-up)
-  constexpr double kTiltDead = 0.10;  // rad (~5.7deg): below this = balanced -> no stepping
-  constexpr double kTiltFull = 0.17;  // rad (~9.7deg): full stepping authority
-  constexpr double kVxDead   = 0.12;  // m/s fore-aft: below this = balanced
-  constexpr double kVxFull   = 0.30;  // m/s: full stepping (meets the hard capture-step trigger)
+  constexpr double kArmSec = 2.0;     // arm the gate this long after engage (calm bring-up)
   double g_amp = 0.0, g_bump_l = 0.0, g_bump_r = 0.0;
+  // Capture-point excursion (CoM heading vs equilibrium), hoisted to function
+  // scope so BOTH the catch-step (below) AND the hip/arm angular-momentum
+  // recovery tier (Centroidal angular momentum term, far below) read the same
+  // signal -- the ankle->HIP->step hierarchy keyed off one quantity.
+  double g_cap_ex = 0.0, g_cap_ey = 0.0;
   if (is_stumble) {
     // gait CLOCK always runs; only the AMPLITUDE g_amp decides whether it steps.
     double ph_l = std::fmod(data->time * kCadenceHz,       1.0);  // L foot phase
@@ -314,41 +330,74 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
     double const *flp  = SensorByName(model, data, "foot_left_pos");
     double const *frp  = SensorByName(model, data, "foot_right_pos");
+    // --- SIGNED CAPTURE-POINT DANGER (computed ONCE; drives the whole
+    //     ankle->HIP->step hierarchy: the march amplitude g_amp, the catch-step
+    //     foot choice, and the hip/arm angular-momentum recovery tier far below
+    //     via g_cap_ex/ey). e = z*tilt_dir + tau*com_vel (meters from upright):
+    //   * base TILT (torso_up) = a LAG-FREE CoM-displacement proxy (IMU-direct;
+    //     the HW velocity estimate lags ~30 ms), measured RELATIVE to the steady
+    //     ~3-4deg forward lean (lean_nominal_x) so the catch is SYMMETRIC about
+    //     equilibrium (a back push immediately gives ex<0), and
+    //   * com_vel * sqrt(z/g) = the capture-point velocity LEAD.
+    //   danger = |SIGNED capture excursion| = sqrt(ex^2 + (z*ty)^2). SIGNED so a
+    //   RECOVERING velocity SHRINKS danger (a settling lean already moving back is
+    //   NOT "losing balance"); the LATERAL axis keeps tilt only (z*ty) and DROPS
+    //   lateral velocity vy = the gait weight-shift ROCK, which would self-trigger.
+    double const *tup = SensorByName(model, data, "torso_up");
+    int pid = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    if (pid < 0) pid = 1;
+    const mjtNum *com = data->subtree_com + 3 * pid;
+    double zc  = mju_max(0.5, com[2]);
+    double tau = mju_sqrt(zc / 9.81);
+    int lnx_id = mj_name2id(model, mjOBJ_NUMERIC, "lean_nominal_x");
+    double kLeanX = (lnx_id >= 0)
+        ? model->numeric_data[model->numeric_adr[lnx_id]] : 0.06;
+    double tx = (tup ? tup[0] : 0.0) - kLeanX, ty = tup ? tup[1] : 0.0;
+    double vx = cvel ? cvel[0] : 0.0, vy = cvel ? cvel[1] : 0.0;
+    double ex = zc * tx + tau * vx;                      // signed fore-aft capture
+    double ey = zc * ty + tau * vy;                      //   (full, for foot choice)
+    g_cap_ex = ex; g_cap_ey = ey;         // share with the hip/arm recovery tier
+    double ey_pos = zc * ty;                             // lateral: tilt only (rock-immune)
+    double danger = mju_sqrt(ex * ex + ey_pos * ey_pos);
+    int ct_id = mj_name2id(model, mjOBJ_NUMERIC, "catch_trig");
+    int cf_id = mj_name2id(model, mjOBJ_NUMERIC, "catch_full");
+    double kCatchTrig = (ct_id >= 0)
+        ? model->numeric_data[model->numeric_adr[ct_id]] : 0.085;
+    double kCatchFull = (cf_id >= 0)
+        ? model->numeric_data[model->numeric_adr[cf_id]] : 0.16;
+    // recov: 0 below catch_trig (STAND STILL), smoothstep to 1 at catch_full.
+    double recov = mju_min(1.0, mju_max(0.0,
+        (danger - kCatchTrig) / mju_max(1e-3, kCatchFull - kCatchTrig)));
+    recov = recov * recov * (3.0 - 2.0 * recov);         // smoothstep
+    double arm = mju_min(time_in_phase / kArmSec, 1.0);
+    arm = arm * arm * (3.0 - 2.0 * arm);                 // calm bring-up, no spurious step
     // --- AMPLITUDE: balance-gated (default) or legacy continuous march ---
     int bg_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_balance_gated");
     bool balance_gated =
         (bg_id < 0) || (model->numeric_data[model->numeric_adr[bg_id]] > 0.5);
     if (balance_gated) {
-      double const *tup = SensorByName(model, data, "torso_up");
-      double tilt = tup ? std::acos(mju_max(-1.0, mju_min(1.0, tup[2]))) : 0.0;
-      double vx   = cvel ? std::fabs(cvel[0]) : 0.0;
-      double imb_t = (tilt - kTiltDead) / (kTiltFull - kTiltDead);
-      double imb_v = (vx   - kVxDead)   / (kVxFull   - kVxDead);
-      double imb = mju_max(0.0, mju_min(1.0, mju_max(imb_t, imb_v)));
-      imb = imb * imb * (3.0 - 2.0 * imb);                 // smoothstep
-      double arm = mju_min(time_in_phase / kArmSec, 1.0);
-      arm = arm * arm * (3.0 - 2.0 * arm);                 // calm bring-up, no spurious step
-      g_amp = arm * imb;                                   // 0 = stand still, 1 = full stepping
+      g_amp = arm * recov;   // STAND STILL until the signed capture point escapes
     } else {
       double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
-      g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);         // legacy continuous march
+      g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);       // legacy continuous march
     }
-    // --- REACTIVE capture-step (hard push / burst recovery, 2026-06-18) ---
-    // A hard FORWARD/BACKWARD shove topples the weak ankle before the gait clock
-    // offers a swing window; force the TRAILING foot into swing immediately so a
-    // catch-step plants past the falling CoM. Fires in BOTH modes. Gated on |vx|
-    // (steady stepping rock is LATERAL, vx~0) -> inert at the balanced baseline.
-    {
-      constexpr double kPushTrig = 0.30;   // m/s fore-aft; above steady-gait vx
-      if (cvel && flp && frp && std::fabs(cvel[0]) > kPushTrig) {
-        double recov = mju_min(1.0, (std::fabs(cvel[0]) - kPushTrig) / 0.30);
-        g_amp = mju_max(g_amp, 1.0);       // full swing authority during recovery
-        // vx>0 (falling forward) -> swing the REAR foot (lower x) forward to catch;
-        // vx<0 (falling back) -> swing the FRONT foot (higher x) back to catch.
-        bool stepL = (cvel[0] > 0.0) ? (flp[0] <= frp[0]) : (flp[0] >= frp[0]);
-        if (stepL) g_bump_l = mju_max(g_bump_l, recov);
-        else       g_bump_r = mju_max(g_bump_r, recov);
+    // --- DECISIVE OMNIDIRECTIONAL catch-step: pick the foot toward the capture
+    // point and force it to swing NOW (N-step capturability, Pratt/Koolen --
+    // relocate the base under the falling CoM before the weak ankle saturates).
+    // In gated mode g_amp already reflects danger (arm*recov); in legacy mode
+    // SNAP it (arm-gated, so bring-up stays calm). fwd->trailing foot fwd,
+    // back->front foot back, left/right->falling-side foot out.
+    if (cvel && flp && frp && danger > kCatchTrig) {
+      g_amp = mju_max(g_amp, arm * recov);
+      bool stepL;
+      if (std::fabs(ey) > std::fabs(ex)) {
+        stepL = (ey > 0.0);                  // falling LEFT -> left foot out left
+      } else {
+        stepL = (ex > 0.0) ? (flp[0] <= frp[0])    // forward -> trailing(rear) foot
+                           : (flp[0] >= frp[0]);   // back -> front foot
       }
+      if (stepL) g_bump_l = mju_max(g_bump_l, arm * recov);
+      else       g_bump_r = mju_max(g_bump_r, arm * recov);
     }
     if (model->nq <= 64) {
       for (int i = 0; i < model->nq; i++)
@@ -490,6 +539,63 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     phase1_target_storage[0] = torso_pos[0] + 0.58;   // just PAST full reach -> forces full straight extension
     phase1_target_storage[1] = torso_pos[1] - 0.09;   // natural extended-arm y
     phase1_target_storage[2] = torso_pos[2] + 0.37;   // extended-fist height
+    reach_target = phase1_target_storage;
+  }
+  // reach_to_target (Strategy 21): the standalone reach primitive. The target is
+  // the EXTERNAL mocap object (object_pos = target_position_, set from a model
+  // numeric or, in deploy, a vision/nav stack — see TransitionLocked). Two
+  // choices make this a BALANCED reach rather than a lean:
+  //   1. Auto-pick the nearer hand (by target y vs torso y) so a target on
+  //      either side is reached with the natural arm and no body twist.
+  //   2. SPHERICAL workspace clamp: project the target onto the arm-reach sphere
+  //      centred at the reaching shoulder. The H1-2 arm rests nearly fully
+  //      extended (hand ~0.52 m from the shoulder), so a target even slightly
+  //      past that radius made the planner PITCH THE TORSO FORWARD to gain reach
+  //      (forward tilt + knee strut) — a lean, not a reach. Projecting onto the
+  //      sphere lets the hand extend MAXIMALLY toward an out-of-reach point while
+  //      the body stays upright (in-reach => hand on target; out-of-reach => hand
+  //      at full extension, still standing). Beyond that envelope is LEAN's / a
+  //      step's job — the reach/lean/step hierarchy. A box clamp can't do this:
+  //      its forward corner sits outside the arm sphere and still induces the
+  //      lean. Pelvis Tilt (JSON) holds the torso upright so the pull extends
+  //      the ARM, not the torso.
+  else if (residual_keyframe_.name == "reach_to_target") {
+    // Input target = the mocap "target" body (data->mocap_pos[0]), set from
+    // target_position_ in TransitionLocked (the reach_target numeric, or a
+    // vision/nav stack writing mocap_pos at runtime). NOTE: object_pos tracks a
+    // SEPARATE, STATIC table "object" body — reading it froze every reach at the
+    // table point — so the reach primitive reads the mocap target directly.
+    double const *in_target = data->mocap_pos;
+    // Hand selection via the `reach_hand` numeric: 0/absent = AUTO (the nearer
+    // hand — target on the robot's right, y below torso, picks the right hand),
+    // 1 = force LEFT, 2 = force RIGHT. Forcing a hand lets a future lean/grasp
+    // pipeline keep the other arm free (e.g. brace with the left, reach with the
+    // right) instead of letting target geometry decide.
+    int rh_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_hand");
+    int rh_mode = (rh_id >= 0)
+        ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id]])
+        : 0;
+    bool reach_right = (rh_mode == 2) ? true
+                     : (rh_mode == 1) ? false
+                     : (in_target[1] < torso_pos[1]);   // 0/auto
+    reaching_hand = reach_right ? right_hand_pos : left_hand_pos;
+    // Shoulder anchor = torso_position + FK-measured offset (MJPC frame):
+    // (+0.000, +-0.148, +0.219); rest |shoulder->hand| = 0.524.
+    double shoulder[3] = {torso_pos[0],
+                          torso_pos[1] + (reach_right ? -0.148 : 0.148),
+                          torso_pos[2] + 0.219};
+    double v[3];
+    mju_sub3(v, in_target, shoulder);
+    double r = mju_norm3(v);
+    // R=0.50 keeps the elbow a touch bent (rest reach 0.524) so the arm never
+    // locks straight into a strut at full extension.
+    constexpr double kReachRadius = 0.50;
+    if (r > kReachRadius && r > 1e-6) {
+      mju_scl3(v, v, kReachRadius / r);          // project onto the sphere
+      mju_add3(phase1_target_storage, shoulder, v);
+    } else {
+      mju_copy3(phase1_target_storage, in_target);  // already in reach
+    }
     reach_target = phase1_target_storage;
   }
 
@@ -1536,6 +1642,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   if (is_leg_lift_stage_early) {
     residual[counter++] = 2.0 * mju_max(0.0, left_knee_angle  - 0.08);
     residual[counter++] =       mju_max(0.0, right_knee_angle - 0.25);
+  } else if (is_stumble) {
+    // STUMBLE: repurpose this dormant slot into a BENT-KNEE FLOOR -- forbid
+    // EITHER knee from diving toward the straight/locked stop (the strut), in
+    // EVERY phase (calm OR stepping), so the one-leg passive prop is impossible
+    // WHENEVER. One-sided max(0, floor - knee): a knee at the 0.35 march pose,
+    // or folded UP for a swing, is FREE (>= floor); only a knee locking toward
+    // the floor is penalised. UNLIKE the Symmetry term this is NOT g_amp-gated,
+    // so even a sustained step cannot strut; and the swing leg rises ABOVE the
+    // floor so the gait is untouched. Strength = the "Knees Straight" JSON
+    // weight (0 = off, tunable live). Pairs with the (g_amp-gated) Symmetry term
+    // above: Symmetry keeps L/R matched when calm, this floor blocks the lock
+    // always. Non-stumble strategies fall through to the else (0,0) -> byte-id.
+    constexpr double kKneeFloor = 0.15;  // rad; below this a knee is locking -> strut
+    residual[counter++] = mju_max(0.0, kKneeFloor - left_knee_angle);
+    residual[counter++] = mju_max(0.0, kKneeFloor - right_knee_angle);
   } else {
     residual[counter++] = 0.0;
     residual[counter++] = 0.0;
@@ -1566,8 +1687,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // via its JSON weight map ("Symmetry": w), so all other tasks stay
   // byte-identical (zero weight AND/OR zero residual = zero cost).
   if (!arm_contact_or_lean) {
-    residual[counter++] = data->qpos[7 + 3] - data->qpos[7 + 9];  // knee L-R
-    residual[counter++] = data->qpos[7 + 1] - data->qpos[7 + 7];  // hipPitch L-R
+    // STUMBLE (strat 20): RELEASE symmetry WHILE stepping. A catch-step is an
+    // INTENTIONAL L/R asymmetry (one foot swings) so the symmetry term must not
+    // fight it; when calm (g_amp=0) symmetry is FULL, making stumble's bent-knee
+    // stand as strut-proof as the strat-6 stand (which runs Symmetry 200 and
+    // never struts). g_amp is 0 for EVERY non-stumble strategy (set only inside
+    // the is_stumble stepping block far above), so sym_gate == 1.0 there ->
+    // stand/crouch/jab/reach stay byte-identical. This is why the user's strat-20
+    // struts and strat-6 doesn't: stumble had Symmetry=0 (it conflicts with
+    // stepping); gating restores it for the calm phase the march-gate now holds.
+    double sym_gate = 1.0 - g_amp;
+    residual[counter++] = sym_gate * (data->qpos[7 + 3] - data->qpos[7 + 9]);  // knee L-R
+    residual[counter++] = sym_gate * (data->qpos[7 + 1] - data->qpos[7 + 7]);  // hipPitch L-R
     // anklePitch L-R: the SAGITTAL ankle. joint_forensics on the cold-start
     // backward fall (strat 19) showed the one-leg strut hides HERE — L/R
     // ankle_pitch diverged 13.9deg while knee diverged only 5.2deg. The
@@ -1575,7 +1706,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // (asymmetry there is normal); ankle_PITCH is fore/aft and must stay
     // symmetric for a square stance, so penalising its (L-R) closes the
     // strut's last escape. Quadratic => tiny asymmetries stay ~free.
-    residual[counter++] = data->qpos[7 + 4] - data->qpos[7 + 10]; // anklePitch L-R
+    residual[counter++] = sym_gate * (data->qpos[7 + 4] - data->qpos[7 + 10]); // anklePitch L-R
   } else {
     residual[counter++] = 0.0;
     residual[counter++] = 0.0;
@@ -1632,8 +1763,27 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     int pelvis_id = mj_name2id(model, mjOBJ_BODY, "pelvis");
     if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
     const mjtNum *angmom = data->subtree_angmom + 3 * pelvis_id;
-    residual[counter++] = 0.1 * angmom[0];
-    residual[counter++] = 0.1 * angmom[1];
+    // HIP/ARM RECOVERY tier (Strategy 20): when the capture point excurses, target
+    // COUNTER angular momentum (throw torso+arms OPPOSITE the fall) instead of zero
+    // -> the flat-footed ankle->HIP->step INTERMEDIATE tier that hauls the CoM back
+    // BEFORE a step is needed, WITHOUT rocking onto the toe/heel (the CoP/ankle
+    // strategy we deliberately avoid). Zero target when calm == the original
+    // regulate-to-zero (unchanged for every other strategy). Fore-aft capture
+    // excursion -> pitch momentum (Ly); lateral -> roll (Lx); yaw (Lz) always ->0.
+    // Gains are numerics (default 0 = OFF until tuned on the twin; SIGN found there).
+    double Lx_tgt = 0.0, Ly_tgt = 0.0;
+    if (is_stumble) {
+      int rpg_id = mj_name2id(model, mjOBJ_NUMERIC, "recover_pitch_gain");
+      int rrg_id = mj_name2id(model, mjOBJ_NUMERIC, "recover_roll_gain");
+      double kRecPitch = (rpg_id >= 0)
+          ? model->numeric_data[model->numeric_adr[rpg_id]] : 0.0;
+      double kRecRoll = (rrg_id >= 0)
+          ? model->numeric_data[model->numeric_adr[rrg_id]] : 0.0;
+      Ly_tgt = kRecPitch * g_cap_ex;   // fore-aft fall -> pitch counter-momentum
+      Lx_tgt = kRecRoll  * g_cap_ey;   // lateral fall  -> roll counter-momentum
+    }
+    residual[counter++] = 0.1 * (angmom[0] - Lx_tgt);
+    residual[counter++] = 0.1 * (angmom[1] - Ly_tgt);
     residual[counter++] = 0.1 * angmom[2];
   } else {
     residual[counter++] = 0.0;
@@ -1739,11 +1889,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // AHEAD of the CoM -- countering the documented H1-2 forward CoM lean (~3-4 cm
     // ahead) that topples the static stand. CoM-relative so the stance translates
     // when walking.
-    constexpr double kStanceOffX = 0.13;   // 0.09->0.13 (2026-06-18): plant feet a
-                                           // touch further AHEAD of the CoM -> CoM sits
-                                           // further BEHIND the front of the support ->
-                                           // more forward-push margin (forward = the
-                                           // weak axis: ankle can't hold a fwd CoM).
+    // Fore-aft nominal stance offset: feet planted this far AHEAD of the CoM.
+    // +0.13 gave forward-push margin back when forward was the weak axis -- but it
+    // also CANCELS the backward catch-step's negative off_x (the rear foot only
+    // reaches TO the CoM, never behind it -> can't catch a backward fall). Now
+    // that the omnidirectional catch-step makes forward solid, REBALANCE this
+    // toward centre so backward gets margin too. Model numeric `stance_off_x`
+    // (default 0.13) -> tune live, no rebuild.
+    int sox_id = mj_name2id(model, mjOBJ_NUMERIC, "stance_off_x");
+    double kStanceOffX = (sox_id >= 0)
+        ? model->numeric_data[model->numeric_adr[sox_id]] : 0.13;
     constexpr double kStanceOffY = 0.26;
     // NOTE (2026-06-18): a STAGGERED/braced stance (L foot fore, R foot aft, via a
     // staggered stumble_march keyframe + kStagger here) was TESTED to ~double the
@@ -2008,21 +2163,32 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   }
   // ---- END DEBUG ---- //
 
-  // keep mocap target updated for the existing hand-reach residuals
-  double const *object_pos = SensorByName(model, data, "object_pos");
-  double const *left_hand_pos_tr = SensorByName(model, data, "left_hand_pos");
-  double hand_dist = mju_dist3(left_hand_pos_tr, object_pos);
-  if (hand_dist < 0.05) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4. Closer to
-    // robot so static reach is within natural-posture range; combined with
-    // kp_ankle 20→40 should let stand-and-lean be stable.
-    std::uniform_real_distribution<> dis_x(1.2, 1.4);
-    std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-    target_position_ = {dis_x(gen), dis_y(gen), 0.83};
-    printf("New target position: %f, %f, %f\n", target_position_[0],
-           target_position_[1], target_position_[2]);
+  // keep mocap target updated for the existing hand-reach residuals.
+  // If the model declares a `reach_target` numeric (3 values) the target is
+  // EXTERNALLY SUPPLIED — the Strategy-21 reach primitive, or a vision/nav stack
+  // writing that numeric. Pin the mocap object there and never auto-respawn it.
+  // With no such numeric the legacy retrieve-game behavior holds (random object
+  // that re-spawns once the reaching hand touches it).
+  int reach_tgt_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_target");
+  if (reach_tgt_id >= 0) {
+    const mjtNum *rt = model->numeric_data + model->numeric_adr[reach_tgt_id];
+    target_position_ = {rt[0], rt[1], rt[2]};
+  } else {
+    double const *object_pos = SensorByName(model, data, "object_pos");
+    double const *left_hand_pos_tr = SensorByName(model, data, "left_hand_pos");
+    double hand_dist = mju_dist3(left_hand_pos_tr, object_pos);
+    if (hand_dist < 0.05) {
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4. Closer to
+      // robot so static reach is within natural-posture range; combined with
+      // kp_ankle 20→40 should let stand-and-lean be stable.
+      std::uniform_real_distribution<> dis_x(1.2, 1.4);
+      std::uniform_real_distribution<> dis_y(-0.3, 0.3);
+      target_position_ = {dis_x(gen), dis_y(gen), 0.83};
+      printf("New target position: %f, %f, %f\n", target_position_[0],
+             target_position_[1], target_position_[2]);
+    }
   }
   mju_copy3(data->mocap_pos, target_position_.data());
 
@@ -2288,17 +2454,26 @@ void lean::ResetLocked(const mjModel *model) {
     PrepareNextPhaseWeights(residual_.residual_keyframe_);
   }
 
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4 (matches
-  // the same fix in TransitionLocked above). Missing this caused the
-  // FIRST target on every reset to spawn far at [1.4, 1.6] — robot
-  // couldn't reach without losing balance, and user saw the tipping.
-  std::uniform_real_distribution<> dis_x(1.2, 1.4);
-  std::uniform_real_distribution<> dis_y(-0.3, 0.3);
-  target_position_ = {dis_x(gen), dis_y(gen), 0.83};
-  printf("New target position: %f, %f, %f\n", target_position_[0],
-         target_position_[1], target_position_[2]);
+  // Reach target on reset: an external `reach_target` numeric pins it
+  // deterministically (Strategy-21 reach / vision input); otherwise the legacy
+  // random spawn (matches the same gate in TransitionLocked above).
+  int reset_reach_tgt_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_target");
+  if (reset_reach_tgt_id >= 0) {
+    const mjtNum *rt = model->numeric_data + model->numeric_adr[reset_reach_tgt_id];
+    target_position_ = {rt[0], rt[1], rt[2]};
+  } else {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    // TEST #16 (2026-05-18): target x range 1.4-1.6 → 1.2-1.4 (matches
+    // the same fix in TransitionLocked above). Missing this caused the
+    // FIRST target on every reset to spawn far at [1.4, 1.6] — robot
+    // couldn't reach without losing balance, and user saw the tipping.
+    std::uniform_real_distribution<> dis_x(1.2, 1.4);
+    std::uniform_real_distribution<> dis_y(-0.3, 0.3);
+    target_position_ = {dis_x(gen), dis_y(gen), 0.83};
+    printf("New target position: %f, %f, %f\n", target_position_[0],
+           target_position_[1], target_position_[2]);
+  }
 
   // DEBUG: Print joint order
   printf("\nJoint order for qpos:\n");
@@ -2315,6 +2490,25 @@ void lean::ResetLocked(const mjModel *model) {
 // hot-path work. See QUANTIFICATION_PLAN.html for the 10 metrics surfaced
 // here (reach, CoP, ICP, brace force, saturation, ...).
 // ============================================================================
+std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const {
+  const auto names = GetStrategyNames();
+  if (strategy < 0 || strategy >= static_cast<int>(names.size())) return {};
+  const std::string &name = names[strategy];
+  // "Stumble" is the only stepping strategy: its gait clock oscillates the legs,
+  // which the stand-tuned sampling_spline_points=3 cannot represent (the swing
+  // foot never lifts). spline=5 is the twin-validated sweet spot -- spline=8
+  // over-actuates and destabilises even a plain stand (2026-06-18). exploration
+  // 0.05 == the XML default, pinned here so stumble is unaffected if that
+  // default ever changes. Keyed by NAME so both the Lean_H12 and Lean_H12_Hands
+  // stumble slots match. Adding a future strategy that needs a different planner
+  // bandwidth is a one-line edit HERE (fork side) -- the deploy node stays
+  // strategy-agnostic and never changes.
+  if (name == "h12_simple_stumble" || name == "h12_hands_simple_stumble") {
+    return {{"sampling_spline_points", 5.0}, {"sampling_exploration", 0.05}};
+  }
+  return {};
+}
+
 void lean::ComputeMetrics(const mjModel *model, const mjData *data,
                           std::map<std::string, double> *metrics,
                           std::string *phase_name) const {
@@ -2388,6 +2582,29 @@ void lean::ComputeMetrics(const mjModel *model, const mjData *data,
   // +0.10 m toe offset because foot_*_pos is at the ankle site, not the toe.
   double front_edge_x = mju_max(foot_left[0], foot_right[0]) + 0.10;
   (*metrics)["reach_beyond_foot_edge"] = reaching_hand[0] - front_edge_x;
+
+  // ----- Reach-to-target (Strategy 21) ----------------------------------- //
+  // Surface the live reach for the deploy monitor: the auto-picked reaching hand
+  // (by target side), the INPUT target (mocap "target" body = data->mocap_pos —
+  // NOT the static object_pos), and the residual error to the requested point
+  // (to the RAW target, so a far/out-of-reach request reads its true shortfall).
+  if (kf.name == "reach_to_target") {
+    double const *tgt = data->mocap_pos;
+    int rh_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_hand");
+    int rh_mode = (rh_id >= 0)
+        ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id]])
+        : 0;
+    bool rr = (rh_mode == 2) ? true
+            : (rh_mode == 1) ? false
+            : (tgt[1] < torso[1]);
+    double *rh = rr ? right_hand : left_hand;
+    (*metrics)["reach_tgt_x"] = tgt[0];
+    (*metrics)["reach_tgt_y"] = tgt[1];
+    (*metrics)["reach_tgt_z"] = tgt[2];
+    (*metrics)["reach_hand_side"] = rr ? 1.0 : 0.0;  // 1=right, 0=left
+    double ex = rh[0] - tgt[0], ey = rh[1] - tgt[1], ez = rh[2] - tgt[2];
+    (*metrics)["reach_err"] = mju_sqrt(ex * ex + ey * ey + ez * ez);
+  }
 
   // ----- M3: CoM excursion from midfoot ---------------------------------- //
   double midfoot_x = 0.5 * (foot_left[0] + foot_right[0]);

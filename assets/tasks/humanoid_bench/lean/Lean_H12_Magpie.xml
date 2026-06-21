@@ -186,6 +186,32 @@
              CoM speed past a deadband), easing back to a still stand on recovery.
              0 = legacy ALWAYS-ON in-place march. XML-tunable, no rebuild. -->
         <numeric name="stumble_balance_gated" data="1.0"/>
+        <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
+             target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
+             2 = force RIGHT (keeps the other arm free for a future brace/grasp).
+             XML-tunable, no rebuild. -->
+        <numeric name="reach_hand" data="0"/>
+        <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
+             omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
+             (capture-point excursion, m). danger>catch_trig => step toward the fall;
+             danger>=catch_full => full-authority snap. LOWER catch_trig = steps earlier
+             (more decisive, risk false-steps); RAISE = waits longer. XML-tunable, no rebuild. -->
+        <numeric name="catch_trig" data="0.06"/>
+        <numeric name="catch_full" data="0.12"/>
+        <!-- stance_off_x (2026-06-20, strategy 20): feet planted this far AHEAD of
+             the CoM (m). LOWER -> CoM more centred -> better BACKWARD margin; HIGHER
+             -> more forward margin. XML-tunable, no rebuild. -->
+        <numeric name="stance_off_x" data="0.13"/>
+        <!-- lean_nominal_x (2026-06-20, strategy 20): the steady forward-lean
+             torso_up[0] at rest (~sin(3-4deg)). Subtracted from tilt so the catch-step
+             is SYMMETRIC about equilibrium (fixes late/wrong-way BACKWARD catch). -->
+        <numeric name="lean_nominal_x" data="0.06"/>
+        <!-- recover_pitch_gain / recover_roll_gain (2026-06-20, strategy 20): the
+             HIP/ARM angular-momentum RECOVERY tier. Targets counter-momentum =
+             gain * capture_excursion (throw torso+arms opposite the fall) so the CoM
+             is hauled back flat-footed BEFORE a step. 0 = off. XML-tunable, no rebuild. -->
+        <numeric name="recover_pitch_gain" data="-35.0"/>
+        <numeric name="recover_roll_gain" data="0.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
@@ -218,7 +244,7 @@
              auto-cycle with a stand lead-in; jab_extend gets a dedicated
              right-hand forward reach reward so the punch fully extends).
              Slider max raised 5 → 19 so these are reachable. -->
-        <numeric name="residual_Strategy" data="5 0 20" />
+        <numeric name="residual_Strategy" data="5 0 21" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
              (default behaviour, runs the whole loaded pipeline). 0..6 =
              hold at that keyframe index regardless of progress; auto-
