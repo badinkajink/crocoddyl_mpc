@@ -623,7 +623,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // JSONs (hand + elbow share the same Y → forearm parallel to x, not slanted).
   double ideal_brace[3] = {
       torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
-      torso_pos[1] - 0.24,                     // under/just-right-of R shoulder joint
+      // bracing arm = the OTHER arm (reach_right -> left arm braces, so +0.24).
+      torso_pos[1] + (reach_right ? 0.24 : -0.24),
       // 2026-05-22: press TARGET 6 cm BELOW the surface (was -0.02). Under the
       // real-robot (doc) ROM the bracing forearm stalled ~7 cm ABOVE the table:
       // with the target only 2 cm under the surface the downward Brace-Pos pull
