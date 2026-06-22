@@ -421,15 +421,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ----- Determine which hand reaches and which braces ----- //
   double const *left_hand_pos = SensorByName(model, data, "left_hand_pos");
   double const *right_hand_pos = SensorByName(model, data, "right_hand_pos");
+  // torso_pos needed here for AUTO arm-side selection; also used below for
+  // brace target computation. Declared once, reused in both places.
+  double *torso_pos = SensorByName(model, data, "torso_position");
 
-  // Right arm always braces on the table; left arm always reaches for the
-  // object. body1=28 in the contact keyframes targets the right hand body, so
-  // the reaching/bracing assignment must stay fixed — dynamic switching based
-  // on object position causes both arms to be pulled toward the table
-  // simultaneously, creating an irresolvable contradiction.
-  constexpr bool left_reaches = true;
-  double const *reaching_hand = left_hand_pos;
-  double const *bracing_hand  = right_hand_pos;
+  // Auto-arm selection shared by counterbalance + forearm-brace phases (the
+  // reach_to_target branch does its own identical pick). reach_hand numeric:
+  // 0 = AUTO (mocap target y < torso y -> right hand reaches), 1 = force LEFT,
+  // 2 = force RIGHT. The OTHER arm always braces/counterweights.
+  int rh_id_sel = mj_name2id(model, mjOBJ_NUMERIC, "reach_hand");
+  int rh_sel = (rh_id_sel >= 0)
+      ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id_sel]])
+      : 0;
+  bool reach_right = (rh_sel == 2) ? true
+                   : (rh_sel == 1) ? false
+                   : (data->mocap_pos[1] < torso_pos[1]);
+  double const *reaching_hand = reach_right ? right_hand_pos : left_hand_pos;
+  double const *bracing_hand  = reach_right ? left_hand_pos  : right_hand_pos;
 
   //------------- Reward calculation --------------//
   double const hand_dist_penalty = 1.0;
@@ -443,8 +451,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ----- Contact forces ----- //
   double *left_contact = SensorByName(model, data, "left_hand_contact");
   double *right_contact = SensorByName(model, data, "right_hand_contact");
-  double brace_contact_force = left_reaches ? right_contact[0] : left_contact[0];
-  double reach_contact_force = left_reaches ? left_contact[0] : right_contact[0];
+  double brace_contact_force = reach_right ? left_contact[0] : right_contact[0];
+  double reach_contact_force = reach_right ? right_contact[0] : left_contact[0];
 
   double reward = 0;
 
@@ -454,7 +462,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // lateral position; the eventual ~60s slip seen in test 12 is the
   // known trade-off for accepting this baseline.
   double const *table_pos = SensorByName(model, data, "table_surface_pos");
-  double *torso_pos = SensorByName(model, data, "torso_position");
+  // torso_pos declared above (near arm-selection) to keep one definition.
 
   // ----- Phase-dependent reach target ------------------------------------//
   // For most phases the reach residual targets the actual `object_pos`
