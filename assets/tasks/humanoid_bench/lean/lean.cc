@@ -524,8 +524,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (Reaching Hand Dist, enabled ONLY in the jab_extend JSON phase) then pulls
   // the fist out with a steep, targeted gradient the warm-start mean drifts
   // toward; the left arm holds guard via Posture. Gated on the keyframe name so
-  // no other strategy's reach assignment is touched (left_reaches stays true
-  // everywhere else).
+  // no other strategy's reach assignment is touched (auto arm-selection via the
+  // outer reach_right covers the other branches).
   else if (residual_keyframe_.name == "jab_extend") {
     reaching_hand = right_hand_pos;
     // Target = the FK-measured location of the right fist at FULL straight
@@ -585,14 +585,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     int rh_mode = (rh_id >= 0)
         ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id]])
         : 0;
-    bool reach_right = (rh_mode == 2) ? true
+    bool reach_right_reach = (rh_mode == 2) ? true
                      : (rh_mode == 1) ? false
                      : (in_target[1] < torso_pos[1]);   // 0/auto
-    reaching_hand = reach_right ? right_hand_pos : left_hand_pos;
+    reaching_hand = reach_right_reach ? right_hand_pos : left_hand_pos;
     // Shoulder anchor = torso_position + FK-measured offset (MJPC frame):
     // (+0.000, +-0.148, +0.219); rest |shoulder->hand| = 0.524.
     double shoulder[3] = {torso_pos[0],
-                          torso_pos[1] + (reach_right ? -0.148 : 0.148),
+                          torso_pos[1] + (reach_right_reach ? -0.148 : 0.148),
                           torso_pos[2] + 0.219};
     double v[3];
     mju_sub3(v, in_target, shoulder);
