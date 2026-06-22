@@ -504,11 +504,13 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // lean depth are the SAME knob: a further/lower target = deeper lean = bigger
   // counter-arm swing. Pipeline's `arm_extend_standing` override (above) untouched.
   else if (residual_keyframe_.name == "counterbalance_standing") {
-    double const *fl = SensorByName(model, data, "foot_left_pos");
-    double const *fr = SensorByName(model, data, "foot_right_pos");
-    phase1_target_storage[0] = 0.5 * (fl[0] + fr[0]) + 0.70;
-    phase1_target_storage[1] = 0.5 * (fl[1] + fr[1]) + 0.15;
-    phase1_target_storage[2] = 0.75;
+    // Counterbalance (Strategy 16 pre-lean + pipeline stage 33): the reaching
+    // arm pulls toward the LIVE mocap object (world-fixed, so the reach error
+    // shrinks as the body bows in -> self-limiting, no runaway). NO sphere clamp
+    // (unlike reach_to_target): an out-of-reach object is exactly what makes the
+    // torso lean forward, with the free arm + hips swinging back to counterweight.
+    // Lean depth is bounded by Pelvis Tilt / Torso Forward Tilt (JSON lean knobs).
+    mju_copy3(phase1_target_storage, data->mocap_pos);
     reach_target = phase1_target_storage;
   }
   // jab_extend (Strategy 19): the RIGHT arm punches straight forward. Posture
