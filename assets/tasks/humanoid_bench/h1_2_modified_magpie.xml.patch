@@ -1,5 +1,5 @@
---- mujoco_mpc/mujoco_mpc/build/mjpc/tasks/humanoid_bench/h1_2/h1_2_modified.xml	2026-06-19 13:27:32.209916121 -0600
-+++ mujoco_mpc/mujoco_mpc/build/mjpc/tasks/humanoid_bench/h1_2/h1_2_modified_magpie.xml	2026-06-19 13:40:31.408099181 -0600
+--- h1_2_modified.xml	2026-06-22 02:48:42.502678766 -0600
++++ h1_2_modified_magpie.xml	2026-06-22 02:50:12.957671374 -0600
 @@ -1,4 +1,4 @@
 -<mujoco model="Unitree H1_2 Handless With Position Actuators">
 +<mujoco model="Unitree H1_2 + Magpie Grippers (fixed mass) With Position Actuators">
@@ -14,7 +14,7 @@
      <mesh name="right_shoulder_pitch_link" file="right_shoulder_pitch_link.STL"/>
      <mesh name="right_shoulder_roll_link" file="right_shoulder_roll_link.STL"/>
      <mesh name="right_shoulder_yaw_link" file="right_shoulder_yaw_link.STL"/>
-@@ -272,6 +273,15 @@
+@@ -272,6 +273,17 @@
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
                        <site name="left_hand" pos="0.17 0 0.0" size="0.01" rgba="0 1 0 1"/>
@@ -26,11 +26,13 @@
 +                           Zero extra DOF -> keeps nu=27 / nq=41 (sysid loaders unchanged). -->
 +                      <body name="left_magpie_gripper">
 +                        <geom type="mesh" mesh="h12_mount" pos="0.054 0 0" quat="0.7071068 0 0.70710685 0" mass="0.506" contype="0" conaffinity="0" group="1" rgba="0.1 0.1 0.1 1"/>
++                        <geom name="left_gripper_collision" class="collision" type="box" size="0.035 0.05 0.06"
++                              pos="0.10 0 0" quat="0.7071068 0 0.70710685 0" contype="1" conaffinity="1"/>
 +                      </body>
                      </body>
                    </body>
                  </body>
-@@ -323,6 +333,15 @@
+@@ -323,6 +335,17 @@
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
                        <site name="right_hand" pos="0.17 0 0" size="0.01" rgba="0 1 0 1"/>
@@ -42,6 +44,8 @@
 +                           Zero extra DOF -> keeps nu=27 / nq=41 (sysid loaders unchanged). -->
 +                      <body name="right_magpie_gripper">
 +                        <geom type="mesh" mesh="h12_mount" pos="0.054 0 0" quat="0.7071068 0 0.70710685 0" mass="0.506" contype="0" conaffinity="0" group="1" rgba="0.1 0.1 0.1 1"/>
++                        <geom name="right_gripper_collision" class="collision" type="box" size="0.035 0.05 0.06"
++                              pos="0.10 0 0" quat="0.7071068 0 0.70710685 0" contype="1" conaffinity="1"/>
 +                      </body>
                      </body>
                    </body>
