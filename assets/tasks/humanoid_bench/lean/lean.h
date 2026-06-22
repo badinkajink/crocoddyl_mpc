@@ -278,7 +278,14 @@ class lean : public Task {
                                          //    (the beyond-reach regime is LEAN's job). The reusable
                                          //    base primitive for pick/retrieve; the lean pipeline is
                                          //    this reach + brace + whole-body pitch for FAR targets.
-            "h12_simple_forearm_brace"}; // 22  pre-lean forearm brace (NEW)
+            "h12_simple_forearm_brace",  // 22  pre-lean forearm brace
+            "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 23-26 reserved
+            "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 27-30 reserved
+            "h12_lean_stand",            // 31
+            "h12_lean_reach",            // 32
+            "h12_lean_counterbalance",   // 33
+            "h12_lean_brace",            // 34
+            "h12_lean_full"};            // 35
   }
 
   // Live per-phase weight blending --------------------------------------- //
@@ -399,7 +406,14 @@ class Lean_H12_Hands : public lean {
                                         //    Hands model (Posture dim 27 misses the right arm).
             "h12_hands_simple_stumble",  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
             "h12_hands_simple_reach",    // 21 reach-to-target (mirrors Lean_H12 slot 21).
-            "h12_hands_simple_forearm_brace"}; // 22  pre-lean forearm brace (NEW)
+            "h12_hands_simple_forearm_brace",  // 22  pre-lean forearm brace
+            "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 23-26 reserved
+            "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 27-30 reserved
+            "h12_hands_lean_stand",            // 31
+            "h12_hands_lean_reach",            // 32
+            "h12_hands_lean_counterbalance",   // 33
+            "h12_hands_lean_brace",            // 34
+            "h12_hands_lean_full"};            // 35
   }
 };
 

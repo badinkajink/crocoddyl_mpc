@@ -134,7 +134,7 @@
              simple-task strategies (see Lean_H12.xml + GetStrategyNames).
              18 = native squatter (stand<->crouch auto-cycle, strat 6 + 8).
              19 = jab (standing boxing jab: left guard, right arm punches). -->
-        <numeric name="residual_Strategy" data="5 0 22" />
+        <numeric name="residual_Strategy" data="5 0 35" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>
