@@ -84,7 +84,7 @@
              HIP/ARM angular-momentum RECOVERY tier. Targets counter-momentum =
              gain * capture_excursion (throw torso+arms opposite the fall) so the CoM
              is hauled back flat-footed BEFORE a step. 0 = off. XML-tunable, no rebuild. -->
-        <numeric name="recover_pitch_gain" data="-35.0"/>
+        <numeric name="recover_pitch_gain" data="0.0"/>
         <numeric name="recover_roll_gain" data="0.0"/>
         <!-- horizon restored to 1.0s (was 0.6) because the real-hardware-spec PD
              gains (ankle kp=20, knee kp=200 — IsaacLab H1_CFG / Opt2Skill) are
@@ -134,7 +134,7 @@
              simple-task strategies (see Lean_H12.xml + GetStrategyNames).
              18 = native squatter (stand<->crouch auto-cycle, strat 6 + 8).
              19 = jab (standing boxing jab: left guard, right arm punches). -->
-        <numeric name="residual_Strategy" data="5 0 21" />
+        <numeric name="residual_Strategy" data="5 0 22" />
         <!-- See Lean_H12.xml for the Phase slider semantics. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
     </custom>

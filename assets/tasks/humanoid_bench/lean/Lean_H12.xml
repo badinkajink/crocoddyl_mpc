@@ -210,7 +210,7 @@
              HIP/ARM angular-momentum RECOVERY tier. Targets counter-momentum =
              gain * capture_excursion (throw torso+arms opposite the fall) so the CoM
              is hauled back flat-footed BEFORE a step. 0 = off. XML-tunable, no rebuild. -->
-        <numeric name="recover_pitch_gain" data="-35.0"/>
+        <numeric name="recover_pitch_gain" data="0.0"/>
         <numeric name="recover_roll_gain" data="0.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
@@ -244,7 +244,7 @@
              auto-cycle with a stand lead-in; jab_extend gets a dedicated
              right-hand forward reach reward so the punch fully extends).
              Slider max raised 5 → 19 so these are reachable. -->
-        <numeric name="residual_Strategy" data="5 0 21" />
+        <numeric name="residual_Strategy" data="5 0 22" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
              (default behaviour, runs the whole loaded pipeline). 0..6 =
              hold at that keyframe index regardless of progress; auto-
