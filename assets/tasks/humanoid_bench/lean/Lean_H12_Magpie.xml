@@ -195,36 +195,17 @@
              CoM speed past a deadband), easing back to a still stand on recovery.
              0 = legacy ALWAYS-ON in-place march. XML-tunable, no rebuild. -->
         <numeric name="stumble_balance_gated" data="1.0"/>
-        <!-- TROT STARTER (2026-06-22, strategy 20 only): a deliberate in-place
-             march at startup so the operator can SEE balance-during-stepping
-             before push-testing, then it eases back into the quiet balance-gated
-             stand ("trot N s -> stand & stumble"). All three are XML-tunable, no
-             rebuild; trot_sec=0 disables (pure gated stand).
-             - stumble_trot_delay: seconds to wait after engage before trotting,
-               so it skips the node's ~5 s bring-up ramp (settle, THEN march).
-             - stumble_trot_sec: trot window length (eases in+out over 1.5 s each).
-             - stumble_cadence: steps/s per foot during the WHOLE gait (clock rate).
-               0.6 -> ~6 deliberate steps/leg over a 10 s window (gentle march, NOT
-               a flight-phase trot -- duty 0.70 keeps near-double-support, safest on
-               the toe-heavy foot). Raise toward 1.25 (Unitree G1 walk = 0.8 s period)
-               for a brisker look; lower for slower/clearer steps. -->
-        <numeric name="stumble_trot_delay" data="5.0"/>
-        <numeric name="stumble_trot_sec" data="10.0"/>
-        <numeric name="stumble_cadence" data="0.6"/>
-        <!-- stumble_swing_scale: multiplies the trot-window swing-leg LIFT (step
-             height). The balance-cautious planner only realizes a fraction of the
-             reference, so 1.0 looks like a shuffle (~1 cm foot clearance). Raise for
-             clearly-visible steps; LOWER if it gets tippy. Trot-window ONLY -- the
-             push-recovery catch-step is unscaled. XML-tunable, no rebuild. -->
-        <numeric name="stumble_swing_scale" data="2.5"/>
-        <!-- stumble_gait_boost: trot-window multiplier on the Gait foot-clearance
-             residual -> effective weight 25*boost^2. 2.6 -> ~170, making foot-
-             tracking the DOMINANT cost (per MJPC-quadruped Gait 2.0 + Unitree
-             feet_swing_height -20). This is what actually LIFTS the foot: without
-             it the swing reference is overwhelmed by the lateral rock and the foot
-             only clears ~5 mm. Raise for a higher step, lower if it gets tippy.
-             Trot-window ONLY -> quiet stand + push-recovery byte-identical. -->
-        <numeric name="stumble_gait_boost" data="2.6"/>
+        <!-- TROT REMOVED (2026-06-23): the in-place "trot warmup" + the cost-side
+             stepping amplification (swing-scale, gait-boost, contact-schedule) were
+             removed because the balance-first real-time sampling planner will NOT
+             lift a foot off the ground on this marginal-balance biped -- verified:
+             even cranked to the max the foot cleared ~1 cm (invisible) and a 70 N
+             push was absorbed by the ankle with NO step. With these trot numerics
+             absent the code defaults make the trot window never open (trot_sec->0,
+             scales->1), so strategy 20 is a quiet balance-gated stand (no warmup).
+             A real rhythmic foot-lift trot/walk needs a trained RL policy, not
+             real-time sampling-MPC. The dead trot code in lean.cc is inert. -->
+        <numeric name="stumble_trot_sec" data="0.0"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
@@ -239,6 +220,33 @@
              data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
              numeric when wiring nav2+vision. -->
         <numeric name="reach_target" data="1.4 -0.15 0.90"/>
+        <!-- reach_radius / reach_drop (strategy 21): the HOLDABLE-workspace knobs.
+             reach_radius = the arm's commanded extension toward the target [m];
+             reach_drop = how far BELOW the shoulder the hand is pulled [m].
+             ★ 2026-06-23, MAGPIE-FAITHFUL FIX (radius 0.46->0.52, drop 0.36->0.34):
+             the OLD 0.46 UNDER-EXTENDED. The magpie arm rests ~0.404 m FORWARD of the
+             shoulder (near full extension, arm length ~0.52). radius 0.46 + drop 0.36
+             commands the hand to only sqrt(0.46^2-0.36^2)=0.286 m forward -- BEHIND
+             the rest pose -- so the "reach" was a RETRACTION, and the planner pitched
+             the heavy arm BACKWARD (+8..+20 deg shoulder) as a balance counterweight
+             (the back-swing the user saw in the magpie GUI + on real). Setting radius
+             to the full arm length (0.52) commands a forward-DOWN MAX-EXTEND at the
+             target's bearing -> the shoulder pitches FORWARD (-10 deg on the deploy
+             twin), elbow near-straight, only 41% of the 18 N.m elbow estop. Validated
+             on the MAGPIE deploy twin (scene_handless_magpie + gravcomp 0.85 + the
+             gripper mass the old handless-twin bench was missing). Note: the GUI
+             own-sim (no gravity FF) under-represents this -> it looks milder there
+             than on real (which sends the 0.85 FF, like the deploy twin). TUNE ON
+             REAL: drop 0.34 is the holdable sweet spot; LOWER drop (0.28) reaches a
+             touch higher but spikes the elbow to 84% (thrash risk). No rebuild. -->
+        <numeric name="reach_radius" data="0.52"/>
+        <numeric name="reach_drop" data="0.34"/>
+        <!-- reach_com_back (strat 21): EXTRA forward-CoM bias [m] applied ONLY during
+             the reach, so the planner holds the CoM that much BACK to counterbalance
+             the forward arm (the real-chain forward creep the lockstep twin can't show).
+             Reach-gated (stand byte-identical). TUNE ON REAL: raise if it still leans
+             forward, lower if it leans back. No rebuild to change the value. -->
+        <numeric name="reach_com_back" data="0.04"/>
         <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
              omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
              (capture-point excursion, m). danger>catch_trig => step toward the fall;

@@ -571,6 +571,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // Lean depth is bounded by Pelvis Tilt / Torso Forward Tilt (JSON lean knobs).
     mju_copy3(phase1_target_storage, data->mocap_pos);
     reach_target = phase1_target_storage;
+    // INVESTIGATED 2026-06-23: a deliberate static counterweight (free arm swung
+    // back +/- knee bend) was trialed to add forward-push margin, but EVERY forced
+    // posture override (arm-back >= 0.30 rad OR knee-bend 0.18) toppled it BACKWARD
+    // during lean establishment -- the planner's EMERGENT counterbalance is already
+    // optimal and a forced pose disrupts it. Kept the validated emergent behavior
+    // (twin + GUI 3/3). The forward-push fragility of this FREE-STANDING no-brace
+    // lean is inherent (planted feet, no step); the push-robust paths are BRACING
+    // on the surface (strat 33/34) or STEPPING (strat 20), not strat 16.
   }
   // jab_extend (Strategy 19): the RIGHT arm punches straight forward. Posture
   // alone (one arm joint out of ~30) is too weak a reward for the warm-started
@@ -658,7 +666,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double r = mju_norm3(v);
     // R=0.50 keeps the elbow a touch bent (rest reach 0.524) so the arm never
     // locks straight into a strut at full extension.
-    constexpr double kReachRadius = 0.50;
+    // reach_radius / reach_drop: LIVE-tunable so the operator dials the reach into
+    // the magpie arm's HOLDABLE workspace on the REAL robot (the only faithful
+    // verdict). The old 0.50/0.28 put the ~1.8 kg arm at ~0.42 m horizontal ->
+    // unholdable -> the arm THRASHED (RMSE 50deg, 97% torque) and swung BACKWARD.
+    // Smaller radius + bigger drop = a forward-DOWN, gravity-light pose it can HOLD.
+    int rr_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_radius");
+    double kReachRadius = (rr_id >= 0)
+        ? model->numeric_data[model->numeric_adr[rr_id]] : 0.46;
     if (r > kReachRadius && r > 1e-6) {
       mju_scl3(v, v, kReachRadius / r);          // project onto the sphere
       // GRAVITY GUARD (magpie arms, 2026-06-22). A FAR target (large horizontal
@@ -674,7 +689,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       // forward-DOWN (gravity-light, near its natural rest droop) instead of
       // straight out. Deeper reach toward an out-of-reach point is the LEAN's
       // job (strat 16/33) — the reach/lean/step hierarchy is unchanged.
-      constexpr double kMaxLift = 0.28;          // z drop >= 0.28 m  (~34 deg droop)
+      int md_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_drop");
+      double kMaxLift = (md_id >= 0)
+          ? model->numeric_data[model->numeric_adr[md_id]] : 0.36;  // z drop (m); bigger = arm more DOWN = more holdable
       if (v[2] > -kMaxLift) {
         v[2] = -kMaxLift;
         double horiz = mju_sqrt(
@@ -841,6 +858,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   {
     int com_off_id = mj_name2id(model, mjOBJ_NUMERIC, "com_x_offset");
     if (com_off_id >= 0) capture_point[0] += model->numeric_data[model->numeric_adr[com_off_id]];
+    // reach_com_back (strat 21, 2026-06-23): the REACH adds its own forward-CoM
+    // creep ON TOP of the global com_x_offset gap -- the ~4 kg magpie arm reaching
+    // forward pulls the CoM toward the ankle's forward limit, and on the REAL chain
+    // (12-thread async + un-modeled real CoM) the robot slowly leans forward to a
+    // near-topple (the in-process lockstep twin CANNOT show this -- it holds flat).
+    // So during a reach, bias the balance target an EXTRA reach_com_back metres
+    // forward -> the planner holds the actual CoM that much further BACK (a
+    // counterbalance for the forward arm). REACH-GATED: stand/crouch/all other
+    // strategies are byte-identical (this only fires for the reach_to_target
+    // keyframe). TUNE ON REAL: raise if the reach still leans forward, lower if it
+    // leans BACK; the value that stands it upright == the reach's real CoM offset.
+    // NOTE: this makes the in-process twin lean BACKWARD (the twin has no real gap),
+    // so validate Layer-A (crouch/counterbalance) on the twin with this at 0, and
+    // dial this on the real robot.
+    if (residual_keyframe_.name == "reach_to_target") {
+      int rcb_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_com_back");
+      if (rcb_id >= 0)
+        capture_point[0] += model->numeric_data[model->numeric_adr[rcb_id]];
+    }
   }
 
   // project onto support polygon

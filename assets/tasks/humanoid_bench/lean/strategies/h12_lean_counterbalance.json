@@ -255,7 +255,7 @@
             "Control": 0.05,
             "Foot Stability": 15.0,
             "Joint Vel. Limit": 5.0,
-            "Knees Straight": 40.0
+            "Knees Straight": 18.0
         },
         "brace_force_target": 0.0
     },
