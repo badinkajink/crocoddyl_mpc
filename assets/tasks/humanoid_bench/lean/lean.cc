@@ -319,10 +319,41 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // recovery tier (Centroidal angular momentum term, far below) read the same
   // signal -- the ankle->HIP->step hierarchy keyed off one quantity.
   double g_cap_ex = 0.0, g_cap_ey = 0.0;
+  // TROT-window step scales (function scope so the Cartesian Gait/Step-Place
+  // block far below sees them). Both default 1.0 (== quiet stand / push-recovery
+  // BYTE-IDENTICAL) and only become >1 inside the trot starter window. Per the
+  // MJPC-quadruped + Unitree-RL-walk references: a stable in-place step needs the
+  // foot-CLEARANCE term to DOMINATE (quadruped Gait 2.0 = highest; Unitree
+  // feet_swing_height = strongest), NOT a boosted joint reference the balance-
+  // cautious planner ignores. trot_swing_scale raises the swing-foot height TARGET
+  // (joint ref + Cartesian arc); trot_gait_wscale boosts the Gait foot-clearance
+  // residual = an effective weight bump (25 -> ~25*scale^2) so foot-tracking wins
+  // over the cheap lateral rock. Quiet stand keeps Gait 25 (residual ~0 when
+  // planted anyway), so the validated 9/10 stand + push-recovery are untouched.
+  double trot_swing_scale = 1.0, trot_gait_wscale = 1.0;
   if (is_stumble) {
     // gait CLOCK always runs; only the AMPLITUDE g_amp decides whether it steps.
-    double ph_l = std::fmod(data->time * kCadenceHz,       1.0);  // L foot phase
-    double ph_r = std::fmod(data->time * kCadenceHz + 0.5, 1.0);  // R antiphase
+    // Cadence is a live numeric (default kCadenceHz) so the operator can dial the
+    // step rate -- gentler/fewer steps for the trot starter -- without a rebuild.
+    int cad_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_cadence");
+    double kCad = (cad_id >= 0)
+        ? model->numeric_data[model->numeric_adr[cad_id]] : kCadenceHz;
+    // stumble_swing_scale (default 1) multiplies the swing-leg lift DURING the
+    // trot starter only (swing_mult below), so the operator can dial step HEIGHT
+    // up to clear visibility live -- the balance-cautious planner damps the
+    // reference, so the realized lift is a fraction of it. The catch-step keeps
+    // mult=1 (validated push-recovery untouched).
+    int ss_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_swing_scale");
+    double kSwingScale = (ss_id >= 0)
+        ? model->numeric_data[model->numeric_adr[ss_id]] : 1.0;
+    // stumble_gait_boost (default 1): trot-window multiplier on the Gait foot-
+    // clearance RESIDUAL -> effective weight 25*boost^2 (boost 2.6 -> ~170,
+    // making foot-tracking the DOMINANT term per the references). Live-tunable.
+    int gb_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_gait_boost");
+    double kGaitBoost = (gb_id >= 0)
+        ? model->numeric_data[model->numeric_adr[gb_id]] : 1.0;
+    double ph_l = std::fmod(data->time * kCad,       1.0);  // L foot phase
+    double ph_r = std::fmod(data->time * kCad + 0.5, 1.0);  // R antiphase
     g_bump_l = (ph_l < kDutyRatio) ? 0.0
         : std::sin(mjPI * (ph_l - kDutyRatio) / (1.0 - kDutyRatio));
     g_bump_r = (ph_r < kDutyRatio) ? 0.0
@@ -381,6 +412,34 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
       g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);       // legacy continuous march
     }
+    // --- TROT STARTER (opt-in, strategy 20 only): a deliberate in-place march
+    // over the window [trot_delay, trot_delay+trot_sec] after engage, then HAND
+    // OFF to the quiet balance-gated stand above ("trot 10 s -> stand & stumble").
+    // Lets the operator SEE balance-during-stepping at startup without waiting
+    // for a push. trot_delay skips the node's bring-up ramp; the window eases in
+    // AND out over kTrotEase so start/stop are smooth (no snap). g_amp =
+    // max(gated, env) so a genuine push DURING the trot still drives a decisive
+    // catch-step. The march reuses the same clock/swing as the catch-step
+    // (g_bump_l/r below), so the arm-quiet velocity split (leg_gate = 1 - g_amp)
+    // damps the upper body throughout. trot_sec<=0 => OFF => byte-identical to
+    // the pre-trot gait (and every other strategy stays untouched, name-gated).
+    int td_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_trot_delay");
+    int tn_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_trot_sec");
+    double kTrotDelay = (td_id >= 0)
+        ? model->numeric_data[model->numeric_adr[td_id]] : 0.0;
+    double kTrotSec = (tn_id >= 0)
+        ? model->numeric_data[model->numeric_adr[tn_id]] : 0.0;
+    double t_trot = time_in_phase - kTrotDelay;
+    if (kTrotSec > 1e-3 && t_trot >= 0.0 && t_trot < kTrotSec) {
+      constexpr double kTrotEase = 1.5;                  // s, smooth ease in AND out
+      double rin  = mju_min(t_trot / kTrotEase, 1.0);
+      double rout = mju_min((kTrotSec - t_trot) / kTrotEase, 1.0);
+      double env  = mju_max(0.0, mju_min(rin, rout));
+      env = env * env * (3.0 - 2.0 * env);               // smoothstep envelope
+      g_amp = mju_max(g_amp, env);                       // force the march, keep push-step
+      trot_swing_scale = kSwingScale;   // taller swing TARGET (joint ref + Cartesian arc)
+      trot_gait_wscale = kGaitBoost;    // dominant foot-clearance cost (the lift driver)
+    }
     // --- DECISIVE OMNIDIRECTIONAL catch-step: pick the foot toward the capture
     // point and force it to swing NOW (N-step capturability, Pratt/Koolen --
     // relocate the base under the falling CoM before the weak ankle saturates).
@@ -402,7 +461,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     if (model->nq <= 64) {
       for (int i = 0; i < model->nq; i++)
         stumble_posture_target[i] = posture_target[i];
-      double ll = g_amp * g_bump_l, lr = g_amp * g_bump_r;    // 0..1 lift per leg
+      double ll = g_amp * g_bump_l * trot_swing_scale, lr = g_amp * g_bump_r * trot_swing_scale;  // lift per leg
       // L leg joints: qpos 7+1 hip_pitch, 7+3 knee, 7+4 ankle_pitch
       stumble_posture_target[7 + 1] -= kSwingHip  * ll;
       stumble_posture_target[7 + 3] += kSwingKnee * ll;
@@ -602,6 +661,27 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     constexpr double kReachRadius = 0.50;
     if (r > kReachRadius && r > 1e-6) {
       mju_scl3(v, v, kReachRadius / r);          // project onto the sphere
+      // GRAVITY GUARD (magpie arms, 2026-06-22). A FAR target (large horizontal
+      // distance, modest vertical drop) projects to a NEAR-HORIZONTAL arm: the
+      // sphere point sits only ~0.20 m below the shoulder. The gripper-laden
+      // magpie forearm cannot HOLD that extension — the elbow hits its torque
+      // limit and the arm collapses/swings BACKWARD on the real/twin plant
+      // (the agent_server own-sim, with a gentler PD and no gripper-mass stress,
+      // holds it and hides the failure — the documented own-sim-over-holds gap).
+      // So cap the lift: never command the hand higher than ~34 deg below the
+      // shoulder, and rescale the horizontal component to keep the hand on the
+      // reach sphere. The arm still MAX-EXTENDS toward the target's bearing, but
+      // forward-DOWN (gravity-light, near its natural rest droop) instead of
+      // straight out. Deeper reach toward an out-of-reach point is the LEAN's
+      // job (strat 16/33) — the reach/lean/step hierarchy is unchanged.
+      constexpr double kMaxLift = 0.28;          // z drop >= 0.28 m  (~34 deg droop)
+      if (v[2] > -kMaxLift) {
+        v[2] = -kMaxLift;
+        double horiz = mju_sqrt(
+            mju_max(1e-9, kReachRadius * kReachRadius - kMaxLift * kMaxLift));
+        double rh = mju_sqrt(v[0] * v[0] + v[1] * v[1]);
+        if (rh > 1e-6) { v[0] *= horiz / rh; v[1] *= horiz / rh; }
+      }
       mju_add3(phase1_target_storage, shoulder, v);
     } else {
       mju_copy3(phase1_target_storage, in_target);  // already in reach
@@ -719,6 +799,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
 
   // ----- joint velocity ----- //
   mju_copy(residual + counter, data->qvel + 6, model->nu);
+  if (is_stumble) {
+    // Split the "Velocity" joint-velocity damping by joint group (the G1-
+    // locomotion pattern: vel/pose-regularised ARMS, gait-driven LEGS). LEG/torso
+    // damping (actuators 0..12) RELEASES as the gait amplitude ramps (1-g_amp) so
+    // a catch-step is fast and unimpeded; ARM damping (13..26) is BOOSTED + always
+    // on so the upper body stays quiet (no flail) even as the gait/balance perturb
+    // it -- the user's "keep the arms at home, recover with legs/hips". When calm
+    // (g_amp=0) the legs are fully damped (leg_gate=1) so the still-stand is
+    // unchanged. is_stumble-gated => strat 0-19, 21 byte-identical.
+    double leg_gate = 1.0 - g_amp;
+    for (int i = 0; i < model->nu; i++)
+      residual[counter + i] *= (i < 13) ? leg_gate : 1.6;
+  }
   counter += model->nu;
 
   // ----- torso height ----- //
@@ -1832,9 +1925,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // the folded-swing-leg Posture into a REAL step; the planner finds the hip-
     // roll / ankle to achieve it. Only for stumble; every other strategy keeps
     // the plain centred target (and weight 0 unless it opts in). --- //
-    constexpr double kLatShift = 0.07;   // CoM lateral rock amplitude [m]
+    // kLatShift scaled by the trot-window swing scale: a bigger STEP needs a
+    // bigger weight-SHIFT to fully unload the swing foot (the measured one-sided
+    // step came from too small a rock -- the left foot never unloaded, so it could
+    // not lift). At swing_scale 2.5 the rock target is ~0.18 m, enough to take the
+    // load off EITHER foot in turn. ==base 0.07 outside the trot window (quiet
+    // stand + push-recovery byte-identical). Capped so it can't drive the CoM off
+    // the support polygon. --- //
+    constexpr double kLatShift = 0.07;   // base CoM lateral rock amplitude [m]
+    double lat_amp = mju_min(0.20, kLatShift * trot_swing_scale);
     double lat_tgt = midfoot_y +
-        (is_stumble ? kLatShift * g_amp * (g_bump_r - g_bump_l) : 0.0);
+        (is_stumble ? lat_amp * g_amp * (g_bump_r - g_bump_l) : 0.0);
     residual[counter++] = 10.0 * (subcom[1] - lat_tgt);
   } else {
     residual[counter++] = 0.0;
@@ -1858,15 +1959,55 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (N-step capturability, Koolen/Pratt), extending the recoverable region far
   // beyond the ankle limit -- the gradient-free win for a weak-ankle robot.
   if (is_stumble) {
-    double amp = kStepHeight * g_amp;   // ramped Cartesian step height [m]
+    // Cartesian step height TARGET: kStepHeight (0.022) scaled by the trot-window
+    // swing scale (default 1 outside the window). At swing_scale 2.5 the target is
+    // ~0.055 m -- between the quadruped trot (0.03) and Unitree humanoid walk
+    // (0.08) clearance, sized for the bigger H1-2 foot.
+    double amp = kStepHeight * g_amp * trot_swing_scale;   // ramped Cartesian step height [m]
     // --- Gait foot-height (dim 2): reinforce the SWING foot rising its bump in
     //     task space; STANCE foot untracked (residual 0). Ground reference = the
-    //     lower (planted) foot, so it auto-calibrates with no hard-coded foot z. --- //
+    //     lower (planted) foot, so it auto-calibrates with no hard-coded foot z.
+    //     trot_gait_wscale boosts this residual in the trot window -> the foot-
+    //     clearance cost DOMINATES (the references' #1 lesson), so the planner
+    //     actually lifts the foot instead of only rocking. ==1 outside the window
+    //     -> quiet stand + push-recovery catch-step byte-identical. --- //
     double ref_z = mju_min(foot_left_pos[2], foot_right_pos[2]);
-    residual[counter++] =
-        (g_bump_l > 0.0) ? (foot_left_pos[2]  - ref_z - amp * g_bump_l) : 0.0;
-    residual[counter++] =
-        (g_bump_r > 0.0) ? (foot_right_pos[2] - ref_z - amp * g_bump_r) : 0.0;
+    // CONTACT-SCHEDULE signal (the references' bilateral-alternation glue, e.g.
+    // Unitree's `contact` reward): a foot must be UNLOADED during its swing phase.
+    // Foot-height alone gave ONE-SIDED steps -- the rock unloaded only the lighter
+    // foot; the other stayed planted (loaded) so its height term just paid a fixed
+    // penalty. Penalising the swing foot's CONTACT FORCE forces the planner to
+    // shift the CoM far enough to take the load off EITHER foot in turn. Per-foot
+    // normal force summed from the live contacts; normalised by ~half body weight
+    // (~500 N) to sit at the same ~0.05 scale as the height target. Trot-window
+    // only (sched=0 when trot_gait_wscale==1) -> quiet stand + push-recovery
+    // byte-identical. Costs ~ncon iterations, stumble + trot only. --- //
+    double ff_l = 0.0, ff_r = 0.0;
+    if (trot_gait_wscale > 1.01) {  // only inside the trot window
+      int fl_body = mj_name2id(model, mjOBJ_BODY, "left_ankle_roll_link");
+      int fr_body = mj_name2id(model, mjOBJ_BODY, "right_ankle_roll_link");
+      for (int c = 0; c < data->ncon; c++) {
+        const mjContact& con = data->contact[c];
+        int ba = model->geom_bodyid[con.geom1], bb = model->geom_bodyid[con.geom2];
+        mjtNum f6[6];
+        mj_contactForce(model, data, c, f6);
+        double fn = mju_abs(f6[0]);  // normal force (contact-frame x)
+        if (ba == fl_body || bb == fl_body) ff_l += fn;
+        if (ba == fr_body || bb == fr_body) ff_r += fn;
+      }
+    }
+    constexpr double kSched = 0.060;  // swing-load penalty scale (~= step-height scale)
+    double sched_l = (trot_gait_wscale > 1.01) ? kSched * g_bump_l * mju_min(2.0, ff_l / 500.0) : 0.0;
+    double sched_r = (trot_gait_wscale > 1.01) ? kSched * g_bump_r * mju_min(2.0, ff_r / 500.0) : 0.0;
+    // SUBTRACT the contact penalty so it REINFORCES the height deficit (a planted
+    // swing foot has a NEGATIVE height residual -amp*g_bump; a loaded one makes it
+    // MORE negative -> larger cost -> forces the unload). Adding them cancels (the
+    // bug that left it one-sided). A correctly-lifted unloaded foot: height~0 and
+    // ff~0 -> residual~0 (no penalty).
+    residual[counter++] = trot_gait_wscale *
+        ((g_bump_l > 0.0) ? (foot_left_pos[2]  - ref_z - amp * g_bump_l) - sched_l : 0.0);
+    residual[counter++] = trot_gait_wscale *
+        ((g_bump_r > 0.0) ? (foot_right_pos[2] - ref_z - amp * g_bump_r) - sched_r : 0.0);
 
     // --- Step Place (dim 4): aim each SWING foot's xy at a capture-point /
     //     Raibert target: x_foot = com_xy + nominal_offset

@@ -64,7 +64,16 @@
         <!-- reach_hand (2026-06-20, strategy 21 only): 0 = AUTO (nearer hand),
              1 = force LEFT, 2 = force RIGHT (keeps the other arm free for a
              future brace/grasp). XML-tunable, no rebuild. -->
-        <numeric name="reach_hand" data="0"/>
+        <numeric name="reach_hand" data="2"/>
+        <!-- reach_target (2026-06-22): hardcoded ASSUMED target for deterministic
+             real testing of the lean pipeline (applies to pre-leans 21/16/22 AND
+             lean 32/33/34). Placed BEYOND max reach (x=1.4, ~0.3m past the deepest
+             braced reach) so every phase max-extends/leans toward it -> lets you
+             quantify reach per phase. y=-0.15 fronts the RIGHT shoulder (reach_hand=2
+             = right reaches, left braces); z=0.90 = table-object height. lean.cc pins
+             data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
+             numeric when wiring nav2+vision. -->
+        <numeric name="reach_target" data="1.4 -0.15 0.90"/>
         <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
              omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
              (capture-point excursion, m). danger>catch_trig => step toward the fall;

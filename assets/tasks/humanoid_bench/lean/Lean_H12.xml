@@ -42,6 +42,9 @@
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
         <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- reach_to_target (strategy 21): bent-knee upright posture so the reach
+             branch fires AND the knees don't lock straight -> topple. See Magpie XML. -->
+        <key name="reach_to_target" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- hip_roll splayed +/-0.07 (2026-06-06): wider stance = bigger lateral support
              polygon so the ankle can hold STRAIGHT legs without twisting/failing (the
              stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
@@ -190,7 +193,16 @@
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
              XML-tunable, no rebuild. -->
-        <numeric name="reach_hand" data="0"/>
+        <numeric name="reach_hand" data="2"/>
+        <!-- reach_target (2026-06-22): hardcoded ASSUMED target for deterministic
+             real testing of the lean pipeline (applies to pre-leans 21/16/22 AND
+             lean 32/33/34). Placed BEYOND max reach (x=1.4, ~0.3m past the deepest
+             braced reach) so every phase max-extends/leans toward it -> lets you
+             quantify reach per phase. y=-0.15 fronts the RIGHT shoulder (reach_hand=2
+             = right reaches, left braces); z=0.90 = table-object height. lean.cc pins
+             data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
+             numeric when wiring nav2+vision. -->
+        <numeric name="reach_target" data="1.4 -0.15 0.90"/>
         <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
              omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
              (capture-point excursion, m). danger>catch_trig => step toward the fall;

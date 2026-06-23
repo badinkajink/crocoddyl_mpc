@@ -42,6 +42,15 @@
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
         <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
+             name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
+             residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
+             BENT-knee upright stand (= copy of "stand", knees 0.35) instead of falling back
+             to "home" (straight knees), which made Posture+Knees-Straight lock the knees
+             straight -> topple ~10 s. Arms at home; the Reaching Hand Dist cost extends the
+             chosen arm toward the (gravity-guarded, sphere-clamped) target while the body
+             stays upright. -->
+        <key name="reach_to_target" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- hip_roll splayed +/-0.07 (2026-06-06): wider stance = bigger lateral support
              polygon so the ankle can hold STRAIGHT legs without twisting/failing (the
              stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
@@ -186,18 +195,65 @@
              CoM speed past a deadband), easing back to a still stand on recovery.
              0 = legacy ALWAYS-ON in-place march. XML-tunable, no rebuild. -->
         <numeric name="stumble_balance_gated" data="1.0"/>
+        <!-- TROT STARTER (2026-06-22, strategy 20 only): a deliberate in-place
+             march at startup so the operator can SEE balance-during-stepping
+             before push-testing, then it eases back into the quiet balance-gated
+             stand ("trot N s -> stand & stumble"). All three are XML-tunable, no
+             rebuild; trot_sec=0 disables (pure gated stand).
+             - stumble_trot_delay: seconds to wait after engage before trotting,
+               so it skips the node's ~5 s bring-up ramp (settle, THEN march).
+             - stumble_trot_sec: trot window length (eases in+out over 1.5 s each).
+             - stumble_cadence: steps/s per foot during the WHOLE gait (clock rate).
+               0.6 -> ~6 deliberate steps/leg over a 10 s window (gentle march, NOT
+               a flight-phase trot -- duty 0.70 keeps near-double-support, safest on
+               the toe-heavy foot). Raise toward 1.25 (Unitree G1 walk = 0.8 s period)
+               for a brisker look; lower for slower/clearer steps. -->
+        <numeric name="stumble_trot_delay" data="5.0"/>
+        <numeric name="stumble_trot_sec" data="10.0"/>
+        <numeric name="stumble_cadence" data="0.6"/>
+        <!-- stumble_swing_scale: multiplies the trot-window swing-leg LIFT (step
+             height). The balance-cautious planner only realizes a fraction of the
+             reference, so 1.0 looks like a shuffle (~1 cm foot clearance). Raise for
+             clearly-visible steps; LOWER if it gets tippy. Trot-window ONLY -- the
+             push-recovery catch-step is unscaled. XML-tunable, no rebuild. -->
+        <numeric name="stumble_swing_scale" data="2.5"/>
+        <!-- stumble_gait_boost: trot-window multiplier on the Gait foot-clearance
+             residual -> effective weight 25*boost^2. 2.6 -> ~170, making foot-
+             tracking the DOMINANT cost (per MJPC-quadruped Gait 2.0 + Unitree
+             feet_swing_height -20). This is what actually LIFTS the foot: without
+             it the swing reference is overwhelmed by the lateral rock and the foot
+             only clears ~5 mm. Raise for a higher step, lower if it gets tippy.
+             Trot-window ONLY -> quiet stand + push-recovery byte-identical. -->
+        <numeric name="stumble_gait_boost" data="2.6"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
              XML-tunable, no rebuild. -->
-        <numeric name="reach_hand" data="0"/>
+        <numeric name="reach_hand" data="2"/>
+        <!-- reach_target (2026-06-22): hardcoded ASSUMED target for deterministic
+             real testing of the lean pipeline (applies to pre-leans 21/16/22 AND
+             lean 32/33/34). Placed BEYOND max reach (x=1.4, ~0.3m past the deepest
+             braced reach) so every phase max-extends/leans toward it -> lets you
+             quantify reach per phase. y=-0.15 fronts the RIGHT shoulder (reach_hand=2
+             = right reaches, left braces); z=0.90 = table-object height. lean.cc pins
+             data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
+             numeric when wiring nav2+vision. -->
+        <numeric name="reach_target" data="1.4 -0.15 0.90"/>
         <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
              omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
              (capture-point excursion, m). danger>catch_trig => step toward the fall;
              danger>=catch_full => full-authority snap. LOWER catch_trig = steps earlier
-             (more decisive, risk false-steps); RAISE = waits longer. XML-tunable, no rebuild. -->
-        <numeric name="catch_trig" data="0.06"/>
-        <numeric name="catch_full" data="0.12"/>
+             (more decisive, risk false-steps); RAISE = waits longer. XML-tunable, no rebuild.
+             2026-06-22: RAISED 0.06->0.12 (band 0.12->0.24). On the REAL robot normal
+             standing sway + the noisy HW base-velocity estimate pushed danger past the old
+             0.06 -> the gate cracked open during a quiet stand -> spurious micro-steps that
+             the planner counter-rotated with the shoulders (the "arms taking shifts" flail,
+             live-only; the twin's clean velocity never showed it). 0.12 sits ABOVE the
+             observed sway envelope so the stand stays quiet, while a genuine push (danger
+             0.2+) still triggers a decisive catch-step. Dial down if pushes need to step
+             sooner; dial up if it still micro-steps while standing. -->
+        <numeric name="catch_trig" data="0.12"/>
+        <numeric name="catch_full" data="0.24"/>
         <!-- stance_off_x (2026-06-20, strategy 20): feet planted this far AHEAD of
              the CoM (m). LOWER -> CoM more centred -> better BACKWARD margin; HIGHER
              -> more forward margin. XML-tunable, no rebuild. -->

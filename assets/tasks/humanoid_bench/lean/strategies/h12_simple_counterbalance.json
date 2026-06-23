@@ -88,8 +88,8 @@
         "target_distance_tolerance": 0.3,
         "time_limit": 9999.0,
         "weight": {
-            "Pelvis Tilt": 50.0,
-            "Torso Forward Tilt": 15.0,
+            "Pelvis Tilt": 110.0,
+            "Torso Forward Tilt": 8.0,
             "Foot Stability": 15.0,
             "Object Dist": 100.0,
             "Reaching Hand Dist": 80.0,
