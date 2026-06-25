@@ -16,7 +16,7 @@
         "weight": {
             "humanoid_bench": 0.0,
             "Object Dist": 0.0,
-            "Reaching Hand Dist": 120.0,
+            "Reaching Hand Dist": 80.0,
             "Brace Pos": 0.0,
             "Brace Force": 0.0,
             "Contact": 0.0,

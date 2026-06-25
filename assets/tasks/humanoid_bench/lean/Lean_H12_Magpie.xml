@@ -42,6 +42,11 @@
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
         <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- counterbalance_standing (strategy 16): MUST exist so 16's Posture targets a
+             BENT-knee stand (knees 0.35) instead of falling back to home (key 0 = STRAIGHT
+             knees), which — with the JSON "Knees Straight" weight — drove 16's legs straight
+             into the strut/hyperextend (knee -0.11) → topple. Copy of "stand". 2026-06-25. -->
+        <key name="counterbalance_standing" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
              name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
              residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
@@ -50,7 +55,13 @@
              straight -> topple ~10 s. Arms at home; the Reaching Hand Dist cost extends the
              chosen arm toward the (gravity-guarded, sphere-clamped) target while the body
              stays upright. -->
-        <key name="reach_to_target" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- 2026-06-25: right_shoulder_pitch 0 -> -0.35 (qpos[27]) so the Posture target HOLDS
+             the right arm STRETCHED FORWARD (Rhand_fwd 0.49 m, ABOVE the 0.404 m home) instead
+             of at home. Discovery: every prior "reach" (0.27-0.37) was BELOW the 0.404 home =
+             the arm never reached forward; the gravity-guard drop only angled it DOWN. Holding
+             a full forward stretch costs ~4 Nm at the elbow (22% of 18) -> the elbow was NEVER
+             the limit. Legs/left-arm unchanged. -->
+        <key name="reach_to_target" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 -0.1 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- hip_roll splayed +/-0.07 (2026-06-06): wider stance = bigger lateral support
              polygon so the ankle can hold STRAIGHT legs without twisting/failing (the
              stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
@@ -167,6 +178,16 @@
              [-0.43, 3.14]. Keep σ small relative to the tightest one-sided
              ctrlrange (knee's -0.12) so samples stay in the unclipped band. -->
         <numeric name="sampling_exploration" data="0.05"/>
+        <!-- CEM sampler knobs (foot-lift Tier C). LEGACY-SAFE defaults here
+             (= current behaviour for stand/crouch/reach); bumped for stumble
+             ONLY via lean::PlannerNumericOverrides so the calm strats are
+             unaffected. std_initial=CEM init std; explore_fraction=share of
+             samples at the wide std each step; sampling_knot_var_growth=far-
+             horizon knots noisier (action-level annealing). -->
+        <numeric name="sampling_trajectories" data="10"/>
+        <numeric name="std_initial" data="0.1"/>
+        <numeric name="explore_fraction" data="0.0"/>
+        <numeric name="sampling_knot_var_growth" data="0.0"/>
         <numeric name="gradient_spline_points" data="5"/>
         <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites
              with 30 rollouts. That's too few — one outlier sample dominates the
@@ -213,12 +234,24 @@
         <numeric name="reach_hand" data="2"/>
         <!-- reach_target (2026-06-22): hardcoded ASSUMED target for deterministic
              real testing of the lean pipeline (applies to pre-leans 21/16/22 AND
-             lean 32/33/34). Placed BEYOND max reach (x=1.4, ~0.3m past the deepest
-             braced reach) so every phase max-extends/leans toward it -> lets you
-             quantify reach per phase. y=-0.15 fronts the RIGHT shoulder (reach_hand=2
-             = right reaches, left braces); z=0.90 = table-object height. lean.cc pins
+             lean 32/33/34). y=-0.15 fronts the RIGHT shoulder (reach_hand=2 = right
+             reaches, left braces); z=0.90 = table-object height. lean.cc pins
              data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
-             numeric when wiring nav2+vision. -->
+             numeric when wiring nav2+vision. Placed BEYOND max reach (x=1.4) so every
+             phase max-extends/leans toward it; z=0.90 = table-object height.
+             ★ 2026-06-25, NEARER-TARGET FIX for strat 16 = REJECTED by twin. Hypothesis:
+             x=1.4 (1.21 m fwd of the x=0.19 midfoot) over-leans 16 vs the branch's 0.70 m
+             design (lean.cc:563) -> tried x=0.95 to get a controlled lean. FAITHFUL twin
+             (gravcomp 0.85, handless-magpie) FELL FASTER, not slower: x=0.95 fell @7.5 s
+             (twin_dt 0.005) and @3.5 s (twin_dt 0.001), vs x=1.4 ~23 s — BACKWARD+left
+             both times. Mechanism: a nearer target needs LESS forward lean, but the
+             planner still does the emergent BACK-swing (hips+free arm) -> with less fwd
+             lean to offset it the CoM goes backward -> topples back SOONER. ⇒ target
+             distance is NOT a safe knob; 16's free-standing stretched-arm lean is at its
+             topple boundary regardless (re-confirms the 2026-06-23 deep-dive). Reverted to
+             1.4 (also preserves the braced pipeline 33/34 deep reach). Robust "stretched
+             arm that holds" = strat 21 (upright, held 128 s); "stretched arm + LEAN that
+             holds" = braced 33/34. [[project_counterbalance_strat16]] -->
         <numeric name="reach_target" data="1.4 -0.15 0.90"/>
         <!-- reach_radius / reach_drop (strategy 21): the HOLDABLE-workspace knobs.
              reach_radius = the arm's commanded extension toward the target [m];
@@ -238,15 +271,53 @@
              own-sim (no gravity FF) under-represents this -> it looks milder there
              than on real (which sends the 0.85 FF, like the deploy twin). TUNE ON
              REAL: drop 0.34 is the holdable sweet spot; LOWER drop (0.28) reaches a
-             touch higher but spikes the elbow to 84% (thrash risk). No rebuild. -->
+             touch higher but spikes the elbow to 84% (thrash risk). No rebuild.
+             ★ 2026-06-25, STRETCH STEP (drop 0.34->0.28): the 128 s real run held with
+             the knee anchor pinning knees at 0.35 -> shoulder stays HIGH -> elbow only
+             32% mean / 73% peak (ankle 81% is now the limiter, NOT the elbow). radius
+             0.58 EXCEEDS the ~0.52 m arm length so it is SATURATED -- raising it does
+             nothing; the forward/down SPLIT is set by drop. drop 0.34 commanded only
+             sqrt(0.52^2-0.34^2)=0.39 m forward (hand hung forward-DOWN = "never
+             stretched"). drop 0.28 -> 0.438 m forward (+4.5 cm visible stretch). The
+             old 0.28->84% elbow was PRE-anchor (sunk body, bad elbow angle); the anchor
+             keeps it holdable. WATCH Relb tau% on real: sustained >70% = back off to
+             0.32; comfortable = push to 0.24 (0.461 m fwd). No rebuild. -->
         <numeric name="reach_radius" data="0.52"/>
-        <numeric name="reach_drop" data="0.34"/>
+        <!-- ★ 2026-06-25 CORRECTED 0.28->0.12: the elbow was NEVER the reach limit (static hold
+             of a FULL forward stretch = ~4 Nm = 22% of 18). The drop only angled the arm DOWN,
+             pulling Rhand_fwd BELOW the 0.404 m home pose = the "never stretched" the user saw.
+             0.12 < the natural 0.156 target-drop so the gravity guard no longer fires -> the
+             reach aims forward-HORIZONTAL. Paired with reach_to_target keyframe Rsh_pitch=-0.35.
+             (Ignore the 0.84-elbow warnings above — those were DYNAMIC crouch-thrash, not a
+             static reach limit.) Raise toward 0.20 if the forward arm over-shifts CoM. -->
+        <numeric name="reach_drop" data="0.12"/>
         <!-- reach_com_back (strat 21): EXTRA forward-CoM bias [m] applied ONLY during
              the reach, so the planner holds the CoM that much BACK to counterbalance
              the forward arm (the real-chain forward creep the lockstep twin can't show).
              Reach-gated (stand byte-identical). TUNE ON REAL: raise if it still leans
              forward, lower if it leans back. No rebuild to change the value. -->
-        <numeric name="reach_com_back" data="0.04"/>
+        <numeric name="reach_com_back" data="0.06"/>
+        <!-- reach_brace_hold (strat 21): how firmly the NON-reaching (left, brace)
+             arm is pinned to its rest/brace pose = boost factor on its Posture
+             residual (effective weight = Posture * this). Stops the idle arm
+             flailing for balance (which looked like the reach "switching arms").
+             reach_hand picks the reaching arm (2=right); the OTHER is held. Raise
+             if the brace arm still drifts, lower toward 1 to free it. No rebuild. -->
+        <numeric name="reach_brace_hold" data="1"/>
+        <numeric name="reach_arm_lock" data="4"/>
+        <!-- reach_knee_anchor (strat 21, 2026-06-25): one-sided crouch-depth floor.
+             On real the reach held ~73 s then the body sank (knee 0.35->0.53) and the
+             right elbow saturated holding the heavy gripper out -> arm folded. This
+             amplifies the knee Posture residual ONLY when the knee bends PAST its
+             keyframe (sinking deeper), stacking on crouch_leg_extension_gain, so the
+             shoulder stays high and the elbow keeps its holdable geometry. 1 = off.
+             Raise if it still sinks, lower if the legs get jittery/stiff. No rebuild. -->
+        <!-- 2026-06-25: drop 0.28 (deeper stretch) re-triggered the end-crouch at t27 on
+             real (knee 0.34->0.71, elbows 94% -> arms flailed inward, near gripper
+             collision) — the heavier forward arm strengthens the crouch pull enough to
+             overpower anchor=3 (which held 128 s at drop 0.34). Raised 3->5 to resist it
+             while keeping the 0.28 stretch. If real STILL crouches, back drop to 0.31. -->
+        <numeric name="reach_knee_anchor" data="5"/>
         <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
              omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
              (capture-point excursion, m). danger>catch_trig => step toward the fall;

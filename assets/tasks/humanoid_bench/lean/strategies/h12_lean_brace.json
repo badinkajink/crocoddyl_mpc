@@ -221,7 +221,7 @@
         "weight": {
             "humanoid_bench": 0.0,
             "Object Dist": 0.0,
-            "Reaching Hand Dist": 120.0,
+            "Reaching Hand Dist": 80.0,
             "Brace Pos": 0.0,
             "Brace Force": 0.0,
             "Contact": 0.0,
@@ -255,7 +255,7 @@
             "Control": 0.05,
             "Foot Stability": 15.0,
             "Joint Vel. Limit": 5.0,
-            "Knees Straight": 18.0
+            "Knees Straight": 40.0
         },
         "brace_force_target": 0.0
     },
@@ -351,8 +351,8 @@
             "Pelvis Tilt": 110.0,
             "Torso Forward Tilt": 8.0,
             "Foot Stability": 15.0,
-            "Object Dist": 100.0,
-            "Reaching Hand Dist": 80.0,
+            "Object Dist": 55.0,
+            "Reaching Hand Dist": 45.0,
             "Balance": 2.5,
             "Posture": 12.0,
             "Foot Left Up": 2000.0,
@@ -372,7 +372,7 @@
             "Control": 0.05,
             "Base Height": 450.0,
             "Height": 100.0,
-            "Knees Straight": 40.0
+            "Knees Straight": 10.0
         },
         "brace_force_target": 0.0,
         "target_ramp_sec": 2.0

@@ -259,7 +259,7 @@
             "Foot Stability": 2.0,
             "Joint Vel. Limit": 5.0,
             "Knees Straight": 200.0,
-            "Gait": 25.0,
+            "Gait": 80.0,
             "Step Place": 6.0,
             "Foot Slip": 25.0
         },

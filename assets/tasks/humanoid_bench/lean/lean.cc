@@ -283,12 +283,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   mjtNum stumble_posture_target[64];  // private swing-leg reference (stumble only)
   const bool is_stumble = (residual_keyframe_.name.rfind("stumble", 0) == 0);
   // gait parameters (constexpr -> tune by edit+rebuild; nav drives only kDesVel*)
-  constexpr double kCadenceHz  = 0.8;   // steps/s per foot (slower -> swing fits fewer
-                                        // spline knots, so it steps at a stand-tolerable
-                                        // bandwidth: spline 8 destabilises even a plain
-                                        // stand, spline<=5 holds. 2026-06-18.)
-  constexpr double kDutyRatio  = 0.70;  // stance fraction (more double-support = steadier)
-  constexpr double kStepHeight = 0.022; // swing-foot peak Cartesian clearance [m] (gentle shuffle)
+  constexpr double kCadenceHz  = 1.1;   // 0.8->1.1 FOOT-LIFT CLUSTER 2026-06-24 (Unitree H1-2
+                                        // rl_gym 1.25). steps/s per foot (slower -> swing fits
+                                        // fewer spline knots, stand-tolerable bandwidth: spline 8
+                                        // destabilises even a plain stand, spline<=5 holds.
+                                        // 2026-06-18). WATCH: faster cadence may re-stress the
+                                        // spline-5 bandwidth -> back off to 0.9 if it destabilises.
+  constexpr double kDutyRatio  = 0.60;  // 0.70->0.60 cluster: more SWING time (40% vs 30%) so the
+                                        // foot has longer to clear. (more double-support = steadier)
+  constexpr double kStepHeight = 0.06;  // 0.022->0.06 cluster: swing-foot peak Cartesian clearance
+                                        // [m] toward Unitree H1-2 0.08 (was a gentle 2.2cm shuffle)
   constexpr double kAmpRampSec = 4.5;   // ease the gait in over the first 4.5 s of the phase
   constexpr double kDesVelX    = 0.0;   // desired CoM velocity [m/s] world x -- NAV HOOK
   constexpr double kDesVelY    = 0.0;   // desired CoM velocity [m/s] world y -- NAV HOOK
@@ -297,9 +301,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // bends, ankle holds the sole level. This is what BOOTSTRAPS the step; the
   // leg hip_pitch/knee entries are additionally leg-gain-amplified by the
   // Posture cost, so even a modest Posture weight tracks the swing crisply.
-  constexpr double kSwingHip   = 0.11;  // hip_pitch: more negative -> thigh lifts (gentler)
-  constexpr double kSwingKnee  = 0.20;  // knee: more positive -> shank folds up (gentler)
-  constexpr double kSwingAnk   = 0.08;  // ankle_pitch: more negative -> foot stays level
+  // FOOT-LIFT Tier B (2026-06-24): SCRIPTED swing fold RAISED now that Tier A
+  // releases the competing costs (Foot-Up/Base-Height/Balance off the swing leg).
+  // This joint-space arc IS the imposed swing reference tracked by the position
+  // servos -- the lift driver. Was a gentle 0.11/0.20/0.08 (~1.5cm, fought by the
+  // old costs); now folds the leg for a real ~5-6cm clearance. Live-scalable via
+  // the stumble_swing_scale numeric (applied to the march fold below).
+  constexpr double kSwingHip   = 0.35;  // hip_pitch flexes back -> thigh lifts
+  constexpr double kSwingKnee  = 0.70;  // knee bends -> shank folds up (the clearance)
+  constexpr double kSwingAnk   = 0.12;  // ankle_pitch -> toe clears (Foot-Up released on swing)
   // ---- BALANCE-GATED stepping (2026-06-19; signed-danger gate 2026-06-20) ----
   // STAND STILL (bent-knee, g_amp=0) and ramp the gait in ONLY while balance is
   // genuinely being lost; ease back to a still stand once recovered. "Losing
@@ -552,9 +562,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (self-limiting) — unlike a torso-relative target, which would translate
   // forward with the lean and chase itself into a face-plant. Placed 0.70 m
   // forward of midfoot — well beyond the upright arm's horizontal reach — so the
-  // body must lean forward AND fully EXTEND the left arm to get there. A nearer
-  // target (0.55) let the elbow stay folded; pushing it out straightens the reach
-  // so the hand extends further in front. The free right arm + hips swing back to
+  // body must lean forward AND fully EXTEND the REACHING arm (reach_hand-selected:
+  // default/2 = RIGHT reaches, the OTHER arm counterweights -- see line ~495) to get
+  // there. A nearer target (0.55) let the elbow stay folded; pushing it out
+  // straightens the reach so the hand extends further in front. The free (other,
+  // = left when reach_hand=2) arm + hips swing back to
   // counterbalance. z = 0.75 is BELOW torso (~1.03) so reach_dir points
   // forward-DOWN — that is what lets `Torso Forward Tilt` (JSON weight, off in the
   // upright variant) pitch the torso FORWARD into the reach instead of leaning
@@ -802,7 +814,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (×1.0) both failed because the planner can't stand-and-bend with
   // kp_ankle=20 — it either tips forward (×0.7) or backward (×1.0).
   // The squat IS the natural solution given the weak PD.
+  // ===== STUMBLE swing-release masks (foot-lift fix 2026-06-24, Tier A) =====
+  // During a foot's scheduled swing (g_amp*g_bump_foot -> 1) the "keep foot down /
+  // upright / at height" costs are RELEASED off the swing leg / single-support
+  // body so lifting is affordable -- the MJPC-quadruped per-gait weight drop,
+  // applied per-tick. is_stumble-gated (swing_*/step_active = 0 for every other
+  // strategy AND for a planted/calm stumble) -> calm stand + all strats byte-id.
+  double swing_r = is_stumble ? mju_min(1.0, g_amp * g_bump_r) : 0.0;
+  double swing_l = is_stumble ? mju_min(1.0, g_amp * g_bump_l) : 0.0;
+  double step_active = mju_max(swing_r, swing_l);  // whole-body single-support activity
   double height_scale = arm_contact_or_lean ? 0.35 : 1.0;
+  height_scale *= (1.0 - 0.6 * step_active);  // release base-height anchor in single support (CoM dips)
   residual[counter++] = height_scale * (head_feet_error - height_goal);
 
   // ----- Balance: CoM-feet xy error ----- //
@@ -1166,8 +1188,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double fwd_scale = arm_contact_or_lean ? balance_scale : 1.0;
   double dir_scale_x = (cp_dx > 0.0) ? fwd_scale : 1.0;
   double dir_scale_y = 1.0;
-  double eff_dx = cp_dx * dir_scale_x;
-  double eff_dy = cp_dy * dir_scale_y;
+  // STUMBLE Tier A: release the capture/balance barrier during single support so
+  // the capture point may legitimately leave the (shrinking) polygon to be caught
+  // by the step. Partial (keep ~40%) -- a full release faceplants (see note below).
+  double bal_rel = 1.0 - 0.6 * step_active;
+  double eff_dx = cp_dx * dir_scale_x * bal_rel;
+  double eff_dy = cp_dy * dir_scale_y * bal_rel;
   double balance_excursion = mju_sqrt(eff_dx * eff_dx + eff_dy * eff_dy);
   constexpr double kEdgeInner = 0.05;       // m — amplifier still 1×
   constexpr double kEdgeOuter = 0.10;       // m — amplifier saturated
@@ -1279,13 +1305,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       pelvis_tilt_residual = upright_gain * sin_tilt;
     }
   }
-  residual[counter++] = pelvis_tilt_residual;
+  residual[counter++] = (1.0 - 0.5 * step_active) * pelvis_tilt_residual;  // Tier A: relax torso-upright in single support
 
   // ----- foot up-vectors: prevent ankle roll ----- //
   double *foot_right_up = SensorByName(model, data, "foot_right_up");
   double *foot_left_up  = SensorByName(model, data, "foot_left_up");
-  residual[counter++] = mju_abs(foot_right_up[2] - 1.0);
-  residual[counter++] = mju_abs(foot_left_up[2]  - 1.0);
+  // STUMBLE Tier A (foot-lift fix): release the flat-foot penalty on the SWING
+  // foot -- a swinging foot MUST plantarflex/fold (foot_up[2] < 1); the STANCE
+  // foot keeps the full weight. THE single biggest anti-lift blocker (named by
+  // 5/5 research agents + matches MJPC quadruped's step[foot]?h:0 self-gating).
+  residual[counter++] = (1.0 - swing_r) * mju_abs(foot_right_up[2] - 1.0);
+  residual[counter++] = (1.0 - swing_l) * mju_abs(foot_left_up[2]  - 1.0);
 
   // ----- waist yaw: stop planner from yawing torso to swing arm ----- //
   // torso_joint is the 13th actuated DOF (nu index 12), home = 0.
@@ -1358,6 +1388,80 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     if (posture_target[7 + 3] > 0.3 || posture_target[7 + 9] > 0.3)
       leg_gain = GetNumberOrDefault(6.0, model, "crouch_leg_extension_gain");
     for (int li : {1, 3, 7, 9}) residual[counter + li] *= leg_gain;
+  }
+  // PIN THE NON-REACHING ARM (strat 21, 2026-06-23). The reach keeps GLOBAL
+  // Posture LOW (12) on purpose so the REACHING arm is free to extend (line ~75,
+  // the jab lesson: a high Posture parks a limb at rest). But that ALSO leaves the
+  // OTHER arm loose, so the planner throws it around for balance -- the user sees
+  // this as the reach "switching arms" / the idle arm flailing. Fix the role
+  // assignment right=reach (reach_hand) / left=HELD brace-ready arm: amplify ONLY
+  // the non-reaching arm's 7 Posture entries (same per-index pattern as the leg
+  // anchor above; arm actuators left 13..19, right 20..26, actuator i == joint i+1)
+  // so it is held at its keyframe (rest) pose while the reaching arm + legs (= stand)
+  // stay free. reach_brace_hold = boost factor (effective arm Posture = Posture *
+  // this), live-tunable. Reach-gated -> all other strategies byte-identical.
+  // 2026-06-25: TRIED extending this lock to counterbalance_standing (strat 16) so
+  // 16's right arm would also hold forward instead of swinging back to -0.8 m. A/B on
+  // the deploy twin (gravcomp 0.85, seed 0) REJECTED it: WITH lock 16 fell at 14.3 s,
+  // WITHOUT lock at 23.5 s — the lock makes 16 topple ~9 s SOONER. 16's free-standing
+  // lean USES the reaching arm as part of its emergent counterbalance; locking it
+  // steals that DOF and it falls backward earlier (the documented "forcing the arm
+  // topples 16" finding). So the lock stays reach_to_target (strat 21) ONLY; 16's
+  // right-arm-forward is structurally incompatible with its free-standing lean — the
+  // robust "reach-forward + brace" path is 21 (hardened) and the braced pipeline 33/34.
+  if (residual_keyframe_.name == "reach_to_target") {
+    int rh_id2 = mj_name2id(model, mjOBJ_NUMERIC, "reach_hand");
+    int rh_mode2 = (rh_id2 >= 0)
+        ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id2]]) : 0;
+    bool reaching_right = (rh_mode2 == 2) ? true
+                        : (rh_mode2 == 1) ? false
+                        : (data->mocap_pos[1] < torso_pos[1]);  // 0/auto
+    double kArmHold = GetNumberOrDefault(4.0, model, "reach_brace_hold");
+    int arm0 = reaching_right ? 13 : 20;   // pin the OTHER (non-reaching) arm
+    for (int j = arm0; j < arm0 + 7 && j < model->nu; j++)
+      residual[counter + j] *= kArmHold;
+    // LOCK THE REACHING ARM forward (strat 21, 2026-06-24). User: "the arm should
+    // NOT go back at all." The planner uses the reaching arm as a BALANCE actuator
+    // (folds/throws it to pull CoM back the moment CoM drifts) — that defeats a
+    // reach. The faithful twin proves the planner CAN hold the arm; the retract is a
+    // cost tradeoff the balancer wins under a high com_back / noisy state. So make the
+    // reaching arm OFF-LIMITS to the balancer: amplify ONLY its shoulder pitch/roll/yaw
+    // Posture (the throw-back + fold-across-chest DOFs) so balance can never out-pull
+    // it — the body/legs must do the balancing instead. Elbow + wrist stay free so the
+    // Cartesian reach still extends the hand. reach_arm_lock = boost factor (1 = off).
+    double kArmLock = GetNumberOrDefault(1.0, model, "reach_arm_lock");
+    if (kArmLock > 1.0) {
+      int rarm = reaching_right ? 20 : 13;   // reaching-arm shoulder base nu-idx
+      // shoulder PITCH (rarm+0): ONE-SIDED lock. Posture residual = qpos - keyframe(0);
+      // the throw-back drives pitch POSITIVE (+, ~+80deg = arm back/up), the FORWARD
+      // reach drives it NEGATIVE. So amplify ONLY when residual>0 (going backward) to
+      // hard-block the throw-back, and leave residual<0 (forward) FREE so the arm
+      // fully EXTENDS. This gives deep reach AND no retraction.
+      if (residual[counter + rarm] > 0.0) residual[counter + rarm] *= kArmLock;
+      // shoulder ROLL + YAW: symmetric lock — block the fold-across-chest (yaw) and
+      // sideways collapse (roll); the forward reach barely uses these.
+      residual[counter + rarm + 1] *= kArmLock;
+      residual[counter + rarm + 2] *= kArmLock;
+    }
+  }
+  // CROUCH-DEPTH ANCHOR (strat 21 reach, 2026-06-25). On real the reach held
+  // 0.29-0.39 m forward for ~73 s, then the body slowly SANK into a deeper crouch
+  // (knee 0.35 keyframe -> 0.53) and the RIGHT ELBOW saturated (the ~1.8 kg magpie
+  // gripper exceeds the 18 Nm elbow once the shoulder drops) -> the arm folded to
+  // 0.09 m. The body never fell (tilt ~1deg); the CROUCH GEOMETRY killed the reach,
+  // not balance. The symmetric crouch_leg_extension_gain (4.5x) above did not hold
+  // it. Keep the shoulder HIGH so the elbow stays in its holdable envelope: amplify
+  // the knee Posture residual ONLY when the knee bends PAST its keyframe (residual>0
+  // = sinking deeper); leave straightening (residual<0) FREE so normal compliance is
+  // untouched. One-sided, like the arm lock. reach_to_target ONLY (other crouch
+  // strategies keep the symmetric gain). reach_knee_anchor = boost factor (1 = off);
+  // stacks on the 4.5x. Generic (both knees, side-agnostic).
+  if (residual_keyframe_.name == "reach_to_target") {
+    double kKneeAnchor = GetNumberOrDefault(1.0, model, "reach_knee_anchor");
+    if (kKneeAnchor > 1.0) {
+      for (int kn : {3, 9})   // Lknee / Rknee nu-idx (actuator i == joint i+1)
+        if (residual[counter + kn] > 0.0) residual[counter + kn] *= kKneeAnchor;
+    }
   }
   counter += model->nu;
 
@@ -1968,7 +2072,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // load off EITHER foot in turn. ==base 0.07 outside the trot window (quiet
     // stand + push-recovery byte-identical). Capped so it can't drive the CoM off
     // the support polygon. --- //
-    constexpr double kLatShift = 0.07;   // base CoM lateral rock amplitude [m]
+    constexpr double kLatShift = 0.16;   // base CoM lateral rock amplitude [m]  (P0-AB: 0.07->0.16 test)
     double lat_amp = mju_min(0.20, kLatShift * trot_swing_scale);
     double lat_tgt = midfoot_y +
         (is_stumble ? lat_amp * g_amp * (g_bump_r - g_bump_l) : 0.0);
@@ -2019,7 +2123,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // only (sched=0 when trot_gait_wscale==1) -> quiet stand + push-recovery
     // byte-identical. Costs ~ncon iterations, stumble + trot only. --- //
     double ff_l = 0.0, ff_r = 0.0;
-    if (trot_gait_wscale > 1.01) {  // only inside the trot window
+    // STUMBLE Tier A: contact-schedule unload is ALWAYS-ON while stepping (was
+    // trot-window-only) -- you cannot lift a LOADED foot, so penalise the swing
+    // foot's contact force during its scheduled swing to force the weight-transfer.
+    bool sched_on = (g_amp * mju_max(g_bump_l, g_bump_r) > 0.01) || (trot_gait_wscale > 1.01);
+    if (sched_on) {
       int fl_body = mj_name2id(model, mjOBJ_BODY, "left_ankle_roll_link");
       int fr_body = mj_name2id(model, mjOBJ_BODY, "right_ankle_roll_link");
       for (int c = 0; c < data->ncon; c++) {
@@ -2032,18 +2140,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         if (ba == fr_body || bb == fr_body) ff_r += fn;
       }
     }
-    constexpr double kSched = 0.060;  // swing-load penalty scale (~= step-height scale)
-    double sched_l = (trot_gait_wscale > 1.01) ? kSched * g_bump_l * mju_min(2.0, ff_l / 500.0) : 0.0;
-    double sched_r = (trot_gait_wscale > 1.01) ? kSched * g_bump_r * mju_min(2.0, ff_r / 500.0) : 0.0;
+    constexpr double kSched = 0.12;  // 0.06->0.12 (Tier A): stronger swing-load penalty to force the unload
+    double sched_l = sched_on ? kSched * g_amp * g_bump_l * mju_min(2.0, ff_l / 500.0) : 0.0;
+    double sched_r = sched_on ? kSched * g_amp * g_bump_r * mju_min(2.0, ff_r / 500.0) : 0.0;
     // SUBTRACT the contact penalty so it REINFORCES the height deficit (a planted
     // swing foot has a NEGATIVE height residual -amp*g_bump; a loaded one makes it
     // MORE negative -> larger cost -> forces the unload). Adding them cancels (the
     // bug that left it one-sided). A correctly-lifted unloaded foot: height~0 and
     // ff~0 -> residual~0 (no penalty).
+    // STUMBLE Tier A: ONE-SIDED clearance (MJPC quadruped Scramble pattern) -- only
+    // a swing foot BELOW its scheduled height is penalised; OVER-clearing is FREE,
+    // so the planner is never punished for lifting higher. -sched forces the unload.
     residual[counter++] = trot_gait_wscale *
-        ((g_bump_l > 0.0) ? (foot_left_pos[2]  - ref_z - amp * g_bump_l) - sched_l : 0.0);
+        ((g_bump_l > 0.0) ? mju_min(0.0, (foot_left_pos[2]  - ref_z - amp * g_bump_l) - sched_l) : 0.0);
     residual[counter++] = trot_gait_wscale *
-        ((g_bump_r > 0.0) ? (foot_right_pos[2] - ref_z - amp * g_bump_r) - sched_r : 0.0);
+        ((g_bump_r > 0.0) ? mju_min(0.0, (foot_right_pos[2] - ref_z - amp * g_bump_r) - sched_r) : 0.0);
 
     // --- Step Place (dim 4): aim each SWING foot's xy at a capture-point /
     //     Raibert target: x_foot = com_xy + nominal_offset
@@ -2692,7 +2803,18 @@ std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const 
   // bandwidth is a one-line edit HERE (fork side) -- the deploy node stays
   // strategy-agnostic and never changes.
   if (name == "h12_simple_stumble" || name == "h12_hands_simple_stumble") {
-    return {{"sampling_spline_points", 5.0}, {"sampling_exploration", 0.05}};
+    // foot-lift fix (2026-06-24): spline 5 (the stand-tuned 3 cannot represent the
+    // swing) + a mild rollout bump. The A (cost-release) + B (raised swing fold)
+    // changes are the deploy-ready lift (own-sim ~2.3cm, held). Tier-C aggressive
+    // exploration (std_initial 0.25 / explore_fraction 0.4) lifts HIGHER (~9-12cm)
+    // but DESTABILISES this marginal biped (yaw runaway -> topple ~8s) -- the
+    // documented sampling-only-humanoid frontier -- so it is left OFF here (the
+    // std_initial/explore_fraction/knot_var_growth numerics + planner code remain
+    // for twin experiments; default = legacy/off). 48 rollouts is also ~5x compute
+    // = not real-time on CPU. KEEP it conservative for the real robot.
+    return {{"sampling_spline_points", 5.0},
+            {"sampling_exploration", 0.05},
+            {"sampling_trajectories", 16.0}};
   }
   return {};
 }
