@@ -46,7 +46,7 @@
              BENT-knee stand (knees 0.35) instead of falling back to home (key 0 = STRAIGHT
              knees), which — with the JSON "Knees Straight" weight — drove 16's legs straight
              into the strut/hyperextend (knee -0.11) → topple. Copy of "stand". 2026-06-25. -->
-        <key name="counterbalance_standing" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="counterbalance_standing" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 1.05 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
              name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
              residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
@@ -132,6 +132,7 @@
              the Gait cost overrides the swing leg's vertical motion each cycle.
              The phase name must begin with "stumble" (the lean.cc name-gate). -->
         <key name="stumble_march" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="stumble_trot"  qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -227,6 +228,13 @@
              A real rhythmic foot-lift trot/walk needs a trained RL policy, not
              real-time sampling-MPC. The dead trot code in lean.cc is inert. -->
         <numeric name="stumble_trot_sec" data="0.0"/>
+        <!-- TROT (slot 23) capture-point footstep knobs (lean::ModifyControl):
+             trot_cap_gain = capture over-step (1=deadbeat; 2.2 = working in-place trot,
+             sustains ~18-24s marginal); trot_des_vel_x/y = desired CoM vel (0 = step in
+             place; >0 = WALK forward, same controller). is_trot-gated, trot-only. -->
+        <numeric name="trot_cap_gain" data="2.2"/>
+        <numeric name="trot_des_vel_x" data="0.0"/>
+        <numeric name="trot_des_vel_y" data="0.0"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
@@ -282,15 +290,34 @@
              old 0.28->84% elbow was PRE-anchor (sunk body, bad elbow angle); the anchor
              keeps it holdable. WATCH Relb tau% on real: sustained >70% = back off to
              0.32; comfortable = push to 0.24 (0.461 m fwd). No rebuild. -->
-        <numeric name="reach_radius" data="0.52"/>
+        <!-- ★ 2026-06-26 CHIN-TUCK FIX 0.40->0.48: when the sphere clamp fires the hand is
+             commanded EXACTLY `radius` from the shoulder, but the magpie arm RESTS at ~0.524 m
+             extension. radius 0.40 = hand 0.124 m CLOSER than rest -> the elbow MUST fold that
+             far -> the "near-chin, folded elbow, drifts to the side" the user saw on real (the
+             big folded-arm null-space lets Posture/Symmetry tuck the hand off-bearing). NOT a
+             target error (target bearing = straight forward, az~0). 0.48 = only 0.044 m inside
+             rest -> elbow near-straight, tight null-space -> hand points at the target bearing.
+             Drop raised 0.20->0.28 IN STEP so forward reach stays ~0.39 m (≈ the held 0.346)
+             = ankle load ~unchanged. WATCH on real: RankP tau% (forward CoM) and Relb tau%;
+             if RankP sustains >80% drop radius to 0.46, if the elbow still folds push to 0.50.
+             No rebuild (runtime numeric). -->
+        <numeric name="reach_radius" data="0.48"/>
         <!-- ★ 2026-06-25 CORRECTED 0.28->0.12: the elbow was NEVER the reach limit (static hold
              of a FULL forward stretch = ~4 Nm = 22% of 18). The drop only angled the arm DOWN,
              pulling Rhand_fwd BELOW the 0.404 m home pose = the "never stretched" the user saw.
              0.12 < the natural 0.156 target-drop so the gravity guard no longer fires -> the
              reach aims forward-HORIZONTAL. Paired with reach_to_target keyframe Rsh_pitch=-0.35.
              (Ignore the 0.84-elbow warnings above — those were DYNAMIC crouch-thrash, not a
-             static reach limit.) Raise toward 0.20 if the forward arm over-shifts CoM. -->
-        <numeric name="reach_drop" data="0.12"/>
+             static reach limit.) Raise toward 0.20 if the forward arm over-shifts CoM.
+             ★ 2026-06-27 0.28->0.34 (with radius 0.48): harnessed 500 Hz bench confirmed radius
+             0.48 straightens the elbow (Relb 23-33%, Rhand_fwd 0.40, no fold) but the fwd reach
+             crept CoM forward (balance-coupled = the real chin-tuck IS the planner folding the arm
+             to recover fwd-CoM). radius sets elbow straightness; DROP sets fwd/down split=CoM. At
+             0.48/0.34, horiz=sqrt(0.48^2-0.34^2)=0.339 m == the proven-holding 0.40/0.20 (0.346) ->
+             SAME ankle/CoM as the modest reach the user accepted, but STRAIGHT elbow not folded.
+             Arm aims fwd-DOWN ~45deg. Lower drop toward 0.28/0.24 ON REAL for a more horizontal
+             reach while watching RankP (was 83% at this load); horizontal = strat-16-lean regime. -->
+        <numeric name="reach_drop" data="0.34"/>
         <!-- reach_com_back (strat 21): EXTRA forward-CoM bias [m] applied ONLY during
              the reach, so the planner holds the CoM that much BACK to counterbalance
              the forward arm (the real-chain forward creep the lockstep twin can't show).
@@ -303,7 +330,7 @@
              flailing for balance (which looked like the reach "switching arms").
              reach_hand picks the reaching arm (2=right); the OTHER is held. Raise
              if the brace arm still drifts, lower toward 1 to free it. No rebuild. -->
-        <numeric name="reach_brace_hold" data="1"/>
+        <numeric name="reach_brace_hold" data="4"/>
         <numeric name="reach_arm_lock" data="4"/>
         <!-- reach_knee_anchor (strat 21, 2026-06-25): one-sided crouch-depth floor.
              On real the reach held ~73 s then the body sank (knee 0.35->0.53) and the
@@ -345,7 +372,7 @@
              HIP/ARM angular-momentum RECOVERY tier. Targets counter-momentum =
              gain * capture_excursion (throw torso+arms opposite the fall) so the CoM
              is hauled back flat-footed BEFORE a step. 0 = off. XML-tunable, no rebuild. -->
-        <numeric name="recover_pitch_gain" data="0.0"/>
+        <numeric name="recover_pitch_gain" data="0.0"/> <!-- PHASE 1 2026-06-26: tested +10 (2/6=33%) and +30 (6/12=50% on twin) = NO robust catch-step fix (the 4/4@30 was variance). Reverted to 0. Frontier needs concurrent lateral-CoM + recovery, not pitch gain alone. -->
         <numeric name="recover_roll_gain" data="0.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.

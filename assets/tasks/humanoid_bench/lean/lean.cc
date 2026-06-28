@@ -282,6 +282,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // its two end-of-function residual terms default to weight 0 -> byte-identical.
   mjtNum stumble_posture_target[64];  // private swing-leg reference (stumble only)
   const bool is_stumble = (residual_keyframe_.name.rfind("stumble", 0) == 0);
+  // TROT (strat 23, phase "stumble_trot"): the open-loop channel-freeze leg-lift
+  // test vehicle. is_stumble subset; drives a CONTINUOUS forced march in the cost
+  // (below) to match lean::ModifyControl, which hard-writes the swing leg in ctrl.
+  const bool is_trot =
+      is_stumble && (residual_keyframe_.name.find("trot") != std::string::npos);
   // gait parameters (constexpr -> tune by edit+rebuild; nav drives only kDesVel*)
   constexpr double kCadenceHz  = 1.1;   // 0.8->1.1 FOOT-LIFT CLUSTER 2026-06-24 (Unitree H1-2
                                         // rl_gym 1.25). steps/s per foot (slower -> swing fits
@@ -362,12 +367,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     int gb_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_gait_boost");
     double kGaitBoost = (gb_id >= 0)
         ? model->numeric_data[model->numeric_adr[gb_id]] : 1.0;
+    // duty: TROT can raise it (trot_duty numeric, is_trot-gated) for more double-
+    // support during slow forward walk (MJPC slow-walk gait uses 0.75); strat 20
+    // keeps kDutyRatio. ModifyControl reads the same numeric so cost+placement agree.
+    int dty_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_duty");
+    double kDuty = (is_trot && dty_id >= 0)
+        ? model->numeric_data[model->numeric_adr[dty_id]] : kDutyRatio;
     double ph_l = std::fmod(data->time * kCad,       1.0);  // L foot phase
     double ph_r = std::fmod(data->time * kCad + 0.5, 1.0);  // R antiphase
-    g_bump_l = (ph_l < kDutyRatio) ? 0.0
-        : std::sin(mjPI * (ph_l - kDutyRatio) / (1.0 - kDutyRatio));
-    g_bump_r = (ph_r < kDutyRatio) ? 0.0
-        : std::sin(mjPI * (ph_r - kDutyRatio) / (1.0 - kDutyRatio));
+    g_bump_l = (ph_l < kDuty) ? 0.0
+        : std::sin(mjPI * (ph_l - kDuty) / (1.0 - kDuty));
+    g_bump_r = (ph_r < kDuty) ? 0.0
+        : std::sin(mjPI * (ph_r - kDuty) / (1.0 - kDuty));
     double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
     double const *flp  = SensorByName(model, data, "foot_left_pos");
     double const *frp  = SensorByName(model, data, "foot_right_pos");
@@ -421,6 +432,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     } else {
       double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
       g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);       // legacy continuous march
+    }
+    if (is_trot) {
+      // TROT: continuous forced march. The channel-freeze (lean::ModifyControl)
+      // hard-writes the swing leg into ctrl regardless of the sampler, so make
+      // the COST agree -- ramp the gait amplitude in (NO balance gate) so the
+      // swing fold + Tier-A swing-release apply continuously and the Posture cost
+      // EXPECTS the lifted swing leg (no spurious penalty fighting the freeze).
+      g_amp = arm;
     }
     // --- TROT STARTER (opt-in, strategy 20 only): a deliberate in-place march
     // over the window [trot_delay, trot_delay+trot_sec] after engage, then HAND
@@ -1406,10 +1425,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // WITHOUT lock at 23.5 s — the lock makes 16 topple ~9 s SOONER. 16's free-standing
   // lean USES the reaching arm as part of its emergent counterbalance; locking it
   // steals that DOF and it falls backward earlier (the documented "forcing the arm
-  // topples 16" finding). So the lock stays reach_to_target (strat 21) ONLY; 16's
-  // right-arm-forward is structurally incompatible with its free-standing lean — the
-  // robust "reach-forward + brace" path is 21 (hardened) and the braced pipeline 33/34.
-  if (residual_keyframe_.name == "reach_to_target") {
+  // topples 16" finding). So the lock stayed reach_to_target (strat 21) ONLY.
+  // 2026-06-26: RE-ENABLED for counterbalance_standing (16) — the prior rejection
+  // locked the right arm with NO replacement counterweight. Now the
+  // counterbalance_standing keyframe drives the LEFT (non-reaching) arm fully BACK
+  // (qpos[20]=+1.3); brace_hold pins it there as an EXPLICIT counterweight, so the
+  // right arm can hold forward AND the body stays balanced (the two arms counterweight
+  // each other -> CoM centered -> ankle unloaded -> both extend). User's figure-skater
+  // insight; supplies exactly the balance DOF the bare lock removed.
+  if (residual_keyframe_.name == "reach_to_target" ||
+      residual_keyframe_.name == "counterbalance_standing") {
     int rh_id2 = mj_name2id(model, mjOBJ_NUMERIC, "reach_hand");
     int rh_mode2 = (rh_id2 >= 0)
         ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id2]]) : 0;
@@ -2072,7 +2097,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // load off EITHER foot in turn. ==base 0.07 outside the trot window (quiet
     // stand + push-recovery byte-identical). Capped so it can't drive the CoM off
     // the support polygon. --- //
-    constexpr double kLatShift = 0.16;   // base CoM lateral rock amplitude [m]  (P0-AB: 0.07->0.16 test)
+    constexpr double kLatShift = 0.07;   // base CoM lateral rock amplitude [m]
     double lat_amp = mju_min(0.20, kLatShift * trot_swing_scale);
     double lat_tgt = midfoot_y +
         (is_stumble ? lat_amp * g_amp * (g_bump_r - g_bump_l) : 0.0);
@@ -2784,6 +2809,127 @@ void lean::ResetLocked(const mjModel *model) {
 }
 
 // ============================================================================
+// ModifyControl — CAPTURE-POINT FOOTSTEP CONTROLLER for the TROT strategy
+// (slot 23, phase "stumble_trot"). Called by Task::ModifyControl after the
+// policy fills ctrl and before mj_step, in EVERY rollout (NoisyRollout) AND on
+// the executed action (CEM ActionFromPolicy). Open-loop drives ONLY the swing
+// leg: lift for clearance mid-swing, then PLACE the foot at the capture point
+//   xi = v * sqrt(z/g)   (inverted-pendulum "catch" spot)
+// by touchdown, so single-support is a PLANNED CATCH, not an unguided fall. The
+// sampler still owns the stance leg + torso (balance). A desired CoM velocity
+// (numerics trot_des_vel_x/y, default 0) biases the step: 0 = step in place
+// (trot/stumble), >0 = WALK forward -- ONE generalized controller. is_trot-
+// gated: strat 20 + every other strategy byte-identical. ctrl[i] == joint
+// target for qpos[7+i] (position-servo). FK-measured gains (twin model): +hip_
+// pitch -> foot BACK (0.80/rad), +hip_roll -> foot +y (0.79/rad), both legs.
+// ============================================================================
+void lean::ModifyControl(const mjModel *model, const double *qpos,
+                         const double *qvel, double time, double *ctrl) const {
+  const std::string &kfname = residual_.residual_keyframe_.name;
+  const bool is_trot = (kfname.rfind("stumble", 0) == 0) &&
+                       (kfname.find("trot") != std::string::npos);
+  if (!is_trot || model->nu < 11) return;
+  auto clip = [](double x, double lo, double hi) {
+    return x < lo ? lo : (x > hi ? hi : x);
+  };
+
+  // continuous forced-march amplitude (matches the residual `arm`, kArmSec 2.0)
+  constexpr double kArmSec = 2.0;
+  double t_phase = mju_max(0.0, time - residual_.keyframe_start_time_);
+  double g_amp = mju_min(t_phase / kArmSec, 1.0);
+  g_amp = g_amp * g_amp * (3.0 - 2.0 * g_amp);
+  if (g_amp <= 1e-4) return;                     // still settling -> planner owns
+
+  // gait clock (antiphase, duty 0.60; cadence live numeric)
+  constexpr double kCadenceHz = 1.1, kDutyRatio = 0.60;
+  int cad_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_cadence");
+  double kCad = (cad_id >= 0)
+      ? model->numeric_data[model->numeric_adr[cad_id]] : kCadenceHz;
+  int dty_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_duty");
+  double kDuty = (dty_id >= 0) ? model->numeric_data[model->numeric_adr[dty_id]]
+                               : kDutyRatio;  // matches the residual gait clock
+  double ph_l = std::fmod(time * kCad, 1.0);
+  double ph_r = std::fmod(time * kCad + 0.5, 1.0);
+
+  // ---- CAPTURE POINT (instantaneous, inverted-pendulum) -------------------
+  // base lin-vel (qvel[0:2], world) ~= CoM vel; step to xi = (v - v_des)*tau to
+  // CATCH while tracking the desired velocity. v_des>0 -> net forward travel.
+  double z = mju_max(0.5, qpos[2]);
+  double tau = mju_sqrt(z / 9.81);
+  int dvx_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_x");
+  int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
+  double dvx = (dvx_id >= 0) ? model->numeric_data[model->numeric_adr[dvx_id]] : 0.0;
+  double dvy = (dvy_id >= 0) ? model->numeric_data[model->numeric_adr[dvy_id]] : 0.0;
+  // capture gain (live numeric, default 1.0 = deadbeat one-step capture): >1
+  // over-steps (catches harder, kills velocity faster), <1 under-steps. LATERAL
+  // gets its OWN gain (trot_cap_gain_lat, default = fore-aft gain) -- the sideways
+  // axis is the narrow-base biped's weak axis and usually needs a harder catch.
+  int cg_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_cap_gain");
+  double cap_g = (cg_id >= 0) ? model->numeric_data[model->numeric_adr[cg_id]] : 1.0;
+  int cgl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_cap_gain_lat");
+  double cap_gl = (cgl_id >= 0) ? model->numeric_data[model->numeric_adr[cgl_id]] : cap_g;
+  // fore-aft = pure capture CATCH on ACTUAL velocity (balance; stabilises toward
+  // rest = in-place trot when v_des=0) + a tunable WALK propulsion bias
+  // (trot_walk_gain * v_des). The catch gives the solid balance; the bias drives
+  // directed travel. kw default 0 => in-place trot byte-identical. kw sign/gain
+  // set EMPIRICALLY (the foot bias that yields forward travel at +v_des).
+  int wg_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_walk_gain");
+  double kw = (wg_id >= 0) ? model->numeric_data[model->numeric_adr[wg_id]] : 0.0;
+  // STANDING GATE (MJPC humanoid-walk's core robustness trick, walk.cc:91-95):
+  // scale the forward PROPULSION by an uprightness factor that -> 0 as the torso
+  // tips, so a tipping robot STOPS pushing forward and the pure capture CATCH
+  // (cap_g*v*tau, ungated) recovers it -- instead of driving itself into a
+  // forward faceplant. up_z = torso up-axis z from the base quat (1=upright).
+  double qx = qpos[4], qy = qpos[5];
+  double up_z = 1.0 - 2.0 * (qx * qx + qy * qy);
+  double standing = clip((up_z - 0.80) / (0.97 - 0.80), 0.0, 1.0);
+  standing = standing * standing * (3.0 - 2.0 * standing);  // smoothstep
+  // SELF-LIMITING propulsion: push on the velocity ERROR (dvx - vx), not a
+  // constant kw*dvx bias. A constant bias kept accelerating as speed built ->
+  // runaway (0.1 cmd -> 0.6 m/s -> fall); (dvx - vx) fades to 0 as actual speed
+  // reaches target, so forward speed REGULATES instead of running away. Gated by
+  // `standing` so a tipping robot stops pushing and the capture catch recovers.
+  double step_x = clip(cap_g * qvel[0] * tau + kw * standing * (dvx - qvel[0]),
+                       -0.30, 0.30);  // m
+  double step_y = clip(cap_gl * (qvel[1] - dvy) * tau, -0.12, 0.12);  // tight=stabler
+  // swing-height scale (live numeric, default 1.0): LOWER lift = smaller per-step
+  // disturbance = stabler trot (trades visible clearance for hold-rate).
+  int sh_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_swing_h");
+  double sh = (sh_id >= 0) ? model->numeric_data[model->numeric_adr[sh_id]] : 1.0;
+  double dHipP = clip(-step_x / 0.80, -0.45, 0.45);  // foot FWD -> less hip_pitch
+  double dHipR = clip( step_y / 0.79, -0.25, 0.25);  // foot +y  -> more hip_roll
+
+  // home stand pose = the "stumble_trot" keyframe (fallback home).
+  int pk = mj_name2id(model, mjOBJ_KEY, kfname.c_str());
+  if (pk < 0) pk = 0;
+  const mjtNum *q0 = model->key_qpos + pk * model->nq;
+  constexpr double kSwingHip = 0.35, kSwingKnee = 0.70, kSwingAnk = 0.12;
+
+  // ONE foot swings at a time (antiphase/duty): lift (clearance bell, peaks
+  // mid-swing) + place (capture ramp -> foot at xi by touchdown). Blend in over
+  // the first 15% so liftoff is smooth; held to s=1 so the foot lands placed,
+  // then the next phase makes it stance and the planner takes the planted leg.
+  // ctrl[i] == joint target for qpos[7+i]. L: hipP1 hipR2 knee3 ankP4; R:7 8 9 10
+  auto do_leg = [&](double ph, int iHipP, int iHipR, int iKnee, int iAnkP) {
+    if (ph < kDuty) return;                        // stance -> planner owns
+    double s = (ph - kDuty) / (1.0 - kDuty);       // swing progress 0..1
+    double cl = std::sin(mjPI * s);                     // clearance bell 0..1..0
+    double pl = s * s * (3.0 - 2.0 * s);                // placement smoothstep
+    double w = mju_min(s / 0.15, 1.0) * g_amp;          // blend-in weight
+    double tHipP = q0[7 + iHipP] - kSwingHip * sh * cl * g_amp + dHipP * pl * g_amp;
+    double tHipR = q0[7 + iHipR] + dHipR * pl * g_amp;
+    double tKnee = q0[7 + iKnee] + kSwingKnee * sh * cl * g_amp;
+    double tAnkP = q0[7 + iAnkP] - kSwingAnk * sh * cl * g_amp;
+    ctrl[iHipP] += w * (tHipP - ctrl[iHipP]);
+    ctrl[iHipR] += w * (tHipR - ctrl[iHipR]);
+    ctrl[iKnee] += w * (tKnee - ctrl[iKnee]);
+    ctrl[iAnkP] += w * (tAnkP - ctrl[iAnkP]);
+  };
+  do_leg(ph_l, 1, 2, 3, 4);    // LEFT  swing window ph_l in [duty,1]
+  do_leg(ph_r, 7, 8, 9, 10);   // RIGHT swing window ph_r in [duty,1]
+}
+
+// ============================================================================
 // ComputeMetrics — phase-aware monitoring metrics for the Research GUI /
 // headless analyzer. Reads the current keyframe + sensor stack; no rollout
 // hot-path work. See QUANTIFICATION_PLAN.html for the 10 metrics surfaced
@@ -2802,6 +2948,18 @@ std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const 
   // stumble slots match. Adding a future strategy that needs a different planner
   // bandwidth is a one-line edit HERE (fork side) -- the deploy node stays
   // strategy-agnostic and never changes.
+  // TROT (slot 23, capture-point footstep controller, lean::ModifyControl): like
+  // stumble needs spline 5 for the swing, but ALSO needs MORE rollouts to balance
+  // single-support around the forced swing. Twin hold-rate: 16 trajectories = 1/5
+  // (sampler runs out of balancing budget); 36 = 5/5 at the full ~5cm lift. The
+  // marginality was a SAMPLING-BUDGET limit, not a controller flaw. NOTE: 36 ~=
+  // 2.25x compute -> verify real-time on the deploy CPU (or use a GPU/more cores);
+  // on the lockstep twin it's free. Keyed by NAME (Lean_H12 + Hands trot slots).
+  if (name == "h12_simple_trot" || name == "h12_hands_simple_trot") {
+    return {{"sampling_spline_points", 5.0},
+            {"sampling_exploration", 0.05},
+            {"sampling_trajectories", 36.0}};
+  }
   if (name == "h12_simple_stumble" || name == "h12_hands_simple_stumble") {
     // foot-lift fix (2026-06-24): spline 5 (the stand-tuned 3 cannot represent the
     // swing) + a mild rollout bump. The A (cost-release) + B (raised swing fold)

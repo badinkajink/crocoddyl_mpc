@@ -189,6 +189,19 @@ class lean : public Task {
   std::map<std::string, double> PlannerNumericOverrides(
       int strategy) const override;
 
+  // Open-loop channel freeze for the TROT strategy (phase name contains "trot").
+  // Hard-writes the swing-leg actuator channels (hip_pitch/knee/ankle_pitch of
+  // whichever foot is in its swing half-cycle) to the scripted Tier-B fold the
+  // sampler keeps refusing in the cost, so the foot lifts open-loop and the
+  // sampler must balance the stance leg + upper body AROUND the forced swing.
+  // Blended in by the gait bump so the stance leg stays planner-controlled and
+  // the swing/stance handoff is smooth. is_trot-gated -> all other strategies
+  // (incl. strat 20 "stumble_march") are byte-identical (default no-op). See
+  // Task::ModifyControl + the gait clock in ResidualFn::Residual.
+  void ModifyControl(const mjModel* model, const double* qpos,
+                     const double* qvel, double time,
+                     double* ctrl) const override;
+
   // Slider layout (Lean H12) — user's 6-phase decomposition:
   //   0  stand            — stand_up
   //   1  arm_extend       — stand → arm_extend_standing (arm out, body upright)
@@ -279,7 +292,7 @@ class lean : public Task {
                                          //    base primitive for pick/retrieve; the lean pipeline is
                                          //    this reach + brace + whole-body pitch for FAR targets.
             "h12_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 23-26 reserved
+            "h12_simple_trot",  "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 23 trot (leg-lift test vehicle), 24-26 reserved
             "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 27-30 reserved
             "h12_lean_stand",            // 31
             "h12_lean_reach",            // 32
@@ -407,7 +420,7 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_stumble",  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
             "h12_hands_simple_reach",    // 21 reach-to-target (mirrors Lean_H12 slot 21).
             "h12_hands_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 23-26 reserved
+            "h12_hands_simple_trot", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 23 trot (leg-lift test vehicle), 24-26 reserved
             "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 27-30 reserved
             "h12_hands_lean_stand",            // 31
             "h12_hands_lean_reach",            // 32
