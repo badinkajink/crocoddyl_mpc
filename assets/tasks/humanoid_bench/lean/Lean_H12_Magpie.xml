@@ -228,13 +228,44 @@
              A real rhythmic foot-lift trot/walk needs a trained RL policy, not
              real-time sampling-MPC. The dead trot code in lean.cc is inert. -->
         <numeric name="stumble_trot_sec" data="0.0"/>
-        <!-- TROT (slot 23) capture-point footstep knobs (lean::ModifyControl):
-             trot_cap_gain = capture over-step (1=deadbeat; 2.2 = working in-place trot,
-             sustains ~18-24s marginal); trot_des_vel_x/y = desired CoM vel (0 = step in
-             place; >0 = WALK forward, same controller). is_trot-gated, trot-only. -->
+        <!-- TROT (slot 23) capture-point footstep knobs (lean::ModifyControl +
+             cost-side Step-Place/CoM-Vel residuals). is_trot-gated, trot-only; all
+             vanish at trot_des_vel_x/y=0 so the DEFAULT is the validated 9/9 in-place
+             trot (lifts feet ~5cm, holds 24s). FORWARD-WALK (2026-06-28, /mujoco-docs
+             + /unitree-docs research): the come-to-rest capture point (xi=v/omega) is
+             ~2x too long a step -> bleeds momentum -> backward fall. FIX = (a) pure
+             velocity-ERROR catch placement (no Raibert neutral feedfwd, which backfires
+             near rest), (b) a CoM-Vel velocity-tracking COST (trot_vel_w) as the
+             propulsion (foot placement alone can't move the body vs the balancing
+             sampler), (c) demote the FORE-AFT come-to-rest Balance barrier
+             (trot_bal_scale) so velocity tracking wins -- lateral kept full (weak axis).
+               trot_cap_gain  = capture over-step (1=deadbeat; 2.2 = in-place trot).
+               trot_des_vel_x = forward CoM vel cmd [m/s] (0=in place; >0=walk). NAV hook.
+               trot_walk_gain = Raibert neutral-step gain (0; >0 backfires near rest).
+               trot_vel_w     = forward velocity-track weight x10 (1=base). WALK ~6.
+               trot_bal_scale = fore-aft Balance demotion when walking (1=off). WALK ~0.5.
+             BEST WALK (marginal): des_vel 0.10 / vel_w 6 / bal_scale 0.5 -> +1.5 m at
+             ~0.08 m/s, HOLDS ~13 s then forward-pitch runaway (demotion removes the
+             forward-fall catch). Robust 24 s forward NOT yet cracked (joint CMA-ES /
+             RL next). Default below = in-place (robust). -->
         <numeric name="trot_cap_gain" data="2.2"/>
+        <numeric name="trot_walk_gain" data="0.0"/>
+        <numeric name="trot_vel_w" data="1.0"/>
+        <numeric name="trot_lat_w" data="1.0"/>
+        <numeric name="trot_bal_scale" data="1.0"/>
         <numeric name="trot_des_vel_x" data="0.0"/>
         <numeric name="trot_des_vel_y" data="0.0"/>
+        <!-- trot_angmom_w = trot-WALK angular-momentum (forward-pitch-runaway) catch
+             gain; gated to trot-walk in lean.cc (0 = the prior no-catch behavior).
+             WALK ~3. Pairs with the Angular Momentum carrier weight above. -->
+        <numeric name="trot_angmom_w" data="0.0"/>
+        <!-- STEP-AND-SETTLE: pulse v_des -> walk for trot_step_walk s, then SETTLE
+             (v_des=0 = robust in-place trot, all walk terms gate off) for the rest
+             of trot_step_period s. Decomposes continuous walk (bistable) into
+             discrete forward steps each caught by the validated in-place trot.
+             trot_step_period=0 => continuous (no pulse). e.g. period 4 / walk 1. -->
+        <numeric name="trot_step_period" data="0.0"/>
+        <numeric name="trot_step_walk" data="0.0"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
@@ -543,7 +574,13 @@
         <user name="Knees Straight" dim="2" user="6 40.0 0.0 300.0 0.25"/>
         <user name="Symmetry" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Base Height" dim="1" user="0 0.0 0.0 100.0"/>
-        <user name="Angular Momentum" dim="3" user="0 0.0 0.0 100.0"/>
+        <!-- Angular Momentum: weight is now a nonzero CARRIER (1.0). The residual
+             is gated to 0 in lean.cc for every strategy EXCEPT trot-WALK (is_trot &&
+             v_des!=0), where it = trot_angmom_w * 0.1 * angmom (pitch+yaw catch).
+             So cost = 1.0*Norm(0) = 0 = byte-identical for all non-trot-walk; only
+             trot-walk sees the active angular-momentum (forward-pitch runaway) catch.
+             Tune the trot-walk strength via the trot_angmom_w numeric, NOT this weight. -->
+        <user name="Angular Momentum" dim="3" user="0 1.0 0.0 100.0"/>
         <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>
         <!-- Gait / Step Place: strategy-20 "stumble" stepping. Default weight 0
              (inert for strategies 0-19, exactly like Symmetry/Angular Momentum/

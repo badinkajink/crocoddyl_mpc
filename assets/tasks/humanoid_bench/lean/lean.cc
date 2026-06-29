@@ -299,8 +299,34 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   constexpr double kStepHeight = 0.06;  // 0.022->0.06 cluster: swing-foot peak Cartesian clearance
                                         // [m] toward Unitree H1-2 0.08 (was a gentle 2.2cm shuffle)
   constexpr double kAmpRampSec = 4.5;   // ease the gait in over the first 4.5 s of the phase
-  constexpr double kDesVelX    = 0.0;   // desired CoM velocity [m/s] world x -- NAV HOOK
-  constexpr double kDesVelY    = 0.0;   // desired CoM velocity [m/s] world y -- NAV HOOK
+  // desired CoM velocity [m/s] world x/y -- the NAV/walk command. Read from the
+  // trot_des_vel_x/y numerics ONLY for the trot (is_trot); every other stumble
+  // strategy (e.g. strat 20 march-in-place) keeps 0 so it steps in place. Feeds
+  // BOTH the cost-side Step-Place foot target (below) AND the CoM-Vel velocity-
+  // tracking residual -- without a nonzero target the cost says "stand still" and
+  // the sampler CANCELS the open-loop walk drive (lean::ModifyControl), so foot
+  // placement alone can never move the body. This is the propulsion connection.
+  double kDesVelX = 0.0, kDesVelY = 0.0;   // NAV HOOK (trot only)
+  if (is_trot) {
+    int dvx_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_x");
+    int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
+    if (dvx_id >= 0) kDesVelX = model->numeric_data[model->numeric_adr[dvx_id]];
+    if (dvy_id >= 0) kDesVelY = model->numeric_data[model->numeric_adr[dvy_id]];
+    // STEP-AND-SETTLE pulse: walk for trot_step_walk s, then SETTLE (v_des=0) for
+    // the rest of trot_step_period s. v_des=0 gates OFF every walk term -> reverts
+    // to the validated-ROBUST in-place trot (the recovery is the thing that already
+    // works), so continuous walk's bistable topple is decomposed into discrete
+    // forward steps each caught by the in-place trot. trot_step_period<=0 =>
+    // continuous (no pulse) = byte-identical. MUST match lean::ModifyControl's pulse
+    // (same data->time -> deterministic agreement between cost and open-loop swing).
+    int tp_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_period");
+    int tw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_walk");
+    double Tp = (tp_id >= 0) ? model->numeric_data[model->numeric_adr[tp_id]] : 0.0;
+    double Tw = (tw_id >= 0) ? model->numeric_data[model->numeric_adr[tw_id]] : 0.0;
+    if (Tp > 1e-6 && std::fmod(mju_max(0.0, data->time), Tp) >= Tw) {
+      kDesVelX = 0.0; kDesVelY = 0.0;   // settle window -> robust in-place trot
+    }
+  }
   // swing-leg JOINT-space lift offsets [rad] at full bump (added to the keyframe
   // target): fold the leg up so the foot clears ground. hip flexes back, knee
   // bends, ankle holds the sole level. This is what BOOTSTRAPS the step; the
@@ -851,8 +877,29 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // capture point
   double *com_velocity = SensorByName(model, data, "torso_subtreelinvel");
 
-  // ----- COM xy velocity should be 0 ----- //
-  mju_copy(&residual[counter], com_velocity, 2);
+  // ----- CoM xy velocity tracking ----- //
+  // Target 0 (stand still) normally; for the trot, target the commanded walk
+  // velocity kDesVel* so this term DRIVES the forward push instead of fighting it.
+  // THE propulsion cost: every reference sampling/RL walker (MJPC walk.cc,
+  // Playground/Unitree) tracks CoM velocity -- foot placement alone cannot move
+  // the body against the balancing sampler (verified: kw=0 placement just wanders
+  // around rest). kDesVel*=0 for all non-trot -> byte-identical there. trot_vel_w
+  // boosts ONLY the FORWARD (x) tracking authority for the trot so velocity
+  // tracking out-votes the come-to-rest Balance term (MJPC walk.cc demotes Balance
+  // / promotes the velocity term for locomotion). trot_lat_w does the SAME for the
+  // LATERAL (y) tracking (target kDesVelY, usually 0) -- forward walk wanders
+  // sideways because x-tracking was boosted 12x while y stayed at base 1, so the
+  // sampler let lateral velocity drift; trot_lat_w damps it to walk STRAIGHT.
+  // Both default 1.0 -> in-place trot + non-trot byte-identical.
+  double vel_w = 1.0, lat_w = 1.0;
+  if (is_trot) {
+    int vw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_vel_w");
+    if (vw_id >= 0) vel_w = model->numeric_data[model->numeric_adr[vw_id]];
+    int lw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_lat_w");
+    if (lw_id >= 0) lat_w = model->numeric_data[model->numeric_adr[lw_id]];
+  }
+  residual[counter + 0] = vel_w * (com_velocity[0] - kDesVelX);
+  residual[counter + 1] = lat_w * (com_velocity[1] - kDesVelY);
   counter += 2;
 
   // ----- joint velocity ----- //
@@ -1211,9 +1258,35 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the capture point may legitimately leave the (shrinking) polygon to be caught
   // by the step. Partial (keep ~40%) -- a full release faceplants (see note below).
   double bal_rel = 1.0 - 0.6 * step_active;
-  double eff_dx = cp_dx * dir_scale_x * bal_rel;
+  // TROT-WALK: demote the come-to-rest Balance barrier so the velocity-tracking
+  // cost can drive the body forward (MJPC walk.cc gates Balance DOWN for
+  // locomotion -- it keeps the CoM between the feet, not parked at rest). Demote
+  // FORE-AFT (x) ONLY: the lateral (y) axis is the narrow biped's WEAK axis (a
+  // global demotion produced metre-scale sideways drift) -- keep FULL lateral
+  // balance. ONLY when actually walking (kDesVel != 0); in-place trot (v_des=0)
+  // keeps full balance both axes. trot_bal_scale numeric (1=off).
+  //
+  // ASYMMETRIC BARRIER (2026-06-29): the demotion must NOT weaken the 10x
+  // fall-catch (below). Previously the demoted eff_dx fed balance_excursion, so a
+  // large forward lean read SMALL -> the amplifier never engaged -> trot-walk
+  // pitched forward and faceplanted at ~13 s. Fix: drive balance_excursion (the
+  // edge detector) from the UN-demoted eff_dx_full, and fade the demotion back to
+  // 1.0 as the lean enters the fall-catch zone (walk_demote = bscale in the
+  // walking regime, -> 1.0 at the edge). Non-trot / in-place trot: bscale==1 ->
+  // walk_demote==1 -> eff_dx == eff_dx_full (byte-identical to prior residual).
+  double bscale = 1.0;
+  if (is_trot && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
+    int bs_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_bal_scale");
+    if (bs_id >= 0) bscale = model->numeric_data[model->numeric_adr[bs_id]];
+  }
+  // Defensive: keep walk_demote in [bscale,1] (sign-safe). Identity for the
+  // documented config (trot_bal_scale in [0,1]); only caps a misconfigured numeric.
+  bscale = mju_max(0.0, mju_min(1.0, bscale));
+  // FULL (un-demoted) excursion drives the edge amplifier (the fall-catch barrier).
+  double eff_dx_full = cp_dx * dir_scale_x * bal_rel;
   double eff_dy = cp_dy * dir_scale_y * bal_rel;
-  double balance_excursion = mju_sqrt(eff_dx * eff_dx + eff_dy * eff_dy);
+  double balance_excursion =
+      mju_sqrt(eff_dx_full * eff_dx_full + eff_dy * eff_dy);
   constexpr double kEdgeInner = 0.05;       // m — amplifier still 1×
   constexpr double kEdgeOuter = 0.10;       // m — amplifier saturated
   constexpr double kEdgePeakAmplifier = 10.0;
@@ -1226,6 +1299,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // 2026-06-05) deleted the balance restoring force -> faceplant in 3s. KEEP it. The correct cause-B
   // is the SYMMETRIC barrier (fwd_scale=1.0 for no-brace, above) WITH this amplifier intact.
   double edge_amplifier = 1.0 + (kEdgePeakAmplifier - 1.0) * edge_smooth;
+  // Asymmetric demotion: bscale in the WALKING regime (edge_smooth~0), fading to
+  // 1.0 (FULL barrier) as the lean enters the fall-catch zone (edge_smooth->1).
+  double walk_demote = bscale + (1.0 - bscale) * edge_smooth;
+  double eff_dx = eff_dx_full * walk_demote;
 
   // Per-axis residual: directional scale already includes balance_scale
   // for forward, 1.0 for backward/lateral. NO outer multiplication by
@@ -2051,9 +2128,24 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       Ly_tgt = kRecPitch * g_cap_ex;   // fore-aft fall -> pitch counter-momentum
       Lx_tgt = kRecRoll  * g_cap_ey;   // lateral fall  -> roll counter-momentum
     }
-    residual[counter++] = 0.1 * (angmom[0] - Lx_tgt);
-    residual[counter++] = 0.1 * (angmom[1] - Ly_tgt);
-    residual[counter++] = 0.1 * angmom[2];
+    // TROT-WALK PITCH/YAW CATCH (2026-06-29, the "active torso-pitch catch"): the
+    // forward-walk failure is a forward-PITCH runaway -- angmom[1] is the lateral-
+    // axis (pitch) centroidal angular momentum, so penalising it RESISTS the
+    // topple. Crucially angmom is RATE-like: a steady walking lean has ~0 net pitch
+    // momentum (it oscillates fore-aft and cancels) so this does NOT tax walking,
+    // but an ACCELERATING topple spikes angmom[1] -> caught. angmom[2] (yaw) damps
+    // the heading wander seen in walk. ACTIVE only for trot-WALK (is_trot &&
+    // v_des!=0) via trot_angmom_w; 0 for EVERY other strategy (incl. in-place trot,
+    // strat 20, stand/crouch/arms) so they stay byte-identical even though the XML
+    // "Angular Momentum" weight is now a nonzero carrier (cost = w * Norm(0) = 0).
+    double angmom_w = 0.0;
+    if (is_trot && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
+      int aw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_angmom_w");
+      angmom_w = (aw_id >= 0) ? model->numeric_data[model->numeric_adr[aw_id]] : 1.0;
+    }
+    residual[counter++] = angmom_w * 0.1 * (angmom[0] - Lx_tgt);
+    residual[counter++] = angmom_w * 0.1 * (angmom[1] - Ly_tgt);
+    residual[counter++] = angmom_w * 0.1 * angmom[2];
   } else {
     residual[counter++] = 0.0;
     residual[counter++] = 0.0;
@@ -2193,7 +2285,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double const *com_vel = SensorByName(model, data, "waist_lower_subcomvel");
     double z_com     = mju_max(0.5, com_pos[2]);
     double tau_cap   = mju_sqrt(z_com / 9.81);     // sqrt(z/g): capture-point time const
-    double t_stance  = kDutyRatio / kCadenceHz;    // stance duration [s]
     // CLAMP the capture offset to a physical step reach. Unclamped, an incipient
     // topple spikes com_vel -> the foot target explodes metres away -> the swing
     // leg FLINGS to chase it (seen as 0.5 m foot-height spikes that then caused
@@ -2204,8 +2295,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
                                           // 2026-06-18: bigger CATCH-STEP for push
                                           // recovery; forward shoves need a longer
                                           // reach to plant the foot ahead of the CoM)
-    double off_x = (com_vel[0] - kDesVelX) * tau_cap + kDesVelX * t_stance;
-    double off_y = (com_vel[1] - kDesVelY) * tau_cap + kDesVelY * t_stance;
+    // PURE velocity-error catch (NO neutral feedforward). The Raibert neutral
+    // +v_des*t_stance places the swing foot AHEAD, which pushes the body BACKWARD
+    // near rest -- it only "maintains" a velocity the body already has, so without
+    // an independent propulsion source it backfires (verified: it produced a steady
+    // backward bias that only lost to the velocity-track cost at a destabilising
+    // weight). Propulsion now comes from the CoM-Vel tracking cost; placement only
+    // REGULATES, so error-catch alone is correct. v_des=0 (all non-trot, incl.
+    // strat 20) => identical to before (the neutral term was already 0 there).
+    double off_x = (com_vel[0] - kDesVelX) * tau_cap;
+    double off_y = (com_vel[1] - kDesVelY) * tau_cap;
     off_x = mju_max(-kStepReach, mju_min(kStepReach, off_x));
     off_y = mju_max(-kStepReach, mju_min(kStepReach, off_y));
     // nominal foot offsets from the CoM at the standing stance (measured ~0.064 m
@@ -2860,6 +2959,16 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
   double dvx = (dvx_id >= 0) ? model->numeric_data[model->numeric_adr[dvx_id]] : 0.0;
   double dvy = (dvy_id >= 0) ? model->numeric_data[model->numeric_adr[dvy_id]] : 0.0;
+  // STEP-AND-SETTLE pulse (MUST match the residual's pulse, same data time): walk
+  // for trot_step_walk s, settle (v_des=0 -> robust in-place trot) the rest of
+  // trot_step_period s. Tp<=0 => continuous (byte-identical).
+  {
+    int tp_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_period");
+    int tw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_walk");
+    double Tp = (tp_id >= 0) ? model->numeric_data[model->numeric_adr[tp_id]] : 0.0;
+    double Tw = (tw_id >= 0) ? model->numeric_data[model->numeric_adr[tw_id]] : 0.0;
+    if (Tp > 1e-6 && std::fmod(mju_max(0.0, time), Tp) >= Tw) { dvx = 0.0; dvy = 0.0; }
+  }
   // capture gain (live numeric, default 1.0 = deadbeat one-step capture): >1
   // over-steps (catches harder, kills velocity faster), <1 under-steps. LATERAL
   // gets its OWN gain (trot_cap_gain_lat, default = fore-aft gain) -- the sideways
@@ -2868,13 +2977,11 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   double cap_g = (cg_id >= 0) ? model->numeric_data[model->numeric_adr[cg_id]] : 1.0;
   int cgl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_cap_gain_lat");
   double cap_gl = (cgl_id >= 0) ? model->numeric_data[model->numeric_adr[cgl_id]] : cap_g;
-  // fore-aft = pure capture CATCH on ACTUAL velocity (balance; stabilises toward
-  // rest = in-place trot when v_des=0) + a tunable WALK propulsion bias
-  // (trot_walk_gain * v_des). The catch gives the solid balance; the bias drives
-  // directed travel. kw default 0 => in-place trot byte-identical. kw sign/gain
-  // set EMPIRICALLY (the foot bias that yields forward travel at +v_des).
+  // trot_walk_gain (kw) = gain on the Raibert NEUTRAL (velocity-maintaining) step
+  // (T_st/2)*v_des; default 1.0 = the theoretical sustaining placement. v_des=0
+  // makes this term vanish, so in-place trot is byte-identical regardless of kw.
   int wg_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_walk_gain");
-  double kw = (wg_id >= 0) ? model->numeric_data[model->numeric_adr[wg_id]] : 0.0;
+  double kw = (wg_id >= 0) ? model->numeric_data[model->numeric_adr[wg_id]] : 1.0;
   // STANDING GATE (MJPC humanoid-walk's core robustness trick, walk.cc:91-95):
   // scale the forward PROPULSION by an uprightness factor that -> 0 as the torso
   // tips, so a tipping robot STOPS pushing forward and the pure capture CATCH
@@ -2884,13 +2991,22 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   double up_z = 1.0 - 2.0 * (qx * qx + qy * qy);
   double standing = clip((up_z - 0.80) / (0.97 - 0.80), 0.0, 1.0);
   standing = standing * standing * (3.0 - 2.0 * standing);  // smoothstep
-  // SELF-LIMITING propulsion: push on the velocity ERROR (dvx - vx), not a
-  // constant kw*dvx bias. A constant bias kept accelerating as speed built ->
-  // runaway (0.1 cmd -> 0.6 m/s -> fall); (dvx - vx) fades to 0 as actual speed
-  // reaches target, so forward speed REGULATES instead of running away. Gated by
-  // `standing` so a tipping robot stops pushing and the capture catch recovers.
-  double step_x = clip(cap_g * qvel[0] * tau + kw * standing * (dvx - qvel[0]),
-                       -0.30, 0.30);  // m
+  // FOOT PLACEMENT = Raibert/DCM, NOT the come-to-rest capture point. Research
+  // (MJPC walk.cc, Playground G1/H1, Unitree RL, Khadiv DCM) verdict: placing the
+  // foot at the full capture point xi = v*tau = v/omega is a STOP target (~0.32*v
+  // for us); the VELOCITY-SUSTAINING step is only (T_st/2)*v (~0.15*v) -- stepping
+  // to the full capture point is ~2x too long, so every step bleeds forward
+  // momentum and the CoM drops behind the advancing feet -> backward fall (our
+  // 6-10 s symptom). Raibert:  foot_x = (T_st/2)*v_des + k*(v - v_des), k=cap_g*tau
+  //   neutral term kw*(T_st/2)*v_des = velocity-MAINTAINING placement (feedfwd)
+  //   error  term cap_g*tau*(v - v_des) = balance CATCH on the velocity error.
+  // standing-gated: upright -> full Raibert (walks); tipping (standing->0) -> the
+  // v_des terms drop and it collapses to the pure come-to-rest catch cap_g*tau*v
+  // (= validated in-place trot recovery, no forward faceplant). v_des=0 makes
+  // EVERY v_des term vanish -> byte-identical to the 9/9 in-place trot.
+  double T_st = (kCad > 1e-6) ? (kDuty / kCad) : 0.5;   // single-support duration
+  double step_x = clip(cap_g * tau * (qvel[0] - standing * dvx) +
+                       kw * standing * dvx * (0.5 * T_st), -0.30, 0.30);  // m
   double step_y = clip(cap_gl * (qvel[1] - dvy) * tau, -0.12, 0.12);  // tight=stabler
   // swing-height scale (live numeric, default 1.0): LOWER lift = smaller per-step
   // disturbance = stabler trot (trades visible clearance for hold-rate).
