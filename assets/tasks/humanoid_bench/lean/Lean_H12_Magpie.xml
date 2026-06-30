@@ -332,7 +332,7 @@
              = ankle load ~unchanged. WATCH on real: RankP tau% (forward CoM) and Relb tau%;
              if RankP sustains >80% drop radius to 0.46, if the elbow still folds push to 0.50.
              No rebuild (runtime numeric). -->
-        <numeric name="reach_radius" data="0.48"/>
+        <numeric name="reach_radius" data="0.800"/>
         <!-- ★ 2026-06-25 CORRECTED 0.28->0.12: the elbow was NEVER the reach limit (static hold
              of a FULL forward stretch = ~4 Nm = 22% of 18). The drop only angled the arm DOWN,
              pulling Rhand_fwd BELOW the 0.404 m home pose = the "never stretched" the user saw.
@@ -348,7 +348,7 @@
              SAME ankle/CoM as the modest reach the user accepted, but STRAIGHT elbow not folded.
              Arm aims fwd-DOWN ~45deg. Lower drop toward 0.28/0.24 ON REAL for a more horizontal
              reach while watching RankP (was 83% at this load); horizontal = strat-16-lean regime. -->
-        <numeric name="reach_drop" data="0.34"/>
+        <numeric name="reach_drop" data="0.400"/>
         <!-- reach_com_back (strat 21): EXTRA forward-CoM bias [m] applied ONLY during
              the reach, so the planner holds the CoM that much BACK to counterbalance
              the forward arm (the real-chain forward creep the lockstep twin can't show).
