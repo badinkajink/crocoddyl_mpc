@@ -126,6 +126,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const height_goal = parameters_[0];
   int counter = 0;
 
+  // FOREARM BRACE (2026-07-01): the forearm_brace_lean phase braces the LEFT
+  // forearm (elbow_link pad) on the table via an explicit <pair>. It carries NO
+  // declared JSON ContactPair (the physics + force are on the pad/sensor, not a
+  // cost-side body pair), so mark it arm-contact BY NAME so the Base-Height
+  // anchor releases (deep squat allowed) and the support-widening triangle
+  // activates -- both otherwise gated on a declared JSON pair.
+  const bool is_forearm_brace = (residual_keyframe_.name == "forearm_brace_lean");
+
   // ----- stage detection: used throughout to gate residual scaling ----- //
   int active_contact_count_early = 0;
   for (const auto& cp : residual_keyframe_.contact_pairs) {
@@ -135,7 +143,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     }
   }
   // any_arm_contact: arm is on the table (stand_up has 0 contacts)
-  const bool any_arm_contact      = (active_contact_count_early >= 1);
+  const bool any_arm_contact      = (active_contact_count_early >= 1) || is_forearm_brace;
   // is_lean_no_brace_phase: the "lean forward without bracing" beat. No
   // contacts but the body IS supposed to tilt, so several gates (Pelvis
   // Tilt, Height, Foot Stability) need to behave as if the arm were on
@@ -188,7 +196,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (see e.g. Liu et al., "Generalized hierarchical control" — task priority
   // weights as continuous functions of time, not step changes).
   double time_in_phase = mju_max(0.0, data->time - keyframe_start_time_);
-  double alpha_lin     = mju_min(time_in_phase / kPhaseRampSeconds, 1.0);
+  // CONTROLLED LEAN-IN (2026-07-01): a heavy humanoid bowing into a table brace
+  // over the default 1.5 s ramp reads as an abrupt forward lunge (user: "the fall
+  // was too abrupt, shouldn't it slowly do it in a controlled way"). For the
+  // single-phase forearm brace, stretch the cost-gradient ramp to the JSON
+  // target_ramp_sec so Brace Pos / Reaching / Torso Forward Tilt / brace-force all
+  // ease in gently -> a slow, quasi-static descent (which also keeps the pelvis
+  // well inside the hip-clearance margin the whole way down). Every other strategy
+  // keeps the original 1.5 s ramp (is_forearm_brace guards it -> byte-identical).
+  double phase_ramp_seconds =
+      (is_forearm_brace && residual_keyframe_.target_ramp_sec > 1e-9)
+          ? residual_keyframe_.target_ramp_sec
+          : kPhaseRampSeconds;
+  double alpha_lin     = mju_min(time_in_phase / phase_ramp_seconds, 1.0);
   double alpha         = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
   double phase_reach_scale =
       prev_phase_reach_scale_ + alpha * (target_reach_scale -
@@ -248,8 +268,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   //   every snap phase (target_ramp_sec==0) pay nothing -- the unconditional version
   //   that ran for EVERY residual call of EVERY strategy is what got reverted.
   mjtNum ramped_posture_target[64];
-  if (num_phases_ > 1 && prev_posture_key_id_ != posture_key_id &&
-      model->nq <= 64) {
+  // Enable the pose-target ramp for multi-phase strategies AND the single-phase
+  // forearm brace (its controlled descent above wants the Posture target to glide
+  // home -> deep-bow, not snap). Other single-phase strats (stand/crouch/arms)
+  // stay snapped -- the 2026-06-08 revert requires they never take this branch.
+  if ((num_phases_ > 1 || is_forearm_brace) &&
+      prev_posture_key_id_ != posture_key_id && model->nq <= 64) {
     double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
                           ? residual_keyframe_.target_ramp_sec
                           : kPhaseRampSeconds;
@@ -553,6 +577,24 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double const *reaching_hand = reach_right ? right_hand_pos : left_hand_pos;
   double const *bracing_hand  = reach_right ? left_hand_pos  : right_hand_pos;
 
+  // FOREARM BRACE (2026-07-01): in the forearm_brace_lean phase the brace is the
+  // FOREARM (elbow_link pad), NOT the gripper hand. Repoint the brace POSITION
+  // target to the forearm pad site so Brace-Pos pulls the forearm (not the hand)
+  // onto the table; the forearm is ~0.5 m from the shoulder and CAN reach the
+  // 0.77 m table in a deep bow, whereas the hand-brace would land the gripper.
+  // Name-gated: counterbalance (16/33) + reach (21) keep the hand. The gripper
+  // is excluded from the table in the model so the pad is the only brace contact.
+  // (is_forearm_brace defined at the top of Residual for the any_arm_contact gate.)
+  double forearm_site_pos[3];
+  if (is_forearm_brace) {
+    int fs = mj_name2id(model, mjOBJ_SITE,
+                        reach_right ? "left_forearm_brace" : "right_forearm_brace");
+    if (fs >= 0) {
+      mju_copy3(forearm_site_pos, data->site_xpos + 3 * fs);
+      bracing_hand = forearm_site_pos;
+    }
+  }
+
   //------------- Reward calculation --------------//
   double const hand_dist_penalty = 1.0;
   double const brace_reward = 0.5;
@@ -567,6 +609,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *right_contact = SensorByName(model, data, "right_hand_contact");
   double brace_contact_force = reach_right ? left_contact[0] : right_contact[0];
   double reach_contact_force = reach_right ? right_contact[0] : left_contact[0];
+  // FOREARM BRACE: read the forearm touch sensor for the brace press — the hand
+  // sensor's 1 cm zone at the gripper tip does not see the forearm-pad contact,
+  // so with the hand sensor brace_contact_force stayed ~0 and the support-widening
+  // gate (hand_load_frac) never opened. This is what actually force-closes it.
+  if (is_forearm_brace) {
+    double *fc = SensorByName(model, data,
+                             reach_right ? "left_forearm_contact" : "right_forearm_contact");
+    if (fc) brace_contact_force = fc[0];
+  }
 
   double reward = 0;
 
@@ -599,6 +650,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     phase1_target_storage[1] = torso_pos[1] + 0.20;
     phase1_target_storage[2] = torso_pos[2] - 0.05;
     reach_target = phase1_target_storage;
+  }
+  // FOREARM BRACE (2026-07-01): keep the reaching hand IN THE AIR reaching TOWARD
+  // the object, not resting on the table (user: "right arm was doing some bracing
+  // too... I don't want it to touch it"). The object sits ON the table (z ~=
+  // surface), so an unclamped reach drags the hand straight down to the surface.
+  // Point the reach at the object's x,y but hold it at a comfortable airborne
+  // height ABOVE the table so the hand hovers / reaches out WITHOUT touching down.
+  double brace_air_target[3];
+  if (is_forearm_brace) {
+    brace_air_target[0] = object_pos[0];
+    brace_air_target[1] = object_pos[1];
+    brace_air_target[2] = table_pos[2] + 0.30;  // ~30 cm above the table surface
+    reach_target = brace_air_target;
   }
   // counterbalance_standing (Strategy 16): FOOT-ANCHORED (lean-invariant) reach
   // target so a relaxed Pelvis Tilt lets the body PITCH FORWARD into a leaning
@@ -1660,14 +1724,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // counter-balanced posture rather than tipping).
   // Target = `reach_target` (object for most phases, fixed forward point
   // during arm_extend_standing — see top of Residual()).
+  // FOREARM BRACE load-transfer (P4): sequence the reach behind the brace WITHOUT
+  // dead-locking it. The old gate ramped 0.15 -> 1.0 on measured brace FORCE alone;
+  // on a surface where the forearm can't fully seat (e.g. a low table the forearm
+  // only struts down onto) the force never arrives, so the reach stayed strangled
+  // at 15% and the reaching arm never extended (it just relaxed onto the table).
+  // Fix: open the reach on brace PROXIMITY *or* force — whichever is greater. As
+  // the forearm arrives over the table (brace_force_prox_gate -> 1) the reach
+  // releases; it is already positioned to catch the load, so the CoM-overshoot the
+  // force-gate guarded against can't happen. Floor 0.40 keeps the arm visibly
+  // reaching throughout. Other phases unchanged (gate = 1.0).
+  double brace_reach_gate = is_forearm_brace
+      ? (0.40 + 0.60 * mju_max(brace_force_prox_gate,
+                               mju_min(1.0, brace_contact_force /
+                                       mju_max(1.0, desired_brace_force))))
+      : 1.0;
   mju_sub3(&residual[counter], reaching_hand, reach_target);
   mju_scl3(&residual[counter], &residual[counter],
-           phase_reach_scale * leaning);
+           phase_reach_scale * leaning * brace_reach_gate);
   counter += 3;
 
   // ----- reaching hand distance to object ----- //
   mju_sub3(&residual[counter], reaching_hand, reach_target);
-  mju_scl3(&residual[counter], &residual[counter], phase_reach_scale);
+  mju_scl3(&residual[counter], &residual[counter],
+           phase_reach_scale * brace_reach_gate);
   counter += 3;
 
   // ----- foot stability: restoring force toward home XY position ----- //
@@ -1807,6 +1887,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   if (arm_contact_or_lean) {
     double midfoot_x = 0.5 * (foot_right_pos[0] + foot_left_pos[0]);
     double pelvis_forward_target = midfoot_x + 0.05;
+    if (is_forearm_brace) {
+      // FOREARM BRACE load-transfer (P3 LOAD): once the forearm is NEAR the table
+      // (brace_force_prox_gate ~1) but not yet loaded, drive the pelvis (= CoM
+      // proxy) FORWARD toward the forearm to press weight onto it — this is what
+      // turns a hovering/light-touch contact into a real load-bearing brace. Back
+      // off as force builds (load_deficit 1->0) so the CoM settles JUST BEHIND the
+      // forearm centroid (forearm_x - 0.06), loading it without tipping past it.
+      // Self-limiting: at the force target the extra pull vanishes (target ->
+      // midfoot+0.05). Reach (P4, gated above) only extends after this loads.
+      double load_deficit =
+          mju_max(0.0, 1.0 - brace_contact_force / mju_max(1.0, desired_brace_force));
+      double loaded_target = forearm_site_pos[0] - 0.06;
+      pelvis_forward_target =
+          midfoot_x + 0.05 +
+          brace_force_prox_gate * load_deficit *
+              mju_max(0.0, loaded_target - (midfoot_x + 0.05));
+    }
     residual[counter++] =
         mju_max(0.0, pelvis_forward_target - pelvis_pos_3d[0]);
   } else {

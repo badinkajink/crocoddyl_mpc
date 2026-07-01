@@ -47,6 +47,19 @@
              knees), which — with the JSON "Knees Straight" weight — drove 16's legs straight
              into the strut/hyperextend (knee -0.11) → topple. Copy of "stand". 2026-06-25. -->
         <key name="counterbalance_standing" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 1.05 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- forearm_brace_lean (2026-07-01, RE-TUNED for the REAL 87 cm lab table): a MODERATE
+             (not deep) bow so the LEFT forearm seats on the 0.87 m surface while the RIGHT arm
+             reaches UP IN THE AIR toward the object (user: right arm must not brace/touch the table).
+             FK-verified on the 0.87 model (fk_place.py, feet planted): base z0.738, left_forearm_brace
+             site z0.873 (= the 0.87 surface, pad seats) x0.44 (on the table past the near edge 0.40);
+             right_hand z1.303 x0.756 (well above the table, extended forward = in the air); CoM x0.298
+             sits INSIDE the foot support (feet ~0.22, front edge ~0.33) so the pose is statically
+             stable even before the brace loads. Higher table -> shallower bow than 0.77's base 0.688:
+             base 0.738 BOTH seats the forearm AND is a hold-able bow (0.77 needed an un-hold-able 0.63
+             to seat). Legs hip-1.27/knee1.52/ankle-0.30; LEFT arm (brace) sh-0.6/roll0.15/elbow0.95
+             reaches forward-down onto the table; RIGHT arm (reach) sh-1.1/roll-0.1/elbow0.25 up-forward.
+             Object rests at z0.95 (0.87 + half-height 0.08). -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.6 0.15 0 0.95 0 0 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/>
         <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
              name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
              residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
@@ -640,6 +653,8 @@
         <framelinvel name="right_hand_vel" objtype="site" objname="right_hand"/>
         <touch name="left_hand_contact" site="left_hand"/>
         <touch name="right_hand_contact" site="right_hand"/>
+        <touch name="left_forearm_contact" site="left_forearm_brace"/>
+        <touch name="right_forearm_contact" site="right_forearm_brace"/>
     </sensor>
 
     <!-- Strip non-essential collision pairs for real-time MPC.
@@ -648,6 +663,14 @@
          the right hand contacts the table; the left arm, the head, and
          the pelvis-vs-table never collide in valid plans. -->
     <contact>
+        <!-- FORCE-CLOSE the forearm brace (2026-07-01). Explicit pairs override the raw-mesh
+             table exclude below AND the table's priority=1 arbitration, so the tuned INERT
+             forearm pad is the ONE forearm<->table contact. condim4 = torsional friction
+             (resists yaw-spin of the flat forearm); solref 0.02 = firm at the 2*dt planner
+             floor; solimp go2-curve = soft onset for the CEM slam; margin 0.01 = 1 cm
+             force-at-a-distance basin so the sampling planner can DISCOVER the contact. -->
+        <pair name="left_forearm_brace_pair" geom1="left_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.015" gap="0"/>
+        <pair name="right_forearm_brace_pair" geom1="right_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.015" gap="0"/>
         <!-- left arm never contacts the table in single-arm lean -->
         <exclude body1="table" body2="left_shoulder_pitch_link"/>
         <exclude body1="table" body2="left_shoulder_roll_link"/>
@@ -656,6 +679,11 @@
         <exclude body1="table" body2="left_wrist_roll_link"/>
         <exclude body1="table" body2="left_wrist_pitch_link"/>
         <exclude body1="table" body2="left_wrist_yaw_link"/>
+        <!-- gripper does NOT brace (forearm-only, no-palm): the gripper box would else
+             point-contact the table (~2 cm) in the flat-forearm pose; the forearm pad is
+             the sole brace. Keeps the delicate/occupied gripper off the table. -->
+        <exclude body1="table" body2="left_magpie_gripper"/>
+        <exclude body1="table" body2="right_magpie_gripper"/>
         <!-- TEST #15 (2026-05-18): pelvis/torso table excludes REMOVED. The
              "arXiv 2503.04613 says exclude non-contacting parts" rationale
              was misapplied — in valid plans they don't touch, but in INVALID

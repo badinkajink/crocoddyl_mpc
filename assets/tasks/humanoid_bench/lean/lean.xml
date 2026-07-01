@@ -18,8 +18,14 @@
              surface 0.75 -> 0.85) to reduce backward hip tilt in the
              brace (user hypothesis). Brace contact-target z 0.75->0.85
              / 0.80->0.90 across all 8 strategy JSONs + object keyframe z
-             0.73->0.83 + object/target body z 0.83->0.93, in lockstep. -->
-        <body name="table" pos="1.1 0 0.32">
+             0.73->0.83 + object/target body z 0.83->0.93, in lockstep.
+             2026-07-01: set to the REAL lab table = 87 cm. body z 0.32 ->
+             0.42 (physical top face = body_z + 0.45 = 0.87; table_surface_pos
+             sensor = body_z + 0.40 = 0.82). object/target z 0.85 -> 0.95
+             (rest = surface 0.87 + object half-height 0.08). The gentler bow
+             this affords is the "clean regime": upright lean, forearm flat,
+             CoM back, reaching arm rides in the air. -->
+        <body name="table" pos="1.1 0 0.42">
             <geom name="table_top" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="visual" material="wooden_cover"/>
             <!-- ITER 28 (2026-05-18): solref 0.04 → 0.08 (doubled time-const
                  again from R9's 40 ms → 80 ms). User reported feet lift
@@ -49,7 +55,7 @@
         </body>
         <!-- Object placed farther on table to require leaning -->
         <!-- Detachable object - child of world initially -->
-        <body name="object_anchor" pos="1.5 0 0.85">
+        <body name="object_anchor" pos="1.5 0 0.95">
             <joint name="object_anchor_joint" type="free" limited="false"/>
             
             <body name="object" pos="0 0 0">
@@ -62,7 +68,7 @@
             </body>
         </body>
         <!-- Target position visualization -->
-        <body name="target" mocap="true" pos="1.5 0.0 0.85">
+        <body name="target" mocap="true" pos="1.5 0.0 0.95">
             <geom type="sphere" size="0.03" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
         </body>
     </worldbody>
