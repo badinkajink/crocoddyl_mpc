@@ -87,6 +87,7 @@
         "success_sustain_time": 5.0,
         "target_distance_tolerance": 0.3,
         "time_limit": 9999.0,
+        "target_ramp_sec": 1.5,
         "weight": {
             "humanoid_bench": 0.0,
             "Object Dist": 0.0,
@@ -99,9 +100,9 @@
             "Pelvis Forward": 0.0,
             "Support Polygon": 0.0,
             "Body Yaw": 0.0,
-            "Body Table Clearance": 0.0,
-            "Hip Clearance": 0.0,
-            "Leg Clearance": 0.0,
+            "Body Table Clearance": 100.0,
+            "Hip Clearance": 200.0,
+            "Leg Clearance": 200.0,
             "Torso Forward Tilt": 0.0,
             "Posture": 12.0,
             "Balance": 2.5,
@@ -126,8 +127,7 @@
             "Joint Vel. Limit": 5.0,
             "Knees Straight": 40.0
         },
-        "brace_force_target": 0.0,
-        "target_ramp_sec": 1.5
+        "brace_force_target": 0.0
     },
     {
         "contacts": [

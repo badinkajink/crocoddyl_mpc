@@ -23,7 +23,8 @@
       "Base Height": 450.0, "Height": 100.0, "Knees Straight": 5.0,
       "Pelvis Tilt": 50.0, "Torso Forward Tilt": 20.0,
       "Reaching Hand Dist": 80.0, "Object Dist": 0.0, "Pelvis Forward": 100.0,
-      "Brace Pos": 120.0, "Brace Force": 60.0, "Contact": 30.0
+      "Brace Pos": 120.0, "Brace Force": 60.0, "Contact": 30.0,
+      "Hip Clearance": 200.0, "Leg Clearance": 200.0, "Body Table Clearance": 150.0
     }
   }
 ]

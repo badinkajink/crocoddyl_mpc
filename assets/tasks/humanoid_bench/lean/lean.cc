@@ -196,16 +196,20 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (see e.g. Liu et al., "Generalized hierarchical control" — task priority
   // weights as continuous functions of time, not step changes).
   double time_in_phase = mju_max(0.0, data->time - keyframe_start_time_);
-  // CONTROLLED LEAN-IN (2026-07-01): a heavy humanoid bowing into a table brace
-  // over the default 1.5 s ramp reads as an abrupt forward lunge (user: "the fall
-  // was too abrupt, shouldn't it slowly do it in a controlled way"). For the
-  // single-phase forearm brace, stretch the cost-gradient ramp to the JSON
-  // target_ramp_sec so Brace Pos / Reaching / Torso Forward Tilt / brace-force all
-  // ease in gently -> a slow, quasi-static descent (which also keeps the pelvis
-  // well inside the hip-clearance margin the whole way down). Every other strategy
-  // keeps the original 1.5 s ramp (is_forearm_brace guards it -> byte-identical).
+  // CONTROLLED LEAN-IN *AND* RECOVERY (2026-07-01): a heavy humanoid moving INTO or
+  // OUT OF a table brace over the default 1.5 s ramp reads as an abrupt lunge/snap
+  // (user: "too abrupt... do it slowly in a controlled way" -- both descending AND
+  // standing back up). Detect a brace transition in EITHER direction (entering the
+  // brace, or LEAVING it for another pose e.g. a live-switch to stand) and stretch
+  // the cost-gradient ramp to the ENTERED phase's JSON target_ramp_sec so Brace Pos
+  // / Reaching / brace-force / support all ease in/out gently. Non-brace transitions
+  // keep the original 1.5 s ramp (brace_transition guards it -> byte-identical).
+  int brace_key_id_ramp = mj_name2id(model, mjOBJ_KEY, "forearm_brace_lean");
+  bool prev_was_forearm_brace =
+      (brace_key_id_ramp >= 0 && prev_posture_key_id_ == brace_key_id_ramp);
+  bool brace_transition = is_forearm_brace || prev_was_forearm_brace;
   double phase_ramp_seconds =
-      (is_forearm_brace && residual_keyframe_.target_ramp_sec > 1e-9)
+      (brace_transition && residual_keyframe_.target_ramp_sec > 1e-9)
           ? residual_keyframe_.target_ramp_sec
           : kPhaseRampSeconds;
   double alpha_lin     = mju_min(time_in_phase / phase_ramp_seconds, 1.0);
@@ -268,11 +272,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   //   every snap phase (target_ramp_sec==0) pay nothing -- the unconditional version
   //   that ran for EVERY residual call of EVERY strategy is what got reverted.
   mjtNum ramped_posture_target[64];
-  // Enable the pose-target ramp for multi-phase strategies AND the single-phase
-  // forearm brace (its controlled descent above wants the Posture target to glide
-  // home -> deep-bow, not snap). Other single-phase strats (stand/crouch/arms)
-  // stay snapped -- the 2026-06-08 revert requires they never take this branch.
-  if ((num_phases_ > 1 || is_forearm_brace) &&
+  // Enable the pose-target ramp for multi-phase strategies AND either side of a
+  // forearm-brace transition (descent glides home->bow; recovery glides bow->stand,
+  // not snap). Other single-phase strats (stand/crouch/arms) still snap on a cold
+  // load -- prev_posture_key_id_ == posture_key_id there -> this branch is skipped,
+  // so the 2026-06-08 revert (no ramp for single-phase stand/crouch/arms) holds.
+  if ((num_phases_ > 1 || brace_transition) &&
       prev_posture_key_id_ != posture_key_id && model->nq <= 64) {
     double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
                           ? residual_keyframe_.target_ramp_sec
@@ -850,6 +855,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       // tipped. A deeper press target sustains the pull through to firm forearm
       // contact (the table collision arrests the hand at the surface and converts
       // the residual press into the brace force the Brace-Force cost rewards).
+      // 2026-07-01: KEEP the deep below-surface drive for the forearm brace too --
+      // it is what bows the body far enough that the pad nears the table (raising
+      // the target slackens the pull -> the body bows LESS -> the pad hovers MORE,
+      // verified on the 0.87 probe). The proximity gate that engages load-transfer
+      // + force is decoupled below (keyed on the pad's height above the PHYSICAL
+      // surface, not this deliberately-unreachable drive target).
       table_pos[2] - 0.06
   };
 
@@ -1763,6 +1774,13 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // dormant. See is_leg_lift_stage_early and the lean.h header.)
   static constexpr double kRightFootHomeXY[2] = {0.2196, -0.163};
   static constexpr double kLeftFootHomeXY[2]  = {0.2196,  0.163};
+  // FOREARM BRACE (2026-07-01): anchor the feet ~8 cm FORWARD (x 0.22 -> 0.30) so
+  // the support polygon extends toward the table. The planner stalls the bow ~3 cm
+  // short of seating the forearm because the CoM (~0.33) reaches the front foot
+  // edge (~0.33) and any deeper bow would tip; a forward stance moves that edge to
+  // ~0.41, letting it commit the last cm of bow to press the forearm onto the
+  // 0.87 m table. Other strategies keep the 0.22 home (is_forearm_brace-gated).
+  double brace_foot_x = is_forearm_brace ? 0.30 : kRightFootHomeXY[0];
 
   bool is_leg_lift_stage = is_leg_lift_stage_early;
 
@@ -1782,9 +1800,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // stay grounded (the `is_leg_lift_stage ? 0.0 : ...` below always takes the
   // anchored branch). WBC may still nudge foot placement to hold balance.
   double right_foot_scale = arm_contact_or_lean ? 4.0 : 1.0;
-  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - kRightFootHomeXY[0]);
+  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - brace_foot_x);
   residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[1] - kRightFootHomeXY[1]);
-  residual[counter++] = left_foot_scale * (foot_left_pos[0] - kLeftFootHomeXY[0]);
+  residual[counter++] = left_foot_scale * (foot_left_pos[0] - brace_foot_x);
   residual[counter++] = left_foot_scale * (foot_left_pos[1] - kLeftFootHomeXY[1]);
 
   // ----- hip clearance from table front face ----- //
@@ -2041,16 +2059,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // bear load on the table is the bracing arm/elbow — forcing a contactless,
   // CoM-balanced lean.
   //
-  // GATED to `!any_arm_contact` (2026-05-20): active only in the UNBRACED
-  // phases (stand/extend = far from table → 0; lean_with_arm_no_brace = mode 2,
-  // the case we care about). It is DISABLED once the arm/elbow are braced
-  // (arm_plant / lean_forward / forearm_brace_lean / leg_lift / deep_reach):
-  // in those phases the deep forearm-brace pose legitimately brings the body
-  // low near the table, and an always-on penalty fought it — the forearm
-  // brace wouldn't establish and the leg lifted unsupported. The arm bears
-  // the table load there by design, so body-table proximity is not penalised.
+  // GATED to `!any_arm_contact` for the LEGACY hand/palm braces (arm_plant /
+  // lean_forward / leg_lift / deep_reach): those deep poses bring the body low
+  // near the table and an always-on penalty fought the brace establishing.
+  // 2026-07-01: RE-ENABLED for the forearm_brace_lean (user: "the only load-
+  // bearing places should be the forearm and the legs, nothing else" — the hip
+  // must NOT rest on the table). At 0.87 m the forearm brace keeps the pelvis
+  // ~x0.25 (well behind the 0.40 edge) so this penalises ONLY an actual pelvis/
+  // torso-table graze (0 in the good pose) without fighting the forearm seat.
   double body_table_force = 0.0;
-  if (!any_arm_contact) {
+  if (!any_arm_contact || is_forearm_brace) {
     int pelvis_bid = mj_name2id(model, mjOBJ_BODY, "pelvis");
     int torso_bid  = mj_name2id(model, mjOBJ_BODY, "torso_link");
     int table_bid  = mj_name2id(model, mjOBJ_BODY, "table");
