@@ -257,10 +257,30 @@
                trot_walk_gain = Raibert neutral-step gain (0; >0 backfires near rest).
                trot_vel_w     = forward velocity-track weight x10 (1=base). WALK ~6.
                trot_bal_scale = fore-aft Balance demotion when walking (1=off). WALK ~0.5.
-             BEST WALK (marginal): des_vel 0.10 / vel_w 6 / bal_scale 0.5 -> +1.5 m at
-             ~0.08 m/s, HOLDS ~13 s then forward-pitch runaway (demotion removes the
-             forward-fall catch). Robust 24 s forward NOT yet cracked (joint CMA-ES /
-             RL next). Default below = in-place (robust). -->
+             [STALE 2026-06-28 verdict removed: the "forward not cracked" result was
+             the phantom-table parity bug -- planner table in the walk path, twin
+             bare floor. See 2026-06-29/07-02 below.]
+             ★ VALIDATED WALK CONFIGS (2026-07-02 A/B campaign, faithful twin, 36
+             traj, flat ground = table moved to x=100 in the BUILD lean.xml for
+             walk-logic tests only):
+               ROBUST FWD:  des_vel 0.15 / vel_w 12 / bal_scale 0.5 / angmom_w 3 /
+                            lat_w 6 -> +2.3-2.5 m/24 s, |dy|<=0.61, 8/8 HOLDS
+                            (3/3 + 5/5 verify). FAST-MARGINAL: des_vel 0.20 -> +3.2 m
+                            (~0.13 m/s realized, 4/5 hold, drift-prone) -- demo, not
+                            deploy. BACKWARD: des_vel -0.10 (same knobs) -> -2.2 m,
+                            5/5 hold.
+               IN-PLACE:    defaults, 5/5 hold -- BUT station-keeping creep is REAL:
+                            dx -1 to -3 m/24 s backward (cap 2.2 over-step rebound)
+                            + lateral wander to ~1.4 m. Open axis: null the creep
+                            (small +vdes bias / stance_off_x / cap gain) before
+                            table-relative work.
+             R4/R5/R6 knobs below (trot_release / trot_step_width /
+             trot_settle_thresh) A/B'd 2026-07-02 at 0.20: NONE adopted (R4 no
+             effect at margin -- twin sampler already loads the landing leg; R6
+             fell 1/3 during gait ramp-in, needs an arming delay before retry; R5
+             neutral fwd, halves in-place lateral wander -- candidate for the
+             in-place/station-keeping fix). All default-0 = byte-identical; kept
+             for the REAL robot where "lands weak" was observed. -->
         <numeric name="trot_cap_gain" data="2.2"/>
         <numeric name="trot_walk_gain" data="0.0"/>
         <numeric name="trot_vel_w" data="1.0"/>
@@ -279,6 +299,25 @@
              trot_step_period=0 => continuous (no pulse). e.g. period 4 / walk 1. -->
         <numeric name="trot_step_period" data="0.0"/>
         <numeric name="trot_step_walk" data="0.0"/>
+        <!-- ROBUSTIFICATION R4-R6 (2026-07-01). ALL default-0 = OFF = byte-
+             identical (in-place trot 9/9 + walk configs unchanged unless set):
+             trot_release       = fraction of swing over which the scripted swing
+                                  fades BACK to the sampler before touchdown, so
+                                  the landing leg is LOAD-driven not POSITION-
+                                  driven (the real-robot "lands weak" fix). Try
+                                  0.15-0.25.
+             trot_step_width    = per-leg lateral placement DELTA [m] from home
+                                  stance width (L +w/2 out, R -w/2 out): lateral
+                                  limit-cycle reference + anti-scissor. Try
+                                  0.02-0.06.
+             trot_settle_thresh = capture-error band [m] on |v-v_des|*tau; beyond
+                                  it v_des fades to 0 (reactive step-and-settle:
+                                  auto-revert to the robust in-place trot until
+                                  recovered). Applied cost + swing sides. Try
+                                  0.08-0.15. -->
+        <numeric name="trot_release" data="0.0"/>
+        <numeric name="trot_step_width" data="0.0"/>
+        <numeric name="trot_settle_thresh" data="0.0"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
@@ -460,6 +499,21 @@
              slide Phase 3→4→5) without the body snapping back to
              stand_up on every strategy switch. -->
         <numeric name="residual_Phase" data="-1 -1 5" />
+        <!-- LIVE reach target (2026-07-02, vision/nav integration). gRPC-settable
+             (SetTaskParameters "Reach Active"/"Reach X"/"Reach Y"/"Reach Z"), same
+             path as Strategy/Phase. Reach Active=1 makes lean.cc use (X,Y,Z) as the
+             reach target INSTEAD of the hardcoded `reach_target` numeric above;
+             Reach Active=0 (default) keeps the legacy static-numeric behaviour so
+             nothing changes until a bridge drives it. X/Y/Z are in the MJPC
+             planner-world frame -- the core_ws ROS2 bridge converts the perception
+             PoseStamped (published in the `pelvis` frame after graspgen) to MJPC
+             world via the node's GetState base pose before setting them. Ranges are
+             generous world bounds (m). Applies to every reach strategy (16/21/22 and
+             the lean pipeline 32/33/34) since they all read the same target. -->
+        <numeric name="residual_Reach Active" data="0 0 1" />
+        <numeric name="residual_Reach X" data="0 -5 5" />
+        <numeric name="residual_Reach Y" data="0 -5 5" />
+        <numeric name="residual_Reach Z" data="0.9 0 2.5" />
     </custom>
 
     <sensor>

@@ -24,6 +24,24 @@ constexpr int kLeanStrategyParameterIndex = 1;
 // would reset to keyframe 0 and snap the body back through stand_up).
 constexpr int kLeanPhaseParameterIndex = 2;
 
+// LIVE reach target (vision/nav integration, 2026-07-02). These are gRPC-settable
+// task parameters (SetTaskParameters, same path as Strategy/Phase) that let an
+// external ROS2 bridge in core_ws drive the reach target at runtime instead of
+// the hardcoded `reach_target` model numeric. "Reach Active" != 0 switches the
+// task from the static numeric to the live (X,Y,Z) point. The X/Y/Z are expected
+// in the MJPC PLANNER-WORLD frame: the bridge converts the perception PoseStamped
+// (published in the robot `pelvis` frame by h12_skills after graspgen) into MJPC
+// world using the MPC node's own reported base pose (GetState) BEFORE setting
+// them, so the two systems' differing world frames (Unitree-IMU vs FAST-LIO
+// camera_init) are reconciled via the common robot-body frame. Appended AFTER
+// Phase so the existing positional indices (Height Goal 0 / Strategy 1 / Phase 2)
+// are unchanged; guarded everywhere by a parameters.size() check so models that
+// don't declare these fall back to the legacy numeric path.
+constexpr int kLeanReachActiveParameterIndex = 3;
+constexpr int kLeanReachXParameterIndex = 4;
+constexpr int kLeanReachYParameterIndex = 5;
+constexpr int kLeanReachZParameterIndex = 6;
+
 constexpr char kLeanStrategyFilePath[] =
     SOURCE_DIR "/mjpc/tasks/humanoid_bench/lean/strategies/";
 

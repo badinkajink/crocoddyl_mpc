@@ -355,6 +355,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     if (Tp > 1e-6 && std::fmod(mju_max(0.0, data->time), Tp) >= Tw) {
       kDesVelX = 0.0; kDesVelY = 0.0;   // settle window -> robust in-place trot
     }
+    // R6 SETTLE GOVERNOR -- MUST match lean::ModifyControl's governor (same
+    // qpos/qvel inputs -> deterministic cost/swing agreement, exactly the
+    // step-pulse pattern above). |v - v_des|*tau beyond trot_settle_thresh ->
+    // v_des fades to 0 (all walk terms gate off = auto-settle to the validated
+    // in-place trot) until the capture error re-enters the band. Default 0=off.
+    int st_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_settle_thresh");
+    double kSettle = (st_id >= 0)
+        ? model->numeric_data[model->numeric_adr[st_id]] : 0.0;
+    if (kSettle > 1e-6 && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
+      double zg = mju_max(0.5, data->qpos[2]);
+      double tg = mju_sqrt(zg / 9.81);
+      double gex = (data->qvel[0] - kDesVelX) * tg;
+      double gey = (data->qvel[1] - kDesVelY) * tg;
+      double gerr = mju_sqrt(gex * gex + gey * gey);
+      double gg = mju_max(0.0, mju_min(1.0,
+          (1.5 * kSettle - gerr) / (0.5 * kSettle)));
+      gg = gg * gg * (3.0 - 2.0 * gg);
+      kDesVelX *= gg; kDesVelY *= gg;
+    }
   }
   // swing-leg JOINT-space lift offsets [rad] at full bump (added to the keyframe
   // target): fold the leg up so the foot clears ground. hip flexes back, knee
@@ -568,6 +587,47 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // brace target computation. Declared once, reused in both places.
   double *torso_pos = SensorByName(model, data, "torso_position");
 
+  // ---- Current heading frame (yaw-only) --------------------------------//
+  // Forward = body +x rotated by the live base quaternion, flattened to the
+  // horizontal plane and normalized; left = 90 deg CCW of forward. On the REAL
+  // robot the base quaternion IS the live IMU orientation (h12_control_node.cc
+  // fill_state) and NO yaw-zero calibration exists anywhere in the deploy chain
+  // (only pitch/roll offset flags). Expressing the reach target + shoulder
+  // anchor + auto hand-pick in THIS frame (rather than a fixed world axis) makes
+  // them track WHERE THE ROBOT IS ACTUALLY FACING NOW, so IMU yaw drift no longer
+  // swings the reach off to the side (user saw strat 16/21 point the arm to ~3
+  // o'clock on hardware). At the home keyframe (yaw 0) forward=(1,0), left=(0,1),
+  // so every use below is an EXACT identity -- sim/twin behavior is unchanged.
+  double heading_fwd[3];
+  {
+    double xhat[3] = {1.0, 0.0, 0.0};
+    mju_rotVecQuat(heading_fwd, xhat, data->qpos + 3);
+    double fh = mju_sqrt(heading_fwd[0] * heading_fwd[0] +
+                         heading_fwd[1] * heading_fwd[1]);
+    if (fh > 1e-6) { heading_fwd[0] /= fh; heading_fwd[1] /= fh; }
+    else { heading_fwd[0] = 1.0; heading_fwd[1] = 0.0; }  // degenerate: looking up
+    heading_fwd[2] = 0.0;
+  }
+  const double heading_lft[2] = {-heading_fwd[1], heading_fwd[0]};
+  // Re-express a WORLD-authored reach target so its horizontal bearing+distance
+  // are measured from the CURRENT heading instead of the fixed world +x. Height
+  // is left world-fixed (pitch/roll ARE IMU-calibrated; only yaw is broken).
+  // Pivot = the keyframe base xy (posture_target) so at yaw 0 the result equals
+  // the original world target EXACTLY, independent of any base drift.
+  auto yaw_relative_target = [&](const double *world_target, double *out) {
+    double dx = world_target[0] - posture_target[0];
+    double dy = world_target[1] - posture_target[1];
+    out[0] = posture_target[0] + dx * heading_fwd[0] + dy * heading_lft[0];
+    out[1] = posture_target[1] + dx * heading_fwd[1] + dy * heading_lft[1];
+    out[2] = world_target[2];
+  };
+  // Lateral position of a world point in the robot's frame (+ = robot's LEFT);
+  // used for yaw-correct AUTO hand selection (pick the nearer hand) below.
+  auto lateral_of = [&](const double *world_pt) {
+    return (world_pt[0] - torso_pos[0]) * heading_lft[0] +
+           (world_pt[1] - torso_pos[1]) * heading_lft[1];
+  };
+
   // Auto-arm selection shared by counterbalance + forearm-brace phases (the
   // reach_to_target branch does its own identical pick). reach_hand numeric:
   // 0 = AUTO (mocap target y < torso y -> right hand reaches), 1 = force LEFT,
@@ -578,7 +638,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       : 0;
   bool reach_right = (rh_sel == 2) ? true
                    : (rh_sel == 1) ? false
-                   : (data->mocap_pos[1] < torso_pos[1]);
+                   : (lateral_of(data->mocap_pos) < 0.0);  // target on robot's right
   double const *reaching_hand = reach_right ? right_hand_pos : left_hand_pos;
   double const *bracing_hand  = reach_right ? left_hand_pos  : right_hand_pos;
 
@@ -695,7 +755,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // (unlike reach_to_target): an out-of-reach object is exactly what makes the
     // torso lean forward, with the free arm + hips swinging back to counterweight.
     // Lean depth is bounded by Pelvis Tilt / Torso Forward Tilt (JSON lean knobs).
-    mju_copy3(phase1_target_storage, data->mocap_pos);
+    // Yaw-relative ONLY for the PRE-LEAN single-phase strategy (strat 16): its
+    // mocap target is a fixed AUTHORED "forward" point, so re-expressing its
+    // bearing from the current heading keeps the lean straight ahead under IMU
+    // yaw drift (user saw ~3 o'clock on hardware). Exact identity at yaw 0.
+    // In the MULTI-PHASE lean pipeline (strat 33) the target is written by the
+    // vision/nav stack ALREADY in the planner world frame (camera->world via the
+    // robot's live pose), so it is already correct -- leave it as-is; rotating it
+    // would double-rotate it off the real detected object.
+    if (num_phases_ <= 1)
+      yaw_relative_target(data->mocap_pos, phase1_target_storage);
+    else
+      mju_copy3(phase1_target_storage, data->mocap_pos);
     reach_target = phase1_target_storage;
     // INVESTIGATED 2026-06-23: a deliberate static counterweight (free arm swung
     // back +/- knee bend) was trialed to add forward-push margin, but EVERY forced
@@ -768,7 +839,18 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // vision/nav stack writing mocap_pos at runtime). NOTE: object_pos tracks a
     // SEPARATE, STATIC table "object" body — reading it froze every reach at the
     // table point — so the reach primitive reads the mocap target directly.
-    double const *in_target = data->mocap_pos;
+    // Yaw-relative ONLY for the PRE-LEAN single-phase strategy (strat 21): its
+    // mocap target is a fixed AUTHORED "forward" point, so re-express its bearing
+    // from the current heading to beat IMU yaw drift (user saw ~3 o'clock on
+    // hardware). Exact identity at yaw 0. In the MULTI-PHASE lean pipeline (strat
+    // 32) the vision/nav stack writes the real detected object ALREADY in the
+    // planner world frame, so leave it as-is (rotating it would double-rotate).
+    double in_target_storage[3];
+    if (num_phases_ <= 1)
+      yaw_relative_target(data->mocap_pos, in_target_storage);
+    else
+      mju_copy3(in_target_storage, data->mocap_pos);
+    double const *in_target = in_target_storage;
     // Hand selection via the `reach_hand` numeric: 0/absent = AUTO (the nearer
     // hand — target on the robot's right, y below torso, picks the right hand),
     // 1 = force LEFT, 2 = force RIGHT. Forcing a hand lets a future lean/grasp
@@ -780,13 +862,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         : 0;
     bool reach_right_reach = (rh_mode == 2) ? true
                      : (rh_mode == 1) ? false
-                     : (in_target[1] < torso_pos[1]);   // 0/auto
+                     : (lateral_of(in_target) < 0.0);   // 0/auto (robot's right)
     reaching_hand = reach_right_reach ? right_hand_pos : left_hand_pos;
     // Shoulder anchor = torso_position + FK-measured offset (MJPC frame):
     // (+0.000, +-0.148, +0.219); rest |shoulder->hand| = 0.524.
-    double shoulder[3] = {torso_pos[0],
-                          torso_pos[1] + (reach_right_reach ? -0.148 : 0.148),
-                          torso_pos[2] + 0.219};
+    // Shoulder anchor laterally offset along the robot's LEFT axis (yaw-correct),
+    // not fixed world y: -0.148 = right shoulder, +0.148 = left. Identity at yaw 0.
+    double shoulder_lat = reach_right_reach ? -0.148 : 0.148;
+    double shoulder[3] = {
+        torso_pos[0] + shoulder_lat * heading_lft[0],
+        torso_pos[1] + shoulder_lat * heading_lft[1],
+        torso_pos[2] + 0.219};
     double v[3];
     mju_sub3(v, in_target, shoulder);
     double r = mju_norm3(v);
@@ -1592,7 +1678,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id2]]) : 0;
     bool reaching_right = (rh_mode2 == 2) ? true
                         : (rh_mode2 == 1) ? false
-                        : (data->mocap_pos[1] < torso_pos[1]);  // 0/auto
+                        : (lateral_of(data->mocap_pos) < 0.0);  // 0/auto (robot's right)
     double kArmHold = GetNumberOrDefault(4.0, model, "reach_brace_hold");
     int arm0 = reaching_right ? 13 : 20;   // pin the OTHER (non-reaching) arm
     for (int j = arm0; j < arm0 + 7 && j < model->nu; j++)
@@ -2708,7 +2794,20 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   // With no such numeric the legacy retrieve-game behavior holds (random object
   // that re-spawns once the reaching hand touches it).
   int reach_tgt_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_target");
-  if (reach_tgt_id >= 0) {
+  // LIVE reach target (2026-07-02): if the gRPC-settable "Reach Active" param is
+  // on, use the live (X,Y,Z) point supplied by the core_ws ROS2 bridge instead of
+  // the static `reach_target` numeric. The bridge has already converted the
+  // perception PoseStamped (pelvis frame) into MJPC world via the node's base pose,
+  // so these are a stable world point (see lean.h). Guarded by parameters.size()
+  // so models without these params fall back to the legacy numeric path.
+  const bool reach_live =
+      (int)parameters.size() > kLeanReachZParameterIndex &&
+      parameters[kLeanReachActiveParameterIndex] > 0.5;
+  if (reach_live) {
+    target_position_ = {parameters[kLeanReachXParameterIndex],
+                        parameters[kLeanReachYParameterIndex],
+                        parameters[kLeanReachZParameterIndex]};
+  } else if (reach_tgt_id >= 0) {
     const mjtNum *rt = model->numeric_data + model->numeric_adr[reach_tgt_id];
     target_position_ = {rt[0], rt[1], rt[2]};
   } else {
@@ -2996,7 +3095,14 @@ void lean::ResetLocked(const mjModel *model) {
   // deterministically (Strategy-21 reach / vision input); otherwise the legacy
   // random spawn (matches the same gate in TransitionLocked above).
   int reset_reach_tgt_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_target");
-  if (reset_reach_tgt_id >= 0) {
+  const bool reset_reach_live =
+      (int)parameters.size() > kLeanReachZParameterIndex &&
+      parameters[kLeanReachActiveParameterIndex] > 0.5;
+  if (reset_reach_live) {
+    target_position_ = {parameters[kLeanReachXParameterIndex],
+                        parameters[kLeanReachYParameterIndex],
+                        parameters[kLeanReachZParameterIndex]};
+  } else if (reset_reach_tgt_id >= 0) {
     const mjtNum *rt = model->numeric_data + model->numeric_adr[reset_reach_tgt_id];
     target_position_ = {rt[0], rt[1], rt[2]};
   } else {
@@ -3084,6 +3190,25 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
     double Tw = (tw_id >= 0) ? model->numeric_data[model->numeric_adr[tw_id]] : 0.0;
     if (Tp > 1e-6 && std::fmod(mju_max(0.0, time), Tp) >= Tw) { dvx = 0.0; dvy = 0.0; }
   }
+  // R6 SETTLE GOVERNOR (trot_settle_thresh [m], default 0 = off = byte-
+  // identical): the REACTIVE version of the step-and-settle pulse. When the
+  // velocity-error capture offset |v - v_des|*tau exceeds the band, fade v_des
+  // to 0 -- all walk terms gate off and the controller auto-reverts to the
+  // validated-robust in-place trot until the error re-enters the band. Fade is
+  // smooth (1 below thresh -> 0 at 1.5x) so there is no command chatter at the
+  // boundary. MUST match the residual-side governor (same qpos/qvel/time
+  // inputs -> deterministic cost/swing agreement, the step-pulse pattern).
+  {
+    int st_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_settle_thresh");
+    double st = (st_id >= 0) ? model->numeric_data[model->numeric_adr[st_id]] : 0.0;
+    if (st > 1e-6 && (dvx != 0.0 || dvy != 0.0)) {
+      double gex = (qvel[0] - dvx) * tau, gey = (qvel[1] - dvy) * tau;
+      double gerr = mju_sqrt(gex * gex + gey * gey);
+      double gg = clip((1.5 * st - gerr) / (0.5 * st), 0.0, 1.0);
+      gg = gg * gg * (3.0 - 2.0 * gg);
+      dvx *= gg; dvy *= gg;
+    }
+  }
   // capture gain (live numeric, default 1.0 = deadbeat one-step capture): >1
   // over-steps (catches harder, kills velocity faster), <1 under-steps. LATERAL
   // gets its OWN gain (trot_cap_gain_lat, default = fore-aft gain) -- the sideways
@@ -3127,8 +3252,27 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   // disturbance = stabler trot (trades visible clearance for hold-rate).
   int sh_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_swing_h");
   double sh = (sh_id >= 0) ? model->numeric_data[model->numeric_adr[sh_id]] : 1.0;
+  // R4 TOUCHDOWN RELEASE (trot_release, default 0 = off = byte-identical): fade
+  // the swing script's authority over the LAST `rel` fraction of the swing so
+  // the SAMPLER loads the landing leg instead of the script holding placement
+  // targets through touchdown (the real-robot "pushes off fine, lands weak"
+  // asymmetry, 2026-06-30: a landing foot being POSITION-driven cannot be
+  // LOAD-driven). pl saturates by s~0.85 anyway, so releasing costs no accuracy;
+  // mirrors the 15% blend-IN at liftoff. Cost side needs no twin change -- the
+  // g_bump sin bell already fades to 0 at touchdown.
+  int rl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_release");
+  double rel = (rl_id >= 0) ? model->numeric_data[model->numeric_adr[rl_id]] : 0.0;
+  rel = clip(rel, 0.0, 0.5);
+  // R5 STEP WIDTH (trot_step_width, default 0 = off = byte-identical): per-leg
+  // lateral placement DELTA from the home stance width -- left +w/2 (outward),
+  // right -w/2 (outward) -- so the lateral axis has a limit-cycle reference and
+  // the feet cannot scissor under a lateral catch (step_y alone is a SHARED
+  // catch term, same sign both legs; the widening is what needs the per-leg
+  // sign). Kept small: widening trades lateral catch reach for anti-scissor.
+  int swd_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_width");
+  double w2 = 0.5 * ((swd_id >= 0)
+      ? model->numeric_data[model->numeric_adr[swd_id]] : 0.0);
   double dHipP = clip(-step_x / 0.80, -0.45, 0.45);  // foot FWD -> less hip_pitch
-  double dHipR = clip( step_y / 0.79, -0.25, 0.25);  // foot +y  -> more hip_roll
 
   // home stand pose = the "stumble_trot" keyframe (fallback home).
   int pk = mj_name2id(model, mjOBJ_KEY, kfname.c_str());
@@ -3138,15 +3282,23 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
 
   // ONE foot swings at a time (antiphase/duty): lift (clearance bell, peaks
   // mid-swing) + place (capture ramp -> foot at xi by touchdown). Blend in over
-  // the first 15% so liftoff is smooth; held to s=1 so the foot lands placed,
-  // then the next phase makes it stance and the planner takes the planted leg.
+  // the first 15% so liftoff is smooth; held to s=1 (or released over the last
+  // trot_release fraction, R4) so the foot lands placed, then the next phase
+  // makes it stance and the planner takes the planted leg. ysign carries the
+  // per-leg step-width direction (R5): +1 left (outward=+y), -1 right.
   // ctrl[i] == joint target for qpos[7+i]. L: hipP1 hipR2 knee3 ankP4; R:7 8 9 10
-  auto do_leg = [&](double ph, int iHipP, int iHipR, int iKnee, int iAnkP) {
+  auto do_leg = [&](double ph, int iHipP, int iHipR, int iKnee, int iAnkP,
+                    double ysign) {
     if (ph < kDuty) return;                        // stance -> planner owns
     double s = (ph - kDuty) / (1.0 - kDuty);       // swing progress 0..1
     double cl = std::sin(mjPI * s);                     // clearance bell 0..1..0
     double pl = s * s * (3.0 - 2.0 * s);                // placement smoothstep
     double w = mju_min(s / 0.15, 1.0) * g_amp;          // blend-in weight
+    if (rel > 1e-6) {                              // R4: hand back before landing
+      double r = mju_min((1.0 - s) / rel, 1.0);    // 1 until s=1-rel, 0 at s=1
+      w *= r * r * (3.0 - 2.0 * r);                // smooth release
+    }
+    double dHipR = clip((step_y + ysign * w2) / 0.79, -0.25, 0.25);  // R5 widen
     double tHipP = q0[7 + iHipP] - kSwingHip * sh * cl * g_amp + dHipP * pl * g_amp;
     double tHipR = q0[7 + iHipR] + dHipR * pl * g_amp;
     double tKnee = q0[7 + iKnee] + kSwingKnee * sh * cl * g_amp;
@@ -3156,8 +3308,8 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
     ctrl[iKnee] += w * (tKnee - ctrl[iKnee]);
     ctrl[iAnkP] += w * (tAnkP - ctrl[iAnkP]);
   };
-  do_leg(ph_l, 1, 2, 3, 4);    // LEFT  swing window ph_l in [duty,1]
-  do_leg(ph_r, 7, 8, 9, 10);   // RIGHT swing window ph_r in [duty,1]
+  do_leg(ph_l, 1, 2, 3, 4, +1.0);    // LEFT  swing window ph_l in [duty,1]
+  do_leg(ph_r, 7, 8, 9, 10, -1.0);   // RIGHT swing window ph_r in [duty,1]
 }
 
 // ============================================================================
