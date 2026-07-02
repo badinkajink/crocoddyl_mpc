@@ -24,7 +24,11 @@
              sensor = body_z + 0.40 = 0.82). object/target z 0.85 -> 0.95
              (rest = surface 0.87 + object half-height 0.08). The gentler bow
              this affords is the "clean regime": upright lean, forearm flat,
-             CoM back, reaching arm rides in the air. -->
+             CoM back, reaching arm rides in the air.
+             2026-07-01: briefly reverted to 0.77 to isolate a real STAND regression (it was NOT the
+             table -- stand still failed at 0.77 with a fresh binary), then set BACK to 0.87 (body z
+             0.42) to re-align with the 0.87-tuned forearm_brace keyframe. Real stand issue = the
+             real-hardware base-velocity chain, not the model. -->
         <body name="table" pos="1.1 0 0.42">
             <geom name="table_top" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="visual" material="wooden_cover"/>
             <!-- ITER 28 (2026-05-18): solref 0.04 → 0.08 (doubled time-const
