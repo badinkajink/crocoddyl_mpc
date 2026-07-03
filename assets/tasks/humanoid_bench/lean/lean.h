@@ -42,6 +42,16 @@ constexpr int kLeanReachXParameterIndex = 4;
 constexpr int kLeanReachYParameterIndex = 5;
 constexpr int kLeanReachZParameterIndex = 6;
 
+// LIVE cmd_vel teleop (WASD/gamepad/Nav2, 2026-07-03). gRPC-settable via
+// SetTaskParameters like the Reach seam above. Vx/Vy are BODY-frame m/s;
+// the TransitionLocked governor clamps/slews/rotates them before the trot
+// sees anything. Seq is a client heartbeat counter: unchanged > 1 s means
+// the client died -> watchdog zeroes the command.
+constexpr int kLeanCmdActiveParameterIndex = 7;
+constexpr int kLeanCmdVxParameterIndex = 8;
+constexpr int kLeanCmdVyParameterIndex = 9;
+constexpr int kLeanCmdSeqParameterIndex = 10;
+
 constexpr char kLeanStrategyFilePath[] =
     SOURCE_DIR "/mjpc/tasks/humanoid_bench/lean/strategies/";
 
@@ -132,6 +142,20 @@ class lean : public Task {
     // new phase's scales, which is the WBC-style smooth handoff the robot
     // needs to avoid lurching when a contact cost switches on.
     mjtNum keyframe_start_time_ = 0.0;
+    // ----- Live teleop command (cmd_vel seam, 2026-07-03) ------------------
+    // Written ONLY by the TransitionLocked governor; read by Residual()
+    // (via the per-plan-iteration ResidualFn snapshot copy) and by
+    // lean::ModifyControl (live, friend access -- same benign unlocked
+    // double-read class as keyframe_start_time_). cmd_active_=false =>
+    // both readers take the legacy numeric path, byte-identical.
+    bool   cmd_active_ = false;
+    double cmd_vdes_world_[2] = {0.0, 0.0};  // governed v_des, WORLD frame
+    // governor state (BODY-frame slewed command + bookkeeping)
+    double cmd_filt_[2] = {0.0, 0.0};
+    double cmd_last_seq_ = -1.0;
+    double cmd_seq_time_ = -1.0;
+    double cmd_prev_time_ = -1.0;
+    double cmd_settle_until_ = -1.0;
     mjtNum prev_phase_reach_scale_ = 0.0;
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
     // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.

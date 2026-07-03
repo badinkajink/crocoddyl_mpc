@@ -341,6 +341,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
     if (dvx_id >= 0) kDesVelX = model->numeric_data[model->numeric_adr[dvx_id]];
     if (dvy_id >= 0) kDesVelY = model->numeric_data[model->numeric_adr[dvy_id]];
+    // LIVE teleop override (2026-07-03; mirrored in lean::ModifyControl --
+    // MUST match): the governed world-frame v_des from the TransitionLocked
+    // cmd_vel governor replaces the static numerics when a client is active.
+    // Step-pulse + R6 settle-governor below still apply on top.
+    if (cmd_active_) {
+      kDesVelX = cmd_vdes_world_[0];
+      kDesVelY = cmd_vdes_world_[1];
+    }
     // STEP-AND-SETTLE pulse: walk for trot_step_walk s, then SETTLE (v_des=0) for
     // the rest of trot_step_period s. v_des=0 gates OFF every walk term -> reverts
     // to the validated-ROBUST in-place trot (the recovery is the thing that already
@@ -2829,6 +2837,79 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   }
   mju_copy3(data->mocap_pos, target_position_.data());
 
+  // ---- LIVE cmd_vel GOVERNOR (WASD/gamepad/Nav2 teleop, 2026-07-03) ------
+  // Single safety authority for live velocity commands: heartbeat watchdog,
+  // gait-arm lockout, envelope clamp, settle-through-zero on sign flips,
+  // slew limit, then ONE body->world yaw rotation. The result is stored on
+  // residual_ so BOTH v_des readers (Residual + lean::ModifyControl) consume
+  // the SAME world vector -- the mirrored-agreement requirement holds by
+  // construction. Inactive => members zeroed + cmd_active_=false => readers
+  // take the legacy trot_des_vel numeric path, byte-identical to the
+  // validated configs.
+  {
+    const bool cmd_on = (int)parameters.size() > kLeanCmdSeqParameterIndex &&
+                        parameters[kLeanCmdActiveParameterIndex] > 0.5;
+    if (cmd_on) {
+      double now = data->time;
+      double vx = parameters[kLeanCmdVxParameterIndex];  // BODY-frame m/s
+      double vy = parameters[kLeanCmdVyParameterIndex];
+      double seq = parameters[kLeanCmdSeqParameterIndex];
+      if (seq != residual_.cmd_last_seq_) {
+        residual_.cmd_last_seq_ = seq;
+        residual_.cmd_seq_time_ = now;
+      }
+      // client-heartbeat watchdog: Seq frozen > 1 s = dead client -> stop.
+      bool starved = (now - residual_.cmd_seq_time_) > 1.0;
+      // gait-arm lockout: kArmSec(2.0) swing arm-in + margin. The R6 lesson:
+      // acting on v_des during the bring-up transient topples the robot.
+      bool locked = (now - residual_.keyframe_start_time_) < 6.0;
+      if (starved || locked) { vx = 0.0; vy = 0.0; }
+      // envelope = the twin-validated speeds (2026-07-02): fwd 0.15 8/8,
+      // back 0.10 5/5. 0.20 is fast-marginal and deliberately excluded.
+      vx = mju_min(0.15, mju_max(-0.10, vx));
+      vy = 0.0;  // LOCKED until the V2 lateral campaign passes (weak axis)
+      // settle-through-zero: a fwd<->back flip dwells at 0 for 1.5 s (~1.6
+      // gait cycles) so the capture catch kills momentum before reversing.
+      if (vx * residual_.cmd_filt_[0] < -1e-9)
+        residual_.cmd_settle_until_ = now + 1.5;
+      if (now < residual_.cmd_settle_until_) vx = 0.0;
+      // slew 0.08 m/s^2 (0 -> 0.15 in ~1.9 s); gentler than the validated
+      // campaigns' cold-start step changes.
+      double dt = residual_.cmd_prev_time_ > 0.0
+                      ? mju_max(0.0, now - residual_.cmd_prev_time_)
+                      : 0.0;
+      double dv = 0.08 * dt;
+      double tgt[2] = {vx, vy};
+      for (int a = 0; a < 2; a++) {
+        double d = tgt[a] - residual_.cmd_filt_[a];
+        residual_.cmd_filt_[a] += mju_min(dv, mju_max(-dv, d));
+      }
+      residual_.cmd_prev_time_ = now;
+      // body->world (yaw only; identity at yaw 0 => twin-validated behavior
+      // bit-unchanged). Also keeps "W = robot-forward" under IMU yaw drift.
+      double qw = data->qpos[3], qx = data->qpos[4], qy = data->qpos[5],
+             qz = data->qpos[6];
+      double yaw = std::atan2(2.0 * (qw * qz + qx * qy),
+                              1.0 - 2.0 * (qy * qy + qz * qz));
+      double cy = std::cos(yaw), sy = std::sin(yaw);
+      residual_.cmd_vdes_world_[0] =
+          cy * residual_.cmd_filt_[0] - sy * residual_.cmd_filt_[1];
+      residual_.cmd_vdes_world_[1] =
+          sy * residual_.cmd_filt_[0] + cy * residual_.cmd_filt_[1];
+      if (!residual_.cmd_active_)
+        std::fprintf(stderr, "[lean] cmd governor: ACTIVE (vx=%.3f)\n", vx);
+      else if (starved && residual_.cmd_filt_[0] != 0.0)
+        std::fprintf(stderr, "[lean] cmd governor: starved=1 -> zeroing\n");
+      residual_.cmd_active_ = true;
+    } else if (residual_.cmd_active_) {
+      residual_.cmd_active_ = false;
+      residual_.cmd_filt_[0] = residual_.cmd_filt_[1] = 0.0;
+      residual_.cmd_vdes_world_[0] = residual_.cmd_vdes_world_[1] = 0.0;
+      residual_.cmd_prev_time_ = -1.0;
+      std::fprintf(stderr, "[lean] cmd governor: OFF -> legacy numerics\n");
+    }
+  }
+
   // strategy-based contact keyframe progression
   const auto kStrategyNames = GetStrategyNames();
   int requested_strategy =
@@ -3180,6 +3261,11 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
   double dvx = (dvx_id >= 0) ? model->numeric_data[model->numeric_adr[dvx_id]] : 0.0;
   double dvy = (dvy_id >= 0) ? model->numeric_data[model->numeric_adr[dvy_id]] : 0.0;
+  // LIVE teleop override (2026-07-03; mirrored in the residual -- MUST match).
+  if (residual_.cmd_active_) {
+    dvx = residual_.cmd_vdes_world_[0];
+    dvy = residual_.cmd_vdes_world_[1];
+  }
   // STEP-AND-SETTLE pulse (MUST match the residual's pulse, same data time): walk
   // for trot_step_walk s, settle (v_des=0 -> robust in-place trot) the rest of
   // trot_step_period s. Tp<=0 => continuous (byte-identical).
