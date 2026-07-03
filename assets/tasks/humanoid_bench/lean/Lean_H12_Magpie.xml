@@ -283,15 +283,20 @@
              for the REAL robot where "lands weak" was observed. -->
         <numeric name="trot_cap_gain" data="2.2"/>
         <numeric name="trot_walk_gain" data="0.0"/>
-        <numeric name="trot_vel_w" data="1.0"/>
-        <numeric name="trot_lat_w" data="1.0"/>
-        <numeric name="trot_bal_scale" data="1.0"/>
+        <!-- TELEOP UNIFIED CONFIG (2026-07-03): walk knobs baked as defaults so
+             teleop can slew in-place<->walk without a config swap. In-place
+             trot RE-GATED under these values: 5/5 HOLDS, fit 9.32-9.34 (was
+             9.35 at the old defaults vel_w1/lat1/bal1/angmom0). v_des=0 gates
+             every walk term off, which is why in-place is unaffected. -->
+        <numeric name="trot_vel_w" data="12.0"/>
+        <numeric name="trot_lat_w" data="6.0"/>
+        <numeric name="trot_bal_scale" data="0.5"/>
         <numeric name="trot_des_vel_x" data="0.0"/>
         <numeric name="trot_des_vel_y" data="0.0"/>
         <!-- trot_angmom_w = trot-WALK angular-momentum (forward-pitch-runaway) catch
              gain; gated to trot-walk in lean.cc (0 = the prior no-catch behavior).
              WALK ~3. Pairs with the Angular Momentum carrier weight above. -->
-        <numeric name="trot_angmom_w" data="0.0"/>
+        <numeric name="trot_angmom_w" data="3.0"/>
         <!-- STEP-AND-SETTLE: pulse v_des -> walk for trot_step_walk s, then SETTLE
              (v_des=0 = robust in-place trot, all walk terms gate off) for the rest
              of trot_step_period s. Decomposes continuous walk (bistable) into
