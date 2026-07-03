@@ -2898,8 +2898,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
           sy * residual_.cmd_filt_[0] + cy * residual_.cmd_filt_[1];
       if (!residual_.cmd_active_)
         std::fprintf(stderr, "[lean] cmd governor: ACTIVE (vx=%.3f)\n", vx);
-      else if (starved && residual_.cmd_filt_[0] != 0.0)
+      else if (starved && !residual_.cmd_starved_)
         std::fprintf(stderr, "[lean] cmd governor: starved=1 -> zeroing\n");
+      residual_.cmd_starved_ = starved;
       residual_.cmd_active_ = true;
     } else if (residual_.cmd_active_) {
       residual_.cmd_active_ = false;

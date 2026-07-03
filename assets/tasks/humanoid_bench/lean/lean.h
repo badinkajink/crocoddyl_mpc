@@ -152,6 +152,7 @@ class lean : public Task {
     double cmd_vdes_world_[2] = {0.0, 0.0};  // governed v_des, WORLD frame
     // governor state (BODY-frame slewed command + bookkeeping)
     double cmd_filt_[2] = {0.0, 0.0};
+    bool   cmd_starved_ = false;   // log-once latch for the heartbeat watchdog
     double cmd_last_seq_ = -1.0;
     double cmd_seq_time_ = -1.0;
     double cmd_prev_time_ = -1.0;
