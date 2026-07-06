@@ -11,6 +11,19 @@
 namespace mjpc {
 
 namespace {
+// Swing clearance bell 0->1->0 over swing progress s in [0,1]. Cubic-Bezier
+// (MuJoCo Playground gait.get_rz shape): smoothstep b(t)=3t^2-2t^3 of a 0->1->0
+// triangle. dcl/ds = 0 at s=0, 0.5, 1 => zero swing-JOINT velocity at liftoff
+// AND touchdown (soft, quiet landing). Replaces sin(pi*s), whose endpoint slope
+// is +-pi => max foot velocity exactly at touchdown = the sport-mode slap.
+// Peak and area match sin closely (apex 1.0 at s=0.5) so step CLEARANCE is
+// preserved; only the endpoint velocity changes.
+inline double SwingBell(double s) {
+  s = s < 0.0 ? 0.0 : (s > 1.0 ? 1.0 : s);
+  double t = (s <= 0.5) ? 2.0 * s : 2.0 - 2.0 * s;   // triangle ramp 0->1->0
+  return t * t * (3.0 - 2.0 * t);                     // smoothstep of the ramp
+}
+
 // Target (post-ramp) reach + brace + posture scales for each named phase. Kept
 // in one place so the residual and the transition logic can't drift out of
 // sync. Posture is boosted during stand_up because the audit-spec PD gains
@@ -458,9 +471,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double ph_l = std::fmod(data->time * kCad,       1.0);  // L foot phase
     double ph_r = std::fmod(data->time * kCad + 0.5, 1.0);  // R antiphase
     g_bump_l = (ph_l < kDuty) ? 0.0
-        : std::sin(mjPI * (ph_l - kDuty) / (1.0 - kDuty));
+        : SwingBell((ph_l - kDuty) / (1.0 - kDuty));
     g_bump_r = (ph_r < kDuty) ? 0.0
-        : std::sin(mjPI * (ph_r - kDuty) / (1.0 - kDuty));
+        : SwingBell((ph_r - kDuty) / (1.0 - kDuty));
     double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
     double const *flp  = SensorByName(model, data, "foot_left_pos");
     double const *frp  = SensorByName(model, data, "foot_right_pos");
@@ -3378,7 +3391,7 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
                     double ysign) {
     if (ph < kDuty) return;                        // stance -> planner owns
     double s = (ph - kDuty) / (1.0 - kDuty);       // swing progress 0..1
-    double cl = std::sin(mjPI * s);                     // clearance bell 0..1..0
+    double cl = SwingBell(s);                           // clearance bell 0..1..0 (Bezier, soft touchdown)
     double pl = s * s * (3.0 - 2.0 * s);                // placement smoothstep
     double w = mju_min(s / 0.15, 1.0) * g_amp;          // blend-in weight
     if (rel > 1e-6) {                              // R4: hand back before landing
