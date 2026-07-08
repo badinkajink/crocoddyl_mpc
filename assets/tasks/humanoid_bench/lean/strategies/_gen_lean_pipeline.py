@@ -33,6 +33,16 @@ def phase(src_json, idx, name, sustain, ramp):
 def build(prefix):
     # prefix is "h12_" (base/magpie) or "h12_hands_" (hands). Pre-lean files are
     # "<prefix>simple_*"; generated ladder files are "<prefix>lean_*".
+    # Skip a prefix whose source twins are absent (e.g. the hands variant's
+    # simple_* were removed from the working tree) so the build doesn't crash on
+    # a variant we aren't generating. No-op when the inputs are present.
+    required = [prefix + n for n in ("simple_stand", "simple_reach",
+                                     "simple_counterbalance", "simple_forearm_brace")]
+    missing = [n for n in required
+               if not os.path.exists(os.path.join(HERE, n + ".json"))]
+    if missing:
+        print("skip " + prefix + "lean_* (missing inputs: " + ", ".join(missing) + ")")
+        return
     stand  = load(prefix + "simple_stand")
     reach  = load(prefix + "simple_reach")
     cbal   = load(prefix + "simple_counterbalance")

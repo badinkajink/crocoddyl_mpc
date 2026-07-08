@@ -51,6 +51,7 @@ constexpr int kLeanCmdActiveParameterIndex = 7;
 constexpr int kLeanCmdVxParameterIndex = 8;
 constexpr int kLeanCmdVyParameterIndex = 9;
 constexpr int kLeanCmdSeqParameterIndex = 10;
+constexpr int kLeanCmdWzParameterIndex = 11;   // V3 yaw-rate (drive strat only)
 
 constexpr char kLeanStrategyFilePath[] =
     SOURCE_DIR "/mjpc/tasks/humanoid_bench/lean/strategies/";
@@ -157,6 +158,23 @@ class lean : public Task {
     double cmd_seq_time_ = -1.0;
     double cmd_prev_time_ = -1.0;
     double cmd_settle_until_ = -1.0;
+    // ----- WSS drive FSM (strat 24 stand<->trot teleop, 2026-07-07) --------
+    // drive_gait_amp_ (0..1): gait-enable multiplier for the drive strategy.
+    // 0 => feet planted (a real stand; strat-20 balance-gating still catches a
+    // push), 1 => full get_rz trot. Written by the TransitionLocked latch on
+    // residual_ and COPIED into the per-plan snapshot in ResidualLocked (the
+    // ctor doesn't take it) so the rollout COST sees the same amplitude that
+    // lean::ModifyControl drives open-loop -> cost/swing agree. The latch
+    // bookkeeping (drive_walk_/idle_since_/ramp_prev_) lives on residual_ only.
+    double drive_gait_amp_ = 0.0;
+    bool   drive_walk_ = false;
+    double drive_idle_since_ = -1.0;
+    double drive_ramp_prev_ = -1.0;
+    // V3 yaw (2026-07-07): cmd_wz_ = governed yaw-rate [rad/s] (TransitionLocked
+    // only); drive_yaw_des_ = integrated desired WORLD heading [rad], copied to
+    // the snapshot so Residual can point reach_dir (Body Yaw target) at it.
+    double cmd_wz_ = 0.0;
+    double drive_yaw_des_ = 0.0;
     mjtNum prev_phase_reach_scale_ = 0.0;
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
     // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.
@@ -335,7 +353,7 @@ class lean : public Task {
                                          //    base primitive for pick/retrieve; the lean pipeline is
                                          //    this reach + brace + whole-body pitch for FAR targets.
             "h12_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_simple_trot",  "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 23 trot (leg-lift test vehicle), 24-26 reserved
+            "h12_simple_trot",  "h12_simple_drive", "h12_simple_stand", "h12_simple_stand", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (stand<->trot FSM), 25-26 reserved
             "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 27-30 reserved
             "h12_lean_stand",            // 31
             "h12_lean_reach",            // 32
@@ -366,7 +384,7 @@ class lean : public Task {
     // Copy the phase-transition timing state along with the keyframe so
     // freshly-spawned residuals (one per rollout thread) see the same ramp
     // progress as the canonical residual_.
-    return std::make_unique<ResidualFn>(
+    auto rfn = std::make_unique<ResidualFn>(
         this, residual_.residual_keyframe_,
         residual_.keyframe_start_time_,
         residual_.prev_phase_reach_scale_,
@@ -376,6 +394,12 @@ class lean : public Task {
         residual_.prev_posture_key_id_,
         residual_.num_phases_,
         residual_.contact_pair_is_new_);
+    // WSS drive: propagate the FSM gait-enable into this plan's snapshot so the
+    // rollout cost gates g_amp the same way ModifyControl does (cost/swing
+    // agreement). Every non-drive strategy leaves this 0 (default path).
+    rfn->drive_gait_amp_ = residual_.drive_gait_amp_;
+    rfn->drive_yaw_des_ = residual_.drive_yaw_des_;   // V3 yaw heading target
+    return rfn;
   }
 
   ResidualFn *InternalResidual() override { return &residual_; }
@@ -463,7 +487,7 @@ class Lean_H12_Hands : public lean {
             "h12_hands_simple_stumble",  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
             "h12_hands_simple_reach",    // 21 reach-to-target (mirrors Lean_H12 slot 21).
             "h12_hands_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_hands_simple_trot", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 23 trot (leg-lift test vehicle), 24-26 reserved
+            "h12_hands_simple_trot", "h12_hands_simple_drive", "h12_hands_simple_stand", "h12_hands_simple_stand", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (mirrors base slot 24), 25-26 reserved
             "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 27-30 reserved
             "h12_hands_lean_stand",            // 31
             "h12_hands_lean_reach",            // 32

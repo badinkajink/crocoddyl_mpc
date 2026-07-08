@@ -146,6 +146,10 @@
              The phase name must begin with "stumble" (the lean.cc name-gate). -->
         <key name="stumble_march" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="stumble_trot"  qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- WSS drive (strat 24): posture keyframe for the stand<->trot teleop FSM. Byte-copy of
+             stumble_trot; the "drive" token makes is_drive detectable while "stumble"+"trot" keep
+             is_stumble/is_trot true so the gait+velocity machinery works. Idle g_amp=0 => stand. -->
+        <key name="stumble_trot_drive" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -293,6 +297,11 @@
         <numeric name="trot_bal_scale" data="0.5"/>
         <numeric name="trot_des_vel_x" data="0.0"/>
         <numeric name="trot_des_vel_y" data="0.0"/>
+        <!-- WSS drive (strat 24) teleop envelopes: strafe (V2) + yaw-rate (V3).
+             Governor clamps live A/D vy to +/-drive_vy_max and Q/E wz to
+             +/-drive_wz_max. Weak axes; twin-campaign the values here. -->
+        <numeric name="drive_vy_max" data="0.06"/>
+        <numeric name="drive_wz_max" data="0.3"/>
         <!-- trot_angmom_w = trot-WALK angular-momentum (forward-pitch-runaway) catch
              gain; gated to trot-walk in lean.cc (0 = the prior no-catch behavior).
              WALK ~3. Pairs with the Angular Momentum carrier weight above. -->
@@ -529,6 +538,8 @@
         <numeric name="residual_Cmd Vx" data="0 -0.2 0.2" />
         <numeric name="residual_Cmd Vy" data="0 -0.2 0.2" />
         <numeric name="residual_Cmd Seq" data="0 0 1000000" />
+        <numeric name="residual_Cmd Wz" data="0 -1 1" />   <!-- V3 yaw-rate [rad/s], drive strat -->
+
     </custom>
 
     <sensor>

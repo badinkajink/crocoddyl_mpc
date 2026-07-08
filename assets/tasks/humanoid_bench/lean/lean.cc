@@ -329,6 +329,11 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (below) to match lean::ModifyControl, which hard-writes the swing leg in ctrl.
   const bool is_trot =
       is_stumble && (residual_keyframe_.name.find("trot") != std::string::npos);
+  // WSS DRIVE (strat 24): a trot whose gait amplitude is command-latched (idle
+  // => plant feet => stand). is_drive implies is_trot (keyframe "stumble_trot_
+  // drive"), so all the velocity/step machinery below works; only g_amp differs.
+  const bool is_drive =
+      is_stumble && (residual_keyframe_.name.find("drive") != std::string::npos);
   // gait parameters (constexpr -> tune by edit+rebuild; nav drives only kDesVel*)
   constexpr double kCadenceHz  = 1.1;   // 0.8->1.1 FOOT-LIFT CLUSTER 2026-06-24 (Unitree H1-2
                                         // rl_gym 1.25). steps/s per foot (slower -> swing fits
@@ -535,6 +540,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       // swing fold + Tier-A swing-release apply continuously and the Posture cost
       // EXPECTS the lifted swing leg (no spurious penalty fighting the freeze).
       g_amp = arm;
+      // DRIVE: the stand<->trot latch scales the march. idle (drive_gait_amp_=0)
+      // => g_amp = arm*recov = the strat-20 balance-gated stand (still, but
+      // steps to catch a push); commanded => arm*1 = full trot. drive_gait_amp_
+      // comes from the plan snapshot (set in TransitionLocked), so cost and
+      // ModifyControl swing agree.
+      if (is_drive) g_amp = arm * mju_max(drive_gait_amp_, recov);
     }
     // --- TROT STARTER (opt-in, strategy 20 only): a deliberate in-place march
     // over the window [trot_delay, trot_delay+trot_sec] after engage, then HAND
@@ -2142,6 +2153,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // onto the xy-plane and check alignment there. Pitch drops out because
   // pitching down shortens torso_forward's xy length without changing
   // its xy direction.
+  // V3 yaw (drive strat): retarget the Body Yaw reference (reach_dir) to the
+  // governed desired heading so the sampler turns the body to follow. is_drive-
+  // gated -> every other strategy keeps the real reach_dir (byte-identical); the
+  // reach-alignment residual above already consumed the original reach_dir.
+  // drive_yaw_des_ comes from the plan snapshot (integrated in TransitionLocked).
+  if (is_drive) {
+    reach_dir[0] = std::cos(drive_yaw_des_);
+    reach_dir[1] = std::sin(drive_yaw_des_);
+    reach_dir[2] = 0.0;
+  }
   double tf_xy_len = mju_sqrt(torso_forward[0] * torso_forward[0] +
                               torso_forward[1] * torso_forward[1]);
   double rd_xy_len = mju_sqrt(reach_dir[0] * reach_dir[0] +
@@ -2880,7 +2901,44 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       // envelope = the twin-validated speeds (2026-07-02): fwd 0.15 8/8,
       // back 0.10 5/5. 0.20 is fast-marginal and deliberately excluded.
       vx = mju_min(0.15, mju_max(-0.10, vx));
-      vy = 0.0;  // LOCKED until the V2 lateral campaign passes (weak axis)
+      // V2 strafe (2026-07-07): the DRIVE strategy accepts lateral, clamped to
+      // the (weak-axis) drive_vy_max envelope; EVERY other strategy keeps vy=0
+      // (V0 byte-identical). drive_vy_max default 0.06; the twin campaign sets
+      // it without a rebuild.
+      {
+        int strat_g = (int)std::round(parameters[kLeanStrategyParameterIndex]);
+        auto snames_g = GetStrategyNames();
+        bool drive_g = strat_g >= 0 && strat_g < (int)snames_g.size() &&
+            snames_g[strat_g].find("drive") != std::string::npos;
+        double vy_max = 0.0;
+        if (drive_g) {
+          int vym_id = mj_name2id(model, mjOBJ_NUMERIC, "drive_vy_max");
+          vy_max = (vym_id >= 0)
+              ? model->numeric_data[model->numeric_adr[vym_id]] : 0.06;
+        }
+        vy = mju_min(vy_max, mju_max(-vy_max, vy));
+      }
+      // V3 yaw-rate (2026-07-07): drive strategy only; clamp to drive_wz_max and
+      // slew into cmd_wz_ (the FSM integrates it into a desired heading below).
+      {
+        int strat_w = (int)std::round(parameters[kLeanStrategyParameterIndex]);
+        auto sn_w = GetStrategyNames();
+        bool drive_w = strat_w >= 0 && strat_w < (int)sn_w.size() &&
+            sn_w[strat_w].find("drive") != std::string::npos;
+        double wz = 0.0;
+        if (drive_w && (int)parameters.size() > kLeanCmdWzParameterIndex &&
+            !starved && !locked) {
+          int wzm = mj_name2id(model, mjOBJ_NUMERIC, "drive_wz_max");
+          double wzmax = (wzm >= 0)
+              ? model->numeric_data[model->numeric_adr[wzm]] : 0.3;
+          wz = mju_min(wzmax,
+                       mju_max(-wzmax, parameters[kLeanCmdWzParameterIndex]));
+        }
+        double dtw = (residual_.cmd_prev_time_ > 0.0)
+                         ? mju_max(0.0, now - residual_.cmd_prev_time_) : 0.0;
+        double dwz = 1.0 * dtw;   // slew 1 rad/s^2
+        residual_.cmd_wz_ += mju_min(dwz, mju_max(-dwz, wz - residual_.cmd_wz_));
+      }
       // settle-through-zero: a fwd<->back flip dwells at 0 for 1.5 s (~1.6
       // gait cycles) so the capture catch kills momentum before reversing.
       if (vx * residual_.cmd_filt_[0] < -1e-9)
@@ -2930,6 +2988,73 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       (int)std::round(parameters[kLeanStrategyParameterIndex]);
   requested_strategy = std::max(
       0, std::min(requested_strategy, (int)kStrategyNames.size() - 1));
+
+  // ---- WSS DRIVE stand<->trot FSM (strat 24, 2026-07-07) -----------------
+  // Gait-enable latch: no command -> drive_gait_amp_ ramps to 0 (feet plant =
+  // real stand; the strat-20 balance-gate below still steps to catch a push);
+  // any command -> ramps to 1 (full get_rz trot). Hysteresis (engage fast,
+  // release after a dwell) avoids stand<->walk chatter at the boundary. Stored
+  // on residual_; ResidualLocked copies it into the plan snapshot so the cost
+  // agrees with ModifyControl. Drive-strategy only -> every other strategy is
+  // byte-identical (drive_gait_amp_ stays 0, unread outside is_drive).
+  {
+    const bool is_drive_strat =
+        kStrategyNames[requested_strategy].find("drive") != std::string::npos;
+    if (is_drive_strat) {
+      double now = data->time;
+      // command magnitude: the governor's slewed body command when a client is
+      // live; no client -> 0 (static trot_des_vel default 0 => idle => stand).
+      double cvx = residual_.cmd_active_ ? residual_.cmd_filt_[0] : 0.0;
+      double cvy = residual_.cmd_active_ ? residual_.cmd_filt_[1] : 0.0;
+      double cwz = residual_.cmd_active_ ? residual_.cmd_wz_ : 0.0;
+      // yaw contributes to engage (so Q/E alone spins in place = rotational
+      // in-place trot); 0.15 converts rad/s to a translation-comparable scale.
+      double m = std::sqrt(cvx * cvx + cvy * cvy) + 0.15 * std::fabs(cwz);
+      constexpr double kEngage = 0.02, kRelease = 0.01, kReleaseDwell = 1.2;
+      if (m > kEngage) {
+        if (!residual_.drive_walk_)
+          std::fprintf(stderr,
+                       "[lean] drive: WALK (m=%.3f) -> gait ramping up\n", m);
+        residual_.drive_walk_ = true;
+        residual_.drive_idle_since_ = -1.0;
+      } else if (m < kRelease) {
+        if (residual_.drive_idle_since_ < 0.0) residual_.drive_idle_since_ = now;
+        if (residual_.drive_walk_ &&
+            now - residual_.drive_idle_since_ > kReleaseDwell) {
+          residual_.drive_walk_ = false;
+          std::fprintf(stderr, "[lean] drive: STAND -> gait ramping down\n");
+        }
+      }
+      // ramp drive_gait_amp_ toward the latch over kDriveRampSec.
+      constexpr double kDriveRampSec = 1.5;
+      double tgt = residual_.drive_walk_ ? 1.0 : 0.0;
+      double dt = (residual_.drive_ramp_prev_ > 0.0)
+                      ? std::max(0.0, now - residual_.drive_ramp_prev_)
+                      : 0.0;
+      double da = dt / kDriveRampSec;
+      double d = tgt - residual_.drive_gait_amp_;
+      residual_.drive_gait_amp_ += std::min(da, std::max(-da, d));
+      residual_.drive_gait_amp_ =
+          std::min(1.0, std::max(0.0, residual_.drive_gait_amp_));
+      // V3 heading integrator: idle + no yaw cmd -> track current heading (no
+      // rotation demand); else integrate cmd_wz_ into the desired WORLD yaw.
+      double qw = data->qpos[3], qx = data->qpos[4],
+             qy = data->qpos[5], qz = data->qpos[6];
+      double cur_yaw = std::atan2(2.0 * (qw * qz + qx * qy),
+                                  1.0 - 2.0 * (qy * qy + qz * qz));
+      if (!residual_.drive_walk_ && std::fabs(residual_.cmd_wz_) < 1e-4)
+        residual_.drive_yaw_des_ = cur_yaw;
+      else
+        residual_.drive_yaw_des_ += residual_.cmd_wz_ * dt;
+      residual_.drive_ramp_prev_ = now;
+    } else {
+      residual_.drive_gait_amp_ = 0.0;
+      residual_.drive_walk_ = false;
+      residual_.drive_idle_since_ = -1.0;
+      residual_.drive_ramp_prev_ = -1.0;
+      residual_.cmd_wz_ = 0.0;
+    }
+  }
 
   // Helper: diff old vs new keyframe contact-pair activity and mark which
   // pairs just appeared (active now, inactive before). ContactResidual
@@ -3243,6 +3368,8 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   const std::string &kfname = residual_.residual_keyframe_.name;
   const bool is_trot = (kfname.rfind("stumble", 0) == 0) &&
                        (kfname.find("trot") != std::string::npos);
+  const bool is_drive = is_trot &&
+                        (kfname.find("drive") != std::string::npos);
   if (!is_trot || model->nu < 11) return;
   auto clip = [](double x, double lo, double hi) {
     return x < lo ? lo : (x > hi ? hi : x);
@@ -3253,6 +3380,11 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   double t_phase = mju_max(0.0, time - residual_.keyframe_start_time_);
   double g_amp = mju_min(t_phase / kArmSec, 1.0);
   g_amp = g_amp * g_amp * (3.0 - 2.0 * g_amp);
+  // DRIVE (strat 24): the stand<->trot latch gates the OPEN-LOOP swing. idle
+  // (drive_gait_amp_=0) => g_amp 0 => early-return => feet planted; a push while
+  // idle is caught COST-side (like strat 20, no open-loop). Commanded => full
+  // march. Uses the live residual_ value (applied control, current state).
+  if (is_drive) g_amp *= residual_.drive_gait_amp_;
   if (g_amp <= 1e-4) return;                     // still settling -> planner owns
 
   // gait clock (antiphase, duty 0.60; cadence live numeric)
