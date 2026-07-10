@@ -42,6 +42,13 @@
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
         <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- straighten (strategy 25, pre-stand bring-up): CoM-CENTERED stand pose (hip
+             -0.15/knee 0.35/ankle -0.28) = the wide-basin handoff target. stand_up plants
+             the feet ~68mm ahead of the CoM (backward-tippy => harness-release fall); this
+             triad re-centers the CoM over the support (fwd 0.142/back 0.119 vs stand_up
+             0.160). Mirror of Lean_H12.xml; the deploy (Magpie) model needs its own copy so
+             strategy 25 resolves the keyframe here too. -->
+        <key name="straighten" qpos="0.19 0 1.020 1 0 0 0 0 -0.15 0.12 0.35 -0.28 0 0 -0.15 -0.12 0.35 -0.28 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- counterbalance_standing (strategy 16): MUST exist so 16's Posture targets a
              BENT-knee stand (knees 0.35) instead of falling back to home (key 0 = STRAIGHT
              knees), which — with the JSON "Knees Straight" weight — drove 16's legs straight
@@ -302,6 +309,13 @@
              +/-drive_wz_max. Weak axes; twin-campaign the values here. -->
         <numeric name="drive_vy_max" data="0.06"/>
         <numeric name="drive_wz_max" data="0.3"/>
+        <!-- drive_settle_thresh (2026-07-08, strat 24 ONLY): the reactive settle
+             governor drive-scoped so strat 23's trot_settle_thresh stays 0
+             (byte-identical). Capture-error band [m] on |v-v_des|*tau; beyond it
+             v_des fades to 0 -> auto-revert to the validated in-place trot until
+             the walk re-stabilises (raises sustained-walk survival + softens the
+             stop). is_drive reads THIS instead of trot_settle_thresh. -->
+        <numeric name="drive_settle_thresh" data="0.12"/>
         <!-- trot_angmom_w = trot-WALK angular-momentum (forward-pitch-runaway) catch
              gain; gated to trot-walk in lean.cc (0 = the prior no-catch behavior).
              WALK ~3. Pairs with the Angular Momentum carrier weight above. -->

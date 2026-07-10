@@ -74,7 +74,10 @@ class lean : public Task {
                         mjtNum prev_brace_force_target = 0.0,
                         int prev_posture_key_id = 0,
                         int num_phases = 1,
-                        const bool* contact_pair_is_new = nullptr)
+                        const bool* contact_pair_is_new = nullptr,
+                        const mjtNum* straighten_start_qpos = nullptr,
+                        double straighten_start_tilt = 0.0,
+                        bool straighten_seeded = false)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
           keyframe_start_time_(keyframe_start_time),
@@ -83,10 +86,16 @@ class lean : public Task {
           prev_phase_posture_scale_(prev_posture_scale),
           prev_phase_brace_force_target_(prev_brace_force_target),
           prev_posture_key_id_(prev_posture_key_id),
-          num_phases_(num_phases) {
+          num_phases_(num_phases),
+          straighten_start_tilt_(straighten_start_tilt),
+          straighten_seeded_(straighten_seeded) {
       for (int i = 0; i < 5; ++i) {
         contact_pair_is_new_[i] =
             contact_pair_is_new ? contact_pair_is_new[i] : false;
+      }
+      for (int i = 0; i < 64; ++i) {
+        straighten_start_qpos_[i] =
+            straighten_start_qpos ? straighten_start_qpos[i] : 0.0;
       }
     }
 
@@ -210,6 +219,24 @@ class lean : public Task {
     // table failure mode). Pairs that were continuously active across
     // the transition keep factor 1.0 throughout.
     bool contact_pair_is_new_[5] = {false, false, false, false, false};
+
+    // ----- STRAIGHTEN (strategy 25) live-seed min-jerk ramp state (C3) --------
+    // The pre-stand bring-up strategy must drive the body to upright+centered
+    // from ANY near-standing release config. A STATIC strong upright/posture cost
+    // slams the correction and OVERSHOOTS (twin: a +10deg lean is flung backward
+    // past vertical to ~130deg). The fix (plan §0/§6-C3, "the ramped reference IS
+    // the funnel"): capture the release pose ONCE at phase entry and ramp the
+    // upright + posture TARGETS from it to the nominal along a min-jerk (smoothstep)
+    // over target_ramp_sec, so the instantaneous error — and thus the corrective
+    // force — stays small the whole way up. Captured on the TRUE agent state in
+    // TransitionLocked (never per-rollout), then propagated to every rollout
+    // residual via the ResidualLocked ctor (parallel to prev_posture_key_id_).
+    //   straighten_start_qpos_  : full qpos at straighten entry (posture ramp FROM)
+    //   straighten_start_tilt_  : pelvis tilt angle [rad] at entry (upright ramp FROM)
+    //   straighten_seeded_      : true once captured (else fall back to static target)
+    mjtNum straighten_start_qpos_[64] = {0};
+    double straighten_start_tilt_ = 0.0;
+    bool straighten_seeded_ = false;
 
    private:
     friend class lean;
@@ -353,7 +380,7 @@ class lean : public Task {
                                          //    base primitive for pick/retrieve; the lean pipeline is
                                          //    this reach + brace + whole-body pitch for FAR targets.
             "h12_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_simple_trot",  "h12_simple_drive", "h12_simple_stand", "h12_simple_stand", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (stand<->trot FSM), 25-26 reserved
+            "h12_simple_trot",  "h12_simple_drive", "h12_straighten", "h12_simple_stand", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (stand<->trot FSM), 25 pre-stand STRAIGHTEN/bring-up (wide-basin drive-to-upright), 26 reserved
             "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 27-30 reserved
             "h12_lean_stand",            // 31
             "h12_lean_reach",            // 32
@@ -393,7 +420,10 @@ class lean : public Task {
         residual_.prev_phase_brace_force_target_,
         residual_.prev_posture_key_id_,
         residual_.num_phases_,
-        residual_.contact_pair_is_new_);
+        residual_.contact_pair_is_new_,
+        residual_.straighten_start_qpos_,
+        residual_.straighten_start_tilt_,
+        residual_.straighten_seeded_);
     // WSS drive: propagate the FSM gait-enable into this plan's snapshot so the
     // rollout cost gates g_amp the same way ModifyControl does (cost/swing
     // agreement). Every non-drive strategy leaves this 0 (default path).

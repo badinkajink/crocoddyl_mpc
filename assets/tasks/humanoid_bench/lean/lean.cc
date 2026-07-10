@@ -284,14 +284,37 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   //   ~ramp_dur right after a transition), into a stack buffer, so steady state and
   //   every snap phase (target_ramp_sec==0) pay nothing -- the unconditional version
   //   that ran for EVERY residual call of EVERY strategy is what got reverted.
+  // STRAIGHTEN (strat 25): is this the pre-stand bring-up strategy? Used here
+  // (posture ramp FROM the live release pose) and below (upright-target ramp).
+  const bool is_straighten =
+      residual_keyframe_.name.rfind("straighten", 0) == 0;
   mjtNum ramped_posture_target[64];
-  // Enable the pose-target ramp for multi-phase strategies AND either side of a
-  // forearm-brace transition (descent glides home->bow; recovery glides bow->stand,
-  // not snap). Other single-phase strats (stand/crouch/arms) still snap on a cold
-  // load -- prev_posture_key_id_ == posture_key_id there -> this branch is skipped,
-  // so the 2026-06-08 revert (no ramp for single-phase stand/crouch/arms) holds.
-  if ((num_phases_ > 1 || brace_transition) &&
+  // STRAIGHTEN live-seed posture ramp (C3): glide the posture target from the
+  // captured release qpos -> the centered `straighten` keyframe over
+  // target_ramp_sec (min-jerk). Unlike the keyframe->keyframe ramp below, the
+  // FROM pose is the robot's ACTUAL measured pose at engage, so it straightens
+  // "from any launch configuration" (splayed legs / off torso) without a slam.
+  if (is_straighten && straighten_seeded_ && model->nq <= 64) {
+    double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
+                          ? residual_keyframe_.target_ramp_sec
+                          : kPhaseRampSeconds;
+    if (ramp_dur > 1e-9 && time_in_phase < ramp_dur) {
+      double ra_lin = mju_min(time_in_phase / ramp_dur, 1.0);
+      double ra = ra_lin * ra_lin * (3.0 - 2.0 * ra_lin);  // min-jerk smoothstep
+      for (int i = 0; i < model->nq; i++) {
+        ramped_posture_target[i] =
+            straighten_start_qpos_[i] +
+            ra * (posture_target[i] - straighten_start_qpos_[i]);
+      }
+      posture_target = ramped_posture_target;
+    }
+  } else if ((num_phases_ > 1 || brace_transition) &&
       prev_posture_key_id_ != posture_key_id && model->nq <= 64) {
+    // Enable the pose-target ramp for multi-phase strategies AND either side of a
+    // forearm-brace transition (descent glides home->bow; recovery glides bow->stand,
+    // not snap). Other single-phase strats (stand/crouch/arms) still snap on a cold
+    // load -- prev_posture_key_id_ == posture_key_id there -> this branch is skipped,
+    // so the 2026-06-08 revert (no ramp for single-phase stand/crouch/arms) holds.
     double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
                           ? residual_keyframe_.target_ramp_sec
                           : kPhaseRampSeconds;
@@ -386,7 +409,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // step-pulse pattern above). |v - v_des|*tau beyond trot_settle_thresh ->
     // v_des fades to 0 (all walk terms gate off = auto-settle to the validated
     // in-place trot) until the capture error re-enters the band. Default 0=off.
-    int st_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_settle_thresh");
+    // drive (strat 24) reads drive_settle_thresh so it is ON for drive without
+    // touching strat 23 (its trot_settle_thresh stays 0 = byte-identical).
+    const char *st_name = is_drive ? "drive_settle_thresh" : "trot_settle_thresh";
+    int st_id = mj_name2id(model, mjOBJ_NUMERIC, st_name);
     double kSettle = (st_id >= 0)
         ? model->numeric_data[model->numeric_adr[st_id]] : 0.0;
     if (kSettle > 1e-6 && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
@@ -1591,7 +1617,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     } else {
       double sin_tilt =
           mju_sqrt(mju_max(0.0, 1.0 - pelvis_up[2] * pelvis_up[2]));
-      pelvis_tilt_residual = upright_gain * sin_tilt;
+      // STRAIGHTEN upright-target ramp (C3): drive the pelvis to vertical along a
+      // min-jerk from the captured release tilt, not instantly. sin_target ramps
+      // sin(start_tilt) -> 0 over target_ramp_sec; penalize only the tilt BEYOND
+      // the moving setpoint, so the corrective force stays small and the body
+      // glides erect instead of being FLUNG past vertical (the static-target
+      // overshoot: a +10deg lean toppled backward to ~130deg on the twin). After
+      // the ramp window sin_target=0 -> identical to the plain upright hold.
+      double sin_target = 0.0;
+      if (is_straighten && straighten_seeded_) {
+        double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
+                              ? residual_keyframe_.target_ramp_sec
+                              : kPhaseRampSeconds;
+        if (ramp_dur > 1e-9 && time_in_phase < ramp_dur) {
+          double ra_lin = mju_min(time_in_phase / ramp_dur, 1.0);
+          double ra = ra_lin * ra_lin * (3.0 - 2.0 * ra_lin);
+          sin_target = (1.0 - ra) * std::sin(straighten_start_tilt_);
+        }
+      }
+      pelvis_tilt_residual = upright_gain * mju_max(0.0, sin_tilt - sin_target);
     }
   }
   residual[counter++] = (1.0 - 0.5 * step_active) * pelvis_tilt_residual;  // Tier A: relax torso-upright in single support
@@ -3019,10 +3063,23 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
         residual_.drive_idle_since_ = -1.0;
       } else if (m < kRelease) {
         if (residual_.drive_idle_since_ < 0.0) residual_.drive_idle_since_ = now;
-        if (residual_.drive_walk_ &&
-            now - residual_.drive_idle_since_ > kReleaseDwell) {
+        // R2 velocity-gated disengage (2026-07-08): don't release on the dwell
+        // timer alone -- hold the gait until the base has actually SLOWED
+        // (step-to-rest, the Unitree "track velocity to zero WHILE stepping"
+        // recipe) so we never plant the feet with forward momentum -> faceplant.
+        // kReleaseDwell is the MINIMUM dwell; then release once |base_vel| drops
+        // below kReleaseSpeed, OR after kMaxReleaseDwell as a backstop (R1's
+        // capture catch-step handles any residual velocity if we plant anyway).
+        double bspd = std::sqrt(data->qvel[0] * data->qvel[0] +
+                                data->qvel[1] * data->qvel[1]);
+        constexpr double kReleaseSpeed = 0.08, kMaxReleaseDwell = 3.0;
+        double idle_for = now - residual_.drive_idle_since_;
+        if (residual_.drive_walk_ && idle_for > kReleaseDwell &&
+            (bspd < kReleaseSpeed || idle_for > kMaxReleaseDwell)) {
           residual_.drive_walk_ = false;
-          std::fprintf(stderr, "[lean] drive: STAND -> gait ramping down\n");
+          std::fprintf(stderr,
+                       "[lean] drive: STAND -> gait ramping down (v=%.2f)\n",
+                       bspd);
         }
       }
       // ramp drive_gait_amp_ toward the latch over kDriveRampSec.
@@ -3138,6 +3195,28 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                               motion_strategy_.GetCurrentKeyframe());
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     residual_.keyframe_start_time_ = data->time;
+    // STRAIGHTEN (strat 25) live-seed (C3): capture the release pose ONCE here on
+    // the TRUE agent state (never per-rollout), so Residual ramps the upright +
+    // posture targets FROM it to nominal along a min-jerk — the "ramped reference
+    // IS the funnel" that keeps the corrective force small and prevents the
+    // static-target overshoot. Fires on cold boot into straighten AND on a live
+    // switch into it (mid-mission re-straighten). Every other strategy leaves
+    // straighten_seeded_ = false -> byte-identical.
+    if (residual_.residual_keyframe_.name.rfind("straighten", 0) == 0) {
+      int nq = mju_min(model->nq, 64);
+      for (int i = 0; i < nq; i++)
+        residual_.straighten_start_qpos_[i] = data->qpos[i];
+      double *pu = SensorByName(model, data, "pelvis_up");
+      double up_z = pu ? mju_max(-1.0, mju_min(1.0, pu[2])) : 1.0;
+      residual_.straighten_start_tilt_ = std::acos(up_z);
+      residual_.straighten_seeded_ = true;
+      std::fprintf(stderr,
+                   "[lean-straighten] seeded release: tilt=%.1fdeg base_z=%.3f\n",
+                   residual_.straighten_start_tilt_ * 180.0 / M_PI,
+                   data->qpos[2]);
+    } else {
+      residual_.straighten_seeded_ = false;
+    }
     if (cold_start) {
       // First load: no history to ramp from. Snap to the first phase's
       // targets (prev scales = 0, posture = 1.0 "no-boost", brace_force = 0),
@@ -3380,11 +3459,43 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   double t_phase = mju_max(0.0, time - residual_.keyframe_start_time_);
   double g_amp = mju_min(t_phase / kArmSec, 1.0);
   g_amp = g_amp * g_amp * (3.0 - 2.0 * g_amp);
-  // DRIVE (strat 24): the stand<->trot latch gates the OPEN-LOOP swing. idle
-  // (drive_gait_amp_=0) => g_amp 0 => early-return => feet planted; a push while
-  // idle is caught COST-side (like strat 20, no open-loop). Commanded => full
-  // march. Uses the live residual_ value (applied control, current state).
-  if (is_drive) g_amp *= residual_.drive_gait_amp_;
+  // DRIVE (strat 24): the stand<->trot latch gates the OPEN-LOOP swing, BUT the
+  // balance CATCH-STEP must survive a disengage. R1 fix (2026-07-08): gating by
+  // drive_gait_amp_ ALONE quit the forcer the instant the walk latch ramped to 0
+  // on release, WHILE the cost (residual line ~571, arm*max(drive_gait_amp_,
+  // recov)) still wanted the catch -- so the sampler alone would not lift the
+  // catch foot and forward momentum toppled the robot (walk->stop faceplant).
+  // Mirror the cost: gate by max(drive_gait_amp_, recov), computing the SAME
+  // signed capture-point danger as the residual from a base-quat tilt + base
+  // qvel proxy (ModifyControl has no mjData/sensors, and the capture step below
+  // already uses base qvel -- so this is consistent). Quiet idle: danger <
+  // catch_trig -> recov 0 -> g_amp 0 -> early-return (idle stand byte-identical);
+  // a push OR a come-to-rest tip -> recov > 0 -> the swing fires the come-to-rest
+  // capture step (cap_g*tau*qvel, computed below), catching the fall.
+  if (is_drive) {
+    double zc = mju_max(0.5, qpos[2]);
+    double tauc = mju_sqrt(zc / 9.81);
+    // base up-axis (x,y) from the pelvis free-joint quat qpos[3:7]=(w,x,y,z);
+    // matches the up_z = 1-2(x^2+y^2) convention used by the standing gate below.
+    double qw = qpos[3], qxx = qpos[4], qyy = qpos[5], qzz = qpos[6];
+    double up_x = 2.0 * (qxx * qzz + qw * qyy);
+    double up_y = 2.0 * (qyy * qzz - qw * qxx);
+    int lnx = mj_name2id(model, mjOBJ_NUMERIC, "lean_nominal_x");
+    double kLeanX =
+        (lnx >= 0) ? model->numeric_data[model->numeric_adr[lnx]] : 0.06;
+    double tx = up_x - kLeanX, ty = up_y;             // tilt rel. steady lean
+    double ex = zc * tx + tauc * qvel[0];             // signed fore-aft capture
+    double eyp = zc * ty;                             // lateral: tilt only
+    double danger = mju_sqrt(ex * ex + eyp * eyp);
+    int ct = mj_name2id(model, mjOBJ_NUMERIC, "catch_trig");
+    int cf = mj_name2id(model, mjOBJ_NUMERIC, "catch_full");
+    double kCT = (ct >= 0) ? model->numeric_data[model->numeric_adr[ct]] : 0.085;
+    double kCF = (cf >= 0) ? model->numeric_data[model->numeric_adr[cf]] : 0.16;
+    double recov = mju_min(
+        1.0, mju_max(0.0, (danger - kCT) / mju_max(1e-3, kCF - kCT)));
+    recov = recov * recov * (3.0 - 2.0 * recov);      // smoothstep (matches cost)
+    g_amp *= mju_max(residual_.drive_gait_amp_, recov);
+  }
   if (g_amp <= 1e-4) return;                     // still settling -> planner owns
 
   // gait clock (antiphase, duty 0.60; cadence live numeric)
@@ -3431,7 +3542,10 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   // boundary. MUST match the residual-side governor (same qpos/qvel/time
   // inputs -> deterministic cost/swing agreement, the step-pulse pattern).
   {
-    int st_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_settle_thresh");
+    // drive-scoped (see the residual-side twin of this block): strat 24 reads
+    // drive_settle_thresh, strat 23 keeps trot_settle_thresh=0 (byte-identical).
+    const char *st_name = is_drive ? "drive_settle_thresh" : "trot_settle_thresh";
+    int st_id = mj_name2id(model, mjOBJ_NUMERIC, st_name);
     double st = (st_id >= 0) ? model->numeric_data[model->numeric_adr[st_id]] : 0.0;
     if (st > 1e-6 && (dvx != 0.0 || dvy != 0.0)) {
       double gex = (qvel[0] - dvx) * tau, gey = (qvel[1] - dvy) * tau;

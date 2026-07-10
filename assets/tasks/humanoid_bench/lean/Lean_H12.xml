@@ -42,6 +42,18 @@
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
         <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- straighten (strategy 25, pre-stand bring-up): CoM-CENTERED stand pose =
+             the wide-basin handoff target for the straighten strategy. stand_up plants
+             the feet ~68mm AHEAD of the CoM (CoM only 51mm from the heel => backward-
+             tippy => the harness-release fall). This triad (hip_pitch -0.15, knee 0.35,
+             ankle_pitch -0.28; same wide-stance hip_roll +/-0.12, z 1.020, feet flat)
+             re-centers the CoM over the support (fwd margin 0.142 / back 0.119, |diff|
+             0.023 m vs stand_up 0.160) so the ankle strategy has margin in BOTH
+             directions -> the widest static basin (measured by straighten_basin.py FK
+             CoM-in-support scan). The straighten strategy ramps the body into THIS pose
+             from the live measured qpos (min-jerk), then holds; deploy hands to strat-6
+             afterwards (real robot holds stand_up fine -- twin cannot, memory oracle). -->
+        <key name="straighten" qpos="0.19 0 1.020 1 0 0 0 0 -0.15 0.12 0.35 -0.28 0 0 -0.15 -0.12 0.35 -0.28 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- reach_to_target (strategy 21): bent-knee upright posture so the reach
              branch fires AND the knees don't lock straight -> topple. See Magpie XML. -->
         <key name="reach_to_target" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
