@@ -165,9 +165,19 @@
              home. FK-consistent base z (thigh/shank 0.4 m): crouch drop ~12 cm,
              launch = full extension, land = pre-flexed absorption pose. -->
         <key name="jump_stand"  qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jump_crouch" qpos="0.19 0 0.875 1 0 0 0 0 -0.78 0.12 1.25 -0.47 0 0 -0.78 -0.12 1.25 -0.47 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- CROUCH/LAND (v8 2026-07-11, THE backward-fall fix): FK-designed in the
+             FEET frame, not the keyframe frame. With an upright torso HIP FLEXION
+             drives the pelvis BACKWARD: the old -0.78/1.25/-0.47 put the CoM 6.8 cm
+             BEHIND the ankle (heel edge; ~46 Nm of a 75 Nm ankle just to hold it) ->
+             the planner had to fall backward to track it, and it did (user's GUI +
+             the dt-0.002 plant probe). Less hip flexion + much MORE ankle
+             dorsiflexion gives a DEEPER crouch (CoM drop 0.123 m vs 0.114 m) with the
+             CoM essentially OVER the ankle (-0.010 m) and flat feet -- and makes
+             crouch->launch a PURE VERTICAL push (CoM fore-aft shift -0.003 m; it was
+             a +0.055 m forward lurch). base_z = FK-true with feet on the ground. -->
+        <key name="jump_crouch" qpos="0.19 0 0.780 1 0 0 0 0 -1.00 0.12 1.60 -0.72 0 0 -1.00 -0.12 1.60 -0.72 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <key name="jump_launch" qpos="0.19 0 1.035 1 0 0 0 0 -0.05 0.12 0.10 -0.05 0 0 -0.05 -0.12 0.10 -0.05 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jump_land"   qpos="0.19 0 0.960 1 0 0 0 0 -0.50 0.12 0.85 -0.35 0 0 -0.50 -0.12 0.85 -0.35 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jump_land"   qpos="0.19 0 0.956 1 0 0 0 0 -0.45 0.12 0.80 -0.45 0 0 -0.45 -0.12 0.80 -0.45 0 0 -0.30 0 0 0 0 0 0 -0.30 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -184,6 +194,19 @@
              For this lean task: Cross Entropy (5) is the sweet spot — keeps the best
              samples each iteration and refits the noise distribution, more sample-
              efficient than Sampling alone. -->
+        <!-- deploy_frc_parity (2026-07-11): ACTUATOR-AUTHORITY PARITY switch, read by the
+             DEPLOY node (deploy_common PatchActuators), NOT by the planner itself. 1 =>
+             tighten every planner actuator forcerange to the torque the node can actually
+             emit (0.9 x tau_estop = the H2 command clamp). The stock model hands the planner
+             ankle +/-75 Nm and torso +/-200 Nm while the node emits at most 48.6 / 36.0 Nm,
+             so the sampler plans single-support balance on 1.5-5.6x PHANTOM authority; on the
+             REAL trot (2026-07-11, plan rate healthy 45-52/s) the stance ankle railed at
+             exactly 48.6 and the torso at exactly 36.0 for 6 s while the stance knee locked
+             to a passive prop against a weight-200 anti-strut cost = the weak-ankle crutch.
+             DEFAULT 0 here (= every strategy byte-identical); Task::PlannerNumericOverrides
+             turns it ON for the STEPPING strategies only (trot 23 / drive 24), so nothing
+             real-validated (stand/crouch/reach/lean/stumble) changes. CLI kill: --frc_parity=0. -->
+        <numeric name="deploy_frc_parity" data="0"/>
         <numeric name="agent_planner" data="5"/>
         <!-- horizon restored to 1.0s (was 0.6) because the real-hardware-spec PD
              gains (ankle kp=20, knee kp=200 — IsaacLab H1_CFG / Opt2Skill) are
@@ -577,14 +600,20 @@
                                 clearance sweet spot.
                jump_land_sec    [s] absorption hold at the pre-flexed land pose
                jump_recover_sec [s] blend land pose -> stand (one-shot done) -->
-        <numeric name="jump_delay" data="4.0" />
-        <numeric name="jump_crouch_sec" data="1.10" />
-        <numeric name="jump_push_sec" data="0.20" />
+        <numeric name="jump_delay" data="3.0" />
+        <numeric name="jump_crouch_sec" data="1.60" />
+        <numeric name="jump_push_sec" data="0.28" />
         <numeric name="jump_apex" data="0.10" />
         <numeric name="jump_land_sec" data="0.50" />
         <numeric name="jump_recover_sec" data="1.0" />
         <numeric name="jump_assist" data="1.0" />   <!-- ModifyControl push-assist authority 0..1; 0 = sampler-only -->
         <numeric name="jump_overdrive" data="2.0" />   <!-- push ref extrapolation past full extension (PD torque survives liftoff) -->
+        <numeric name="jump_posture_boost" data="3.0" />   <!-- posture authority DURING the hop; 3.0 = the stand's own (NO boost). Boosting pins the ANKLE (= the only balance actuator) to the scheduled pose -> the body rotates backward about the ankle during the descent. -->
+        <numeric name="jump_balance_boost" data="2.5" />   <!-- CoM-over-feet barrier amplifier during the hop -->
+        <numeric name="jump_crouch_pitch_deg" data="6.7" />   <!-- FORWARD trunk pitch commanded through the crouch (0 = bolt upright = the backward-topple mode); erects to vertical by takeoff -->
+        <numeric name="jump_angmom_w" data="12.0" />   <!-- centroidal angular-momentum regulation through crouch+push: takeoff pitch is conserved in flight, so it must be killed BEFORE liftoff -->
+        <numeric name="jump_pelvis_w" data="3.0" />   <!-- trunk-attitude authority during the hop (Base Height 450 otherwise out-votes Pelvis Tilt 100 and buys depth with backward pitch) -->
+        <numeric name="jump_ankle_od" data="0.35" />   <!-- TAKEOFF-ROTATION TRIM: partial ankle toe-push. 0 = nose-down launch (lands rotating fwd, tips past the toe); 1 = -14deg backward launch. Trim for zero takeoff pitch-rate. -->
 
     </custom>
 

@@ -144,6 +144,19 @@
              For this lean task: Cross Entropy (5) is the sweet spot — keeps the best
              samples each iteration and refits the noise distribution, more sample-
              efficient than Sampling alone. -->
+        <!-- deploy_frc_parity (2026-07-11): ACTUATOR-AUTHORITY PARITY switch, read by the
+             DEPLOY node (deploy_common PatchActuators), NOT by the planner itself. 1 =>
+             tighten every planner actuator forcerange to the torque the node can actually
+             emit (0.9 x tau_estop = the H2 command clamp). The stock model hands the planner
+             ankle +/-75 Nm and torso +/-200 Nm while the node emits at most 48.6 / 36.0 Nm,
+             so the sampler plans single-support balance on 1.5-5.6x PHANTOM authority; on the
+             REAL trot (2026-07-11, plan rate healthy 45-52/s) the stance ankle railed at
+             exactly 48.6 and the torso at exactly 36.0 for 6 s while the stance knee locked
+             to a passive prop against a weight-200 anti-strut cost = the weak-ankle crutch.
+             DEFAULT 0 here (= every strategy byte-identical); Task::PlannerNumericOverrides
+             turns it ON for the STEPPING strategies only (trot 23 / drive 24), so nothing
+             real-validated (stand/crouch/reach/lean/stumble) changes. CLI kill: --frc_parity=0. -->
+        <numeric name="deploy_frc_parity" data="0"/>
         <numeric name="agent_planner" data="5"/>
         <!-- horizon restored to 1.0s (was 0.6) because the real-hardware-spec PD
              gains (ankle kp=20, knee kp=200 — IsaacLab H1_CFG / Opt2Skill) are

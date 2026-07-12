@@ -372,6 +372,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   const bool is_jump = residual_keyframe_.name.rfind("jump", 0) == 0;
   double jump_air = 0.0;        // flight gate; releases foot-flatness below
   double jump_two_sided = 0.0;  // maneuver gate; makes Base Height two-sided
+  double jump_bal = 1.0;        // maneuver-gated Balance (CoM-over-feet) boost
+  double jump_pitch_tgt = 0.0;  // commanded FORWARD trunk pitch [rad] (crouch)
   mjtNum jump_posture_target[64];
   if (is_jump && model->nq <= 64) {
     int k_stand  = mj_name2id(model, mjOBJ_KEY, "jump_stand");
@@ -455,12 +457,46 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         double maneuver = mju_max(0.0, mju_min(g_in, g_out));
         maneuver = maneuver * maneuver * (3.0 - 2.0 * maneuver);
         jump_two_sided = maneuver;
-        // blend the posture authority from the stand hold (x3 via
-        // PhaseTargetScales) to the maneuver's tuned x4 (the v6 value the
-        // 6-11cm hop was validated at) — NOT a multiply on top, which would
-        // over-stiffen 12x now that jump_ names get the stand_up-class x3.
+        // ★ POSTURE AUTHORITY DURING THE HOP (v9 2026-07-11 -- the crouch-topple
+        // fix). A Posture BOOST here was the bug: Posture pins ALL 27 joints to
+        // the scheduled pose, INCLUDING THE ANKLES -- and the ankle is this
+        // robot's only balance actuator. Boosting it (x4) during the descent
+        // took the ankle away from balance and handed it to a fixed reference,
+        // so the body rotated backward about the ankle (-15 deg by the end of
+        // the crouch) and the push then launched it backward. Depth is driven by
+        // Base Height (450, two-sided) which is a CoM-HEIGHT objective and leaves
+        // the planner free to CHOOSE how -- including using the ankle to balance.
+        // Default 3.0 == the stand's own authority (no boost). Numeric so it can
+        // be swept without a rebuild.
+        double kPostBoost = GetNumberOrDefault(3.0, model, "jump_posture_boost");
         phase_posture_scale =
-            phase_posture_scale * (1.0 - maneuver) + 4.0 * maneuver;
+            phase_posture_scale * (1.0 - maneuver) + kPostBoost * maneuver;
+        // ★ BALANCE BOOST: a crouch is where the CoM most wants to escape the
+        // support polygon, and the stand's Balance weight (2.5) is tuned for a
+        // STATIC pose. Amplify the CoM-over-feet residual for the duration of
+        // the maneuver so "descend" cannot outbid "stay over your feet".
+        double kBalBoost = GetNumberOrDefault(2.5, model, "jump_balance_boost");
+        jump_bal = 1.0 + (kBalBoost - 1.0) * maneuver;
+        // ★ FORWARD TRUNK PITCH THROUGH THE CROUCH (v13 -- the descent-drift fix).
+        // Holding the trunk bolt upright (Pelvis Tilt 100) while squatting is what
+        // drags the CoM behind the ankle: with an upright torso, hip flexion moves
+        // the pelvis straight back, and only ankle dorsiflexion can pay it back --
+        // until the 75 Nm ankle saturates (~8 deg of tilt) and the descent topples
+        // backward. Every human squat/jump instead PITCHES THE TRUNK FORWARD as it
+        // descends, keeping the CoM over the feet, then ERECTS the trunk through
+        // the push (trunk extension itself adds vertical impulse). Command exactly
+        // that: pitch forward over the crouch, back to vertical by takeoff.
+        double kPitchDeg = GetNumberOrDefault(15.0, model, "jump_crouch_pitch_deg");
+        double pitch_max = kPitchDeg * M_PI / 180.0;
+        if (tau < T1) {                       // crouch: ramp trunk forward
+          double p = tau / mju_max(1e-3, T1);
+          p = p * p * (3.0 - 2.0 * p);
+          jump_pitch_tgt = pitch_max * p;
+        } else if (tau < T2) {                // push: erect the trunk (adds drive)
+          double p = (tau - T1) / mju_max(1e-3, kPushS);
+          p = p * p * (3.0 - 2.0 * p);
+          jump_pitch_tgt = pitch_max * (1.0 - p);
+        }                                     // flight/land/recover: vertical (0)
       }
     }
   }
@@ -1665,8 +1701,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // for forward, 1.0 for backward/lateral. NO outer multiplication by
   // balance_scale (would double-count for forward, and incorrectly
   // relax backward/lateral).
-  residual[counter + 0] = eff_dx * leaning * edge_amplifier;
-  residual[counter + 1] = eff_dy * leaning * edge_amplifier;
+  // JUMP: jump_bal (1.0 outside the hop, and for every other strategy ->
+  // byte-identical) amplifies the CoM-over-feet barrier through the crouch/push.
+  residual[counter + 0] = eff_dx * leaning * edge_amplifier * jump_bal;
+  residual[counter + 1] = eff_dy * leaning * edge_amplifier * jump_bal;
   counter += 2;
 
   // ----- torso forward tilt (direction-based) ----- //
@@ -1774,9 +1812,34 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         }
       }
       pelvis_tilt_residual = upright_gain * mju_max(0.0, sin_tilt - sin_target);
+      // JUMP: track a DIRECTIONAL forward-pitch setpoint instead of the
+      // directionless "stay vertical" magnitude. sin_tilt alone cannot tell a
+      // forward lean (which we WANT while squatting) from a backward one (which
+      // kills us), so relaxing it would license the backward topple. Penalize the
+      // deviation of the pelvis up-vector from a forward-pitched target: a
+      // BACKWARD lean is now maximally expensive. jump_pitch_tgt is 0 outside the
+      // crouch/push, so flight, landing, recovery and every other strategy keep
+      // the plain upright hold (byte-identical).
+      if (is_jump && jump_pitch_tgt > 1e-6) {
+        double up_fwd_target = std::sin(jump_pitch_tgt);
+        double dfx = pelvis_up[0] - up_fwd_target;   // fore-aft (x) up-vector
+        double dfy = pelvis_up[1];                   // lateral stays at 0
+        pelvis_tilt_residual =
+            upright_gain * mju_sqrt(dfx * dfx + dfy * dfy);
+      }
     }
   }
-  residual[counter++] = (1.0 - 0.5 * step_active) * pelvis_tilt_residual;  // Tier A: relax torso-upright in single support
+  // JUMP: give the trunk-attitude term real authority during the hop. Base Height
+  // (weight 450, x10 scale) outweighs Pelvis Tilt (100) by ~25x, so the planner
+  // was buying depth and paying for it in backward pitch -- and takeoff pitch is
+  // CONSERVED in flight, so it lands tilted and collapses. jump_pelvis_w (numeric)
+  // is 1.0 outside the hop -> byte-identical everywhere else.
+  double jump_pelvis_w = 1.0;
+  if (is_jump && jump_two_sided > 1e-6) {
+    double kPelW = GetNumberOrDefault(3.0, model, "jump_pelvis_w");
+    jump_pelvis_w = 1.0 + (kPelW - 1.0) * jump_two_sided;
+  }
+  residual[counter++] = (1.0 - 0.5 * step_active) * pelvis_tilt_residual * jump_pelvis_w;  // Tier A: relax torso-upright in single support
 
   // ----- foot up-vectors: prevent ankle roll ----- //
   double *foot_right_up = SensorByName(model, data, "foot_right_up");
@@ -2585,7 +2648,13 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // oblique flight/27deg-pitched landing was unregulated L). Maneuver-gated:
     // 0 in the settle/land stand and for every other strategy (this carrier
     // was already hard-zeroed for non-trot-walk, so nothing else changes).
-    if (is_jump) angmom_w = mju_max(angmom_w, 2.0 * jump_two_sided);
+    // JUMP: takeoff pitch is CONSERVED in flight -- it can only be killed BEFORE
+    // liftoff. Regulate centroidal angular momentum hard through crouch+push so
+    // the robot leaves the ground vertical. jump_angmom_w numeric (sweepable).
+    if (is_jump) {
+      double kJumpAng = GetNumberOrDefault(6.0, model, "jump_angmom_w");
+      angmom_w = mju_max(angmom_w, kJumpAng * jump_two_sided);
+    }
     residual[counter++] = angmom_w * 0.1 * (angmom[0] - Lx_tgt);
     residual[counter++] = angmom_w * 0.1 * (angmom[1] - Ly_tgt);
     residual[counter++] = angmom_w * 0.1 * angmom[2];
@@ -3706,10 +3775,46 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
     const mjtNum *ql = model->key_qpos + k_launch * model->nq;
     // leg position channels in nu order: L hipP 1, knee 3, ankleP 4;
     // R hipP 7, knee 9, ankleP 10 (keyframe joint block = qpos[7+i])
-    static const int kJumpLegCh[6] = {1, 3, 4, 7, 9, 10};
-    for (int j = 0; j < 6; j++) {
+    // Leg position channels in nu order: L hipP 1, knee 3, ankleP 4;
+    // R hipP 7, knee 9, ankleP 10 (keyframe joint block = qpos[7+ch]).
+    // ★ OVERDRIVE APPLIES TO KNEE + ANKLE ONLY (v8 2026-07-11). The hip tracks
+    // the launch pose EXACTLY (sref capped at 1). Overdriving the hip
+    // extrapolates it PAST neutral into hyper-EXTENSION (crouch -0.70 + 2.0 x
+    // 0.65 = +0.60 rad), which with an upright torso throws the trunk BACKWARD
+    // at precisely the moment of peak ground force -- a backward launch, not a
+    // vertical one. Anatomically the same rule: the hip extends TO neutral; the
+    // knee and ankle deliver the explosive push (and the ankle's plantarflexion
+    // overdrive is the toe-off the sampler never finds on its own).
+    // ARM SWING (v11): shoulder_pitch L=13, R=20 are driven too -- arms are back
+    // in the crouch and swing UP through the push. Accelerating ~8 kg of arm
+    // upward presses the body INTO the ground (reaction), raising the ground
+    // reaction impulse the legs get to push against (the standard countermovement
+    // arm-swing gain, ~10% of jump height), and the swing's forward pitching
+    // moment also opposes the backward tip. No overdrive on the arms.
+    static const int kJumpLegCh[8] = {1, 3, 4, 7, 9, 10, 13, 20};
+    //                                 hipL knL ankL hipR knR ankR shL  shR
+    // Overdrive ONLY the knees. Hip overdrive hyperextends past neutral (throws
+    // the trunk back); ANKLE overdrive is a toe-push delivered while the CoM is
+    // still over the ankle rather than out over the toes -- it pitched the launch
+    // backward by ~14 deg. The knees alone already deliver 1.76 m/s.
+    // Knees: full overdrive. ANKLES: a PARTIAL toe-push (jump_ankle_od, 0..1) --
+    // this is the TAKEOFF-ROTATION TRIM. Angular momentum is conserved in flight,
+    // so the launch rotation is set once, before liftoff, and it decides whether
+    // the landing is recoverable. Ankle OFF -> the GRF line passes behind the CoM
+    // -> nose-down (forward) rotation -> lands rotating forward -> tips past the
+    // toe (~9 deg) and cannot recover without a step. Ankle FULL -> a -14 deg
+    // backward launch. Trim between them until takeoff pitch-rate ~= 0.
+    static const bool kJumpChOverdrive[8] = {false, true, false, false, true, false,
+                                             false, false};
+    const double kAnkOd = GetNumberOrDefault(0.35, model, "jump_ankle_od");
+    for (int j = 0; j < 8; j++) {
       int ch = kJumpLegCh[j];
-      double ref = qc[7 + ch] + sref * (ql[7 + ch] - qc[7 + ch]);
+      double s_ch = kJumpChOverdrive[j] ? sref : mju_min(1.0, sref);
+      if (ch == 4 || ch == 10) {                 // ankle pitch: partial overdrive
+        s_ch = 1.0 + (sref - 1.0) * kAnkOd;
+        if (s_ch < 0.0) s_ch = 0.0;
+      }
+      double ref = qc[7 + ch] + s_ch * (ql[7 + ch] - qc[7 + ch]);
       // clamp the overdriven ref to the actuator's ctrlrange
       const double lo = model->actuator_ctrlrange[2 * ch];
       const double hi = model->actuator_ctrlrange[2 * ch + 1];
@@ -3946,17 +4051,51 @@ std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const 
   // stumble slots match. Adding a future strategy that needs a different planner
   // bandwidth is a one-line edit HERE (fork side) -- the deploy node stays
   // strategy-agnostic and never changes.
-  // TROT (slot 23, capture-point footstep controller, lean::ModifyControl): like
-  // stumble needs spline 5 for the swing, but ALSO needs MORE rollouts to balance
-  // single-support around the forced swing. Twin hold-rate: 16 trajectories = 1/5
-  // (sampler runs out of balancing budget); 36 = 5/5 at the full ~5cm lift. The
-  // marginality was a SAMPLING-BUDGET limit, not a controller flaw. NOTE: 36 ~=
-  // 2.25x compute -> verify real-time on the deploy CPU (or use a GPU/more cores);
-  // on the lockstep twin it's free. Keyed by NAME (Lean_H12 + Hands trot slots).
-  if (name == "h12_simple_trot" || name == "h12_hands_simple_trot") {
+  // ===== STEPPING STRATEGIES (trot 23, drive 24): the DEPLOY-REAL budget ==========
+  // spline 5: the stand-tuned 3 knots cannot represent the leg oscillation.
+  //
+  // trajectories 17 (was 36): 36 was a LOCKSTEP-TWIN conclusion (16 = 1/5 hold, 36 = 5/5)
+  // and the lockstep twin is STRUCTURALLY BLIND to plan rate -- it waits for physics, so
+  // rollouts are free. On the REAL robot they are not: CEM schedules trajectories + 1 jobs
+  // (the nominal rides along) and blocks on ALL of them, so a plan iteration costs
+  // ceil((N+1)/threads) thread-WAVES. 36 traj on the old 12-thread pool = 4 waves =
+  // 27-30 plans/s measured -- BELOW the 50-100 Hz band that every real legged sampling-MPC
+  // deployment needs (CMU Go1 whole-body MPPI, the reference Tassa points hardware users
+  // to: 30 samples @ 100 Hz on CPU, and explicitly "limited computing is much better spent
+  // on achieving a ~100 Hz policy than additional sample evaluations during agile
+  // locomotion"; their cost plateaus at ~40 samples. Unitree's own H1-2 RL deploys decide
+  // at 50 Hz). Real 2026-07-11 at 18 traj / 18 threads measured 45-52 plans/s -- in band.
+  // 17 (not 18) because the NOMINAL rollout is scheduled alongside: 17 + 1 = 18 jobs = ONE
+  // wave on the auto-sized 18-thread pool (hw 24 - reserve 6), where 18 + 1 = 19 spilled a
+  // second wave that the whole pool then waited on for a single straggler. The node now
+  // prints a PLAN-RATE WARNING whenever (traj + 1) > threads, so this can't go silent again.
+  // Rate beats samples here because our swing is FORCED open-loop by lean::ModifyControl
+  // (rate-independent) -- the sampler only has to BALANCE, and the stance-leg weight shift
+  // is exactly what starves first.
+  //
+  // *** deploy_frc_parity is deliberately NOT set here -- it stays 0 (OFF). ***
+  // The ACTUATOR-AUTHORITY finding is real, but the parity fix is NOT the cure, and the
+  // twin said so before the robot did (authority_ab.py, faithful twin, n=5, 2026-07-12):
+  //     arm                          HELD    ankleP pinned at its budget
+  //     phantom (the twin as it was)  5/5     0%   <- the twin plant has INFINITE actuator torque
+  //     clamped (= the REAL deploy)   3-4/5  42%   <- the H2 clamp ALONE costs 1-2/5
+  //     parity  (planner told truth)  2/5    38%   <- NO BETTER; the knee went to its STOP
+  // Telling the sampler its real budget did not make it discover a hip/step solution -- it
+  // just strutted harder. Releasing the Hip Roll pin (30->0) and softening the capture
+  // over-step (2.2->1.4) did nothing either (3/5 each; `clamped` alone scored 3/5 then 4/5
+  // on IDENTICAL config, so +/-1/5 is CEM noise, not signal). The keyframe is innocent too:
+  // its static single-support ankle load is 19.2 Nm against a 48.6 Nm budget.
+  // What IS solid: the stance ankle sits pinned at EXACTLY its 48.6 Nm budget for 34-73% of
+  // upright ticks while the planner asks for 44-99 deg of ankle travel when only 35 deg is
+  // buyable. The trot's ankle DEMAND is structurally ~1.5-3x the H1-2 safety envelope. That
+  // is the wall; no cost lever tested moves it.
+  // The flag survives as a REAL-ROBOT A/B lever (--frc_parity=1). Do NOT promote it to a
+  // default on the strength of the mechanism alone -- hardware has to say it helps.
+  if (name == "h12_simple_trot" || name == "h12_hands_simple_trot" ||
+      name == "h12_simple_drive" || name == "h12_hands_simple_drive") {
     return {{"sampling_spline_points", 5.0},
             {"sampling_exploration", 0.05},
-            {"sampling_trajectories", 36.0}};
+            {"sampling_trajectories", 17.0}};
   }
   if (name == "h12_simple_stumble" || name == "h12_hands_simple_stumble") {
     // foot-lift fix (2026-06-24): spline 5 (the stand-tuned 3 cannot represent the

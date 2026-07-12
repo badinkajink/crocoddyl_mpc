@@ -61,6 +61,19 @@
              Derivative-based planners (iLQG, iLQS) fail on contact-rich tasks because
              dynamics gradients are noisy/discontinuous through contact. Sampling-based
              planners handle contact cleanly. Cross Entropy (5) is the sweet spot. -->
+        <!-- deploy_frc_parity (2026-07-11): ACTUATOR-AUTHORITY PARITY switch, read by the
+             DEPLOY node (deploy_common PatchActuators), NOT by the planner itself. 1 =>
+             tighten every planner actuator forcerange to the torque the node can actually
+             emit (0.9 x tau_estop = the H2 command clamp). The stock model hands the planner
+             ankle +/-75 Nm and torso +/-200 Nm while the node emits at most 48.6 / 36.0 Nm,
+             so the sampler plans single-support balance on 1.5-5.6x PHANTOM authority; on the
+             REAL trot (2026-07-11, plan rate healthy 45-52/s) the stance ankle railed at
+             exactly 48.6 and the torso at exactly 36.0 for 6 s while the stance knee locked
+             to a passive prop against a weight-200 anti-strut cost = the weak-ankle crutch.
+             DEFAULT 0 here (= every strategy byte-identical); Task::PlannerNumericOverrides
+             turns it ON for the STEPPING strategies only (trot 23 / drive 24), so nothing
+             real-validated (stand/crouch/reach/lean/stumble) changes. CLI kill: --frc_parity=0. -->
+        <numeric name="deploy_frc_parity" data="0"/>
         <numeric name="agent_planner" data="5"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): 0 = AUTO (nearer hand),
              1 = force LEFT, 2 = force RIGHT (keeps the other arm free for a
