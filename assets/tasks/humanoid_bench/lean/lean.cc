@@ -48,6 +48,26 @@ inline void PhaseTargetScales(const std::string& name,
   if (name == "stand_up") {
     reach = 0.0; brace_pos = 0.0; posture = 3.0;
   }
+  // jump_*: the JUMP strategy's settle/land stand must hold posture as firmly
+  // as stand_up (x3) — at x1 the twin stand fell backward at ~1.8s (2026-07-11:
+  // the unknown-name default was the pre-jump twin-fall root cause, together
+  // with Height 0). Reach/brace off like stand_up. The in-maneuver posture
+  // authority is re-anchored by the jump schedule block, not here.
+  else if (name.rfind("jump", 0) == 0) {
+    reach = 0.0; brace_pos = 0.0; posture = 3.0;
+  }
+  // straighten (strat 25 phase 0): pre-stand bring-up. These are the values the
+  // whole slump-suite validation (2026-07-11) ran with — previously supplied by
+  // the silent unknown-name default (the bug class behind the pre-jump twin
+  // falls); pinned explicitly here so a future default change can't retune the
+  // phase. reach/brace_pos multiply rows whose weights the strat-25 JSON zeroes
+  // (Reaching Hand Dist / Brace Pos / Brace Force / Torso Forward Tilt all 0),
+  // so they are inert at these weights; posture x1.0 is what the phase-0 retune
+  // (Posture 35 / Balance 40) was tuned against — do NOT boost to x3 like
+  // stand_up without re-running the slump suite.
+  else if (name.rfind("straighten", 0) == 0) {
+    reach = 1.0; brace_pos = 1.0; posture = 1.0;
+  }
   // arm_plant: get the bracing hand onto the table first. Torso tilt is
   // softly allowed (reach=0.2) just enough for arm geometry, while the
   // bracing-hand position residual is fully active. Brace force target (8N)
@@ -328,6 +348,120 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
             from_target[i] + ra * (posture_target[i] - from_target[i]);
       }
       posture_target = ramped_posture_target;
+    }
+  }
+
+  // ==================== JUMP (strat 26): one-shot in-place hop ============== //
+  // Time-scheduled residual, the MJPC quadruped-flip pattern: the schedule is a
+  // pure function of (data->time - keyframe_start_time_), and keyframe_start_
+  // time_ is already ctor-plumbed into every rollout snapshot -- so rollouts
+  // ANTICIPATE the launch/flight/landing as data->time advances through the
+  // horizon, instead of being phase-frozen (why the JSON phase machine cannot
+  // express this; research 2026-07-11: vanilla predictive sampling never
+  // DISCOVERS a takeoff -- it can only TRACK a time-parameterized reference,
+  // cf. quadruped.cc kModeFlip + DIAL-MPC). Overriding posture_target drives
+  // Posture + Control + the leg-extension anchor in one move, and
+  // posture_target[2] drives the one-sided Base Height anchor = the vertical
+  // launch driver: an under-apex rollout is penalized BEFORE takeoff, being
+  // airborne above target is free. Phases (tau = time_in_phase - jump_delay):
+  //   settle < 0 <= crouch < T1 <= push < T2 <= flight < T3 <= absorb < T4
+  //   <= recover < T5 <= stand-forever (one-shot done).
+  // "jump"-prefix name-gated -> every other strategy byte-identical (jump_air
+  // stays 0). Keyframes/numerics are Magpie-primary; missing keyframes degrade
+  // to a plain jump_stand stand (schedule skipped, no crash on other models).
+  const bool is_jump = residual_keyframe_.name.rfind("jump", 0) == 0;
+  double jump_air = 0.0;        // flight gate; releases foot-flatness below
+  double jump_two_sided = 0.0;  // maneuver gate; makes Base Height two-sided
+  mjtNum jump_posture_target[64];
+  if (is_jump && model->nq <= 64) {
+    int k_stand  = mj_name2id(model, mjOBJ_KEY, "jump_stand");
+    int k_crouch = mj_name2id(model, mjOBJ_KEY, "jump_crouch");
+    int k_launch = mj_name2id(model, mjOBJ_KEY, "jump_launch");
+    int k_land   = mj_name2id(model, mjOBJ_KEY, "jump_land");
+    if (k_stand >= 0 && k_crouch >= 0 && k_launch >= 0 && k_land >= 0) {
+      const double kDelay   = GetNumberOrDefault(4.0,  model, "jump_delay");
+      const double kCrouchS = GetNumberOrDefault(0.90, model, "jump_crouch_sec");
+      const double kPushS   = GetNumberOrDefault(0.20, model, "jump_push_sec");
+      const double kApex    = GetNumberOrDefault(0.10, model, "jump_apex");
+      const double kLandS   = GetNumberOrDefault(0.50, model, "jump_land_sec");
+      const double kRecovS  = GetNumberOrDefault(1.0,  model, "jump_recover_sec");
+      const mjtNum *q_stand  = model->key_qpos + k_stand  * model->nq;
+      const mjtNum *q_crouch = model->key_qpos + k_crouch * model->nq;
+      const mjtNum *q_launch = model->key_qpos + k_launch * model->nq;
+      const mjtNum *q_land   = model->key_qpos + k_land   * model->nq;
+      // Ballistic constants from the apex ask: v0 = sqrt(2*g*h), Tf = 2*v0/g.
+      const double v0 = mju_sqrt(2.0 * 9.81 * mju_max(0.01, kApex));
+      const double t_flight = 2.0 * v0 / 9.81;
+      const double tau = time_in_phase - kDelay;
+      const double T1 = kCrouchS;             // crouch end = push start
+      const double T2 = T1 + kPushS;          // takeoff
+      const double T3 = T2 + t_flight;        // scheduled touchdown
+      const double T4 = T3 + kLandS;          // absorb end
+      const double T5 = T4 + kRecovS;         // recover end (one-shot done)
+      const mjtNum *from = q_stand, *to = q_stand;
+      double s = 0.0;                         // smoothstep blend from -> to
+      double z_target = q_stand[2];
+      if (tau <= 0.0) {
+        // settle: pure jump_stand (== the phase keyframe; override is a no-op)
+      } else if (tau < T1) {                  // countermovement crouch
+        from = q_stand; to = q_crouch;
+        s = tau / mju_max(1e-3, T1);
+        s = s * s * (3.0 - 2.0 * s);
+        z_target = q_stand[2] + s * (q_crouch[2] - q_stand[2]);
+      } else if (tau < T2) {                  // extension PUSH
+        from = q_crouch; to = q_launch;
+        s = (tau - T1) / mju_max(1e-3, kPushS);
+        s = s * s * (3.0 - 2.0 * s);
+        z_target = q_crouch[2] + s * (q_launch[2] - q_crouch[2]);
+      } else if (tau < T3) {                  // FLIGHT: pre-flex for touchdown
+        from = q_launch; to = q_land;         // (first ~100ms of impact is
+        double tf = tau - T2;                 //  uncontrollable -- shape it now;
+        s = mju_min(1.0, tf / mju_max(1e-3, 0.25 * t_flight));  // fast tuck, no snap)
+        s = s * s * (3.0 - 2.0 * s);
+        z_target = q_launch[2] + v0 * tf - 0.5 * 9.81 * tf * tf;
+        jump_air = 1.0;
+      } else if (tau < T4) {                  // absorb at the pre-flexed pose
+        from = q_land; to = q_land; s = 1.0;  // one-sided z: dip below stand is
+        z_target = q_land[2];                 // granted ~3.5cm absorption room
+        double fade = (tau - T3) / mju_max(1e-3, kLandS);
+        jump_air = mju_max(0.0, 1.0 - 3.0 * fade);  // flatness back fast post-TD
+      } else if (tau < T5) {                  // recover: land pose -> stand
+        from = q_land; to = q_stand;
+        s = (tau - T4) / mju_max(1e-3, kRecovS);
+        s = s * s * (3.0 - 2.0 * s);
+        z_target = q_land[2] + s * (q_stand[2] - q_land[2]);
+      } else {
+        // one-shot done: stand forever (re-jump = re-select the strategy,
+        // which resets keyframe_start_time_ via the live-switch path)
+      }
+      for (int i = 0; i < model->nq; i++) {
+        jump_posture_target[i] = from[i] + s * (to[i] - from[i]);
+      }
+      jump_posture_target[2] = z_target;  // Base Height reads [2]
+      posture_target = jump_posture_target;
+      // Maneuver authority gate (v2, 2026-07-11 first-trace fix: at stand
+      // weights the sampler tracked the 12cm crouch by only ~3cm -> no takeoff
+      // was dynamically reachable and the flight penalty was ignored as
+      // unavoidable). While the schedule is active: (a) Posture boost x4 --
+      // legal here because the REFERENCE is ramped (the straighten-C3 funnel:
+      // strong tracking of a smooth target, not a static-target snap), and
+      // (b) jump_two_sided flips the Base Height anchor to signed tracking so
+      // the scheduled z DRIVES the crouch down (one-sided only guards sink).
+      // Smooth 0.2s ramp-in, fades across recover; 0 outside the maneuver and
+      // for every other strategy -> byte-identical.
+      if (tau > 0.0 && tau < T5) {
+        double g_in  = mju_min(1.0, tau / 0.2);
+        double g_out = mju_min(1.0, (T5 - tau) / mju_max(1e-3, kRecovS));
+        double maneuver = mju_max(0.0, mju_min(g_in, g_out));
+        maneuver = maneuver * maneuver * (3.0 - 2.0 * maneuver);
+        jump_two_sided = maneuver;
+        // blend the posture authority from the stand hold (x3 via
+        // PhaseTargetScales) to the maneuver's tuned x4 (the v6 value the
+        // 6-11cm hop was validated at) — NOT a multiply on top, which would
+        // over-stiffen 12x now that jump_ names get the stand_up-class x3.
+        phase_posture_scale =
+            phase_posture_scale * (1.0 - maneuver) + 4.0 * maneuver;
+      }
     }
   }
 
@@ -1089,6 +1223,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double step_active = mju_max(swing_r, swing_l);  // whole-body single-support activity
   double height_scale = arm_contact_or_lean ? 0.35 : 1.0;
   height_scale *= (1.0 - 0.6 * step_active);  // release base-height anchor in single support (CoM dips)
+  // JUMP maneuver: release the head-height term while the schedule owns the
+  // vertical (crouch lowers the head by design); full strength outside the hop
+  // so the settle/land stand keeps its proven Height 100 backward-tip guard.
+  height_scale *= (1.0 - jump_two_sided);
   residual[counter++] = height_scale * (head_feet_error - height_goal);
 
   // ----- Balance: CoM-feet xy error ----- //
@@ -1647,8 +1785,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // foot -- a swinging foot MUST plantarflex/fold (foot_up[2] < 1); the STANCE
   // foot keeps the full weight. THE single biggest anti-lift blocker (named by
   // 5/5 research agents + matches MJPC quadruped's step[foot]?h:0 self-gating).
-  residual[counter++] = (1.0 - swing_r) * mju_abs(foot_right_up[2] - 1.0);
-  residual[counter++] = (1.0 - swing_l) * mju_abs(foot_left_up[2]  - 1.0);
+  // JUMP flight: partially release flatness during the ballistic window (a
+  // mild fold at push-off/apex is physical); jump_air==0 for every other
+  // strategy AND for the grounded jump segments -> byte-identical elsewhere.
+  double jump_flat_release = 1.0 - 0.7 * jump_air;
+  residual[counter++] =
+      (1.0 - swing_r) * jump_flat_release * mju_abs(foot_right_up[2] - 1.0);
+  residual[counter++] =
+      (1.0 - swing_l) * jump_flat_release * mju_abs(foot_left_up[2]  - 1.0);
 
   // ----- waist yaw: stop planner from yawing torso to swing arm ----- //
   // torso_joint is the 13th actuated DOF (nu index 12), home = 0.
@@ -2365,7 +2509,13 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   //   needs a per-phase FK-derived target, a follow-on). Gated free-standing;
   //   brace/lean use the existing Height term -> byte-identical.
   if (!arm_contact_or_lean) {
-    residual[counter++] = 10.0 * mju_max(0.0, posture_target[2] - data->qpos[2]);
+    double bh_err = posture_target[2] - data->qpos[2];
+    // JUMP maneuver: jump_two_sided (0->1->0 over the scheduled hop) makes this
+    // anchor SIGNED so the scheduled z-target drives the crouch DOWN and tracks
+    // the ballistic arc, not just guards the sink. 0 for every other strategy
+    // and outside the maneuver -> the original one-sided anti-sink, byte-id.
+    residual[counter++] =
+        10.0 * (bh_err >= 0.0 ? bh_err : jump_two_sided * bh_err);
   } else {
     residual[counter++] = 0.0;
   }
@@ -2430,6 +2580,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       int aw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_angmom_w");
       angmom_w = (aw_id >= 0) ? model->numeric_data[model->numeric_adr[aw_id]] : 1.0;
     }
+    // JUMP: regulate centroidal angular momentum -> 0 through the hop (takeoff
+    // pitch is conserved in flight — it can only be set BEFORE liftoff; v5's
+    // oblique flight/27deg-pitched landing was unregulated L). Maneuver-gated:
+    // 0 in the settle/land stand and for every other strategy (this carrier
+    // was already hard-zeroed for non-trot-walk, so nothing else changes).
+    if (is_jump) angmom_w = mju_max(angmom_w, 2.0 * jump_two_sided);
     residual[counter++] = angmom_w * 0.1 * (angmom[0] - Lx_tgt);
     residual[counter++] = angmom_w * 0.1 * (angmom[1] - Ly_tgt);
     residual[counter++] = angmom_w * 0.1 * angmom[2];
@@ -3280,6 +3436,39 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
         motion_strategy_.CalculateTotalKeyframeDistance(
             data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
 
+    // ---- STRAIGHTEN->stand basin-containment gate (2026-07-11) --------- //
+    // Lean keyframes carry no contact pairs, so total_distance == 0 always
+    // and the bare rule below would advance the straighten bring-up phase on
+    // a PURE TIMER (Unitree-style blind ramp). For the handoff to the stand
+    // phase we instead require the robot to actually BE inside the stand
+    // basin on the TRUE agent state: upright (pelvis tilt), tall (base z,
+    // i.e. unslumped knees), and quiescent (base speed) -- sustained
+    // success_sustain_time like any other phase, re-armed on violation.
+    // Name-gated on the straighten keyframe -> every other strategy's
+    // advance logic is byte-identical.
+    bool straighten_gate_ok = true;
+    if (current_kf.name.rfind("straighten", 0) == 0) {
+      double *pu = SensorByName(model, data, "pelvis_up");
+      double up_z = pu ? mju_max(-1.0, mju_min(1.0, pu[2])) : 1.0;
+      double tilt_deg = std::acos(up_z) * 180.0 / M_PI;
+      double base_spd = std::sqrt(data->qvel[0] * data->qvel[0] +
+                                  data->qvel[1] * data->qvel[1] +
+                                  data->qvel[2] * data->qvel[2]);
+      // TIGHTENED 2026-07-11 after the first REAL run: the old bar (z>=0.95,
+      // no knee condition) released from a knee-0.76 crouch at t=1.6s -- phase 0
+      // never actually fixed the pose, and the weak stand-phase weights
+      // (Balance 2.5 / Posture 12) inherited an unfinished rise mid-bring-up.
+      // The gate's contract is "the pose IS ideal": full height (1.00 vs the
+      // 1.02 keyframe), legs extended (<=0.50 rad vs the 0.35 target; knee
+      // encoders carry no per-power-on zero error, unlike ankles), upright and
+      // quiet. Until then phase 0's high-authority weights (Balance 40 /
+      // Posture 35 / Pelvis Tilt 150) keep owning the straightening.
+      straighten_gate_ok = tilt_deg <= 3.0 && data->qpos[2] >= 1.00 &&
+                           base_spd <= 0.15 &&
+                           data->qpos[10] <= 0.50 &&   // left knee
+                           data->qpos[16] <= 0.50;     // right knee
+    }
+
     if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
             current_kf.time_limit &&
         total_distance > current_kf.target_distance_tolerance) {
@@ -3295,12 +3484,19 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
       residual_.keyframe_start_time_ = data->time;
       PrepareNextPhaseWeights(residual_.residual_keyframe_);
-    } else if (total_distance <= current_kf.target_distance_tolerance &&
+    } else if (straighten_gate_ok &&
+               total_distance <= current_kf.target_distance_tolerance &&
                data->time -
                        motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
                    current_kf.success_sustain_time) {
       // Normal phase advance — this is the path that fires after stand_up
       // succeeds. Snapshot first so the new ramp starts from the old scales.
+      if (current_kf.name.rfind("straighten", 0) == 0) {
+        std::fprintf(stderr,
+                     "[lean-straighten] basin gate PASS (z=%.3f kneeL=%.2f "
+                     "kneeR=%.2f) -> advancing to stand phase\n",
+                     data->qpos[2], data->qpos[10], data->qpos[16]);
+      }
       SnapshotEffectiveScales();
       SnapshotCurrentWeightsAsPrev();
       motion_strategy_.NextKeyframe();
@@ -3311,7 +3507,10 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
       residual_.keyframe_start_time_ = data->time;
       PrepareNextPhaseWeights(residual_.residual_keyframe_);
-    } else if (total_distance > current_kf.target_distance_tolerance) {
+    } else if (total_distance > current_kf.target_distance_tolerance ||
+               !straighten_gate_ok) {
+      // Re-arm the success clock: outside tolerance, or (straighten only)
+      // the basin gate is violated -- sustain must be CONSECUTIVE.
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
     }
   }
@@ -3449,6 +3648,76 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
                        (kfname.find("trot") != std::string::npos);
   const bool is_drive = is_trot &&
                         (kfname.find("drive") != std::string::npos);
+  // ==================== JUMP push assist (strat 26) ======================= //
+  // v2 twin finding (2026-07-11): with the scheduled residual alone the
+  // sampler tracks the crouch but SMEARS the 0.2s extension impulse through
+  // the spline (rise 0.15 m/s vs the 1.4 m/s takeoff ask) -- the same
+  // "sampler refuses the explosive move" class the trot swing forcer solves.
+  // Same architecture: during the PUSH window only, blend the six leg
+  // position channels (hipP/knee/ankleP x L/R) to the jump_launch pose
+  // faster than the spline can represent; the COST already agrees (Control +
+  // Posture track the same schedule), the sampler balances arms/torso around
+  // it, and the override releases at flight start so touchdown stays fully
+  // sampler-adaptive. Runs in every rollout AND the executed action (the
+  // Task::ModifyControl contract) -> planner-consistent, no belief gap.
+  // jump_assist numeric (default 1.0) scales it; 0 disables. Name-gated ->
+  // every other strategy byte-identical.
+  const bool is_jump_mc = kfname.rfind("jump", 0) == 0;
+  if (is_jump_mc) {
+    if (model->nu < 11) return;
+    double assist = 1.0;
+    int ja_id = mj_name2id(model, mjOBJ_NUMERIC, "jump_assist");
+    if (ja_id >= 0) assist = model->numeric_data[model->numeric_adr[ja_id]];
+    if (assist <= 1e-6) return;
+    int k_crouch = mj_name2id(model, mjOBJ_KEY, "jump_crouch");
+    int k_launch = mj_name2id(model, mjOBJ_KEY, "jump_launch");
+    if (k_crouch < 0 || k_launch < 0) return;
+    auto num_or = [&](double dflt, const char *nm) {
+      int id = mj_name2id(model, mjOBJ_NUMERIC, nm);
+      return (id >= 0) ? model->numeric_data[model->numeric_adr[id]] : dflt;
+    };
+    const double kDelay   = num_or(4.0,  "jump_delay");
+    const double kCrouchS = num_or(0.90, "jump_crouch_sec");
+    const double kPushS   = num_or(0.20, "jump_push_sec");
+    double tau = time - residual_.keyframe_start_time_ - kDelay;
+    double t_push = tau - kCrouchS;               // 0 at push start
+    // active window: the push + a 0.08s release tail into flight
+    if (t_push <= 0.0 || t_push >= kPushS + 0.08) return;
+    // reference: crouch -> launch over an AGGRESSIVE half-push smoothstep
+    // (the PD impulse the spline cannot express), then hold launch.
+    // OVERDRIVE (v4, 2026-07-11): position-servo torque kp*(ref-q) collapses
+    // as the legs reach a ref CLAMPED at the launch pose -- exactly when
+    // takeoff velocity should peak (v3 finding: rise stalled at ~0.5 m/s).
+    // Extrapolate the reference PAST full extension (jump_overdrive * the
+    // crouch->launch delta, default 1.7) so the PD error -- and thus torque --
+    // survives through liftoff; per-channel ctrlrange clamp below keeps it
+    // legal (hip_pitch has room to +2.5 = the real authority; knee floors at
+    // -0.12; ankle kp=80/75Nm adds genuine late toe-off).
+    double kOd = num_or(1.7, "jump_overdrive");
+    double sref = mju_min(1.0, t_push / mju_max(1e-3, 0.5 * kPushS));
+    sref = sref * sref * (3.0 - 2.0 * sref);
+    sref *= mju_max(1.0, kOd);
+    // blend authority: fast 0.04s ramp-in, 0.08s ramp-out into flight
+    double a_in  = mju_min(1.0, t_push / 0.04);
+    double a_out = mju_min(1.0, mju_max(0.0, (kPushS + 0.08 - t_push) / 0.08));
+    double a = assist * mju_min(a_in, a_out);
+    a = mju_max(0.0, mju_min(1.0, a));
+    const mjtNum *qc = model->key_qpos + k_crouch * model->nq;
+    const mjtNum *ql = model->key_qpos + k_launch * model->nq;
+    // leg position channels in nu order: L hipP 1, knee 3, ankleP 4;
+    // R hipP 7, knee 9, ankleP 10 (keyframe joint block = qpos[7+i])
+    static const int kJumpLegCh[6] = {1, 3, 4, 7, 9, 10};
+    for (int j = 0; j < 6; j++) {
+      int ch = kJumpLegCh[j];
+      double ref = qc[7 + ch] + sref * (ql[7 + ch] - qc[7 + ch]);
+      // clamp the overdriven ref to the actuator's ctrlrange
+      const double lo = model->actuator_ctrlrange[2 * ch];
+      const double hi = model->actuator_ctrlrange[2 * ch + 1];
+      ref = mju_max(lo, mju_min(hi, ref));
+      ctrl[ch] = (1.0 - a) * ctrl[ch] + a * ref;
+    }
+    return;
+  }
   if (!is_trot || model->nu < 11) return;
   auto clip = [](double x, double lo, double hi) {
     return x < lo ? lo : (x > hi ? hi : x);
@@ -3703,6 +3972,16 @@ std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const 
             {"sampling_exploration", 0.05},
             {"sampling_trajectories", 16.0}};
   }
+  // JUMP (slot 26): deliberately NO override (2026-07-11). The launch impulse
+  // is carried OPEN-LOOP by the ModifyControl push assist + jump_overdrive, so
+  // the sampler only balances + lands -- validated 5/5 airborne at the STOCK
+  // spline 3 / 10 traj. A spline-6/36 override was tried and REMOVED: spline 6
+  // deterministically kills the twin stand (the documented spline-8 boundary
+  // is really <=6), and in the GUI (which, unlike agent_server, APPLIES these
+  // overrides) the 36-traj x spline-6 planner load drops the real plan rate ->
+  // under-planning "relaxed legs" backward fall right at crouch onset
+  // (user-observed 2026-07-11); headless repro at 6/36 also lunge-hopped
+  // asymmetrically. Stock numerics = the validated config everywhere.
   return {};
 }
 

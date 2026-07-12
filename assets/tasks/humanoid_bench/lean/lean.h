@@ -380,7 +380,7 @@ class lean : public Task {
                                          //    base primitive for pick/retrieve; the lean pipeline is
                                          //    this reach + brace + whole-body pitch for FAR targets.
             "h12_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_simple_trot",  "h12_simple_drive", "h12_straighten", "h12_simple_stand", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (stand<->trot FSM), 25 pre-stand STRAIGHTEN/bring-up (wide-basin drive-to-upright), 26 reserved
+            "h12_simple_trot",  "h12_simple_drive", "h12_straighten", "h12_simple_jump", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (stand<->trot FSM), 25 pre-stand STRAIGHTEN/bring-up (wide-basin drive-to-upright), 26 JUMP (one-shot in-place hop: time-scheduled crouch->push->flight->absorb->stand, flip-pattern residual schedule; Magpie-primary)
             "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 27-30 reserved
             "h12_lean_stand",            // 31
             "h12_lean_reach",            // 32

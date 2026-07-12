@@ -157,6 +157,17 @@
              stumble_trot; the "drive" token makes is_drive detectable while "stumble"+"trot" keep
              is_stumble/is_trot true so the gait+velocity machinery works. Idle g_amp=0 => stand. -->
         <key name="stumble_trot_drive" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- JUMP (strat 26, 2026-07-11): one-shot in-place hop. jump_stand is the
+             phase keyframe (byte-copy of stand: settle before + stand after the hop);
+             jump_crouch / jump_launch / jump_land are the time-scheduled targets the
+             lean.cc jump block blends through (quadruped-flip-pattern residual
+             schedule). All jump-prefixed for the is_jump name gate. Legs only, arms
+             home. FK-consistent base z (thigh/shank 0.4 m): crouch drop ~12 cm,
+             launch = full extension, land = pre-flexed absorption pose. -->
+        <key name="jump_stand"  qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jump_crouch" qpos="0.19 0 0.875 1 0 0 0 0 -0.78 0.12 1.25 -0.47 0 0 -0.78 -0.12 1.25 -0.47 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jump_launch" qpos="0.19 0 1.035 1 0 0 0 0 -0.05 0.12 0.10 -0.05 0 0 -0.05 -0.12 0.10 -0.05 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jump_land"   qpos="0.19 0 0.960 1 0 0 0 0 -0.50 0.12 0.85 -0.35 0 0 -0.50 -0.12 0.85 -0.35 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
@@ -553,6 +564,27 @@
         <numeric name="residual_Cmd Vy" data="0 -0.2 0.2" />
         <numeric name="residual_Cmd Seq" data="0 0 1000000" />
         <numeric name="residual_Cmd Wz" data="0 -1 1" />   <!-- V3 yaw-rate [rad/s], drive strat -->
+
+        <!-- JUMP (strat 26) schedule numerics, 2026-07-11. Read by the lean.cc
+             jump block via GetNumberOrDefault (absent => code defaults, listed
+             here). is_jump-gated: inert for every other strategy.
+               jump_delay       [s] settle time after strategy engage before the
+                                hop fires (twin harness/bring-up needs ~4 s)
+               jump_crouch_sec  [s] countermovement duration (stand -> crouch)
+               jump_push_sec    [s] extension push duration (crouch -> launch)
+               jump_apex        [m] TARGET ballistic apex above launch height;
+                                v0 = sqrt(2*g*apex). The sweep knob for the
+                                clearance sweet spot.
+               jump_land_sec    [s] absorption hold at the pre-flexed land pose
+               jump_recover_sec [s] blend land pose -> stand (one-shot done) -->
+        <numeric name="jump_delay" data="4.0" />
+        <numeric name="jump_crouch_sec" data="1.10" />
+        <numeric name="jump_push_sec" data="0.20" />
+        <numeric name="jump_apex" data="0.10" />
+        <numeric name="jump_land_sec" data="0.50" />
+        <numeric name="jump_recover_sec" data="1.0" />
+        <numeric name="jump_assist" data="1.0" />   <!-- ModifyControl push-assist authority 0..1; 0 = sampler-only -->
+        <numeric name="jump_overdrive" data="2.0" />   <!-- push ref extrapolation past full extension (PD torque survives liftoff) -->
 
     </custom>
 
