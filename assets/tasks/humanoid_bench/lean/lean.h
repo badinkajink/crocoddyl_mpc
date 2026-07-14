@@ -429,6 +429,18 @@ class lean : public Task {
     // agreement). Every non-drive strategy leaves this 0 (default path).
     rfn->drive_gait_amp_ = residual_.drive_gait_amp_;
     rfn->drive_yaw_des_ = residual_.drive_yaw_des_;   // V3 yaw heading target
+    // ★ BUGFIX 2026-07-12: propagate the GOVERNED COMMAND too. Without this every
+    // rollout residual sees cmd_active_=false and therefore takes the legacy
+    // trot_des_vel numeric path (v_des = 0) -- i.e. it costs the gait as an
+    // IN-PLACE trot -- while lean::ModifyControl (which reads the CANONICAL
+    // residual_) drives the swing FORWARD at the governed v_des. Cost and swing
+    // then disagree on every sampled trajectory and the sampler spends the whole
+    // plan cancelling the walk drive. That is the exact opposite of what the
+    // "MUST match lean::ModifyControl" comments in Residual() require, and it is
+    // the prime suspect for the free-twin ~6 s walk ceiling.
+    rfn->cmd_active_ = residual_.cmd_active_;
+    rfn->cmd_vdes_world_[0] = residual_.cmd_vdes_world_[0];
+    rfn->cmd_vdes_world_[1] = residual_.cmd_vdes_world_[1];
     return rfn;
   }
 

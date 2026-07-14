@@ -2404,15 +2404,36 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // onto the xy-plane and check alignment there. Pitch drops out because
   // pitching down shortens torso_forward's xy length without changing
   // its xy direction.
-  // V3 yaw (drive strat): retarget the Body Yaw reference (reach_dir) to the
-  // governed desired heading so the sampler turns the body to follow. is_drive-
-  // gated -> every other strategy keeps the real reach_dir (byte-identical); the
-  // reach-alignment residual above already consumed the original reach_dir.
-  // drive_yaw_des_ comes from the plan snapshot (integrated in TransitionLocked).
-  if (is_drive) {
-    reach_dir[0] = std::cos(drive_yaw_des_);
-    reach_dir[1] = std::sin(drive_yaw_des_);
-    reach_dir[2] = 0.0;
+  // ★ STEPPING HEADING LOCK (trot 23 + drive 24). BUGFIX 2026-07-12 -- this used
+  // to be is_drive-only, and the trot was left aiming at reach_dir.
+  //
+  // reach_dir is normalize(reach_target - torso_pos), and reach_target is the
+  // mocap target = target_position_, which the lean CONSTRUCTOR RANDOMIZES to
+  // x in [1.4,1.6], y in [-0.3,0.3]. Body Yaw carries weight 40 in the stepping
+  // strategies' JSON. So a stepping controller was being commanded to yaw toward
+  // a RANDOM point up to +/-0.3 m off-axis at 1.5 m = up to +/-11 deg of heading
+  // bias, freshly re-rolled every process. The body obeys and yaws -- and because
+  // kDesVel is a WORLD vector, a trot-walk then CRABS (it walks along its nose
+  // while the velocity target still points down the old world axis), the capture
+  // step fights the drive, and it pitches forward. Measured on the (identical)
+  // stabilize port: ~0.9 m of sideways drift with +20 deg of forward pitch, and
+  // the in-place trot showed the same disease as 4-6 deg of lateral wander.
+  //
+  // drive_yaw_des_ = the commanded heading for drive (integrated yaw-rate), or the
+  // heading latched when the gait armed for the plain trot (TransitionLocked).
+  // trot_heading_lock numeric: 1 = on (default), 0 = the legacy random-reach-axis
+  // behaviour (A/B without a rebuild). is_trot covers trot + drive; stumble and
+  // every pose strategy are untouched. The reach-alignment residual above has
+  // already consumed the original reach_dir, so overwriting it here is safe.
+  if (is_trot) {
+    int hl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_heading_lock");
+    bool hl = (hl_id < 0) ||
+              (model->numeric_data[model->numeric_adr[hl_id]] > 0.5);
+    if (hl) {
+      reach_dir[0] = std::cos(drive_yaw_des_);
+      reach_dir[1] = std::sin(drive_yaw_des_);
+      reach_dir[2] = 0.0;
+    }
   }
   double tf_xy_len = mju_sqrt(torso_forward[0] * torso_forward[0] +
                               torso_forward[1] * torso_forward[1]);
@@ -3335,6 +3356,27 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       residual_.drive_idle_since_ = -1.0;
       residual_.drive_ramp_prev_ = -1.0;
       residual_.cmd_wz_ = 0.0;
+      // ★ HEADING LATCH for the non-drive trot (strat 23). BUGFIX 2026-07-12: it
+      // has no yaw command, so the heading it should hold is simply the one it had
+      // when the gait armed. TRACK the live yaw while the gait is still ramping in
+      // (< kArmSec, the same 2 s the swing amplitude uses), then FREEZE it -- from
+      // then on the Body Yaw lock above holds that heading instead of chasing the
+      // randomized reach target. Without this drive_yaw_des_ stays 0 for the trot,
+      // which is only ACCIDENTALLY right (the keyframe quat happens to be yaw 0)
+      // and breaks silently the moment the robot starts from any other heading.
+      const bool is_trot_strat =
+          kStrategyNames[requested_strategy].find("trot") != std::string::npos;
+      if (is_trot_strat) {
+        double qw = data->qpos[3], qx = data->qpos[4],
+               qy = data->qpos[5], qz = data->qpos[6];
+        double cur_yaw = std::atan2(2.0 * (qw * qz + qx * qy),
+                                    1.0 - 2.0 * (qy * qy + qz * qz));
+        constexpr double kArmSec = 2.0;   // matches the gait amplitude ramp
+        if (data->time - residual_.keyframe_start_time_ < kArmSec)
+          residual_.drive_yaw_des_ = cur_yaw;   // track, then hold
+      } else {
+        residual_.drive_yaw_des_ = 0.0;
+      }
     }
   }
 

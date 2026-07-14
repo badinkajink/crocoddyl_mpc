@@ -380,6 +380,16 @@
         <numeric name="trot_release" data="0.0"/>
         <numeric name="trot_step_width" data="0.0"/>
         <numeric name="trot_settle_thresh" data="0.0"/>
+        <!-- ★ trot_heading_lock (1 = ON, default). BUGFIX 2026-07-12: aim the Body Yaw
+             reference at the LATCHED/commanded heading instead of at reach_dir. reach_dir
+             points at the mocap reach target, which the lean constructor RANDOMIZES
+             (y in [-0.3,0.3] at x~1.5 => up to +/-11 deg of random heading bias, re-rolled
+             per process) -- and Body Yaw is weight 40 in the stepping JSONs. That random
+             yaw demand makes a trot-WALK crab (world-frame v_des vs a yawed body) and gives
+             the in-place trot its lateral wander. 0 = the legacy random-reach-axis
+             behaviour, kept purely so this can be A/B'd without a rebuild. Applies to
+             trot + drive; stumble and every pose strategy are untouched. -->
+        <numeric name="trot_heading_lock" data="1.0"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
