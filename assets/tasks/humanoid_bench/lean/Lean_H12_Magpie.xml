@@ -65,8 +65,43 @@
              base 0.738 BOTH seats the forearm AND is a hold-able bow (0.77 needed an un-hold-able 0.63
              to seat). Legs hip-1.27/knee1.52/ankle-0.30; LEFT arm (brace) sh-0.6/roll0.15/elbow0.95
              reaches forward-down onto the table; RIGHT arm (reach) sh-1.1/roll-0.1/elbow0.25 up-forward.
-             Object rests at z0.95 (0.87 + half-height 0.08). -->
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.6 0.15 0 0.95 0 0 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/>
+             Object rests at z0.95 (0.87 + half-height 0.08).
+
+             ★★ WRIST COCK (2026-07-13, PHANTOM-BRACE FIX): left wrist_pitch 0 -> -0.40 rad
+             (-23 deg, inside the +/-0.4625 joint limit). Until now the gripper was kept off the
+             table by an <exclude> -- i.e. it was NOT kept off the table at all, it was driven
+             12 cm THROUGH it. With the wrist/gripper now solid, the hand has to be lifted by
+             POSE. The gripper box sits ~0.12 m past the wrist-pitch joint, so cocking the wrist
+             up buys ~0.12*sin(23 deg) = ~4.7 cm of lift -- enough to clear a gripper whose
+             underside otherwise rides within ~1 cm of the forearm pad's contact plane.
+
+             ★★ ARM RE-SOLVED (brace_pose_solve.py, FK, feet planted, base UNCHANGED at 0.738):
+             LEFT arm sh_pitch -0.673 / roll -0.064 / yaw -0.307 / elbow 0.582 / wrist_roll -0.083
+             / wrist_pitch -0.427. Verified geometry:
+                 pad UNDERSIDE z = 0.870  = exactly ON the 0.87 surface (seats)
+                 gripper lowest  = 0.888  = +1.8 cm ABOVE the surface (clears)
+                 forearm slope   = -0.1 deg (LEVEL)      pad x = 0.457 (past the 0.40 edge)
+
+             ★ TWO BUGS THIS REPLACES (both measured, not guessed):
+             (1) THE OLD KEYFRAME WAS NEVER SEATED -- IT WAS BURIED. The 2026-07-01 FK check
+                 compared the forearm_brace SITE CENTRE (z 0.873) against the 0.87 surface and
+                 called it seated. But the pad is a CAPSULE of radius 0.035: to REST on the
+                 surface its centre must be at 0.870 + 0.035 = 0.905. At 0.873 the pad's
+                 UNDERSIDE is at 0.820 = 5.0 cm INSIDE the tabletop. Always measure the contact
+                 plane (lowest point), never the site centre.
+             (2) THE FOREARM WAS DIVING at +22.6 deg, so its distal end plunged: the gripper sat
+                 10.0 cm under the wood. The wrist cannot rescue that -- a full-range cock is
+                 worth only ~5-6 cm (swept: brace_wrist_clearance_sweep.py found NO (roll,pitch)
+                 that clears at the old forearm pose). Levelling the forearm via the ELBOW +
+                 SHOULDER is what makes the wrist cock sufficient.
+
+             ★ JAW ORIENTATION (user asked for fingers left/right, not up/down): the model cannot
+             express it -- the gripper is ONE welded box (half-extents .035/.05/.06) whose
+             thinnest axis already points down at roll=0, so rolling 90 deg makes the vertical
+             profile WORSE (.035 -> .05). Clearance is won by the PITCH cock, not the roll. The
+             solver left roll near 0 (-0.083). If the real jaws hang DOWN at roll=0 the box
+             under-bounds them and must be re-sized to enclose the OPEN jaws first. -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.673 -0.064 -0.307 0.582 -0.083 -0.427 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/>
         <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
              name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
              residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
@@ -818,8 +853,18 @@
         <framelinvel name="right_hand_vel" objtype="site" objname="right_hand"/>
         <touch name="left_hand_contact" site="left_hand"/>
         <touch name="right_hand_contact" site="right_hand"/>
-        <touch name="left_forearm_contact" site="left_forearm_brace"/>
-        <touch name="right_forearm_contact" site="right_forearm_brace"/>
+        <!-- ★ 2026-07-13: these touch sensors are now DIAGNOSTIC ONLY. The brace cost no longer
+             reads them -- it sums the real table<->arm contact forces in lean.cc
+             (TableBraceForce), because a touch sensor CANNOT measure this brace:
+             engine_sensor.c (mjSENS_TOUCH) only sums contacts involving the SITE'S OWN BODY, so
+             a site on the elbow link is blind to the wrist links -- and with the arm now solid,
+             the brace load rides on the WRIST. Widening the sensor zone does not help and must
+             not be attempted again; that was tried and measured 0.0 N through a full braced hold
+             while 38 N was flowing. The wider _zone sites are kept only because they cover the
+             forearm-pad contact area better than the narrow position site.
+             lean.cc still uses left/right_forearm_brace as the Brace-Pos POSITION target. -->
+        <touch name="left_forearm_contact" site="left_forearm_brace_zone"/>
+        <touch name="right_forearm_contact" site="right_forearm_brace_zone"/>
     </sensor>
 
     <!-- Strip non-essential collision pairs for real-time MPC.
@@ -832,23 +877,58 @@
              table exclude below AND the table's priority=1 arbitration, so the tuned INERT
              forearm pad is the ONE forearm<->table contact. condim4 = torsional friction
              (resists yaw-spin of the flat forearm); solref 0.02 = firm at the 2*dt planner
-             floor; solimp go2-curve = soft onset for the CEM slam; margin 0.01 = 1 cm
-             force-at-a-distance basin so the sampling planner can DISCOVER the contact. -->
-        <pair name="left_forearm_brace_pair" geom1="left_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.015" gap="0"/>
-        <pair name="right_forearm_brace_pair" geom1="right_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.015" gap="0"/>
-        <!-- left arm never contacts the table in single-arm lean -->
+             floor; solimp go2-curve = soft onset for the CEM slam.
+
+             ★ margin 0.015 -> 0.002 (2026-07-13, PHANTOM-BRACE FIX). MuJoCo generates contact
+             force for any pair closer than `margin`, so a 15 mm margin let the pad float 12 mm
+             ABOVE the wood and still report ~30 N. Measured at the strat-22 hold: pad
+             dist=+0.0120, Fnormal=29.8 N -- i.e. the entire brace load was force-at-a-distance
+             and the forearm never touched the table. 2 mm keeps a discoverable basin for the
+             sampler without inventing a load the real robot will not have. -->
+        <pair name="left_forearm_brace_pair" geom1="left_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+        <pair name="right_forearm_brace_pair" geom1="right_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+        <!-- ★ WRIST pads vs the table (2026-07-13). The wrist_yaw link's collision capsule
+             (r 0.025) UNDER-BOUNDS its real mesh (underside at local z -0.0425), so the wrist
+             housing still sank 1.4 cm into the tabletop after the gripper was fixed. These pairs
+             activate the inert wrist pads, which bound the true underside. Same contact params as
+             the forearm pads so the whole braced underside behaves as one surface. -->
+        <pair name="left_wrist_brace_pair" geom1="left_wrist_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+        <pair name="right_wrist_brace_pair" geom1="right_wrist_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+        <!-- Shoulder never reaches the table in any valid plan; the ELBOW raw mesh stays
+             excluded because the inert forearm pad above IS its contact proxy (a primitive
+             capsule is far cheaper than raw-mesh<->box for the planner). -->
         <exclude body1="table" body2="left_shoulder_pitch_link"/>
         <exclude body1="table" body2="left_shoulder_roll_link"/>
         <exclude body1="table" body2="left_shoulder_yaw_link"/>
         <exclude body1="table" body2="left_elbow_link"/>
-        <exclude body1="table" body2="left_wrist_roll_link"/>
-        <exclude body1="table" body2="left_wrist_pitch_link"/>
-        <exclude body1="table" body2="left_wrist_yaw_link"/>
-        <!-- gripper does NOT brace (forearm-only, no-palm): the gripper box would else
-             point-contact the table (~2 cm) in the flat-forearm pose; the forearm pad is
-             the sole brace. Keeps the delicate/occupied gripper off the table. -->
-        <exclude body1="table" body2="left_magpie_gripper"/>
-        <exclude body1="table" body2="right_magpie_gripper"/>
+        <!-- ★★★ PHANTOM-ARM FIX (2026-07-13). The table<->wrist and table<->gripper excludes
+             are DELETED. They made the distal arm a ghost: at the strat-22 brace hold the
+             measured pose had the left GRIPPER 12.0 cm, the wrist links 6.8-8.9 cm, and the
+             forearm mesh 3.0-3.4 cm INSIDE the tabletop, with the hovering pad as the only
+             contact. Replaying that same pose in a twin WITHOUT these excludes
+             (scene_handless_magpie_table.xml) drives the gripper 119.8 mm into the wood and the
+             solver answers with kN-scale rejection -- i.e. the pose does not exist on a real
+             table, and the whole "firm 30 N forearm brace" was resting on geometry the robot
+             cannot occupy.
+
+             The old comment here said the gripper "would else point-contact the table (~2 cm)
+             in the flat-forearm pose" and excluded it to keep the gripper clean. But deleting a
+             contact does not keep the gripper off the table -- it just stops the planner from
+             SEEING the table, so it drove the hand straight through. The gripper is kept off
+             the wood by POSE (wrist cocked up in the forearm_brace_lean keyframe), not by
+             pretending the wood is not there.
+
+             The wrist links and the gripper both already carry cheap PRIMITIVE collision geoms
+             (wrist capsule+sphere; left/right_gripper_collision box), so making them solid costs
+             the planner little. ★GATE: re-check the planner rate after this -- if it drops, name
+             the wrist primitives and switch these bodies to explicit <pair>s instead, the same
+             way the forearm pad is done above. -->
+        <!-- (deleted) exclude table <-> left_wrist_roll_link / _pitch_link / _yaw_link -->
+        <!-- (deleted) exclude table <-> left_magpie_gripper / right_magpie_gripper -->
+        <!-- NOTE: deliberately NOT adding right-arm excludes here. The right arm is the
+             REACHING arm and must keep full collision against the table -- excluding it would
+             just mint the same phantom on the other side. -->
+
         <!-- TEST #15 (2026-05-18): pelvis/torso table excludes REMOVED. The
              "arXiv 2503.04613 says exclude non-contacting parts" rationale
              was misapplied — in valid plans they don't touch, but in INVALID

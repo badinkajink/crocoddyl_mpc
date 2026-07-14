@@ -32,7 +32,7 @@
                    <!-- <geom class="visual" mesh="right_ankle_roll_link"/> -->
                    <!-- <geom class="foot1"/>
                    <geom class="foot2"/>
-@@ -252,6 +253,12 @@
+@@ -252,6 +253,25 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="left_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="left_elbow_link"/>
                  <!-- <geom class="visual" mesh="left_elbow_link"/> -->
@@ -42,12 +42,36 @@
 +                     Capsule laid along the forearm ventral (table-facing) side; site = touch-sensor zone. -->
 +                <geom name="left_forearm_pad" type="capsule" size="0.035" fromto="0.02 -0.01 -0.015 0.11 -0.03 -0.015" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
 +                <site name="left_forearm_brace" type="capsule" size="0.045" fromto="0.02 -0.01 -0.015 0.11 -0.03 -0.015" rgba="1 0.5 0 0.25" group="4"/>
++                <!-- BRACE FORCE SENSOR ZONE (2026-07-13). A touch sensor sums only the contacts
++                     whose contact POINT lies inside its site volume. The site above spans just the
++                     PROXIMAL forearm (x 0.02-0.11), so once the arm was made solid and the brace
++                     load moved onto the WRIST links, the sensor read 0.0 N while ~38 N was flowing
++                     through the wrist -- i.e. the controller went blind to its own brace and every
++                     brace cost (support-widening, load transfer, force gating) silently died.
++                     This wider zone spans the whole load-bearing underside (forearm pad THROUGH
++                     the wrist links, which are collinear with the forearm in the braced pose) so
++                     brace_contact_force reads the REAL load. Sensor zone only -- a site has no
++                     collision and no dynamics, so nothing else changes. Kept SEPARATE from
++                     left_forearm_brace because lean.cc uses that site's CENTRE as the Brace-Pos
++                     target; widening it in place would have dragged the brace target 10 cm distal. -->
++                <site name="left_forearm_brace_zone" type="capsule" size="0.06" fromto="0.02 -0.015 -0.02 0.25 -0.033 -0.02" rgba="1 0.5 0 0.10" group="4"/>
                  <body name="left_wrist_roll_link" pos="0.121 -0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
                    <joint name="left_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -272,6 +279,27 @@
+@@ -271,7 +291,38 @@
+                       <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
++                      <!-- WRIST BRACE PAD (2026-07-13). The collision capsule above UNDER-BOUNDS
++                           this link's real geometry: the wrist_yaw mesh's underside is at local
++                           z=-0.0425 but the capsule only reaches -0.025, so the wrist housing sank
++                           1.4 cm into the tabletop during the brace (measured, brace_contact_audit).
++                           This INERT pad (contype/conaffinity 0, mass/density 0) bounds the true
++                           underside and is activated ONLY by an explicit <pair> vs the table, so
++                           stand/trot/jump/floor contact and self-collision are byte-identical.
++                           NOT done by fattening the capsule: that geom is live against the floor
++                           and the body in every other task. -->
++                      <geom name="left_wrist_pad" type="capsule" size="0.0425" fromto="-0.020 0 0 0.063 0 0" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
                        <site name="left_hand" pos="0.17 0 0.0" size="0.01" rgba="0 1 0 1"/>
 +                      <!-- Magpie gripper: FIXED, rigidly welded (NOT actuated). Visual = the real
 +                           combined h12_mount mesh; the geom carries the lumped mass (0.506 kg) and
@@ -73,19 +97,24 @@
                      </body>
                    </body>
                  </body>
-@@ -303,6 +331,9 @@
+@@ -303,6 +354,11 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="right_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="right_elbow_link"/>
                  <!-- <geom class="visual" mesh="right_elbow_link"/> -->
 +                <!-- forearm brace pad (mirror of left); inert except via the explicit <pair>. -->
 +                <geom name="right_forearm_pad" type="capsule" size="0.035" fromto="0.02 0.01 -0.015 0.11 0.03 -0.015" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
 +                <site name="right_forearm_brace" type="capsule" size="0.045" fromto="0.02 0.01 -0.015 0.11 0.03 -0.015" rgba="1 0.5 0 0.25" group="4"/>
++                <!-- brace force sensor zone (mirror of the left; see the note there) -->
++                <site name="right_forearm_brace_zone" type="capsule" size="0.06" fromto="0.02 0.015 -0.02 0.25 0.033 -0.02" rgba="1 0.5 0 0.10" group="4"/>
                  <body name="right_wrist_roll_link" pos="0.121 0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
                    <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -323,6 +354,24 @@
+@@ -322,7 +378,27 @@
+                       <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
++                      <!-- wrist brace pad (mirror of the left; see the note there) -->
++                      <geom name="right_wrist_pad" type="capsule" size="0.0425" fromto="-0.020 0 0 0.063 0 0" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
                        <site name="right_hand" pos="0.17 0 0" size="0.01" rgba="0 1 0 1"/>
 +                      <!-- Magpie gripper: FIXED, rigidly welded (NOT actuated). Visual = the real
 +                           combined h12_mount mesh; the geom carries the lumped mass (0.506 kg) and

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <random>
 
@@ -36,6 +37,56 @@ inline double SwingBell(double s) {
 // the full forward lean. arm_plant tolerates only a small torso tilt so MPC
 // prioritises getting the hand on the table; lean_forward then unlocks the
 // full Torso Forward Tilt residual while the planted hand stays put.
+// ★★★ TRUE BRACE LOAD (2026-07-13). Sum the normal forces of every contact between
+// the TABLE and the bracing arm (elbow / wrist links / gripper), straight from
+// mjData.
+//
+// Why not a touch sensor: MuJoCo's touch sensor is STRUCTURALLY unable to do this.
+// engine_sensor.c (mjSENS_TOUCH) filters with
+//     bodyid = m->site_bodyid[objid];
+//     if (con->efc_address >= 0 && (bodyid == conbody[0] || bodyid == conbody[1]))
+// -- it only sums contacts involving the site's OWN BODY. The brace site lives on
+// the elbow link, so it is blind to the wrist links no matter how large the sensor
+// zone is made. That mattered the moment the arm was made solid against the table
+// (the table<->wrist/gripper excludes were deleted, 2026-07-13): the brace load
+// moved onto the WRIST, and the sensor sat at 0.0 N while ~38 N flowed through the
+// contact. Measured: brace_probe Fbrace=0.0 for the entire 18 s hold while
+// brace_contact_audit showed geom48[left_wrist_pitch_link] carrying 38.1 N. Every
+// brace cost gated on brace_contact_force (support-widening hand_load_frac, the P3
+// CoM load transfer, the P4 reach gate, the brace-force shortfall reward) was
+// therefore silently DEAD -- the controller could not feel its own brace.
+//
+// Reading the contacts directly is exact, pose-independent, and immune to which
+// link happens to bite first, which is the whole point: the braced forearm+wrist is
+// ONE contact surface and the load wanders along it.
+inline double TableBraceForce(const mjModel* model, const mjData* data,
+                              bool brace_left) {
+  int tgeom = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+  if (tgeom < 0) return 0.0;
+  int tbody = model->geom_bodyid[tgeom];
+  const char* want = brace_left ? "left_" : "right_";
+  size_t wlen = std::strlen(want);
+  double total = 0.0;
+  mjtNum f6[6];
+  for (int i = 0; i < data->ncon; i++) {
+    const mjContact* c = data->contact + i;
+    if (c->efc_address < 0) continue;                 // inactive (within margin, no force)
+    int b0 = (c->geom[0] >= 0) ? model->geom_bodyid[c->geom[0]] : -1;
+    int b1 = (c->geom[1] >= 0) ? model->geom_bodyid[c->geom[1]] : -1;
+    int other = (b0 == tbody) ? b1 : ((b1 == tbody) ? b0 : -1);
+    if (other < 0) continue;
+    const char* bn = mj_id2name(model, mjOBJ_BODY, other);
+    if (!bn || std::strncmp(bn, want, wlen) != 0) continue;
+    if (!std::strstr(bn, "elbow") && !std::strstr(bn, "wrist") &&
+        !std::strstr(bn, "gripper")) {
+      continue;                                        // not the bracing arm
+    }
+    mj_contactForce(model, data, i, f6);
+    if (f6[0] > 0.0) total += f6[0];                   // f6[0] = normal force
+  }
+  return total;
+}
+
 inline void PhaseTargetScales(const std::string& name,
                               double& reach, double& brace_pos,
                               double& posture) {
@@ -902,14 +953,15 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *right_contact = SensorByName(model, data, "right_hand_contact");
   double brace_contact_force = reach_right ? left_contact[0] : right_contact[0];
   double reach_contact_force = reach_right ? right_contact[0] : left_contact[0];
-  // FOREARM BRACE: read the forearm touch sensor for the brace press — the hand
-  // sensor's 1 cm zone at the gripper tip does not see the forearm-pad contact,
-  // so with the hand sensor brace_contact_force stayed ~0 and the support-widening
-  // gate (hand_load_frac) never opened. This is what actually force-closes it.
+  // FOREARM BRACE: the brace press is the SUM of every table<->bracing-arm contact,
+  // read straight from mjData (see TableBraceForce above). It used to read the
+  // forearm touch sensor, but a touch sensor only sees contacts on its own site's
+  // body -- so once the arm was made solid and the load moved onto the WRIST links,
+  // the sensor reported 0.0 N through an entire braced hold while ~38 N was actually
+  // flowing, and every cost gated on this value was dead. reach_right => the LEFT
+  // arm is the bracing one.
   if (is_forearm_brace) {
-    double *fc = SensorByName(model, data,
-                             reach_right ? "left_forearm_contact" : "right_forearm_contact");
-    if (fc) brace_contact_force = fc[0];
+    brace_contact_force = TableBraceForce(model, data, /*brace_left=*/reach_right);
   }
 
   double reward = 0;
