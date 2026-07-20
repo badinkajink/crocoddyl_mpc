@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <limits>
 #include <random>
@@ -10,6 +11,27 @@
 #include "mjpc/tasks/humanoid/interact/contact_keyframe.h"
 
 namespace mjpc {
+
+// T1 REFERENCE TRIM v2 -- ported from stabilize.cc (commit 1708253) 2026-07-20.
+// Written by TransitionLocked (real state, once per plan) and read by the
+// rollout workers in Residual (benign double read; changes on a seconds
+// timescale, same pattern as stabilize's s_cap_ex_dc).
+//
+// WHY THE STAND NEEDS IT (2026-07-20 real): with the IMU offset finally
+// measured honest (pitch 0.0 / roll 1.3) the stand held 83 s with base_z
+// sd 0.005 -- but still walked a slow FORWARD ramp (lean +0.2 deg at t=4 ->
+// +6.8 deg at t=72) that loaded LankP to its 44.8 Nm useful cap (49.3% of
+// ticks budget-clamped, 29.3 deg tracking error) until the left leg gave up.
+// That residual bias is ankle-zero + CoM-model error: it is NOT constant
+// (both 07-20 recordings show the solved ankle zeros drifting 4-8 deg WITHIN
+// one 50 s run), so no XML constant can cancel it. A leaky integral does not
+// need to know the bias -- it nulls whatever steady park it observes.
+//
+// Recipe (Stephens IROS'07 integral CoP/posture; Caron ICRA'19 leaky DCM
+// integral) with the four v1 defects already fixed upstream: leak, support
+// frame, nominal 0, quiet gate. See stand_trim_* in Lean_H12_Magpie.xml.
+// stand_trim_tau = 0 (the shipped default) forces both to 0 => byte-identical.
+static double s_trim_x = 0.0, s_trim_y = 0.0;
 
 namespace {
 // Swing clearance bell 0->1->0 over swing progress s in [0,1]. Cubic-Bezier
@@ -1410,6 +1432,43 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       if (rcb_id >= 0)
         capture_point[0] += model->numeric_data[model->numeric_adr[rcb_id]];
     }
+  }
+
+  // T1 REFERENCE TRIM v2 (ported 2026-07-20; see the s_trim_x file-scope note).
+  // Applied along the SUPPORT frame -- the feet's own mean heading, the same
+  // midFeetZUp rule as the 2026-07-16 balance_frame fix -- NOT world +x. This
+  // matters on real: heading ran -41 deg .. +11 deg across the 07-20 runs, so a
+  // world-frame correction would be aimed tens of degrees off the robot's
+  // actual forward. (The com_x_offset block above is still world-frame; it is
+  // shipped at 0.0 so nothing is live, but it carries the same latent defect.)
+  //
+  // Semantics mirror com_x_offset: a POSITIVE trim tells the planner the
+  // capture point is further forward/left than measured, so the planner holds
+  // the real CoM back/right. Both trims are exactly 0.0 unless stand_trim_tau
+  // > 0, and the whole block is skipped in that case -> byte-identical.
+  // com_y_offset rides the same support-frame axes: the static lateral sibling
+  // of com_x_offset, for a sided park that survives an honest roll calibration
+  // (lateral mass-model asymmetry, e.g. the one-sided magpie arm). Shipped 0.
+  double com_y_bias = 0.0;
+  {
+    int cy_id = mj_name2id(model, mjOBJ_NUMERIC, "com_y_offset");
+    if (cy_id >= 0) com_y_bias = model->numeric_data[model->numeric_adr[cy_id]];
+  }
+  if (s_trim_x != 0.0 || s_trim_y != 0.0 || com_y_bias != 0.0) {
+    double fwd[2] = {1.0, 0.0}, lat[2] = {0.0, 1.0};
+    double const *flf = SensorByName(model, data, "foot_left_forward");
+    double const *frf = SensorByName(model, data, "foot_right_forward");
+    if (flf && frf) {
+      double fx = flf[0] + frf[0], fy = flf[1] + frf[1];
+      double len = mju_sqrt(fx * fx + fy * fy);
+      if (len > 1.0e-6) {
+        fwd[0] = fx / len; fwd[1] = fy / len;
+        lat[0] = -fwd[1];  lat[1] = fwd[0];
+      }
+    }
+    double lat_bias = s_trim_y + com_y_bias;
+    capture_point[0] += s_trim_x * fwd[0] + lat_bias * lat[0];
+    capture_point[1] += s_trim_x * fwd[1] + lat_bias * lat[1];
   }
 
   // project onto support polygon
@@ -3065,6 +3124,113 @@ void lean::ResidualFn::ContactResidual(const mjModel *model, const mjData *data,
 // of net body weight on each foot, enough friction to hold against the
 // soft cost gradients without artificial pins).
 void lean::TransitionLocked(mjModel *model, mjData *data) {
+  // ---- T1 REFERENCE TRIM v2 (ported from stabilize.cc 1708253, 2026-07-20) - //
+  // Runs on the REAL state once per plan (never inside a rollout), so the
+  // integrator sees measured physics, not the sampler's imagination.
+  //
+  // EXACT-NAME GATE: the stand keyframe only. The trim's whole premise is a
+  // both-feet quiet park; a trot/walk/drive keyframe has no such park and its
+  // twin tuning was never done against a moving reference. Same scoping rule
+  // the 07-19 stumble anchor port used, and the reason a flag's verdict is
+  // scoped to the strategy it was measured on.
+  {
+    const bool trim_strategy =
+        (residual_.residual_keyframe_.name == "stand_up");
+    int tt_id = mj_name2id(model, mjOBJ_NUMERIC, "stand_trim_tau");
+    double ttau = (tt_id >= 0)
+        ? model->numeric_data[model->numeric_adr[tt_id]] : 0.0;
+    double const *tup = SensorByName(model, data, "torso_up");
+    double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
+    int pid = mj_name2id(model, mjOBJ_BODY, "pelvis");
+    static double s_trim_t = -1.0;      // last tick time, for dt
+    static double s2_ex = 0.0, s2_ey = 0.0;   // trim's own 4 s DC EMA
+    if (trim_strategy && ttau > 0.0 && tup && cvel && pid >= 0) {
+      auto Num = [&](const char *name, double dflt) {
+        int id = mj_name2id(model, mjOBJ_NUMERIC, name);
+        return (id >= 0) ? model->numeric_data[model->numeric_adr[id]] : dflt;
+      };
+      double tdelay   = Num("stand_trim_delay", 0.0);
+      double tmax_pos = Num("stand_trim_max", 0.08);
+      double tmax_neg = Num("stand_trim_neg_max", tmax_pos);
+      double tleak    = Num("stand_trim_leak", 60.0);
+      double tquiet   = Num("stand_trim_quiet", 0.03);
+      double tlat_max = Num("stand_trim_lat_max", 0.02);
+      double tnom     = Num("stand_trim_nominal_x", 0.0);
+      const bool trim_armed = (tdelay <= 0.0) || (data->time >= tdelay);
+
+      // SUPPORT frame from the feet's own mean heading (must match the axes the
+      // Residual applies the trim along; degenerate feet -> world axes).
+      double fwd[2] = {1.0, 0.0}, lat[2] = {0.0, 1.0};
+      {
+        double const *flf = SensorByName(model, data, "foot_left_forward");
+        double const *frf = SensorByName(model, data, "foot_right_forward");
+        if (flf && frf) {
+          double fx = flf[0] + frf[0], fy = flf[1] + frf[1];
+          double len = mju_sqrt(fx * fx + fy * fy);
+          if (len > 1.0e-6) {
+            fwd[0] = fx / len; fwd[1] = fy / len;
+            lat[0] = -fwd[1];  lat[1] = fwd[0];
+          }
+        }
+      }
+      const mjtNum *com = data->subtree_com + 3 * pid;
+      double zc = mju_max(0.5, com[2]);
+      double tau_c = mju_sqrt(zc / 9.81);
+      // capture excursion in the SUPPORT frame; nominal 0 = upright (v1's bug
+      // was using the strat-20 lean nominal 0.06 here, which drove the stand's
+      // CoM 6 cm toward the toe).
+      double exf = zc * ((tup[0] * fwd[0] + tup[1] * fwd[1]) - tnom) +
+                   tau_c * (cvel[0] * fwd[0] + cvel[1] * fwd[1]);
+      double eyl = zc * (tup[0] * lat[0] + tup[1] * lat[1]) +
+                   tau_c * (cvel[0] * lat[0] + cvel[1] * lat[1]);
+      double dt = (s_trim_t >= 0.0) ? mju_max(0.0, data->time - s_trim_t) : 0.0;
+      s_trim_t = data->time;
+      double a2 = (dt > 0.0) ? mju_min(1.0, dt / 4.0) : 1.0;  // first call snaps
+      s2_ex += a2 * (exf - s2_ex);
+      s2_ey += a2 * (eyl - s2_ey);
+      // QUIET gate: only a STEADY park integrates. During a push, a catch, or
+      // an operator hand on the chest the instantaneous excursion leaves its DC
+      // -> freeze. (v1 wound those transients into the reference = the 07-14
+      // hunt. It also means an ASSISTED run must not be used to judge the trim:
+      // the gate cannot see an external force, only the motion it suppresses.)
+      const bool quiet = std::fabs(exf - s2_ex) < tquiet &&
+                         std::fabs(eyl - s2_ey) < tquiet;
+      if (trim_armed && quiet) {
+        s_trim_x += (dt / ttau) * s2_ex;
+        s_trim_y += (dt / ttau) * s2_ey;
+      } else if (!trim_armed) {
+        s_trim_x = 0.0; s_trim_y = 0.0;
+      }
+      // LEAK (Caron'19): decay toward 0. A true constant bias re-wins every
+      // tick (steady state trim = park * tleak/ttau, residual park =
+      // trim * ttau/tleak -- at the 60/15 defaults a 4 cm need leaves ~1 cm
+      // park); transient garbage has no source and self-unwinds.
+      if (tleak > 0.0 && dt > 0.0) {
+        double decay = 1.0 - mju_min(1.0, dt / tleak);
+        s_trim_x *= decay;
+        s_trim_y *= decay;
+      }
+      s_trim_x = mju_min(tmax_pos, mju_max(-tmax_neg, s_trim_x));
+      s_trim_y = mju_min(tlat_max, mju_max(-tlat_max, s_trim_y));
+      static double last_print = -1.0e9;
+      if (data->time - last_print > 5.0) {
+        last_print = data->time;
+        // stderr on purpose: agent_server/deploy stdout is BLOCK-buffered when
+        // redirected, and the line vanishes if the process is killed unflushed.
+        std::fprintf(stderr,
+                     "[trim] t=%.1f park(fwd%+.3f lat%+.3f) m trim(x%+.3f "
+                     "y%+.3f) m armed=%d quiet=%d\n",
+                     data->time, s2_ex, s2_ey, s_trim_x, s_trim_y,
+                     trim_armed ? 1 : 0, quiet ? 1 : 0);
+      }
+    } else {
+      // OFF (or a non-stand strategy): hard-zero everything, including the EMA
+      // state, so a later arm starts clean instead of inheriting a stale park.
+      s_trim_x = 0.0; s_trim_y = 0.0;
+      s2_ex = 0.0; s2_ey = 0.0; s_trim_t = -1.0;
+    }
+  }
+
   // ---- DEBUG: print leg stability diagnostics every ~0.5 s ---- //
   static int debug_tick = 0;
   static const bool lean_dbg = (std::getenv("LEAN_DEBUG") != nullptr);
