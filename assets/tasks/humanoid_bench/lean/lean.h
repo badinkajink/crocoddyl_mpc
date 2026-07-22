@@ -184,6 +184,18 @@ class lean : public Task {
     // the snapshot so Residual can point reach_dir (Body Yaw target) at it.
     double cmd_wz_ = 0.0;
     double drive_yaw_des_ = 0.0;
+
+    // Foot Stability anchor for the STEPPING keyframes (trot/walk/drive), 2026-07-20.
+    // Rx,Ry,Lx,Ly. The residual's kRight/kLeftFootHomeXY constants live in the
+    // ODOMETRIC frame, which drifts (~13 m measured on real) -- so the cost ends up
+    // dragging the feet toward a point metres away and the robot "keeps trying to
+    // lean backward". Same disease the lower-body stand fixed 2026-07-18 (cost
+    // 225 -> 0.00 on real). Re-pinned to the MEASURED stance by TransitionLocked at
+    // stepping-keyframe entry, and again whenever the drive FSM is idle (standing).
+    // NOT re-pinned mid-gait: while stepping the feet are SUPPOSED to travel, so a
+    // per-tick re-pin would zero out an 8-weight cost the walk was tuned with.
+    // Defaults == the old constants => inert until TransitionLocked pins it.
+    double drive_foot_anchor_[4] = {0.2196, -0.163, 0.2196, 0.163};
     mjtNum prev_phase_reach_scale_ = 0.0;
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
     // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.
@@ -429,6 +441,8 @@ class lean : public Task {
     // agreement). Every non-drive strategy leaves this 0 (default path).
     rfn->drive_gait_amp_ = residual_.drive_gait_amp_;
     rfn->drive_yaw_des_ = residual_.drive_yaw_des_;   // V3 yaw heading target
+    for (int i = 0; i < 4; i++)                       // measured Foot Stability anchor
+      rfn->drive_foot_anchor_[i] = residual_.drive_foot_anchor_[i];
     // ★ BUGFIX 2026-07-12: propagate the GOVERNED COMMAND too. Without this every
     // rollout residual sees cmd_active_=false and therefore takes the legacy
     // trot_des_vel numeric path (v_des = 0) -- i.e. it costs the gait as an

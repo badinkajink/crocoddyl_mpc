@@ -47,6 +47,84 @@ inline double SwingBell(double s) {
   return t * t * (3.0 - 2.0 * t);                     // smoothstep of the ramp
 }
 
+// ============================================================================
+// STANCE-SIDE LATERAL WEIGHT-SHIFT ("ROCK") — trot_rock_ff, default 0 = OFF.
+//
+// WHY (2026-07-20, async-twin diagnosis of the real drive-24 Q/E estop):
+// this gait already forces the SWING leg open-loop in lean::ModifyControl, so
+// the lift is RATE-INDEPENDENT. But the other half of a step -- shifting the
+// weight OFF the foot that is about to swing -- is only a COST TARGET (the
+// "Lateral Center" rock at the subcom_y residual, whose own comment says "the
+// planner finds the hip-roll / ankle to achieve it"). That half is SAMPLER-
+// owned, and it is exactly what starves when the plan rate drops: the node's
+// own PLAN-RATE WARNING predicts it verbatim -- "the stance-leg weight shift
+// is SAMPLER-owned and starves first (feet cycle, never unload)".
+// MEASURED on the async twin (strat 24, yaw 0.3, est real):
+//     28 Hz (real rate): foot unload 2-7%,  z_min 0.75, knee 1.0  -> FELL 0/3
+//     200 Hz (lockstep): foot unload 25.8%, z_min 0.99, knee 0.92 -> HELD 3/3
+// i.e. at the real rate it cannot commit to a step -- it shuffles and SAGS,
+// the same knee~0.95 / z~0.957 crouch the real robot froze in on 2026-07-13.
+// So: give the weight shift the same open-loop treatment the swing already has.
+//
+// WHY THE HIP (not the ankle): the ankle is the documented saturating joint
+// (useful torque capped ~44.8 Nm) -- adding lateral demand there is exactly
+// the wrong direction. The hip has the authority (FK 0.79 m/rad). And a twin
+// A/B already showed that merely PERMITTING the hip strategy (Hip Roll 30->0)
+// does NOT make the sampler discover it -- so FORCING it, the way the swing is
+// forced, is the untried move.
+//
+// SIGNS: right foot sits at -y, left at +y. +hip_roll moves that leg's foot
+// +y (0.79 m/rad, both legs) -- so on a PLANTED foot the same +hip_roll moves
+// the PELVIS -y. To unload the LEFT (swinging) foot the body must go -y, onto
+// the right stance foot => +delta on the RIGHT hip_roll. Mirrored for the
+// other half-cycle. In double support both bumps are 0 => both deltas are 0,
+// so a quiet stand is untouched even with the numeric ON.
+//
+// ★ ONE FORMULA, TWO READERS. lean::ModifyControl adds these deltas to the
+// stance hip_roll, and ResidualFn::Residual shifts the "Hip Roll L/R" cost
+// TARGET by the SAME deltas. That cost pins hip_roll to the keyframe at
+// weight 30, so driving the joint without moving its target would be a
+// cost-vs-feedforward fight -- the same class of bug as the walk->stop
+// faceplant (cost kept the catch-step, ModifyControl quit). Both callers go
+// through here so they cannot drift.
+//
+// rock_m = commanded pelvis lateral shift at full bump [m]. 0 => both 0 =>
+// byte-identical for every strategy and every existing run.
+// ============================================================================
+// ★ PHASE LEAD (trot_rock_lead, cycle fractions, default 0). You cannot unload a
+// foot AFTER it is supposed to have left the ground. With duty 0.60 the swing
+// bump is 0 at liftoff (ph=0.60) and peaks mid-swing (ph=0.80), so a rock driven
+// by the RAW bump is exactly zero when the unload is needed and maximal when the
+// foot is already airborne -- measured 2026-07-20 (lead 0: unload 3.8%->9.8%,
+// z_min unmoved at 0.75 = the sag survived). The COST can absorb that because it
+// optimizes over a 1 s horizon and can anticipate; an instantaneous FEEDFORWARD
+// cannot. lead shifts the bump EARLIER so the weight is already off the foot at
+// liftoff: lead = (1-duty)/2 = 0.20 puts the peak exactly at liftoff; 0.20-0.30
+// is the sane band. Both readers get their bump from HERE, so cost and
+// feedforward cannot disagree about the timing either.
+inline void TrotRockHipRoll(double rock_m, double lead, double g_amp,
+                            double ph_l, double ph_r, double duty,
+                            double *droll_l, double *droll_r) {
+  *droll_l = 0.0;
+  *droll_r = 0.0;
+  if (rock_m <= 1e-6 || ph_l < 0.0 || duty >= 1.0) return;
+  constexpr double kFootPerHipRoll = 0.79;   // m of foot-y per rad (FK-measured)
+  constexpr double kMaxRoll = 0.25;          // rad, same clamp as the swing dHipR
+  auto led_bump = [&](double ph) {
+    double p = std::fmod(ph + lead, 1.0);
+    if (p < 0.0) p += 1.0;
+    return (p < duty) ? 0.0 : SwingBell((p - duty) / (1.0 - duty));
+  };
+  const double gb_l = led_bump(ph_l), gb_r = led_bump(ph_r);
+  const double k = rock_m / kFootPerHipRoll;
+  // LEFT about to swing (gb_l > 0) -> RIGHT is stance -> pelvis -y -> +R.
+  // RIGHT about to swing (gb_r > 0) -> LEFT is stance -> pelvis +y -> -L.
+  double dr = +k * g_amp * gb_l;
+  double dl = -k * g_amp * gb_r;
+  *droll_r = dr < -kMaxRoll ? -kMaxRoll : (dr > kMaxRoll ? kMaxRoll : dr);
+  *droll_l = dl < -kMaxRoll ? -kMaxRoll : (dl > kMaxRoll ? kMaxRoll : dl);
+}
+
 // Target (post-ramp) reach + brace + posture scales for each named phase. Kept
 // in one place so the residual and the transition logic can't drift out of
 // sync. Posture is boosted during stand_up because the audit-spec PD gains
@@ -698,6 +776,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // stumble_balance_gated=0 to restore the old always-on march (A/B, no rebuild).
   constexpr double kArmSec = 2.0;     // arm the gate this long after engage (calm bring-up)
   double g_amp = 0.0, g_bump_l = 0.0, g_bump_r = 0.0;
+  // Raw gait phases + duty, hoisted to function scope so the ROCK (see
+  // TrotRockHipRoll) can build its own PHASE-LED bump far below, from the same
+  // clock lean::ModifyControl uses. -1 = clock never ran => rock stays 0.
+  double rock_ph_l = -1.0, rock_ph_r = -1.0, rock_duty = 0.60;
   // Capture-point excursion (CoM heading vs equilibrium), hoisted to function
   // scope so BOTH the catch-step (below) AND the hip/arm angular-momentum
   // recovery tier (Centroidal angular momentum term, far below) read the same
@@ -748,6 +830,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         : SwingBell((ph_l - kDuty) / (1.0 - kDuty));
     g_bump_r = (ph_r < kDuty) ? 0.0
         : SwingBell((ph_r - kDuty) / (1.0 - kDuty));
+    rock_ph_l = ph_l; rock_ph_r = ph_r; rock_duty = kDuty;   // for the ROCK
     double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
     double const *flp  = SensorByName(model, data, "foot_left_pos");
     double const *frp  = SensorByName(model, data, "foot_right_pos");
@@ -1410,9 +1493,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the planner holds the actual CoM that much BACK. RAISE it if the real robot leans forward;
   // the value that makes it stand upright == the real CoM forward offset (doubles as a sysid
   // measurement). XML-tunable -> no rebuild to change the value; default 0 = exact prior behavior.
+  // 2026-07-20: com_x_offset now rides the SUPPORT frame, not world +x. It was
+  // written when the stand faced +x and was harmless while shipped at 0.0, but
+  // it goes LIVE this session and real headings ran -41..+15 deg tonight -- a
+  // world-frame bias would be aimed that far off the robot's actual forward.
+  // Same midFeetZUp rule as the trim below / the 2026-07-16 balance_frame fix;
+  // byte-identical at heading 0 and while the numeric is 0.
+  // (reach_com_back just below is still world-frame -- it is reach-gated, was
+  // tuned that way on strat 21, and is out of scope for the stand.)
   {
     int com_off_id = mj_name2id(model, mjOBJ_NUMERIC, "com_x_offset");
-    if (com_off_id >= 0) capture_point[0] += model->numeric_data[model->numeric_adr[com_off_id]];
+    double com_fwd_bias =
+        (com_off_id >= 0) ? model->numeric_data[model->numeric_adr[com_off_id]] : 0.0;
+    if (com_fwd_bias != 0.0) {
+      double fwd[2] = {1.0, 0.0};
+      double const *flf = SensorByName(model, data, "foot_left_forward");
+      double const *frf = SensorByName(model, data, "foot_right_forward");
+      if (flf && frf) {
+        double fx = flf[0] + frf[0], fy = flf[1] + frf[1];
+        double len = mju_sqrt(fx * fx + fy * fy);
+        if (len > 1.0e-6) { fwd[0] = fx / len; fwd[1] = fy / len; }
+      }
+      capture_point[0] += com_fwd_bias * fwd[0];
+      capture_point[1] += com_fwd_bias * fwd[1];
+    }
     // reach_com_back (strat 21, 2026-06-23): the REACH adds its own forward-CoM
     // creep ON TOP of the global com_x_offset gap -- the ~4 kg magpie arm reaching
     // forward pulls the CoM toward the ankle's forward limit, and on the REAL chain
@@ -1997,10 +2101,23 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // all times; let MPC find the brace+CoP balance instead of twisting the leg.
   double stance_square_scale =
       is_leg_lift_stage_early ? 12.0 : hip_square_scale;
+  // ROCK (trot_rock_ff, default 0 = OFF): move the hip-ROLL cost TARGET by the
+  // same stance-side weight-shift delta lean::ModifyControl drives, so the
+  // weight-30 pin above asks for the rock instead of fighting it. Trot-gated and
+  // zero in double support => every non-trot strategy (and trot with the numeric
+  // at 0) is byte-identical. See TrotRockHipRoll for signs + the measurement.
+  double rock_dl = 0.0, rock_dr = 0.0;
+  if (is_trot) {
+    TrotRockHipRoll(GetNumberOrDefault(0.0, model, "trot_rock_ff"),
+                    GetNumberOrDefault(0.0, model, "trot_rock_lead"), g_amp,
+                    rock_ph_l, rock_ph_r, rock_duty, &rock_dl, &rock_dr);
+  }
   residual[counter++] = stance_square_scale * (data->qpos[7 + 0] - model->key_qpos[7 + 0]);
-  residual[counter++] = stance_square_scale * (data->qpos[7 + 2] - model->key_qpos[7 + 2]);
+  residual[counter++] = stance_square_scale *
+      (data->qpos[7 + 2] - (model->key_qpos[7 + 2] + rock_dl));
   residual[counter++] = hip_square_scale * (data->qpos[7 + 6] - model->key_qpos[7 + 6]);
-  residual[counter++] = hip_square_scale * (data->qpos[7 + 8] - model->key_qpos[7 + 8]);
+  residual[counter++] = hip_square_scale *
+      (data->qpos[7 + 8] - (model->key_qpos[7 + 8] + rock_dr));
 
   // ----- posture ----- //
   // Reduced weight vs push task to allow more deviation for leaning.
@@ -2280,10 +2397,36 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // stay grounded (the `is_leg_lift_stage ? 0.0 : ...` below always takes the
   // anchored branch). WBC may still nudge foot placement to hold balance.
   double right_foot_scale = arm_contact_or_lean ? 4.0 : 1.0;
-  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - brace_foot_x);
-  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[1] - kRightFootHomeXY[1]);
-  residual[counter++] = left_foot_scale * (foot_left_pos[0] - brace_foot_x);
-  residual[counter++] = left_foot_scale * (foot_left_pos[1] - kLeftFootHomeXY[1]);
+  // ★ MEASURED FOOT ANCHOR for the STEPPING keyframes (trot/walk/drive), 2026-07-20.
+  // kRight/kLeftFootHomeXY are ODOMETRIC-frame constants; that frame drifts (~13 m
+  // measured on real), so this cost drags the feet toward a point metres away and
+  // the robot "keeps trying to lean backward". The lower-body stand fixed exactly
+  // this on 2026-07-18 (Foot Stability cost 225 -> 0.00 on real) but the full-body
+  // LEAN task never got the port. drive_foot_anchor_ is re-pinned to the MEASURED
+  // stance by TransitionLocked (stepping-keyframe entry + every idle tick), never
+  // mid-gait. is_trot gate => STRAT 6 STAND AND EVERY NON-STEPPING STRATEGY ARE
+  // BYTE-IDENTICAL (they keep brace_foot_x / the home constants), and the anchor's
+  // own defaults equal the old constants so even the stepping path is inert until
+  // TransitionLocked pins it.
+  // ★ DRIVE-ONLY + OPT-IN (narrowed 2026-07-20 after a REAL-ROBOT FAULT: the
+  // is_trot-gated, always-on version dragged the robot sideways at startup --
+  // the cold-start pin only null-checked sensor POINTERS, so an uninitialised
+  // estimate could pin both anchors near the origin and a weight-8 cost then
+  // hauled both feet toward it). TROT 22/23 also excluded on their own merits:
+  // measured stance x=0.030 vs the constant 0.2196 would move their anchor 19 cm
+  // and they were twin-TUNED against the constant (a pp7 spot-check gave 4.1 s
+  // vs a historical ~5.1 s, which this bench's non-deterministic CEM cannot
+  // resolve at n=3). Default numeric 0 => strat 6 AND drive are byte-identical.
+  const bool anchor_measured =
+      is_drive && GetNumberOrDefault(0.0, model, "drive_foot_anchor") > 0.5;
+  const double rf_ax = anchor_measured ? drive_foot_anchor_[0] : brace_foot_x;
+  const double rf_ay = anchor_measured ? drive_foot_anchor_[1] : kRightFootHomeXY[1];
+  const double lf_ax = anchor_measured ? drive_foot_anchor_[2] : brace_foot_x;
+  const double lf_ay = anchor_measured ? drive_foot_anchor_[3] : kLeftFootHomeXY[1];
+  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - rf_ax);
+  residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[1] - rf_ay);
+  residual[counter++] = left_foot_scale * (foot_left_pos[0] - lf_ax);
+  residual[counter++] = left_foot_scale * (foot_left_pos[1] - lf_ay);
 
   // ----- hip clearance from table front face ----- //
   // table body is at world x=0.9, half-size 0.5 → front face at x=0.40.
@@ -3557,6 +3700,40 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       residual_.drive_gait_amp_ += std::min(da, std::max(-da, d));
       residual_.drive_gait_amp_ =
           std::min(1.0, std::max(0.0, residual_.drive_gait_amp_));
+      // ★ RE-PIN WHILE IDLE (2026-07-20): once the gait has fully ramped down the
+      // robot is standing on both planted feet, so re-anchor Foot Stability to
+      // where the feet ACTUALLY ended up. This is what makes the post-walk halt a
+      // clean stand instead of one fighting a stale target -- the feet legitimately
+      // moved during the walk, and without this the cost would drag them back to a
+      // pre-walk (and odometrically drifting) point. NOT done mid-gait: while
+      // stepping the feet are SUPPOSED to travel, and re-pinning every tick would
+      // zero out the weight-8 cost the walk was tuned with.
+      // ★ GUARDED (2026-07-20, after the real-robot sideways drag): opt-in via
+      // the drive_foot_anchor numeric (default 0 = OFF), only after the strategy
+      // has been live for kAnchorSettle so the estimator is initialised, and only
+      // if the reading is a PLAUSIBLE stance. Anything outside those bounds is a
+      // bad read, not a stance -- keep the previous anchor rather than pin to it.
+      constexpr double kAnchorSettle = 3.0;   // s since keyframe entry
+      const bool anchor_on =
+          GetNumberOrDefault(0.0, model, "drive_foot_anchor") > 0.5;
+      if (anchor_on && residual_.drive_gait_amp_ <= 1e-3 &&
+          !residual_.drive_walk_ &&
+          data->time - residual_.keyframe_start_time_ > kAnchorSettle) {
+        double *frp = SensorByName(model, data, "foot_right_pos");
+        double *flp = SensorByName(model, data, "foot_left_pos");
+        if (frp && flp) {
+          // right foot -y, left foot +y; half-stance 6..30 cm, |x| < 0.6 m.
+          const bool sane =
+              frp[1] < -0.06 && frp[1] > -0.30 && flp[1] > 0.06 && flp[1] < 0.30 &&
+              std::fabs(frp[0]) < 0.6 && std::fabs(flp[0]) < 0.6;
+          if (sane) {
+            residual_.drive_foot_anchor_[0] = frp[0];
+            residual_.drive_foot_anchor_[1] = frp[1];
+            residual_.drive_foot_anchor_[2] = flp[0];
+            residual_.drive_foot_anchor_[3] = flp[1];
+          }
+        }
+      }
       // V3 heading integrator: idle + no yaw cmd -> track current heading (no
       // rotation demand); else integrate cmd_wz_ into the desired WORLD yaw.
       double qw = data->qpos[3], qx = data->qpos[4],
@@ -3680,6 +3857,19 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                               motion_strategy_.GetCurrentKeyframe());
     residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
     residual_.keyframe_start_time_ = data->time;
+    // ★ Pin the Foot Stability anchor to the MEASURED stance on entry to a
+    // STEPPING keyframe (trot/walk/drive). The residual's home constants are
+    // odometric-frame and that frame drifts, so anchoring to where the feet
+    // ACTUALLY are at hand-over is the whole fix (lower-body: cost 225 -> 0.00
+    // on real, 2026-07-18). Feet are planted at entry, so this is a clean
+    // capture. Non-stepping keyframes (incl. strat 6 stand) never touch it.
+    // ⚠ NO COLD-START PIN. The first version pinned HERE, at strategy entry --
+    // i.e. before the state estimate is initialised -- and only null-checked the
+    // sensor pointers. On the real robot that DRAGGED IT SIDEWAYS at startup
+    // (uninitialised read => both anchors near the origin => the weight-8 cost
+    // hauls both feet toward it). The anchor now starts at the legacy constants
+    // and is only ever pinned by the drive-idle path below, which is gated on
+    // settle time AND plausibility. Left as a note so nobody re-adds it.
     // STRAIGHTEN (strat 25) live-seed (C3): capture the release pose ONCE here on
     // the TRUE agent state (never per-rollout), so Residual ramps the upright +
     // posture targets FROM it to nominal along a min-jerk — the "ramped reference
@@ -4290,6 +4480,27 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
   };
   do_leg(ph_l, 1, 2, 3, 4, +1.0);    // LEFT  swing window ph_l in [duty,1]
   do_leg(ph_r, 7, 8, 9, 10, -1.0);   // RIGHT swing window ph_r in [duty,1]
+
+  // ---- STANCE-SIDE ROCK (trot_rock_ff, default 0 = OFF = byte-identical) ----
+  // The missing half of a step: unload the foot BEFORE asking it to swing. This
+  // is ADDITIVE (not a blend-to-target like do_leg) on purpose -- the sampler
+  // still OWNS stance balance; we only bias the hip roll it was already being
+  // asked (weight 30, target shifted identically in Residual) to find. The
+  // swing leg's own hip_roll is set by do_leg above and is airborne anyway, so
+  // only the STANCE side gets the delta: g_bump_l>0 means LEFT is swinging, so
+  // the delta lands on the RIGHT (stance) hip_roll, and vice versa. Both bumps
+  // are 0 in double support => no delta => quiet stand untouched.
+  {
+    const double rock_m = GetNumberOrDefault(0.0, model, "trot_rock_ff");
+    if (rock_m > 1e-6) {
+      double droll_l = 0.0, droll_r = 0.0;
+      TrotRockHipRoll(rock_m,
+                      GetNumberOrDefault(0.0, model, "trot_rock_lead"), g_amp,
+                      ph_l, ph_r, kDuty, &droll_l, &droll_r);
+      ctrl[2] += droll_l;    // L hip_roll (nu idx 2) -- stance while RIGHT swings
+      ctrl[8] += droll_r;    // R hip_roll (nu idx 8) -- stance while LEFT swings
+    }
+  }
 }
 
 // ============================================================================

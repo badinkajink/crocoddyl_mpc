@@ -40,8 +40,29 @@
              Routed by the name-match at lean.cc:210; HOME stays byte-identical so the
              table-lean tasks 0-5 (which also fall back to home) are unchanged. Revert: delete
              these two keys -> stand/squat-top fall back to home (straight-knee) again. -->
-        <key name="stand_up" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="stand"    qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- 2026-07-20 PERPENDICULAR-TORSO FIX (hipP -0.25 -> -0.14 on both legs).
+             The shipped pose declared base quat = identity (pelvis vertical) while the
+             sagittal chain summed hipP(-0.25)+knee(+0.35)+ankP(-0.21) = -0.11 rad = -6.30 deg.
+             That sum MUST be 0 for a vertical pelvis on FLAT soles, so the keyframe described
+             a robot standing upright on feet tilted 6.4 deg -- impossible on a flat floor.
+             The floor wins: soles go flat and the TORSO absorbs the 6.4 deg. FK with soles
+             forced flat: shipped -> torso +6.36 deg / CoM +6.9 cm; real 07-20 measured
+             lean +5.7 deg / CoM_margin +5..7 cm = the same pose. So the chronic "forward lean"
+             was the posture TARGET, not a bias, not calibration, not the controller.
+             FIX BY THE HIP, not the ankle: straightening the ankle instead (-0.21 -> -0.10)
+             also verticalises the torso but parks the CoM at -2.5 cm, only 5.4 cm from the
+             heel edge -- and the heel is the WEAK lever (~27 Nm vs 44.8 Nm at the toe).
+             Un-flexing the hip keeps the shank's forward lean, so the CoM stays at +4.8 cm
+             (8.5 cm to toe, 12.7 cm to heel) = the "strong plantarflexion" park the 07-18
+             work argued for, WITH a perpendicular torso. Knee/ankle/hip-roll/pelvis-z all
+             unchanged, so crouch depth and stance width are untouched.
+             FK after: torso +0.06 deg, soles flat, CoM +4.8 cm.
+             BOTH keys change together: 'stand' is the bring-up ramp destination and
+             'stand_up' is the residual's posture target; a split would ramp to one pose and
+             then be pulled toward another. Lean_H12.xml carries the IDENTICAL defect and is
+             deliberately left alone until this is validated on Magpie. -->
+        <key name="stand_up" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="stand"    qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- straighten (strategy 25, pre-stand bring-up): CoM-CENTERED stand pose (hip
              -0.15/knee 0.35/ankle -0.28) = the wide-basin handoff target. stand_up plants
              the feet ~68mm ahead of the CoM (backward-tippy => harness-release fall); this
@@ -191,7 +212,19 @@
         <!-- WSS drive (strat 24): posture keyframe for the stand<->trot teleop FSM. Byte-copy of
              stumble_trot; the "drive" token makes is_drive detectable while "stumble"+"trot" keep
              is_stumble/is_trot true so the gait+velocity machinery works. Idle g_amp=0 => stand. -->
-        <key name="stumble_trot_drive" qpos="0.19 0 1.020 1 0 0 0 0 -0.25 0.12 0.35 -0.21 0 0 -0.25 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <!-- hipPitch -0.25 -> -0.14 (2026-07-20): the OLD value made the sagittal
+             chain hipP+knee+ankP = -0.25+0.35-0.21 = -0.11 rad = -6.3 deg, which
+             for a vertical pelvis on flat soles is kinematically IMPOSSIBLE, so on
+             a flat floor physics forces the soles flat and the TORSO takes the
+             6.3 deg forward -> a permanent forward lean, CoM ~+6.9 cm, "stands a
+             while then tips forward" (observed on real drive-24 idle 2026-07-20).
+             -0.14 zeroes the chain (-0.14+0.35-0.21 = 0) => vertical torso, flat
+             feet, CoM ~+4.8 cm (8.5 to toe / 12.7 to heel = centred). Knee 0.35
+             and ankP -0.21 UNCHANGED so the trot gait's crouch/tuning is preserved
+             -- only the standing posture is squared. Identical class of fix to the
+             one that took the strat-6 stand keyframe to 0 deg and a 112 s record.
+             Touches stumble_trot_drive ONLY -> strat 23 (stumble_trot) untouched. -->
+        <key name="stumble_trot_drive" qpos="0.19 0 1.020 1 0 0 0 0 -0.14 0.12 0.35 -0.21 0 0 -0.14 -0.12 0.35 -0.21 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- JUMP (strat 26, 2026-07-11): one-shot in-place hop. jump_stand is the
              phase keyframe (byte-copy of stand: settle before + stand after the hop);
              jump_crouch / jump_launch / jump_land are the time-scheduled targets the
@@ -304,7 +337,26 @@
              RAISE if the REAL robot leans forward (compensates the real CoM sitting ahead of
              the un-sysid'd model). The value that stands it upright == the real CoM forward
              offset. XML-tunable, no rebuild. Default 0 = exact prior behavior. Try ~0.04. -->
+        <!-- 2026-07-20 SET LIVE at +0.05 (was 0.0). FIRST fully UNSUPPORTED run (harness
+             slack; the 83s/112s runs had a taut harness quietly holding the robot BACK)
+             showed a sustained forward park: CoM_margin +0.05 early -> +0.09 mid -> +0.11-0.15
+             late, i.e. AT/PAST the toe edge (+0.133), with BOTH ankles budget-clamped
+             (LankP 28.7% / RankP 18.7% out-of-authority, tau ~31-33 Nm vs 19-21 in the
+             harness-assisted run). That is exactly the symptom this knob was created for
+             (2026-06-13): the REAL CoM sits ahead of the un-sysid'd model's, so a
+             model-centred balance target leaves the REAL CoM forward.
+             TUNING RULE (unchanged): RAISE if it still leans forward, LOWER if it starts
+             parking backward; the value that stands it upright == the real CoM forward gap.
+             +0.05 should move the park from ~+0.09 to ~+0.04 = the polygon centre (+0.027),
+             leaving 12.9cm to the heel and 8.3cm to the toe. XML-only, no rebuild to retune.
+             NOTE this is now applied in the SUPPORT frame (lean.cc), not world +x. -->
         <numeric name="com_x_offset" data="0.0"/>
+        <!-- 2026-07-20 REVERTED 0.05 -> 0.0 after one real run: it changed NOTHING
+             (CoM_margin still +0.07..+0.15) because the ANKLES WERE SATURATED --
+             LankP 20.1% / RankP 25.8% budget-clamped, peaks 48.2/48.3 Nm against a
+             48.6 budget. A planner-belief knob cannot move a robot whose actuators are
+             already railed; the binding constraint was torque, not intent. The fix has
+             to REDUCE the torque demand (see the pose change below), not ask harder. -->
         <!-- ===== T1 REFERENCE TRIM v2 (ported from stabilize 2026-07-20) =====
              Leaky, support-frame, quiet-gated integrator on the DC capture park
              -> Balance capture-point bias (= com_x_offset, but found automatically
@@ -436,6 +488,63 @@
         <numeric name="trot_release" data="0.0"/>
         <numeric name="trot_step_width" data="0.0"/>
         <numeric name="trot_settle_thresh" data="0.0"/>
+        <!-- ★ trot_rock_ff [m] (2026-07-20, default 0 = OFF = byte-identical) —
+             THE SAG FIX. Commanded pelvis LATERAL shift at full swing bump, driven
+             OPEN-LOOP onto the STANCE hip_roll (and the Hip Roll cost target moved
+             by the identical delta, so the weight-30 pin asks for the rock instead
+             of fighting it — one formula, TrotRockHipRoll, two readers).
+             WHY: the swing is already forced open-loop and is rate-independent, but
+             the WEIGHT SHIFT that unloads the foot was sampler-owned — the half that
+             starves when the plan rate drops (the node's own PLAN-RATE WARNING says
+             so: "the stance-leg weight shift is SAMPLER-owned and starves first
+             (feet cycle, never unload)"). Async twin, strat 24 yaw 0.3, est real:
+             28 Hz unload 2-7% / z 0.75 / knee 1.0 -> FELL 0/3, vs lockstep unload
+             25.8% / z 0.99 -> HELD 3/3 — it cannot commit to a step, it SAGS (the
+             same crouch the real robot froze in 2026-07-13).
+             ★★ MEASURED NULL — DO NOT RE-RUN THIS SWEEP (2026-07-20, async twin,
+             strat 24 yaw 0.3 @ pp7, est real, n=3/condition, mean survival):
+                 rock 0 (baseline)      12.3 s   <- BEST
+                 rock 0.07 lead 0.20    11.5 s
+                 rock 0.07 lead 0.30    10.6 s
+                 rock 0.10 lead 0.20    10.4 s
+             0/3 HELD everywhere; every armed setting was NEUTRAL-to-WORSE than
+             OFF. Kept default 0 and documented (same as trot_release/step_width)
+             so the hypothesis is not retried. ⚠Run-to-run spread at a FIXED seed
+             was large (identical baseline config gave unload 3.8% and 13.7%,
+             fall 9.5 s and 13.4 s) — agent_server CEM is not seed-deterministic,
+             so n=1 differences here are noise.
+             ⚠⚠ AND THE PREMISE WAS PARTLY AN ARTIFACT: estimator_ab.py:806 sets
+             `upright = z_all > 0.75` and reports metrics ONLY over the upright
+             window, so z_min in ANY fallen run is pinned at ~0.75 BY
+             CONSTRUCTION. The "28 Hz z 0.75 vs lockstep 0.99" contrast that
+             motivated this knob was measuring FELL-vs-HELD, not sag depth.
+             What survives as real: foot UNLOAD (2-7% async) and knee_max
+             (~1.0 vs 0.92) — but the lockstep 25.8% unload figure is n=1. -->
+        <!-- ★ drive_foot_anchor (0 = OFF = pre-2026-07-20 behaviour, DEFAULT).
+             1 = anchor Foot Stability to the MEASURED stance for the DRIVE
+             keyframe instead of kRight/kLeftFootHomeXY.
+             ⚠ SHIPPED OFF AFTER A REAL-ROBOT FAULT (2026-07-20): with it on, the
+             first real strat-24 launch DRAGGED THE ROBOT SIDEWAYS at startup. The
+             pin fired at cold start and only null-checked the sensor POINTERS, so
+             an uninitialised estimate could pin both anchors near the origin --
+             and a weight-8 cost then hauls both feet toward it. Now guarded (pin
+             only after settle_sec with plausibility bounds) but UNPROVEN on real:
+             leave 0 unless you are deliberately testing it, with a hand on the
+             robot. The underlying bug it targets is real though -- measured stance
+             x=0.030 vs the constant's 0.2196 = a static 19 cm forward pull. -->
+        <numeric name="drive_foot_anchor" data="0"/>
+        <numeric name="trot_rock_ff" data="0.0"/>
+        <!-- ★ trot_rock_lead [cycle fractions] (default 0). PHASE ADVANCE for the
+             rock. With duty 0.60 the swing bump is 0 at liftoff (ph 0.60) and
+             peaks mid-swing (0.80) -- so at lead=0 the weight shift is zero
+             exactly when the foot needs to unload and maximal once it is already
+             airborne. lead = (1-duty)/2 = 0.20 puts the peak exactly AT liftoff.
+             ★ MEASURED NULL alongside trot_rock_ff (2026-07-20): correcting the
+             timing did NOT rescue it -- lead 0.20 = 11.5 s and lead 0.30 =
+             10.6 s mean survival, both WORSE than the 12.3 s rock-OFF baseline.
+             See the trot_rock_ff verdict above, incl. the z_min upright-window
+             artifact that motivated both knobs. Inert while trot_rock_ff = 0. -->
+        <numeric name="trot_rock_lead" data="0.0"/>
         <!-- ★ trot_heading_lock (1 = ON, default). BUGFIX 2026-07-12: aim the Body Yaw
              reference at the LATCHED/commanded heading instead of at reach_dir. reach_dir
              points at the mocap reach target, which the lean constructor RANDOMIZES
