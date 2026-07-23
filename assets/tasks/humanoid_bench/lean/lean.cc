@@ -1558,7 +1558,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     int cy_id = mj_name2id(model, mjOBJ_NUMERIC, "com_y_offset");
     if (cy_id >= 0) com_y_bias = model->numeric_data[model->numeric_adr[cy_id]];
   }
-  if (s_trim_x != 0.0 || s_trim_y != 0.0 || com_y_bias != 0.0) {
+  // STATIC support-frame FORWARD bias (2026-07-22): the fore-aft sibling of
+  // com_y_offset. MEASURED need on real (ankleidk npz): ZMP sits +3.5 cm ahead
+  // of the model CoM at quiet stance = unmodeled forward mass the planner never
+  // compensates -> chronic forward park -> tips. POSITIVE = planner holds the
+  // real CoM BACK by this much (same semantics as trim_x). Support-frame, so it
+  // stays aimed at the robot's true forward at any heading (runs today sat at
+  // +20..+35 deg where the world-frame com_x_offset would be aimed wrong).
+  // The leaky trim rides ON TOP for the residual/day-to-day part.
+  double com_x_bias = 0.0;
+  {
+    int cx_id = mj_name2id(model, mjOBJ_NUMERIC, "com_x_offset_support");
+    if (cx_id >= 0) com_x_bias = model->numeric_data[model->numeric_adr[cx_id]];
+  }
+  if (s_trim_x != 0.0 || s_trim_y != 0.0 || com_y_bias != 0.0 ||
+      com_x_bias != 0.0) {
     double fwd[2] = {1.0, 0.0}, lat[2] = {0.0, 1.0};
     double const *flf = SensorByName(model, data, "foot_left_forward");
     double const *frf = SensorByName(model, data, "foot_right_forward");
@@ -1571,8 +1585,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       }
     }
     double lat_bias = s_trim_y + com_y_bias;
-    capture_point[0] += s_trim_x * fwd[0] + lat_bias * lat[0];
-    capture_point[1] += s_trim_x * fwd[1] + lat_bias * lat[1];
+    double fwd_bias = s_trim_x + com_x_bias;
+    capture_point[0] += fwd_bias * fwd[0] + lat_bias * lat[0];
+    capture_point[1] += fwd_bias * fwd[1] + lat_bias * lat[1];
   }
 
   // project onto support polygon

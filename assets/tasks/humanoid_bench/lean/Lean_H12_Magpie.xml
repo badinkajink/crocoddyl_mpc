@@ -369,8 +369,20 @@
              stand_trim_tau = 0 => OFF, byte-identical. Gated to the 'stand_up'
              keyframe in lean.cc, so trot/walk/drive/reach are untouched at any
              value. Prints "[trim] park/trim" to stderr every 5 s when on. -->
-        <numeric name="stand_trim_tau" data="0.0"/> <!-- integrator tau (s). 0 = OFF byte-identical. Recommended 15.0 with leak 60. -->
-        <numeric name="stand_trim_delay" data="20.0"/> <!-- freeze trim=0 until data->time >= this (s). The bring-up ramp (~5s) parks BACKWARD; the quiet gate skips most of it but the delay is the blunt guarantee. 20 = post-handover on real. -->
+        <!-- ★ 2026-07-22 TRIM ON (tau 0->15, the recommended value): measured on real (ankleidk
+             npz): ZMP sits +3.5 cm ahead of the model CoM at QUIET stance, early AND late =
+             ~24 Nm of constant forward moment the model does not contain (>half the ankle
+             budget) -> chronic forward park, ankles pinned, tips into the harness. Keyframe
+             FKs to torso pitch 0.00 and IMU/ankle-zero/contact-set were all eliminated by
+             direct test (3 A/B runs, 2026-07-22). The leak-60 trim is the designed lever for a
+             true constant bias. ⚠ judge it only on UNASSISTED runs -- the quiet gate cannot
+             see harness force. -->
+        <!-- ★ STATIC CoM-back bias (2026-07-22, support-frame; heading-proof). The MEASURED
+             +3.5cm ZMP-vs-modelCoM gap put in DIRECTLY -- the trim run proved the integrator
+             loses the race (armed t=20, robot already at 7 deg). Trim now mops the REMAINDER. -->
+        <numeric name="com_x_offset_support" data="0.035"/>
+        <numeric name="stand_trim_tau" data="6.0"/> <!-- integrator tau (s). 0 = OFF byte-identical. 15->6 2026-07-22: with the static 0.035 carrying the bulk, the trim only tracks the residual -- faster is safe. -->
+        <numeric name="stand_trim_delay" data="8.0"/> <!-- freeze trim=0 until data->time >= this (s). 20->8 2026-07-22: the ratchet reaches the ~5 deg ankle-authority cliff by t~12-16, so t=20 arming is guaranteed too late; bring-up ends ~5s and the quiet gate covers the rest. -->
         <numeric name="stand_trim_max" data="0.08"/> <!-- trim_x saturation (m), POSITIVE side (hold CoM back vs a forward park). -->
         <numeric name="stand_trim_neg_max" data="0.06"/> <!-- |negative| trim_x cap. v1 saturated at -0.08 during bring-up and STAYED, permanently biasing the CoM forward. -->
         <numeric name="stand_trim_leak" data="60.0"/> <!-- Caron'19 leak tau (s): trim decays toward 0, so a true constant bias re-wins every tick while wound-in transients self-unwind. At 60/15 a 4cm need leaves ~1cm residual park. 0 = pure v1 integrator (NOT recommended -- that was the 07-14 hunt). -->
