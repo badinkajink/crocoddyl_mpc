@@ -42,17 +42,6 @@ constexpr int kLeanReachXParameterIndex = 4;
 constexpr int kLeanReachYParameterIndex = 5;
 constexpr int kLeanReachZParameterIndex = 6;
 
-// LIVE cmd_vel teleop (WASD/gamepad/Nav2, 2026-07-03). gRPC-settable via
-// SetTaskParameters like the Reach seam above. Vx/Vy are BODY-frame m/s;
-// the TransitionLocked governor clamps/slews/rotates them before the trot
-// sees anything. Seq is a client heartbeat counter: unchanged > 1 s means
-// the client died -> watchdog zeroes the command.
-constexpr int kLeanCmdActiveParameterIndex = 7;
-constexpr int kLeanCmdVxParameterIndex = 8;
-constexpr int kLeanCmdVyParameterIndex = 9;
-constexpr int kLeanCmdSeqParameterIndex = 10;
-constexpr int kLeanCmdWzParameterIndex = 11;   // V3 yaw-rate (drive strat only)
-
 constexpr char kLeanStrategyFilePath[] =
     SOURCE_DIR "/mjpc/tasks/humanoid_bench/lean/strategies/";
 
@@ -74,10 +63,7 @@ class lean : public Task {
                         mjtNum prev_brace_force_target = 0.0,
                         int prev_posture_key_id = 0,
                         int num_phases = 1,
-                        const bool* contact_pair_is_new = nullptr,
-                        const mjtNum* straighten_start_qpos = nullptr,
-                        double straighten_start_tilt = 0.0,
-                        bool straighten_seeded = false)
+                        const bool* contact_pair_is_new = nullptr)
         : mjpc::BaseResidualFn(task),
           residual_keyframe_(kf),
           keyframe_start_time_(keyframe_start_time),
@@ -86,16 +72,10 @@ class lean : public Task {
           prev_phase_posture_scale_(prev_posture_scale),
           prev_phase_brace_force_target_(prev_brace_force_target),
           prev_posture_key_id_(prev_posture_key_id),
-          num_phases_(num_phases),
-          straighten_start_tilt_(straighten_start_tilt),
-          straighten_seeded_(straighten_seeded) {
+          num_phases_(num_phases) {
       for (int i = 0; i < 5; ++i) {
         contact_pair_is_new_[i] =
             contact_pair_is_new ? contact_pair_is_new[i] : false;
-      }
-      for (int i = 0; i < 64; ++i) {
-        straighten_start_qpos_[i] =
-            straighten_start_qpos ? straighten_start_qpos[i] : 0.0;
       }
     }
 
@@ -152,50 +132,6 @@ class lean : public Task {
     // new phase's scales, which is the WBC-style smooth handoff the robot
     // needs to avoid lurching when a contact cost switches on.
     mjtNum keyframe_start_time_ = 0.0;
-    // ----- Live teleop command (cmd_vel seam, 2026-07-03) ------------------
-    // Written ONLY by the TransitionLocked governor; read by Residual()
-    // (via the per-plan-iteration ResidualFn snapshot copy) and by
-    // lean::ModifyControl (live, friend access -- same benign unlocked
-    // double-read class as keyframe_start_time_). cmd_active_=false =>
-    // both readers take the legacy numeric path, byte-identical.
-    bool   cmd_active_ = false;
-    double cmd_vdes_world_[2] = {0.0, 0.0};  // governed v_des, WORLD frame
-    // governor state (BODY-frame slewed command + bookkeeping)
-    double cmd_filt_[2] = {0.0, 0.0};
-    bool   cmd_starved_ = false;   // log-once latch for the heartbeat watchdog
-    double cmd_last_seq_ = -1.0;
-    double cmd_seq_time_ = -1.0;
-    double cmd_prev_time_ = -1.0;
-    double cmd_settle_until_ = -1.0;
-    // ----- WSS drive FSM (strat 24 stand<->trot teleop, 2026-07-07) --------
-    // drive_gait_amp_ (0..1): gait-enable multiplier for the drive strategy.
-    // 0 => feet planted (a real stand; strat-20 balance-gating still catches a
-    // push), 1 => full get_rz trot. Written by the TransitionLocked latch on
-    // residual_ and COPIED into the per-plan snapshot in ResidualLocked (the
-    // ctor doesn't take it) so the rollout COST sees the same amplitude that
-    // lean::ModifyControl drives open-loop -> cost/swing agree. The latch
-    // bookkeeping (drive_walk_/idle_since_/ramp_prev_) lives on residual_ only.
-    double drive_gait_amp_ = 0.0;
-    bool   drive_walk_ = false;
-    double drive_idle_since_ = -1.0;
-    double drive_ramp_prev_ = -1.0;
-    // V3 yaw (2026-07-07): cmd_wz_ = governed yaw-rate [rad/s] (TransitionLocked
-    // only); drive_yaw_des_ = integrated desired WORLD heading [rad], copied to
-    // the snapshot so Residual can point reach_dir (Body Yaw target) at it.
-    double cmd_wz_ = 0.0;
-    double drive_yaw_des_ = 0.0;
-
-    // Foot Stability anchor for the STEPPING keyframes (trot/walk/drive), 2026-07-20.
-    // Rx,Ry,Lx,Ly. The residual's kRight/kLeftFootHomeXY constants live in the
-    // ODOMETRIC frame, which drifts (~13 m measured on real) -- so the cost ends up
-    // dragging the feet toward a point metres away and the robot "keeps trying to
-    // lean backward". Same disease the lower-body stand fixed 2026-07-18 (cost
-    // 225 -> 0.00 on real). Re-pinned to the MEASURED stance by TransitionLocked at
-    // stepping-keyframe entry, and again whenever the drive FSM is idle (standing).
-    // NOT re-pinned mid-gait: while stepping the feet are SUPPOSED to travel, so a
-    // per-tick re-pin would zero out an 8-weight cost the walk was tuned with.
-    // Defaults == the old constants => inert until TransitionLocked pins it.
-    double drive_foot_anchor_[4] = {0.2196, -0.163, 0.2196, 0.163};
     mjtNum prev_phase_reach_scale_ = 0.0;
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
     // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.
@@ -232,23 +168,6 @@ class lean : public Task {
     // the transition keep factor 1.0 throughout.
     bool contact_pair_is_new_[5] = {false, false, false, false, false};
 
-    // ----- STRAIGHTEN (strategy 25) live-seed min-jerk ramp state (C3) --------
-    // The pre-stand bring-up strategy must drive the body to upright+centered
-    // from ANY near-standing release config. A STATIC strong upright/posture cost
-    // slams the correction and OVERSHOOTS (twin: a +10deg lean is flung backward
-    // past vertical to ~130deg). The fix (plan §0/§6-C3, "the ramped reference IS
-    // the funnel"): capture the release pose ONCE at phase entry and ramp the
-    // upright + posture TARGETS from it to the nominal along a min-jerk (smoothstep)
-    // over target_ramp_sec, so the instantaneous error — and thus the corrective
-    // force — stays small the whole way up. Captured on the TRUE agent state in
-    // TransitionLocked (never per-rollout), then propagated to every rollout
-    // residual via the ResidualLocked ctor (parallel to prev_posture_key_id_).
-    //   straighten_start_qpos_  : full qpos at straighten entry (posture ramp FROM)
-    //   straighten_start_tilt_  : pelvis tilt angle [rad] at entry (upright ramp FROM)
-    //   straighten_seeded_      : true once captured (else fall back to static target)
-    mjtNum straighten_start_qpos_[64] = {0};
-    double straighten_start_tilt_ = 0.0;
-    bool straighten_seeded_ = false;
 
    private:
     friend class lean;
@@ -288,19 +207,6 @@ class lean : public Task {
   // the Lean_H12 / Lean_H12_Hands model variants.
   std::map<std::string, double> PlannerNumericOverrides(
       int strategy) const override;
-
-  // Open-loop channel freeze for the TROT strategy (phase name contains "trot").
-  // Hard-writes the swing-leg actuator channels (hip_pitch/knee/ankle_pitch of
-  // whichever foot is in its swing half-cycle) to the scripted Tier-B fold the
-  // sampler keeps refusing in the cost, so the foot lifts open-loop and the
-  // sampler must balance the stance leg + upper body AROUND the forced swing.
-  // Blended in by the gait bump so the stance leg stays planner-controlled and
-  // the swing/stance handoff is smooth. is_trot-gated -> all other strategies
-  // (incl. strat 20 "stumble_march") are byte-identical (default no-op). See
-  // Task::ModifyControl + the gait clock in ResidualFn::Residual.
-  void ModifyControl(const mjModel* model, const double* qpos,
-                     const double* qvel, double time,
-                     double* ctrl) const override;
 
   // Slider layout (Lean H12) — user's 6-phase decomposition:
   //   0  stand            — stand_up
@@ -376,29 +282,7 @@ class lean : public Task {
         residual_.prev_phase_brace_force_target_,
         residual_.prev_posture_key_id_,
         residual_.num_phases_,
-        residual_.contact_pair_is_new_,
-        residual_.straighten_start_qpos_,
-        residual_.straighten_start_tilt_,
-        residual_.straighten_seeded_);
-    // WSS drive: propagate the FSM gait-enable into this plan's snapshot so the
-    // rollout cost gates g_amp the same way ModifyControl does (cost/swing
-    // agreement). Every non-drive strategy leaves this 0 (default path).
-    rfn->drive_gait_amp_ = residual_.drive_gait_amp_;
-    rfn->drive_yaw_des_ = residual_.drive_yaw_des_;   // V3 yaw heading target
-    for (int i = 0; i < 4; i++)                       // measured Foot Stability anchor
-      rfn->drive_foot_anchor_[i] = residual_.drive_foot_anchor_[i];
-    // ★ BUGFIX 2026-07-12: propagate the GOVERNED COMMAND too. Without this every
-    // rollout residual sees cmd_active_=false and therefore takes the legacy
-    // trot_des_vel numeric path (v_des = 0) -- i.e. it costs the gait as an
-    // IN-PLACE trot -- while lean::ModifyControl (which reads the CANONICAL
-    // residual_) drives the swing FORWARD at the governed v_des. Cost and swing
-    // then disagree on every sampled trajectory and the sampler spends the whole
-    // plan cancelling the walk drive. That is the exact opposite of what the
-    // "MUST match lean::ModifyControl" comments in Residual() require, and it is
-    // the prime suspect for the free-twin ~6 s walk ceiling.
-    rfn->cmd_active_ = residual_.cmd_active_;
-    rfn->cmd_vdes_world_[0] = residual_.cmd_vdes_world_[0];
-    rfn->cmd_vdes_world_[1] = residual_.cmd_vdes_world_[1];
+        residual_.contact_pair_is_new_);
     return rfn;
   }
 

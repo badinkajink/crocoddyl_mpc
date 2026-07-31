@@ -34,97 +34,6 @@ namespace mjpc {
 static double s_trim_x = 0.0, s_trim_y = 0.0;
 
 namespace {
-// Swing clearance bell 0->1->0 over swing progress s in [0,1]. Cubic-Bezier
-// (MuJoCo Playground gait.get_rz shape): smoothstep b(t)=3t^2-2t^3 of a 0->1->0
-// triangle. dcl/ds = 0 at s=0, 0.5, 1 => zero swing-JOINT velocity at liftoff
-// AND touchdown (soft, quiet landing). Replaces sin(pi*s), whose endpoint slope
-// is +-pi => max foot velocity exactly at touchdown = the sport-mode slap.
-// Peak and area match sin closely (apex 1.0 at s=0.5) so step CLEARANCE is
-// preserved; only the endpoint velocity changes.
-inline double SwingBell(double s) {
-  s = s < 0.0 ? 0.0 : (s > 1.0 ? 1.0 : s);
-  double t = (s <= 0.5) ? 2.0 * s : 2.0 - 2.0 * s;   // triangle ramp 0->1->0
-  return t * t * (3.0 - 2.0 * t);                     // smoothstep of the ramp
-}
-
-// ============================================================================
-// STANCE-SIDE LATERAL WEIGHT-SHIFT ("ROCK") — trot_rock_ff, default 0 = OFF.
-//
-// WHY (2026-07-20, async-twin diagnosis of the real drive-24 Q/E estop):
-// this gait already forces the SWING leg open-loop in lean::ModifyControl, so
-// the lift is RATE-INDEPENDENT. But the other half of a step -- shifting the
-// weight OFF the foot that is about to swing -- is only a COST TARGET (the
-// "Lateral Center" rock at the subcom_y residual, whose own comment says "the
-// planner finds the hip-roll / ankle to achieve it"). That half is SAMPLER-
-// owned, and it is exactly what starves when the plan rate drops: the node's
-// own PLAN-RATE WARNING predicts it verbatim -- "the stance-leg weight shift
-// is SAMPLER-owned and starves first (feet cycle, never unload)".
-// MEASURED on the async twin (strat 24, yaw 0.3, est real):
-//     28 Hz (real rate): foot unload 2-7%,  z_min 0.75, knee 1.0  -> FELL 0/3
-//     200 Hz (lockstep): foot unload 25.8%, z_min 0.99, knee 0.92 -> HELD 3/3
-// i.e. at the real rate it cannot commit to a step -- it shuffles and SAGS,
-// the same knee~0.95 / z~0.957 crouch the real robot froze in on 2026-07-13.
-// So: give the weight shift the same open-loop treatment the swing already has.
-//
-// WHY THE HIP (not the ankle): the ankle is the documented saturating joint
-// (useful torque capped ~44.8 Nm) -- adding lateral demand there is exactly
-// the wrong direction. The hip has the authority (FK 0.79 m/rad). And a twin
-// A/B already showed that merely PERMITTING the hip strategy (Hip Roll 30->0)
-// does NOT make the sampler discover it -- so FORCING it, the way the swing is
-// forced, is the untried move.
-//
-// SIGNS: right foot sits at -y, left at +y. +hip_roll moves that leg's foot
-// +y (0.79 m/rad, both legs) -- so on a PLANTED foot the same +hip_roll moves
-// the PELVIS -y. To unload the LEFT (swinging) foot the body must go -y, onto
-// the right stance foot => +delta on the RIGHT hip_roll. Mirrored for the
-// other half-cycle. In double support both bumps are 0 => both deltas are 0,
-// so a quiet stand is untouched even with the numeric ON.
-//
-// ★ ONE FORMULA, TWO READERS. lean::ModifyControl adds these deltas to the
-// stance hip_roll, and ResidualFn::Residual shifts the "Hip Roll L/R" cost
-// TARGET by the SAME deltas. That cost pins hip_roll to the keyframe at
-// weight 30, so driving the joint without moving its target would be a
-// cost-vs-feedforward fight -- the same class of bug as the walk->stop
-// faceplant (cost kept the catch-step, ModifyControl quit). Both callers go
-// through here so they cannot drift.
-//
-// rock_m = commanded pelvis lateral shift at full bump [m]. 0 => both 0 =>
-// byte-identical for every strategy and every existing run.
-// ============================================================================
-// ★ PHASE LEAD (trot_rock_lead, cycle fractions, default 0). You cannot unload a
-// foot AFTER it is supposed to have left the ground. With duty 0.60 the swing
-// bump is 0 at liftoff (ph=0.60) and peaks mid-swing (ph=0.80), so a rock driven
-// by the RAW bump is exactly zero when the unload is needed and maximal when the
-// foot is already airborne -- measured 2026-07-20 (lead 0: unload 3.8%->9.8%,
-// z_min unmoved at 0.75 = the sag survived). The COST can absorb that because it
-// optimizes over a 1 s horizon and can anticipate; an instantaneous FEEDFORWARD
-// cannot. lead shifts the bump EARLIER so the weight is already off the foot at
-// liftoff: lead = (1-duty)/2 = 0.20 puts the peak exactly at liftoff; 0.20-0.30
-// is the sane band. Both readers get their bump from HERE, so cost and
-// feedforward cannot disagree about the timing either.
-inline void TrotRockHipRoll(double rock_m, double lead, double g_amp,
-                            double ph_l, double ph_r, double duty,
-                            double *droll_l, double *droll_r) {
-  *droll_l = 0.0;
-  *droll_r = 0.0;
-  if (rock_m <= 1e-6 || ph_l < 0.0 || duty >= 1.0) return;
-  constexpr double kFootPerHipRoll = 0.79;   // m of foot-y per rad (FK-measured)
-  constexpr double kMaxRoll = 0.25;          // rad, same clamp as the swing dHipR
-  auto led_bump = [&](double ph) {
-    double p = std::fmod(ph + lead, 1.0);
-    if (p < 0.0) p += 1.0;
-    return (p < duty) ? 0.0 : SwingBell((p - duty) / (1.0 - duty));
-  };
-  const double gb_l = led_bump(ph_l), gb_r = led_bump(ph_r);
-  const double k = rock_m / kFootPerHipRoll;
-  // LEFT about to swing (gb_l > 0) -> RIGHT is stance -> pelvis -y -> +R.
-  // RIGHT about to swing (gb_r > 0) -> LEFT is stance -> pelvis +y -> -L.
-  double dr = +k * g_amp * gb_l;
-  double dl = -k * g_amp * gb_r;
-  *droll_r = dr < -kMaxRoll ? -kMaxRoll : (dr > kMaxRoll ? kMaxRoll : dr);
-  *droll_l = dl < -kMaxRoll ? -kMaxRoll : (dl > kMaxRoll ? kMaxRoll : dl);
-}
-
 // Target (post-ramp) reach + brace + posture scales for each named phase. Kept
 // in one place so the residual and the transition logic can't drift out of
 // sync. Posture is boosted during stand_up because the audit-spec PD gains
@@ -199,26 +108,6 @@ inline void PhaseTargetScales(const std::string& name,
   if (name == "stand_up") {
     reach = 0.0; brace_pos = 0.0; posture = 3.0;
   }
-  // jump_*: the JUMP strategy's settle/land stand must hold posture as firmly
-  // as stand_up (x3) — at x1 the twin stand fell backward at ~1.8s (2026-07-11:
-  // the unknown-name default was the pre-jump twin-fall root cause, together
-  // with Height 0). Reach/brace off like stand_up. The in-maneuver posture
-  // authority is re-anchored by the jump schedule block, not here.
-  else if (name.rfind("jump", 0) == 0) {
-    reach = 0.0; brace_pos = 0.0; posture = 3.0;
-  }
-  // straighten (strat 25 phase 0): pre-stand bring-up. These are the values the
-  // whole slump-suite validation (2026-07-11) ran with — previously supplied by
-  // the silent unknown-name default (the bug class behind the pre-jump twin
-  // falls); pinned explicitly here so a future default change can't retune the
-  // phase. reach/brace_pos multiply rows whose weights the strat-25 JSON zeroes
-  // (Reaching Hand Dist / Brace Pos / Brace Force / Torso Forward Tilt all 0),
-  // so they are inert at these weights; posture x1.0 is what the phase-0 retune
-  // (Posture 35 / Balance 40) was tuned against — do NOT boost to x3 like
-  // stand_up without re-running the slump suite.
-  else if (name.rfind("straighten", 0) == 0) {
-    reach = 1.0; brace_pos = 1.0; posture = 1.0;
-  }
   // arm_plant: get the bracing hand onto the table first. Torso tilt is
   // softly allowed (reach=0.2) just enough for arm geometry, while the
   // bracing-hand position residual is fully active. Brace force target (8N)
@@ -239,16 +128,6 @@ inline void PhaseTargetScales(const std::string& name,
   // arm extends. Posture×1.5 keeps the legs locked extended.
   else if (name == "arm_extend_standing") {
     reach = 1.0; brace_pos = 0.0; posture = 1.5;
-  }
-  // counterbalance_standing: dedicated STANDING counterbalance skill (Strategy
-  // 16). Like arm_extend_standing the left arm reaches forward and the feet
-  // stay planted, BUT the reach target is overridden to SHOULDER height (see
-  // Residual()) so the arm extends horizontally instead of reaching down toward
-  // the table-edge brace point — that downward, unreachable target was what
-  // made the arm tuck/crunch into the torso. Posture×1.0 (NOT 1.5) leaves the
-  // free (right) arm loose so it can swing back as an emergent counterweight.
-  else if (name == "counterbalance_standing") {
-    reach = 1.0; brace_pos = 0.0; posture = 1.0;
   }
   // reach_to_target: standalone "reach an input target" primitive (Strategy 21).
   // Like arm_extend_standing the chosen hand reaches toward a world point and
@@ -469,31 +348,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   //   ~ramp_dur right after a transition), into a stack buffer, so steady state and
   //   every snap phase (target_ramp_sec==0) pay nothing -- the unconditional version
   //   that ran for EVERY residual call of EVERY strategy is what got reverted.
-  // STRAIGHTEN (strat 25): is this the pre-stand bring-up strategy? Used here
-  // (posture ramp FROM the live release pose) and below (upright-target ramp).
-  const bool is_straighten =
-      residual_keyframe_.name.rfind("straighten", 0) == 0;
   mjtNum ramped_posture_target[64];
-  // STRAIGHTEN live-seed posture ramp (C3): glide the posture target from the
-  // captured release qpos -> the centered `straighten` keyframe over
-  // target_ramp_sec (min-jerk). Unlike the keyframe->keyframe ramp below, the
-  // FROM pose is the robot's ACTUAL measured pose at engage, so it straightens
-  // "from any launch configuration" (splayed legs / off torso) without a slam.
-  if (is_straighten && straighten_seeded_ && model->nq <= 64) {
-    double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
-                          ? residual_keyframe_.target_ramp_sec
-                          : kPhaseRampSeconds;
-    if (ramp_dur > 1e-9 && time_in_phase < ramp_dur) {
-      double ra_lin = mju_min(time_in_phase / ramp_dur, 1.0);
-      double ra = ra_lin * ra_lin * (3.0 - 2.0 * ra_lin);  // min-jerk smoothstep
-      for (int i = 0; i < model->nq; i++) {
-        ramped_posture_target[i] =
-            straighten_start_qpos_[i] +
-            ra * (posture_target[i] - straighten_start_qpos_[i]);
-      }
-      posture_target = ramped_posture_target;
-    }
-  } else if ((num_phases_ > 1 || brace_transition) &&
+  if ((num_phases_ > 1 || brace_transition) &&
       prev_posture_key_id_ != posture_key_id && model->nq <= 64) {
     // Enable the pose-target ramp for multi-phase strategies AND either side of a
     // forearm-brace transition (descent glides home->bow; recovery glides bow->stand,
@@ -562,464 +418,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     }
   }
 
-  // ==================== JUMP (strat 26): one-shot in-place hop ============== //
-  // Time-scheduled residual, the MJPC quadruped-flip pattern: the schedule is a
-  // pure function of (data->time - keyframe_start_time_), and keyframe_start_
-  // time_ is already ctor-plumbed into every rollout snapshot -- so rollouts
-  // ANTICIPATE the launch/flight/landing as data->time advances through the
-  // horizon, instead of being phase-frozen (why the JSON phase machine cannot
-  // express this; research 2026-07-11: vanilla predictive sampling never
-  // DISCOVERS a takeoff -- it can only TRACK a time-parameterized reference,
-  // cf. quadruped.cc kModeFlip + DIAL-MPC). Overriding posture_target drives
-  // Posture + Control + the leg-extension anchor in one move, and
-  // posture_target[2] drives the one-sided Base Height anchor = the vertical
-  // launch driver: an under-apex rollout is penalized BEFORE takeoff, being
-  // airborne above target is free. Phases (tau = time_in_phase - jump_delay):
-  //   settle < 0 <= crouch < T1 <= push < T2 <= flight < T3 <= absorb < T4
-  //   <= recover < T5 <= stand-forever (one-shot done).
-  // "jump"-prefix name-gated -> every other strategy byte-identical (jump_air
-  // stays 0). Keyframes/numerics are Magpie-primary; missing keyframes degrade
-  // to a plain jump_stand stand (schedule skipped, no crash on other models).
-  const bool is_jump = residual_keyframe_.name.rfind("jump", 0) == 0;
-  double jump_air = 0.0;        // flight gate; releases foot-flatness below
-  double jump_two_sided = 0.0;  // maneuver gate; makes Base Height two-sided
-  double jump_bal = 1.0;        // maneuver-gated Balance (CoM-over-feet) boost
-  double jump_pitch_tgt = 0.0;  // commanded FORWARD trunk pitch [rad] (crouch)
-  mjtNum jump_posture_target[64];
-  if (is_jump && model->nq <= 64) {
-    int k_stand  = mj_name2id(model, mjOBJ_KEY, "jump_stand");
-    int k_crouch = mj_name2id(model, mjOBJ_KEY, "jump_crouch");
-    int k_launch = mj_name2id(model, mjOBJ_KEY, "jump_launch");
-    int k_land   = mj_name2id(model, mjOBJ_KEY, "jump_land");
-    if (k_stand >= 0 && k_crouch >= 0 && k_launch >= 0 && k_land >= 0) {
-      const double kDelay   = GetNumberOrDefault(4.0,  model, "jump_delay");
-      const double kCrouchS = GetNumberOrDefault(0.90, model, "jump_crouch_sec");
-      const double kPushS   = GetNumberOrDefault(0.20, model, "jump_push_sec");
-      const double kApex    = GetNumberOrDefault(0.10, model, "jump_apex");
-      const double kLandS   = GetNumberOrDefault(0.50, model, "jump_land_sec");
-      const double kRecovS  = GetNumberOrDefault(1.0,  model, "jump_recover_sec");
-      const mjtNum *q_stand  = model->key_qpos + k_stand  * model->nq;
-      const mjtNum *q_crouch = model->key_qpos + k_crouch * model->nq;
-      const mjtNum *q_launch = model->key_qpos + k_launch * model->nq;
-      const mjtNum *q_land   = model->key_qpos + k_land   * model->nq;
-      // Ballistic constants from the apex ask: v0 = sqrt(2*g*h), Tf = 2*v0/g.
-      const double v0 = mju_sqrt(2.0 * 9.81 * mju_max(0.01, kApex));
-      const double t_flight = 2.0 * v0 / 9.81;
-      const double tau = time_in_phase - kDelay;
-      const double T1 = kCrouchS;             // crouch end = push start
-      const double T2 = T1 + kPushS;          // takeoff
-      const double T3 = T2 + t_flight;        // scheduled touchdown
-      const double T4 = T3 + kLandS;          // absorb end
-      const double T5 = T4 + kRecovS;         // recover end (one-shot done)
-      const mjtNum *from = q_stand, *to = q_stand;
-      double s = 0.0;                         // smoothstep blend from -> to
-      double z_target = q_stand[2];
-      if (tau <= 0.0) {
-        // settle: pure jump_stand (== the phase keyframe; override is a no-op)
-      } else if (tau < T1) {                  // countermovement crouch
-        from = q_stand; to = q_crouch;
-        s = tau / mju_max(1e-3, T1);
-        s = s * s * (3.0 - 2.0 * s);
-        z_target = q_stand[2] + s * (q_crouch[2] - q_stand[2]);
-      } else if (tau < T2) {                  // extension PUSH
-        from = q_crouch; to = q_launch;
-        s = (tau - T1) / mju_max(1e-3, kPushS);
-        s = s * s * (3.0 - 2.0 * s);
-        z_target = q_crouch[2] + s * (q_launch[2] - q_crouch[2]);
-      } else if (tau < T3) {                  // FLIGHT: pre-flex for touchdown
-        from = q_launch; to = q_land;         // (first ~100ms of impact is
-        double tf = tau - T2;                 //  uncontrollable -- shape it now;
-        s = mju_min(1.0, tf / mju_max(1e-3, 0.25 * t_flight));  // fast tuck, no snap)
-        s = s * s * (3.0 - 2.0 * s);
-        z_target = q_launch[2] + v0 * tf - 0.5 * 9.81 * tf * tf;
-        jump_air = 1.0;
-      } else if (tau < T4) {                  // absorb at the pre-flexed pose
-        from = q_land; to = q_land; s = 1.0;  // one-sided z: dip below stand is
-        z_target = q_land[2];                 // granted ~3.5cm absorption room
-        double fade = (tau - T3) / mju_max(1e-3, kLandS);
-        jump_air = mju_max(0.0, 1.0 - 3.0 * fade);  // flatness back fast post-TD
-      } else if (tau < T5) {                  // recover: land pose -> stand
-        from = q_land; to = q_stand;
-        s = (tau - T4) / mju_max(1e-3, kRecovS);
-        s = s * s * (3.0 - 2.0 * s);
-        z_target = q_land[2] + s * (q_stand[2] - q_land[2]);
-      } else {
-        // one-shot done: stand forever (re-jump = re-select the strategy,
-        // which resets keyframe_start_time_ via the live-switch path)
-      }
-      for (int i = 0; i < model->nq; i++) {
-        jump_posture_target[i] = from[i] + s * (to[i] - from[i]);
-      }
-      jump_posture_target[2] = z_target;  // Base Height reads [2]
-      posture_target = jump_posture_target;
-      // Maneuver authority gate (v2, 2026-07-11 first-trace fix: at stand
-      // weights the sampler tracked the 12cm crouch by only ~3cm -> no takeoff
-      // was dynamically reachable and the flight penalty was ignored as
-      // unavoidable). While the schedule is active: (a) Posture boost x4 --
-      // legal here because the REFERENCE is ramped (the straighten-C3 funnel:
-      // strong tracking of a smooth target, not a static-target snap), and
-      // (b) jump_two_sided flips the Base Height anchor to signed tracking so
-      // the scheduled z DRIVES the crouch down (one-sided only guards sink).
-      // Smooth 0.2s ramp-in, fades across recover; 0 outside the maneuver and
-      // for every other strategy -> byte-identical.
-      if (tau > 0.0 && tau < T5) {
-        double g_in  = mju_min(1.0, tau / 0.2);
-        double g_out = mju_min(1.0, (T5 - tau) / mju_max(1e-3, kRecovS));
-        double maneuver = mju_max(0.0, mju_min(g_in, g_out));
-        maneuver = maneuver * maneuver * (3.0 - 2.0 * maneuver);
-        jump_two_sided = maneuver;
-        // ★ POSTURE AUTHORITY DURING THE HOP (v9 2026-07-11 -- the crouch-topple
-        // fix). A Posture BOOST here was the bug: Posture pins ALL 27 joints to
-        // the scheduled pose, INCLUDING THE ANKLES -- and the ankle is this
-        // robot's only balance actuator. Boosting it (x4) during the descent
-        // took the ankle away from balance and handed it to a fixed reference,
-        // so the body rotated backward about the ankle (-15 deg by the end of
-        // the crouch) and the push then launched it backward. Depth is driven by
-        // Base Height (450, two-sided) which is a CoM-HEIGHT objective and leaves
-        // the planner free to CHOOSE how -- including using the ankle to balance.
-        // Default 3.0 == the stand's own authority (no boost). Numeric so it can
-        // be swept without a rebuild.
-        double kPostBoost = GetNumberOrDefault(3.0, model, "jump_posture_boost");
-        phase_posture_scale =
-            phase_posture_scale * (1.0 - maneuver) + kPostBoost * maneuver;
-        // ★ BALANCE BOOST: a crouch is where the CoM most wants to escape the
-        // support polygon, and the stand's Balance weight (2.5) is tuned for a
-        // STATIC pose. Amplify the CoM-over-feet residual for the duration of
-        // the maneuver so "descend" cannot outbid "stay over your feet".
-        double kBalBoost = GetNumberOrDefault(2.5, model, "jump_balance_boost");
-        jump_bal = 1.0 + (kBalBoost - 1.0) * maneuver;
-        // ★ FORWARD TRUNK PITCH THROUGH THE CROUCH (v13 -- the descent-drift fix).
-        // Holding the trunk bolt upright (Pelvis Tilt 100) while squatting is what
-        // drags the CoM behind the ankle: with an upright torso, hip flexion moves
-        // the pelvis straight back, and only ankle dorsiflexion can pay it back --
-        // until the 75 Nm ankle saturates (~8 deg of tilt) and the descent topples
-        // backward. Every human squat/jump instead PITCHES THE TRUNK FORWARD as it
-        // descends, keeping the CoM over the feet, then ERECTS the trunk through
-        // the push (trunk extension itself adds vertical impulse). Command exactly
-        // that: pitch forward over the crouch, back to vertical by takeoff.
-        double kPitchDeg = GetNumberOrDefault(15.0, model, "jump_crouch_pitch_deg");
-        double pitch_max = kPitchDeg * M_PI / 180.0;
-        if (tau < T1) {                       // crouch: ramp trunk forward
-          double p = tau / mju_max(1e-3, T1);
-          p = p * p * (3.0 - 2.0 * p);
-          jump_pitch_tgt = pitch_max * p;
-        } else if (tau < T2) {                // push: erect the trunk (adds drive)
-          double p = (tau - T1) / mju_max(1e-3, kPushS);
-          p = p * p * (3.0 - 2.0 * p);
-          jump_pitch_tgt = pitch_max * (1.0 - p);
-        }                                     // flight/land/recover: vertical (0)
-      }
-    }
-  }
-
-  // ==================== STUMBLE: gait clock + swing-leg JOINT reference ===== //
-  // Strategy 20 "stumble" stepping. (Full rationale at the Gait/Step Place
-  // residual terms near the end of this function.) The gait CLOCK and the swing-
-  // leg JOINT reference are computed HERE -- before the Posture cost reads
-  // posture_target -- so the swing leg's hip/knee/ankle TARGETS fold up each
-  // cycle and the strong, well-behaved Posture cost DRIVES the foot off the
-  // ground. That turns stepping into a TRACKING problem (which sampling MPC
-  // solves trivially, like every pose strategy tracking a keyframe) instead of a
-  // SEARCH problem -- the planner will not spontaneously cross the cost barrier
-  // of a half-formed step out of the stable-stand local minimum at calm
-  // exploration. The Cartesian Gait/Step Place terms at the END of the function
-  // refine foot height + xy placement, reusing g_amp/g_bump_* computed here.
-  // NAME-GATED on "stumble": every other strategy (0-19) skips this block and
-  // its two end-of-function residual terms default to weight 0 -> byte-identical.
-  mjtNum stumble_posture_target[64];  // private swing-leg reference (stumble only)
-  const bool is_stumble = (residual_keyframe_.name.rfind("stumble", 0) == 0);
-  // TROT (strat 23, phase "stumble_trot"): the open-loop channel-freeze leg-lift
-  // test vehicle. is_stumble subset; drives a CONTINUOUS forced march in the cost
-  // (below) to match lean::ModifyControl, which hard-writes the swing leg in ctrl.
-  const bool is_trot =
-      is_stumble && (residual_keyframe_.name.find("trot") != std::string::npos);
-  // WSS DRIVE (strat 24): a trot whose gait amplitude is command-latched (idle
-  // => plant feet => stand). is_drive implies is_trot (keyframe "stumble_trot_
-  // drive"), so all the velocity/step machinery below works; only g_amp differs.
-  const bool is_drive =
-      is_stumble && (residual_keyframe_.name.find("drive") != std::string::npos);
-  // gait parameters (constexpr -> tune by edit+rebuild; nav drives only kDesVel*)
-  constexpr double kCadenceHz  = 1.1;   // 0.8->1.1 FOOT-LIFT CLUSTER 2026-06-24 (Unitree H1-2
-                                        // rl_gym 1.25). steps/s per foot (slower -> swing fits
-                                        // fewer spline knots, stand-tolerable bandwidth: spline 8
-                                        // destabilises even a plain stand, spline<=5 holds.
-                                        // 2026-06-18). WATCH: faster cadence may re-stress the
-                                        // spline-5 bandwidth -> back off to 0.9 if it destabilises.
-  constexpr double kDutyRatio  = 0.60;  // 0.70->0.60 cluster: more SWING time (40% vs 30%) so the
-                                        // foot has longer to clear. (more double-support = steadier)
-  constexpr double kStepHeight = 0.06;  // 0.022->0.06 cluster: swing-foot peak Cartesian clearance
-                                        // [m] toward Unitree H1-2 0.08 (was a gentle 2.2cm shuffle)
-  constexpr double kAmpRampSec = 4.5;   // ease the gait in over the first 4.5 s of the phase
-  // desired CoM velocity [m/s] world x/y -- the NAV/walk command. Read from the
-  // trot_des_vel_x/y numerics ONLY for the trot (is_trot); every other stumble
-  // strategy (e.g. strat 20 march-in-place) keeps 0 so it steps in place. Feeds
-  // BOTH the cost-side Step-Place foot target (below) AND the CoM-Vel velocity-
-  // tracking residual -- without a nonzero target the cost says "stand still" and
-  // the sampler CANCELS the open-loop walk drive (lean::ModifyControl), so foot
-  // placement alone can never move the body. This is the propulsion connection.
-  double kDesVelX = 0.0, kDesVelY = 0.0;   // NAV HOOK (trot only)
-  if (is_trot) {
-    int dvx_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_x");
-    int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
-    if (dvx_id >= 0) kDesVelX = model->numeric_data[model->numeric_adr[dvx_id]];
-    if (dvy_id >= 0) kDesVelY = model->numeric_data[model->numeric_adr[dvy_id]];
-    // LIVE teleop override (2026-07-03; mirrored in lean::ModifyControl --
-    // MUST match): the governed world-frame v_des from the TransitionLocked
-    // cmd_vel governor replaces the static numerics when a client is active.
-    // Step-pulse + R6 settle-governor below still apply on top.
-    if (cmd_active_) {
-      kDesVelX = cmd_vdes_world_[0];
-      kDesVelY = cmd_vdes_world_[1];
-    }
-    // STEP-AND-SETTLE pulse: walk for trot_step_walk s, then SETTLE (v_des=0) for
-    // the rest of trot_step_period s. v_des=0 gates OFF every walk term -> reverts
-    // to the validated-ROBUST in-place trot (the recovery is the thing that already
-    // works), so continuous walk's bistable topple is decomposed into discrete
-    // forward steps each caught by the in-place trot. trot_step_period<=0 =>
-    // continuous (no pulse) = byte-identical. MUST match lean::ModifyControl's pulse
-    // (same data->time -> deterministic agreement between cost and open-loop swing).
-    int tp_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_period");
-    int tw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_walk");
-    double Tp = (tp_id >= 0) ? model->numeric_data[model->numeric_adr[tp_id]] : 0.0;
-    double Tw = (tw_id >= 0) ? model->numeric_data[model->numeric_adr[tw_id]] : 0.0;
-    if (Tp > 1e-6 && std::fmod(mju_max(0.0, data->time), Tp) >= Tw) {
-      kDesVelX = 0.0; kDesVelY = 0.0;   // settle window -> robust in-place trot
-    }
-    // R6 SETTLE GOVERNOR -- MUST match lean::ModifyControl's governor (same
-    // qpos/qvel inputs -> deterministic cost/swing agreement, exactly the
-    // step-pulse pattern above). |v - v_des|*tau beyond trot_settle_thresh ->
-    // v_des fades to 0 (all walk terms gate off = auto-settle to the validated
-    // in-place trot) until the capture error re-enters the band. Default 0=off.
-    // drive (strat 24) reads drive_settle_thresh so it is ON for drive without
-    // touching strat 23 (its trot_settle_thresh stays 0 = byte-identical).
-    const char *st_name = is_drive ? "drive_settle_thresh" : "trot_settle_thresh";
-    int st_id = mj_name2id(model, mjOBJ_NUMERIC, st_name);
-    double kSettle = (st_id >= 0)
-        ? model->numeric_data[model->numeric_adr[st_id]] : 0.0;
-    if (kSettle > 1e-6 && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
-      double zg = mju_max(0.5, data->qpos[2]);
-      double tg = mju_sqrt(zg / 9.81);
-      double gex = (data->qvel[0] - kDesVelX) * tg;
-      double gey = (data->qvel[1] - kDesVelY) * tg;
-      double gerr = mju_sqrt(gex * gex + gey * gey);
-      double gg = mju_max(0.0, mju_min(1.0,
-          (1.5 * kSettle - gerr) / (0.5 * kSettle)));
-      gg = gg * gg * (3.0 - 2.0 * gg);
-      kDesVelX *= gg; kDesVelY *= gg;
-    }
-  }
-  // swing-leg JOINT-space lift offsets [rad] at full bump (added to the keyframe
-  // target): fold the leg up so the foot clears ground. hip flexes back, knee
-  // bends, ankle holds the sole level. This is what BOOTSTRAPS the step; the
-  // leg hip_pitch/knee entries are additionally leg-gain-amplified by the
-  // Posture cost, so even a modest Posture weight tracks the swing crisply.
-  // FOOT-LIFT Tier B (2026-06-24): SCRIPTED swing fold RAISED now that Tier A
-  // releases the competing costs (Foot-Up/Base-Height/Balance off the swing leg).
-  // This joint-space arc IS the imposed swing reference tracked by the position
-  // servos -- the lift driver. Was a gentle 0.11/0.20/0.08 (~1.5cm, fought by the
-  // old costs); now folds the leg for a real ~5-6cm clearance. Live-scalable via
-  // the stumble_swing_scale numeric (applied to the march fold below).
-  constexpr double kSwingHip   = 0.35;  // hip_pitch flexes back -> thigh lifts
-  constexpr double kSwingKnee  = 0.70;  // knee bends -> shank folds up (the clearance)
-  constexpr double kSwingAnk   = 0.12;  // ankle_pitch -> toe clears (Foot-Up released on swing)
-  // ---- BALANCE-GATED stepping (2026-06-19; signed-danger gate 2026-06-20) ----
-  // STAND STILL (bent-knee, g_amp=0) and ramp the gait in ONLY while balance is
-  // genuinely being lost; ease back to a still stand once recovered. "Losing
-  // balance" = the SIGNED capture-point danger (computed once below) crossing
-  // catch_trig -- the SAME quantity the catch-step + hip/arm tier use. The old
-  // gate keyed on ABSOLUTE base tilt (deadband 5.7deg) + ABSOLUTE |vx|, which the
-  // real-robot bring-up settle (leans ~8.7deg) and recovery motion both exceed ->
-  // it MARCHED while settling ("never stood still") and kept marching through the
-  // recovery ("kept twisting legs"); the twin settles ~3-4deg so it never showed
-  // it (live-only). Signed danger is recovery-aware: a settling/recovering lean is
-  // NOT treated as imbalance. Toggle off with model numeric
-  // stumble_balance_gated=0 to restore the old always-on march (A/B, no rebuild).
-  constexpr double kArmSec = 2.0;     // arm the gate this long after engage (calm bring-up)
-  double g_amp = 0.0, g_bump_l = 0.0, g_bump_r = 0.0;
-  // Raw gait phases + duty, hoisted to function scope so the ROCK (see
-  // TrotRockHipRoll) can build its own PHASE-LED bump far below, from the same
-  // clock lean::ModifyControl uses. -1 = clock never ran => rock stays 0.
-  double rock_ph_l = -1.0, rock_ph_r = -1.0, rock_duty = 0.60;
-  // Capture-point excursion (CoM heading vs equilibrium), hoisted to function
-  // scope so BOTH the catch-step (below) AND the hip/arm angular-momentum
-  // recovery tier (Centroidal angular momentum term, far below) read the same
-  // signal -- the ankle->HIP->step hierarchy keyed off one quantity.
-  double g_cap_ex = 0.0, g_cap_ey = 0.0;
-  // TROT-window step scales (function scope so the Cartesian Gait/Step-Place
-  // block far below sees them). Both default 1.0 (== quiet stand / push-recovery
-  // BYTE-IDENTICAL) and only become >1 inside the trot starter window. Per the
-  // MJPC-quadruped + Unitree-RL-walk references: a stable in-place step needs the
-  // foot-CLEARANCE term to DOMINATE (quadruped Gait 2.0 = highest; Unitree
-  // feet_swing_height = strongest), NOT a boosted joint reference the balance-
-  // cautious planner ignores. trot_swing_scale raises the swing-foot height TARGET
-  // (joint ref + Cartesian arc); trot_gait_wscale boosts the Gait foot-clearance
-  // residual = an effective weight bump (25 -> ~25*scale^2) so foot-tracking wins
-  // over the cheap lateral rock. Quiet stand keeps Gait 25 (residual ~0 when
-  // planted anyway), so the validated 9/10 stand + push-recovery are untouched.
-  double trot_swing_scale = 1.0, trot_gait_wscale = 1.0;
-  if (is_stumble) {
-    // gait CLOCK always runs; only the AMPLITUDE g_amp decides whether it steps.
-    // Cadence is a live numeric (default kCadenceHz) so the operator can dial the
-    // step rate -- gentler/fewer steps for the trot starter -- without a rebuild.
-    int cad_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_cadence");
-    double kCad = (cad_id >= 0)
-        ? model->numeric_data[model->numeric_adr[cad_id]] : kCadenceHz;
-    // stumble_swing_scale (default 1) multiplies the swing-leg lift DURING the
-    // trot starter only (swing_mult below), so the operator can dial step HEIGHT
-    // up to clear visibility live -- the balance-cautious planner damps the
-    // reference, so the realized lift is a fraction of it. The catch-step keeps
-    // mult=1 (validated push-recovery untouched).
-    int ss_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_swing_scale");
-    double kSwingScale = (ss_id >= 0)
-        ? model->numeric_data[model->numeric_adr[ss_id]] : 1.0;
-    // stumble_gait_boost (default 1): trot-window multiplier on the Gait foot-
-    // clearance RESIDUAL -> effective weight 25*boost^2 (boost 2.6 -> ~170,
-    // making foot-tracking the DOMINANT term per the references). Live-tunable.
-    int gb_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_gait_boost");
-    double kGaitBoost = (gb_id >= 0)
-        ? model->numeric_data[model->numeric_adr[gb_id]] : 1.0;
-    // duty: TROT can raise it (trot_duty numeric, is_trot-gated) for more double-
-    // support during slow forward walk (MJPC slow-walk gait uses 0.75); strat 20
-    // keeps kDutyRatio. ModifyControl reads the same numeric so cost+placement agree.
-    int dty_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_duty");
-    double kDuty = (is_trot && dty_id >= 0)
-        ? model->numeric_data[model->numeric_adr[dty_id]] : kDutyRatio;
-    double ph_l = std::fmod(data->time * kCad,       1.0);  // L foot phase
-    double ph_r = std::fmod(data->time * kCad + 0.5, 1.0);  // R antiphase
-    g_bump_l = (ph_l < kDuty) ? 0.0
-        : SwingBell((ph_l - kDuty) / (1.0 - kDuty));
-    g_bump_r = (ph_r < kDuty) ? 0.0
-        : SwingBell((ph_r - kDuty) / (1.0 - kDuty));
-    rock_ph_l = ph_l; rock_ph_r = ph_r; rock_duty = kDuty;   // for the ROCK
-    double const *cvel = SensorByName(model, data, "waist_lower_subcomvel");
-    double const *flp  = SensorByName(model, data, "foot_left_pos");
-    double const *frp  = SensorByName(model, data, "foot_right_pos");
-    // --- SIGNED CAPTURE-POINT DANGER (computed ONCE; drives the whole
-    //     ankle->HIP->step hierarchy: the march amplitude g_amp, the catch-step
-    //     foot choice, and the hip/arm angular-momentum recovery tier far below
-    //     via g_cap_ex/ey). e = z*tilt_dir + tau*com_vel (meters from upright):
-    //   * base TILT (torso_up) = a LAG-FREE CoM-displacement proxy (IMU-direct;
-    //     the HW velocity estimate lags ~30 ms), measured RELATIVE to the steady
-    //     ~3-4deg forward lean (lean_nominal_x) so the catch is SYMMETRIC about
-    //     equilibrium (a back push immediately gives ex<0), and
-    //   * com_vel * sqrt(z/g) = the capture-point velocity LEAD.
-    //   danger = |SIGNED capture excursion| = sqrt(ex^2 + (z*ty)^2). SIGNED so a
-    //   RECOVERING velocity SHRINKS danger (a settling lean already moving back is
-    //   NOT "losing balance"); the LATERAL axis keeps tilt only (z*ty) and DROPS
-    //   lateral velocity vy = the gait weight-shift ROCK, which would self-trigger.
-    double const *tup = SensorByName(model, data, "torso_up");
-    int pid = mj_name2id(model, mjOBJ_BODY, "pelvis");
-    if (pid < 0) pid = 1;
-    const mjtNum *com = data->subtree_com + 3 * pid;
-    double zc  = mju_max(0.5, com[2]);
-    double tau = mju_sqrt(zc / 9.81);
-    int lnx_id = mj_name2id(model, mjOBJ_NUMERIC, "lean_nominal_x");
-    double kLeanX = (lnx_id >= 0)
-        ? model->numeric_data[model->numeric_adr[lnx_id]] : 0.06;
-    double tx = (tup ? tup[0] : 0.0) - kLeanX, ty = tup ? tup[1] : 0.0;
-    double vx = cvel ? cvel[0] : 0.0, vy = cvel ? cvel[1] : 0.0;
-    double ex = zc * tx + tau * vx;                      // signed fore-aft capture
-    double ey = zc * ty + tau * vy;                      //   (full, for foot choice)
-    g_cap_ex = ex; g_cap_ey = ey;         // share with the hip/arm recovery tier
-    double ey_pos = zc * ty;                             // lateral: tilt only (rock-immune)
-    double danger = mju_sqrt(ex * ex + ey_pos * ey_pos);
-    int ct_id = mj_name2id(model, mjOBJ_NUMERIC, "catch_trig");
-    int cf_id = mj_name2id(model, mjOBJ_NUMERIC, "catch_full");
-    double kCatchTrig = (ct_id >= 0)
-        ? model->numeric_data[model->numeric_adr[ct_id]] : 0.085;
-    double kCatchFull = (cf_id >= 0)
-        ? model->numeric_data[model->numeric_adr[cf_id]] : 0.16;
-    // recov: 0 below catch_trig (STAND STILL), smoothstep to 1 at catch_full.
-    double recov = mju_min(1.0, mju_max(0.0,
-        (danger - kCatchTrig) / mju_max(1e-3, kCatchFull - kCatchTrig)));
-    recov = recov * recov * (3.0 - 2.0 * recov);         // smoothstep
-    double arm = mju_min(time_in_phase / kArmSec, 1.0);
-    arm = arm * arm * (3.0 - 2.0 * arm);                 // calm bring-up, no spurious step
-    // --- AMPLITUDE: balance-gated (default) or legacy continuous march ---
-    int bg_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_balance_gated");
-    bool balance_gated =
-        (bg_id < 0) || (model->numeric_data[model->numeric_adr[bg_id]] > 0.5);
-    if (balance_gated) {
-      g_amp = arm * recov;   // STAND STILL until the signed capture point escapes
-    } else {
-      double amp_r = mju_min(time_in_phase / kAmpRampSec, 1.0);
-      g_amp = amp_r * amp_r * (3.0 - 2.0 * amp_r);       // legacy continuous march
-    }
-    if (is_trot) {
-      // TROT: continuous forced march. The channel-freeze (lean::ModifyControl)
-      // hard-writes the swing leg into ctrl regardless of the sampler, so make
-      // the COST agree -- ramp the gait amplitude in (NO balance gate) so the
-      // swing fold + Tier-A swing-release apply continuously and the Posture cost
-      // EXPECTS the lifted swing leg (no spurious penalty fighting the freeze).
-      g_amp = arm;
-      // DRIVE: the stand<->trot latch scales the march. idle (drive_gait_amp_=0)
-      // => g_amp = arm*recov = the strat-20 balance-gated stand (still, but
-      // steps to catch a push); commanded => arm*1 = full trot. drive_gait_amp_
-      // comes from the plan snapshot (set in TransitionLocked), so cost and
-      // ModifyControl swing agree.
-      if (is_drive) g_amp = arm * mju_max(drive_gait_amp_, recov);
-    }
-    // --- TROT STARTER (opt-in, strategy 20 only): a deliberate in-place march
-    // over the window [trot_delay, trot_delay+trot_sec] after engage, then HAND
-    // OFF to the quiet balance-gated stand above ("trot 10 s -> stand & stumble").
-    // Lets the operator SEE balance-during-stepping at startup without waiting
-    // for a push. trot_delay skips the node's bring-up ramp; the window eases in
-    // AND out over kTrotEase so start/stop are smooth (no snap). g_amp =
-    // max(gated, env) so a genuine push DURING the trot still drives a decisive
-    // catch-step. The march reuses the same clock/swing as the catch-step
-    // (g_bump_l/r below), so the arm-quiet velocity split (leg_gate = 1 - g_amp)
-    // damps the upper body throughout. trot_sec<=0 => OFF => byte-identical to
-    // the pre-trot gait (and every other strategy stays untouched, name-gated).
-    int td_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_trot_delay");
-    int tn_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_trot_sec");
-    double kTrotDelay = (td_id >= 0)
-        ? model->numeric_data[model->numeric_adr[td_id]] : 0.0;
-    double kTrotSec = (tn_id >= 0)
-        ? model->numeric_data[model->numeric_adr[tn_id]] : 0.0;
-    double t_trot = time_in_phase - kTrotDelay;
-    if (kTrotSec > 1e-3 && t_trot >= 0.0 && t_trot < kTrotSec) {
-      constexpr double kTrotEase = 1.5;                  // s, smooth ease in AND out
-      double rin  = mju_min(t_trot / kTrotEase, 1.0);
-      double rout = mju_min((kTrotSec - t_trot) / kTrotEase, 1.0);
-      double env  = mju_max(0.0, mju_min(rin, rout));
-      env = env * env * (3.0 - 2.0 * env);               // smoothstep envelope
-      g_amp = mju_max(g_amp, env);                       // force the march, keep push-step
-      trot_swing_scale = kSwingScale;   // taller swing TARGET (joint ref + Cartesian arc)
-      trot_gait_wscale = kGaitBoost;    // dominant foot-clearance cost (the lift driver)
-    }
-    // --- DECISIVE OMNIDIRECTIONAL catch-step: pick the foot toward the capture
-    // point and force it to swing NOW (N-step capturability, Pratt/Koolen --
-    // relocate the base under the falling CoM before the weak ankle saturates).
-    // In gated mode g_amp already reflects danger (arm*recov); in legacy mode
-    // SNAP it (arm-gated, so bring-up stays calm). fwd->trailing foot fwd,
-    // back->front foot back, left/right->falling-side foot out.
-    if (cvel && flp && frp && danger > kCatchTrig) {
-      g_amp = mju_max(g_amp, arm * recov);
-      bool stepL;
-      if (std::fabs(ey) > std::fabs(ex)) {
-        stepL = (ey > 0.0);                  // falling LEFT -> left foot out left
-      } else {
-        stepL = (ex > 0.0) ? (flp[0] <= frp[0])    // forward -> trailing(rear) foot
-                           : (flp[0] >= frp[0]);   // back -> front foot
-      }
-      if (stepL) g_bump_l = mju_max(g_bump_l, arm * recov);
-      else       g_bump_r = mju_max(g_bump_r, arm * recov);
-    }
-    if (model->nq <= 64) {
-      for (int i = 0; i < model->nq; i++)
-        stumble_posture_target[i] = posture_target[i];
-      double ll = g_amp * g_bump_l * trot_swing_scale, lr = g_amp * g_bump_r * trot_swing_scale;  // lift per leg
-      // L leg joints: qpos 7+1 hip_pitch, 7+3 knee, 7+4 ankle_pitch
-      stumble_posture_target[7 + 1] -= kSwingHip  * ll;
-      stumble_posture_target[7 + 3] += kSwingKnee * ll;
-      stumble_posture_target[7 + 4] -= kSwingAnk  * ll;
-      // R leg joints: qpos 7+7 hip_pitch, 7+9 knee, 7+10 ankle_pitch
-      stumble_posture_target[7 + 7]  -= kSwingHip  * lr;
-      stumble_posture_target[7 + 9]  += kSwingKnee * lr;
-      stumble_posture_target[7 + 10] -= kSwingAnk  * lr;
-      posture_target = stumble_posture_target;
-    }
-  }
 
   // ----- object position ----- //
   double const *object_pos = SensorByName(model, data, "object_pos");
@@ -1220,130 +618,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     brace_air_target[2] = table_face_z + 0.30;  // ~30 cm above the table FACE
                                                // (was the geom CENTRE = 245 mm)
     reach_target = brace_air_target;
-  }
-  // counterbalance_standing (Strategy 16): FOOT-ANCHORED (lean-invariant) reach
-  // target so a relaxed Pelvis Tilt lets the body PITCH FORWARD into a leaning
-  // counterbalance WITHOUT runaway. The feet stay planted, so this point is
-  // effectively world-fixed: as the torso bows toward it the reach error SHRINKS
-  // (self-limiting) — unlike a torso-relative target, which would translate
-  // forward with the lean and chase itself into a face-plant. Placed 0.70 m
-  // forward of midfoot — well beyond the upright arm's horizontal reach — so the
-  // body must lean forward AND fully EXTEND the REACHING arm (reach_hand-selected:
-  // default/2 = RIGHT reaches, the OTHER arm counterweights -- see line ~495) to get
-  // there. A nearer target (0.55) let the elbow stay folded; pushing it out
-  // straightens the reach so the hand extends further in front. The free (other,
-  // = left when reach_hand=2) arm + hips swing back to
-  // counterbalance. z = 0.75 is BELOW torso (~1.03) so reach_dir points
-  // forward-DOWN — that is what lets `Torso Forward Tilt` (JSON weight, off in the
-  // upright variant) pitch the torso FORWARD into the reach instead of leaning
-  // back; a shoulder-height target gave reach_dir UP, so the only balance response
-  // to the forward arm was a BACKWARD lean (measured −7.5°). Forward distance and
-  // lean depth are the SAME knob: a further/lower target = deeper lean = bigger
-  // counter-arm swing. Pipeline's `arm_extend_standing` override (above) untouched.
-  else if (residual_keyframe_.name == "counterbalance_standing") {
-    // Counterbalance (Strategy 16 pre-lean + pipeline stage 33): the reaching
-    // arm pulls toward the LIVE mocap object (world-fixed, so the reach error
-    // shrinks as the body bows in -> self-limiting, no runaway). NO sphere clamp
-    // (unlike reach_to_target): an out-of-reach object is exactly what makes the
-    // torso lean forward, with the free arm + hips swinging back to counterweight.
-    // Lean depth is bounded by Pelvis Tilt / Torso Forward Tilt (JSON lean knobs).
-    // Yaw-relative ONLY for the PRE-LEAN single-phase strategy (strat 16): its
-    // mocap target is a fixed AUTHORED "forward" point, so re-expressing its
-    // bearing from the current heading keeps the lean straight ahead under IMU
-    // yaw drift (user saw ~3 o'clock on hardware). Exact identity at yaw 0.
-    // In the MULTI-PHASE lean pipeline (strat 33) the target is written by the
-    // vision/nav stack ALREADY in the planner world frame (camera->world via the
-    // robot's live pose), so it is already correct -- leave it as-is; rotating it
-    // would double-rotate it off the real detected object.
-    if (num_phases_ <= 1)
-      yaw_relative_target(data->mocap_pos, phase1_target_storage);
-    else
-      mju_copy3(phase1_target_storage, data->mocap_pos);
-    // COUNTERBALANCE WORKSPACE CLAMP (2026-07-25, `counterbalance_radius` [m];
-    // 0 = OFF = byte-identical = the historic unclamped target described above).
-    // Same projection as the reach_to_target clamp: put the (deliberately far)
-    // target onto the arm-reach sphere centred on the REACHING shoulder, recomputed
-    // each step from the LIVE shoulder so the point travels with the bow and the arm
-    // still max-extends along the target's own bearing.
-    // WHY: unclamped, |hand - target| has a ~0.9 m floor, so the reach cost can
-    // never null and its permanent slope is rectified into a forward CoM ratchet --
-    // and `reach_deadband` cannot help, because no sane deadband covers 0.9 m.
-    // Clamping makes the target ATTAINABLE so the deadband can actually engage.
-    // ⚠ DELIBERATELY WITHOUT reach_to_target's reach_drop gravity guard. At the
-    // shipped reach_drop 0.400 that guard would force horiz = sqrt(r^2 - 0.4^2), i.e.
-    // an arm aimed ~53 deg BELOW horizontal at r = 0.50 -- a steep droop, not the
-    // near-horizontal counterweight reach this strategy is built around. The guard is
-    // a forward-reach gravity guard for strat 21; strat 16 does not need it, because
-    // its target already sits only ~14 deg below the shoulder, so the bare projection
-    // keeps a natural bearing. If a future run shows the arm aiming too high, add a
-    // separate `counterbalance_drop` numeric rather than borrowing reach_drop (which
-    // would couple strat 16's tuning to strat 21's).
-    // A SEPARATE copy of the projection, not a shared helper, so the reach_to_target
-    // branch stays byte-for-byte untouched and strat 21 cannot move.
-    int cbr_id = mj_name2id(model, mjOBJ_NUMERIC, "counterbalance_radius");
-    double kCounterRadius = (cbr_id >= 0)
-        ? model->numeric_data[model->numeric_adr[cbr_id]] : 0.0;
-    if (kCounterRadius > 0.0) {
-      double shoulder_lat_cb = reach_right ? -0.148 : 0.148;
-      double shoulder_cb[3] = {
-          torso_pos[0] + shoulder_lat_cb * heading_lft[0],
-          torso_pos[1] + shoulder_lat_cb * heading_lft[1],
-          torso_pos[2] + 0.219};
-      double v_cb[3];
-      mju_sub3(v_cb, phase1_target_storage, shoulder_cb);
-      double r_cb = mju_norm3(v_cb);
-      if (r_cb > kCounterRadius && r_cb > 1.0e-6) {
-        mju_scl3(v_cb, v_cb, kCounterRadius / r_cb);   // project onto the sphere
-        mju_add3(phase1_target_storage, shoulder_cb, v_cb);
-      }
-    }
-    reach_target = phase1_target_storage;
-    // INVESTIGATED 2026-06-23: a deliberate static counterweight (free arm swung
-    // back +/- knee bend) was trialed to add forward-push margin, but EVERY forced
-    // posture override (arm-back >= 0.30 rad OR knee-bend 0.18) toppled it BACKWARD
-    // during lean establishment -- the planner's EMERGENT counterbalance is already
-    // optimal and a forced pose disrupts it. Kept the validated emergent behavior
-    // (twin + GUI 3/3). The forward-push fragility of this FREE-STANDING no-brace
-    // lean is inherent (planted feet, no step); the push-robust paths are BRACING
-    // on the surface (strat 33/34) or STEPPING (strat 20), not strat 16.
-  }
-  // jab_extend (Strategy 19): the RIGHT arm punches straight forward. Posture
-  // alone (one arm joint out of ~30) is too weak a reward for the warm-started
-  // policy to commit to the big shoulder excursion — it leaves the arms hovering
-  // near the guard pose (user report: "guard held for a minute, never jabs").
-  // Give the punch a DEDICATED reach reward: repoint the reaching hand to the
-  // RIGHT fist and target a fixed point one arm-length forward of the right
-  // shoulder at shoulder height — a mirror of the proven arm_extend_standing
-  // forward override with y flipped to the right side. The reach residual
-  // (Reaching Hand Dist, enabled ONLY in the jab_extend JSON phase) then pulls
-  // the fist out with a steep, targeted gradient the warm-start mean drifts
-  // toward; the left arm holds guard via Posture. Gated on the keyframe name so
-  // no other strategy's reach assignment is touched (auto arm-selection via the
-  // outer reach_right covers the other branches).
-  else if (residual_keyframe_.name == "jab_extend") {
-    reaching_hand = right_hand_pos;
-    // Target = the FK-measured location of the right fist at FULL straight
-    // extension, expressed relative to torso_position. Measured (jab_fk.py,
-    // build Lean_H12) for the jab_extend keyframe: fist is dx=+0.498, dy=-0.085,
-    // dz=+0.366 from torso_position (torso sits at z~1.225, the extended fist at
-    // z~1.59 — torso_position is well BELOW the shoulder, so a torso_z-0.05
-    // "shoulder height" guess like arm_extend_standing uses puts the target
-    // ~0.4 m too LOW and the planner punches DOWN with a bent elbow). x pushed a
-    // touch past 0.498 to demand the elbow fully straighten rather than fold to
-    // hit a nearer point. Torso stays upright (Pelvis Tilt=100) so this pulls
-    // ARM extension, not a forward lean.
-    // GENTLE target: the natural full-extension fist point (FK dx+0.498), NOT
-    // pushed beyond. On the faithful deploy twin a more aggressive forward pull
-    // (dx 0.62 + high reach weight) made the planner counterbalance backward and
-    // OVERSHOOT into a backward topple at the punch. The jab sits on a marginal
-    // stand, so the punch must stay a small perturbation: a modest reach weight
-    // (35, set in the jab_extend JSON) toward this natural point gives a visible
-    // forward jab without driving the CoM past the balance margin. Torso held
-    // upright by Pelvis Tilt=100.
-    phase1_target_storage[0] = torso_pos[0] + 0.58;   // just PAST full reach -> forces full straight extension
-    phase1_target_storage[1] = torso_pos[1] - 0.09;   // natural extended-arm y
-    phase1_target_storage[2] = torso_pos[2] + 0.37;   // extended-fist height
-    reach_target = phase1_target_storage;
   }
   // reach_to_target (Strategy 21): the standalone reach primitive. The target is
   // the EXTERNAL mocap object (object_pos = target_position_, set from a model
@@ -1619,21 +893,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // (×1.0) both failed because the planner can't stand-and-bend with
   // kp_ankle=20 — it either tips forward (×0.7) or backward (×1.0).
   // The squat IS the natural solution given the weak PD.
-  // ===== STUMBLE swing-release masks (foot-lift fix 2026-06-24, Tier A) =====
-  // During a foot's scheduled swing (g_amp*g_bump_foot -> 1) the "keep foot down /
-  // upright / at height" costs are RELEASED off the swing leg / single-support
-  // body so lifting is affordable -- the MJPC-quadruped per-gait weight drop,
-  // applied per-tick. is_stumble-gated (swing_*/step_active = 0 for every other
-  // strategy AND for a planted/calm stumble) -> calm stand + all strats byte-id.
-  double swing_r = is_stumble ? mju_min(1.0, g_amp * g_bump_r) : 0.0;
-  double swing_l = is_stumble ? mju_min(1.0, g_amp * g_bump_l) : 0.0;
-  double step_active = mju_max(swing_r, swing_l);  // whole-body single-support activity
   double height_scale = arm_contact_or_lean ? 0.35 : 1.0;
-  height_scale *= (1.0 - 0.6 * step_active);  // release base-height anchor in single support (CoM dips)
-  // JUMP maneuver: release the head-height term while the schedule owns the
-  // vertical (crouch lowers the head by design); full strength outside the hop
-  // so the settle/land stand keeps its proven Height 100 backward-tip guard.
-  height_scale *= (1.0 - jump_two_sided);
   residual[counter++] = height_scale * (head_feet_error - height_goal);
 
   // ----- Balance: CoM-feet xy error ----- //
@@ -1642,45 +902,12 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double *com_velocity = SensorByName(model, data, "torso_subtreelinvel");
 
   // ----- CoM xy velocity tracking ----- //
-  // Target 0 (stand still) normally; for the trot, target the commanded walk
-  // velocity kDesVel* so this term DRIVES the forward push instead of fighting it.
-  // THE propulsion cost: every reference sampling/RL walker (MJPC walk.cc,
-  // Playground/Unitree) tracks CoM velocity -- foot placement alone cannot move
-  // the body against the balancing sampler (verified: kw=0 placement just wanders
-  // around rest). kDesVel*=0 for all non-trot -> byte-identical there. trot_vel_w
-  // boosts ONLY the FORWARD (x) tracking authority for the trot so velocity
-  // tracking out-votes the come-to-rest Balance term (MJPC walk.cc demotes Balance
-  // / promotes the velocity term for locomotion). trot_lat_w does the SAME for the
-  // LATERAL (y) tracking (target kDesVelY, usually 0) -- forward walk wanders
-  // sideways because x-tracking was boosted 12x while y stayed at base 1, so the
-  // sampler let lateral velocity drift; trot_lat_w damps it to walk STRAIGHT.
-  // Both default 1.0 -> in-place trot + non-trot byte-identical.
-  double vel_w = 1.0, lat_w = 1.0;
-  if (is_trot) {
-    int vw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_vel_w");
-    if (vw_id >= 0) vel_w = model->numeric_data[model->numeric_adr[vw_id]];
-    int lw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_lat_w");
-    if (lw_id >= 0) lat_w = model->numeric_data[model->numeric_adr[lw_id]];
-  }
-  residual[counter + 0] = vel_w * (com_velocity[0] - kDesVelX);
-  residual[counter + 1] = lat_w * (com_velocity[1] - kDesVelY);
+  residual[counter + 0] = com_velocity[0];
+  residual[counter + 1] = com_velocity[1];
   counter += 2;
 
   // ----- joint velocity ----- //
   mju_copy(residual + counter, data->qvel + 6, model->nu);
-  if (is_stumble) {
-    // Split the "Velocity" joint-velocity damping by joint group (the G1-
-    // locomotion pattern: vel/pose-regularised ARMS, gait-driven LEGS). LEG/torso
-    // damping (actuators 0..12) RELEASES as the gait amplitude ramps (1-g_amp) so
-    // a catch-step is fast and unimpeded; ARM damping (13..26) is BOOSTED + always
-    // on so the upper body stays quiet (no flail) even as the gait/balance perturb
-    // it -- the user's "keep the arms at home, recover with legs/hips". When calm
-    // (g_amp=0) the legs are fully damped (leg_gate=1) so the still-stand is
-    // unchanged. is_stumble-gated => strat 0-19, 21 byte-identical.
-    double leg_gate = 1.0 - g_amp;
-    for (int i = 0; i < model->nu; i++)
-      residual[counter + i] *= (i < 13) ? leg_gate : 1.6;
-  }
   counter += model->nu;
 
   // ----- torso height ----- //
@@ -2091,37 +1318,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double fwd_scale = arm_contact_or_lean ? balance_scale : 1.0;
   double dir_scale_x = (cp_dx > 0.0) ? fwd_scale : 1.0;
   double dir_scale_y = 1.0;
-  // STUMBLE Tier A: release the capture/balance barrier during single support so
-  // the capture point may legitimately leave the (shrinking) polygon to be caught
-  // by the step. Partial (keep ~40%) -- a full release faceplants (see note below).
-  double bal_rel = 1.0 - 0.6 * step_active;
-  // TROT-WALK: demote the come-to-rest Balance barrier so the velocity-tracking
-  // cost can drive the body forward (MJPC walk.cc gates Balance DOWN for
-  // locomotion -- it keeps the CoM between the feet, not parked at rest). Demote
-  // FORE-AFT (x) ONLY: the lateral (y) axis is the narrow biped's WEAK axis (a
-  // global demotion produced metre-scale sideways drift) -- keep FULL lateral
-  // balance. ONLY when actually walking (kDesVel != 0); in-place trot (v_des=0)
-  // keeps full balance both axes. trot_bal_scale numeric (1=off).
-  //
-  // ASYMMETRIC BARRIER (2026-06-29): the demotion must NOT weaken the 10x
-  // fall-catch (below). Previously the demoted eff_dx fed balance_excursion, so a
-  // large forward lean read SMALL -> the amplifier never engaged -> trot-walk
-  // pitched forward and faceplanted at ~13 s. Fix: drive balance_excursion (the
-  // edge detector) from the UN-demoted eff_dx_full, and fade the demotion back to
-  // 1.0 as the lean enters the fall-catch zone (walk_demote = bscale in the
-  // walking regime, -> 1.0 at the edge). Non-trot / in-place trot: bscale==1 ->
-  // walk_demote==1 -> eff_dx == eff_dx_full (byte-identical to prior residual).
-  double bscale = 1.0;
-  if (is_trot && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
-    int bs_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_bal_scale");
-    if (bs_id >= 0) bscale = model->numeric_data[model->numeric_adr[bs_id]];
-  }
-  // Defensive: keep walk_demote in [bscale,1] (sign-safe). Identity for the
-  // documented config (trot_bal_scale in [0,1]); only caps a misconfigured numeric.
-  bscale = mju_max(0.0, mju_min(1.0, bscale));
-  // FULL (un-demoted) excursion drives the edge amplifier (the fall-catch barrier).
-  double eff_dx_full = cp_dx * dir_scale_x * bal_rel;
-  double eff_dy = cp_dy * dir_scale_y * bal_rel;
+  double eff_dx_full = cp_dx * dir_scale_x;
+  double eff_dy = cp_dy * dir_scale_y;
   double balance_excursion =
       mju_sqrt(eff_dx_full * eff_dx_full + eff_dy * eff_dy);
   constexpr double kEdgeInner = 0.05;       // m — amplifier still 1×
@@ -2136,19 +1334,14 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // 2026-06-05) deleted the balance restoring force -> faceplant in 3s. KEEP it. The correct cause-B
   // is the SYMMETRIC barrier (fwd_scale=1.0 for no-brace, above) WITH this amplifier intact.
   double edge_amplifier = 1.0 + (kEdgePeakAmplifier - 1.0) * edge_smooth;
-  // Asymmetric demotion: bscale in the WALKING regime (edge_smooth~0), fading to
-  // 1.0 (FULL barrier) as the lean enters the fall-catch zone (edge_smooth->1).
-  double walk_demote = bscale + (1.0 - bscale) * edge_smooth;
-  double eff_dx = eff_dx_full * walk_demote;
+  double eff_dx = eff_dx_full;
 
   // Per-axis residual: directional scale already includes balance_scale
   // for forward, 1.0 for backward/lateral. NO outer multiplication by
   // balance_scale (would double-count for forward, and incorrectly
   // relax backward/lateral).
-  // JUMP: jump_bal (1.0 outside the hop, and for every other strategy ->
-  // byte-identical) amplifies the CoM-over-feet barrier through the crouch/push.
-  residual[counter + 0] = eff_dx * leaning * edge_amplifier * jump_bal;
-  residual[counter + 1] = eff_dy * leaning * edge_amplifier * jump_bal;
+  residual[counter + 0] = eff_dx * leaning * edge_amplifier;
+  residual[counter + 1] = eff_dy * leaning * edge_amplifier;
   counter += 2;
 
   // ----- torso forward tilt (direction-based) ----- //
@@ -2237,69 +1430,16 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     } else {
       double sin_tilt =
           mju_sqrt(mju_max(0.0, 1.0 - pelvis_up[2] * pelvis_up[2]));
-      // STRAIGHTEN upright-target ramp (C3): drive the pelvis to vertical along a
-      // min-jerk from the captured release tilt, not instantly. sin_target ramps
-      // sin(start_tilt) -> 0 over target_ramp_sec; penalize only the tilt BEYOND
-      // the moving setpoint, so the corrective force stays small and the body
-      // glides erect instead of being FLUNG past vertical (the static-target
-      // overshoot: a +10deg lean toppled backward to ~130deg on the twin). After
-      // the ramp window sin_target=0 -> identical to the plain upright hold.
-      double sin_target = 0.0;
-      if (is_straighten && straighten_seeded_) {
-        double ramp_dur = (residual_keyframe_.target_ramp_sec >= 0.0)
-                              ? residual_keyframe_.target_ramp_sec
-                              : kPhaseRampSeconds;
-        if (ramp_dur > 1e-9 && time_in_phase < ramp_dur) {
-          double ra_lin = mju_min(time_in_phase / ramp_dur, 1.0);
-          double ra = ra_lin * ra_lin * (3.0 - 2.0 * ra_lin);
-          sin_target = (1.0 - ra) * std::sin(straighten_start_tilt_);
-        }
-      }
-      pelvis_tilt_residual = upright_gain * mju_max(0.0, sin_tilt - sin_target);
-      // JUMP: track a DIRECTIONAL forward-pitch setpoint instead of the
-      // directionless "stay vertical" magnitude. sin_tilt alone cannot tell a
-      // forward lean (which we WANT while squatting) from a backward one (which
-      // kills us), so relaxing it would license the backward topple. Penalize the
-      // deviation of the pelvis up-vector from a forward-pitched target: a
-      // BACKWARD lean is now maximally expensive. jump_pitch_tgt is 0 outside the
-      // crouch/push, so flight, landing, recovery and every other strategy keep
-      // the plain upright hold (byte-identical).
-      if (is_jump && jump_pitch_tgt > 1e-6) {
-        double up_fwd_target = std::sin(jump_pitch_tgt);
-        double dfx = pelvis_up[0] - up_fwd_target;   // fore-aft (x) up-vector
-        double dfy = pelvis_up[1];                   // lateral stays at 0
-        pelvis_tilt_residual =
-            upright_gain * mju_sqrt(dfx * dfx + dfy * dfy);
-      }
+      pelvis_tilt_residual = upright_gain * mju_max(0.0, sin_tilt);
     }
   }
-  // JUMP: give the trunk-attitude term real authority during the hop. Base Height
-  // (weight 450, x10 scale) outweighs Pelvis Tilt (100) by ~25x, so the planner
-  // was buying depth and paying for it in backward pitch -- and takeoff pitch is
-  // CONSERVED in flight, so it lands tilted and collapses. jump_pelvis_w (numeric)
-  // is 1.0 outside the hop -> byte-identical everywhere else.
-  double jump_pelvis_w = 1.0;
-  if (is_jump && jump_two_sided > 1e-6) {
-    double kPelW = GetNumberOrDefault(3.0, model, "jump_pelvis_w");
-    jump_pelvis_w = 1.0 + (kPelW - 1.0) * jump_two_sided;
-  }
-  residual[counter++] = (1.0 - 0.5 * step_active) * pelvis_tilt_residual * jump_pelvis_w;  // Tier A: relax torso-upright in single support
+  residual[counter++] = pelvis_tilt_residual;
 
   // ----- foot up-vectors: prevent ankle roll ----- //
   double *foot_right_up = SensorByName(model, data, "foot_right_up");
   double *foot_left_up  = SensorByName(model, data, "foot_left_up");
-  // STUMBLE Tier A (foot-lift fix): release the flat-foot penalty on the SWING
-  // foot -- a swinging foot MUST plantarflex/fold (foot_up[2] < 1); the STANCE
-  // foot keeps the full weight. THE single biggest anti-lift blocker (named by
-  // 5/5 research agents + matches MJPC quadruped's step[foot]?h:0 self-gating).
-  // JUMP flight: partially release flatness during the ballistic window (a
-  // mild fold at push-off/apex is physical); jump_air==0 for every other
-  // strategy AND for the grounded jump segments -> byte-identical elsewhere.
-  double jump_flat_release = 1.0 - 0.7 * jump_air;
-  residual[counter++] =
-      (1.0 - swing_r) * jump_flat_release * mju_abs(foot_right_up[2] - 1.0);
-  residual[counter++] =
-      (1.0 - swing_l) * jump_flat_release * mju_abs(foot_left_up[2]  - 1.0);
+  residual[counter++] = mju_abs(foot_right_up[2] - 1.0);
+  residual[counter++] = mju_abs(foot_left_up[2]  - 1.0);
 
   // ----- waist yaw: stop planner from yawing torso to swing arm ----- //
   // torso_joint is the 13th actuated DOF (nu index 12), home = 0.
@@ -2330,23 +1470,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // all times; let MPC find the brace+CoP balance instead of twisting the leg.
   double stance_square_scale =
       is_leg_lift_stage_early ? 12.0 : hip_square_scale;
-  // ROCK (trot_rock_ff, default 0 = OFF): move the hip-ROLL cost TARGET by the
-  // same stance-side weight-shift delta lean::ModifyControl drives, so the
-  // weight-30 pin above asks for the rock instead of fighting it. Trot-gated and
-  // zero in double support => every non-trot strategy (and trot with the numeric
-  // at 0) is byte-identical. See TrotRockHipRoll for signs + the measurement.
-  double rock_dl = 0.0, rock_dr = 0.0;
-  if (is_trot) {
-    TrotRockHipRoll(GetNumberOrDefault(0.0, model, "trot_rock_ff"),
-                    GetNumberOrDefault(0.0, model, "trot_rock_lead"), g_amp,
-                    rock_ph_l, rock_ph_r, rock_duty, &rock_dl, &rock_dr);
-  }
   residual[counter++] = stance_square_scale * (data->qpos[7 + 0] - model->key_qpos[7 + 0]);
-  residual[counter++] = stance_square_scale *
-      (data->qpos[7 + 2] - (model->key_qpos[7 + 2] + rock_dl));
+  residual[counter++] = stance_square_scale * (data->qpos[7 + 2] - model->key_qpos[7 + 2]);
   residual[counter++] = hip_square_scale * (data->qpos[7 + 6] - model->key_qpos[7 + 6]);
-  residual[counter++] = hip_square_scale *
-      (data->qpos[7 + 8] - (model->key_qpos[7 + 8] + rock_dr));
+  residual[counter++] = hip_square_scale * (data->qpos[7 + 8] - model->key_qpos[7 + 8]);
 
   // ----- posture ----- //
   // Reduced weight vs push task to allow more deviation for leaning.
@@ -2397,22 +1524,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // so it is held at its keyframe (rest) pose while the reaching arm + legs (= stand)
   // stay free. reach_brace_hold = boost factor (effective arm Posture = Posture *
   // this), live-tunable. Reach-gated -> all other strategies byte-identical.
-  // 2026-06-25: TRIED extending this lock to counterbalance_standing (strat 16) so
-  // 16's right arm would also hold forward instead of swinging back to -0.8 m. A/B on
-  // the deploy twin (gravcomp 0.85, seed 0) REJECTED it: WITH lock 16 fell at 14.3 s,
-  // WITHOUT lock at 23.5 s — the lock makes 16 topple ~9 s SOONER. 16's free-standing
-  // lean USES the reaching arm as part of its emergent counterbalance; locking it
-  // steals that DOF and it falls backward earlier (the documented "forcing the arm
-  // topples 16" finding). So the lock stayed reach_to_target (strat 21) ONLY.
-  // 2026-06-26: RE-ENABLED for counterbalance_standing (16) — the prior rejection
-  // locked the right arm with NO replacement counterweight. Now the
-  // counterbalance_standing keyframe drives the LEFT (non-reaching) arm fully BACK
-  // (qpos[20]=+1.3); brace_hold pins it there as an EXPLICIT counterweight, so the
-  // right arm can hold forward AND the body stays balanced (the two arms counterweight
-  // each other -> CoM centered -> ankle unloaded -> both extend). User's figure-skater
-  // insight; supplies exactly the balance DOF the bare lock removed.
-  if (residual_keyframe_.name == "reach_to_target" ||
-      residual_keyframe_.name == "counterbalance_standing") {
+  if (residual_keyframe_.name == "reach_to_target") {
     int rh_id2 = mj_name2id(model, mjOBJ_NUMERIC, "reach_hand");
     int rh_mode2 = (rh_id2 >= 0)
         ? (int)std::lround(model->numeric_data[model->numeric_adr[rh_id2]]) : 0;
@@ -2778,32 +1890,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // stay grounded (the `is_leg_lift_stage ? 0.0 : ...` below always takes the
   // anchored branch). WBC may still nudge foot placement to hold balance.
   double right_foot_scale = arm_contact_or_lean ? 4.0 : 1.0;
-  // ★ MEASURED FOOT ANCHOR for the STEPPING keyframes (trot/walk/drive), 2026-07-20.
-  // kRight/kLeftFootHomeXY are ODOMETRIC-frame constants; that frame drifts (~13 m
-  // measured on real), so this cost drags the feet toward a point metres away and
-  // the robot "keeps trying to lean backward". The lower-body stand fixed exactly
-  // this on 2026-07-18 (Foot Stability cost 225 -> 0.00 on real) but the full-body
-  // LEAN task never got the port. drive_foot_anchor_ is re-pinned to the MEASURED
-  // stance by TransitionLocked (stepping-keyframe entry + every idle tick), never
-  // mid-gait. is_trot gate => STRAT 6 STAND AND EVERY NON-STEPPING STRATEGY ARE
-  // BYTE-IDENTICAL (they keep brace_foot_x / the home constants), and the anchor's
-  // own defaults equal the old constants so even the stepping path is inert until
-  // TransitionLocked pins it.
-  // ★ DRIVE-ONLY + OPT-IN (narrowed 2026-07-20 after a REAL-ROBOT FAULT: the
-  // is_trot-gated, always-on version dragged the robot sideways at startup --
-  // the cold-start pin only null-checked sensor POINTERS, so an uninitialised
-  // estimate could pin both anchors near the origin and a weight-8 cost then
-  // hauled both feet toward it). TROT 22/23 also excluded on their own merits:
-  // measured stance x=0.030 vs the constant 0.2196 would move their anchor 19 cm
-  // and they were twin-TUNED against the constant (a pp7 spot-check gave 4.1 s
-  // vs a historical ~5.1 s, which this bench's non-deterministic CEM cannot
-  // resolve at n=3). Default numeric 0 => strat 6 AND drive are byte-identical.
-  const bool anchor_measured =
-      is_drive && GetNumberOrDefault(0.0, model, "drive_foot_anchor") > 0.5;
-  const double rf_ax = anchor_measured ? drive_foot_anchor_[0] : brace_foot_x;
-  const double rf_ay = anchor_measured ? drive_foot_anchor_[1] : kRightFootHomeXY[1];
-  const double lf_ax = anchor_measured ? drive_foot_anchor_[2] : brace_foot_x;
-  const double lf_ay = anchor_measured ? drive_foot_anchor_[3] : kLeftFootHomeXY[1];
+  const double rf_ax = brace_foot_x;
+  const double rf_ay = kRightFootHomeXY[1];
+  const double lf_ax = brace_foot_x;
+  const double lf_ay = kLeftFootHomeXY[1];
   residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[0] - rf_ax);
   residual[counter++] = is_leg_lift_stage ? 0.0 : right_foot_scale * (foot_right_pos[1] - rf_ay);
   residual[counter++] = left_foot_scale * (foot_left_pos[0] - lf_ax);
@@ -3039,37 +2129,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // onto the xy-plane and check alignment there. Pitch drops out because
   // pitching down shortens torso_forward's xy length without changing
   // its xy direction.
-  // ★ STEPPING HEADING LOCK (trot 23 + drive 24). BUGFIX 2026-07-12 -- this used
-  // to be is_drive-only, and the trot was left aiming at reach_dir.
-  //
-  // reach_dir is normalize(reach_target - torso_pos), and reach_target is the
-  // mocap target = target_position_, which the lean CONSTRUCTOR RANDOMIZES to
-  // x in [1.4,1.6], y in [-0.3,0.3]. Body Yaw carries weight 40 in the stepping
-  // strategies' JSON. So a stepping controller was being commanded to yaw toward
-  // a RANDOM point up to +/-0.3 m off-axis at 1.5 m = up to +/-11 deg of heading
-  // bias, freshly re-rolled every process. The body obeys and yaws -- and because
-  // kDesVel is a WORLD vector, a trot-walk then CRABS (it walks along its nose
-  // while the velocity target still points down the old world axis), the capture
-  // step fights the drive, and it pitches forward. Measured on the (identical)
-  // stabilize port: ~0.9 m of sideways drift with +20 deg of forward pitch, and
-  // the in-place trot showed the same disease as 4-6 deg of lateral wander.
-  //
-  // drive_yaw_des_ = the commanded heading for drive (integrated yaw-rate), or the
-  // heading latched when the gait armed for the plain trot (TransitionLocked).
-  // trot_heading_lock numeric: 1 = on (default), 0 = the legacy random-reach-axis
-  // behaviour (A/B without a rebuild). is_trot covers trot + drive; stumble and
-  // every pose strategy are untouched. The reach-alignment residual above has
-  // already consumed the original reach_dir, so overwriting it here is safe.
-  if (is_trot) {
-    int hl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_heading_lock");
-    bool hl = (hl_id < 0) ||
-              (model->numeric_data[model->numeric_adr[hl_id]] > 0.5);
-    if (hl) {
-      reach_dir[0] = std::cos(drive_yaw_des_);
-      reach_dir[1] = std::sin(drive_yaw_des_);
-      reach_dir[2] = 0.0;
-    }
-  }
   double tf_xy_len = mju_sqrt(torso_forward[0] * torso_forward[0] +
                               torso_forward[1] * torso_forward[1]);
   double rd_xy_len = mju_sqrt(reach_dir[0] * reach_dir[0] +
@@ -3283,21 +2342,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   if (is_leg_lift_stage_early) {
     residual[counter++] = 2.0 * mju_max(0.0, left_knee_angle  - 0.08);
     residual[counter++] =       mju_max(0.0, right_knee_angle - 0.25);
-  } else if (is_stumble) {
-    // STUMBLE: repurpose this dormant slot into a BENT-KNEE FLOOR -- forbid
-    // EITHER knee from diving toward the straight/locked stop (the strut), in
-    // EVERY phase (calm OR stepping), so the one-leg passive prop is impossible
-    // WHENEVER. One-sided max(0, floor - knee): a knee at the 0.35 march pose,
-    // or folded UP for a swing, is FREE (>= floor); only a knee locking toward
-    // the floor is penalised. UNLIKE the Symmetry term this is NOT g_amp-gated,
-    // so even a sustained step cannot strut; and the swing leg rises ABOVE the
-    // floor so the gait is untouched. Strength = the "Knees Straight" JSON
-    // weight (0 = off, tunable live). Pairs with the (g_amp-gated) Symmetry term
-    // above: Symmetry keeps L/R matched when calm, this floor blocks the lock
-    // always. Non-stumble strategies fall through to the else (0,0) -> byte-id.
-    constexpr double kKneeFloor = 0.15;  // rad; below this a knee is locking -> strut
-    residual[counter++] = mju_max(0.0, kKneeFloor - left_knee_angle);
-    residual[counter++] = mju_max(0.0, kKneeFloor - right_knee_angle);
   } else {
     residual[counter++] = 0.0;
     residual[counter++] = 0.0;
@@ -3328,18 +2372,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // via its JSON weight map ("Symmetry": w), so all other tasks stay
   // byte-identical (zero weight AND/OR zero residual = zero cost).
   if (!arm_contact_or_lean) {
-    // STUMBLE (strat 20): RELEASE symmetry WHILE stepping. A catch-step is an
-    // INTENTIONAL L/R asymmetry (one foot swings) so the symmetry term must not
-    // fight it; when calm (g_amp=0) symmetry is FULL, making stumble's bent-knee
-    // stand as strut-proof as the strat-6 stand (which runs Symmetry 200 and
-    // never struts). g_amp is 0 for EVERY non-stumble strategy (set only inside
-    // the is_stumble stepping block far above), so sym_gate == 1.0 there ->
-    // stand/crouch/jab/reach stay byte-identical. This is why the user's strat-20
-    // struts and strat-6 doesn't: stumble had Symmetry=0 (it conflicts with
-    // stepping); gating restores it for the calm phase the march-gate now holds.
-    double sym_gate = 1.0 - g_amp;
-    residual[counter++] = sym_gate * (data->qpos[7 + 3] - data->qpos[7 + 9]);  // knee L-R
-    residual[counter++] = sym_gate * (data->qpos[7 + 1] - data->qpos[7 + 7]);  // hipPitch L-R
+    residual[counter++] = data->qpos[7 + 3] - data->qpos[7 + 9];  // knee L-R
+    residual[counter++] = data->qpos[7 + 1] - data->qpos[7 + 7];  // hipPitch L-R
     // anklePitch L-R: the SAGITTAL ankle. joint_forensics on the cold-start
     // backward fall (strat 19) showed the one-leg strut hides HERE — L/R
     // ankle_pitch diverged 13.9deg while knee diverged only 5.2deg. The
@@ -3347,7 +2381,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // (asymmetry there is normal); ankle_PITCH is fore/aft and must stay
     // symmetric for a square stance, so penalising its (L-R) closes the
     // strut's last escape. Quadratic => tiny asymmetries stay ~free.
-    residual[counter++] = sym_gate * (data->qpos[7 + 4] - data->qpos[7 + 10]); // anklePitch L-R
+    residual[counter++] = data->qpos[7 + 4] - data->qpos[7 + 10]; // anklePitch L-R
   } else {
     residual[counter++] = 0.0;
     residual[counter++] = 0.0;
@@ -3374,12 +2408,7 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   //   brace/lean use the existing Height term -> byte-identical.
   if (!arm_contact_or_lean) {
     double bh_err = posture_target[2] - data->qpos[2];
-    // JUMP maneuver: jump_two_sided (0->1->0 over the scheduled hop) makes this
-    // anchor SIGNED so the scheduled z-target drives the crouch DOWN and tracks
-    // the ballistic arc, not just guards the sink. 0 for every other strategy
-    // and outside the maneuver -> the original one-sided anti-sink, byte-id.
-    residual[counter++] =
-        10.0 * (bh_err >= 0.0 ? bh_err : jump_two_sided * bh_err);
+    residual[counter++] = 10.0 * (bh_err >= 0.0 ? bh_err : 0.0);
   } else {
     residual[counter++] = 0.0;
   }
@@ -3410,52 +2439,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     int pelvis_id = mj_name2id(model, mjOBJ_BODY, "pelvis");
     if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
     const mjtNum *angmom = data->subtree_angmom + 3 * pelvis_id;
-    // HIP/ARM RECOVERY tier (Strategy 20): when the capture point excurses, target
-    // COUNTER angular momentum (throw torso+arms OPPOSITE the fall) instead of zero
-    // -> the flat-footed ankle->HIP->step INTERMEDIATE tier that hauls the CoM back
-    // BEFORE a step is needed, WITHOUT rocking onto the toe/heel (the CoP/ankle
-    // strategy we deliberately avoid). Zero target when calm == the original
-    // regulate-to-zero (unchanged for every other strategy). Fore-aft capture
-    // excursion -> pitch momentum (Ly); lateral -> roll (Lx); yaw (Lz) always ->0.
-    // Gains are numerics (default 0 = OFF until tuned on the twin; SIGN found there).
     double Lx_tgt = 0.0, Ly_tgt = 0.0;
-    if (is_stumble) {
-      int rpg_id = mj_name2id(model, mjOBJ_NUMERIC, "recover_pitch_gain");
-      int rrg_id = mj_name2id(model, mjOBJ_NUMERIC, "recover_roll_gain");
-      double kRecPitch = (rpg_id >= 0)
-          ? model->numeric_data[model->numeric_adr[rpg_id]] : 0.0;
-      double kRecRoll = (rrg_id >= 0)
-          ? model->numeric_data[model->numeric_adr[rrg_id]] : 0.0;
-      Ly_tgt = kRecPitch * g_cap_ex;   // fore-aft fall -> pitch counter-momentum
-      Lx_tgt = kRecRoll  * g_cap_ey;   // lateral fall  -> roll counter-momentum
-    }
-    // TROT-WALK PITCH/YAW CATCH (2026-06-29, the "active torso-pitch catch"): the
-    // forward-walk failure is a forward-PITCH runaway -- angmom[1] is the lateral-
-    // axis (pitch) centroidal angular momentum, so penalising it RESISTS the
-    // topple. Crucially angmom is RATE-like: a steady walking lean has ~0 net pitch
-    // momentum (it oscillates fore-aft and cancels) so this does NOT tax walking,
-    // but an ACCELERATING topple spikes angmom[1] -> caught. angmom[2] (yaw) damps
-    // the heading wander seen in walk. ACTIVE only for trot-WALK (is_trot &&
-    // v_des!=0) via trot_angmom_w; 0 for EVERY other strategy (incl. in-place trot,
-    // strat 20, stand/crouch/arms) so they stay byte-identical even though the XML
-    // "Angular Momentum" weight is now a nonzero carrier (cost = w * Norm(0) = 0).
     double angmom_w = 0.0;
-    if (is_trot && (kDesVelX != 0.0 || kDesVelY != 0.0)) {
-      int aw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_angmom_w");
-      angmom_w = (aw_id >= 0) ? model->numeric_data[model->numeric_adr[aw_id]] : 1.0;
-    }
-    // JUMP: regulate centroidal angular momentum -> 0 through the hop (takeoff
-    // pitch is conserved in flight — it can only be set BEFORE liftoff; v5's
-    // oblique flight/27deg-pitched landing was unregulated L). Maneuver-gated:
-    // 0 in the settle/land stand and for every other strategy (this carrier
-    // was already hard-zeroed for non-trot-walk, so nothing else changes).
-    // JUMP: takeoff pitch is CONSERVED in flight -- it can only be killed BEFORE
-    // liftoff. Regulate centroidal angular momentum hard through crouch+push so
-    // the robot leaves the ground vertical. jump_angmom_w numeric (sweepable).
-    if (is_jump) {
-      double kJumpAng = GetNumberOrDefault(6.0, model, "jump_angmom_w");
-      angmom_w = mju_max(angmom_w, kJumpAng * jump_two_sided);
-    }
     residual[counter++] = angmom_w * 0.1 * (angmom[0] - Lx_tgt);
     residual[counter++] = angmom_w * 0.1 * (angmom[1] - Ly_tgt);
     residual[counter++] = angmom_w * 0.1 * angmom[2];
@@ -3487,188 +2472,17 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // Center", so every other task stays byte-identical.
   if (!arm_contact_or_lean) {
     double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
-    // STUMBLE: rock the CoM toward the STANCE foot as the other foot swings --
-    // you cannot raise a LOADED foot, so the weight must shift off it first.
-    // (g_bump_r - g_bump_l) is -bump when the LEFT foot swings (shift CoM to the
-    // -y RIGHT stance foot) and +bump when the RIGHT swings; 0 in double support
-    // (stay centred). This gait-synced weight-shift reference is what converts
-    // the folded-swing-leg Posture into a REAL step; the planner finds the hip-
-    // roll / ankle to achieve it. Only for stumble; every other strategy keeps
-    // the plain centred target (and weight 0 unless it opts in). --- //
-    // kLatShift scaled by the trot-window swing scale: a bigger STEP needs a
-    // bigger weight-SHIFT to fully unload the swing foot (the measured one-sided
-    // step came from too small a rock -- the left foot never unloaded, so it could
-    // not lift). At swing_scale 2.5 the rock target is ~0.18 m, enough to take the
-    // load off EITHER foot in turn. ==base 0.07 outside the trot window (quiet
-    // stand + push-recovery byte-identical). Capped so it can't drive the CoM off
-    // the support polygon. --- //
-    constexpr double kLatShift = 0.07;   // base CoM lateral rock amplitude [m]
-    double lat_amp = mju_min(0.20, kLatShift * trot_swing_scale);
-    double lat_tgt = midfoot_y +
-        (is_stumble ? lat_amp * g_amp * (g_bump_r - g_bump_l) : 0.0);
+    double lat_tgt = midfoot_y;
     residual[counter++] = 10.0 * (subcom[1] - lat_tgt);
   } else {
     residual[counter++] = 0.0;
   }
 
-  // ============ STUMBLE: Cartesian Gait + Step Place refinement ============ //
-  // Strategy 20 "stumble" stepping. The gait clock + swing-leg JOINT reference
-  // that BOOTSTRAP the step (via the Posture cost) were computed near the TOP of
-  // this function; here we add the two Cartesian refinement terms that ground
-  // the motion in task space, reusing g_amp / g_bump_l / g_bump_r. Both are the
-  // LAST two <user> sensors (Gait dim 2, Step Place dim 4), XML default weight 0,
-  // and write 0 for every non-stumble strategy -> strategies 0-19 stay byte-
-  // identical (zero residual AND zero weight => zero cost), exactly the Symmetry/
-  // Angular Momentum/Lateral Center opt-in pattern above.
-  //
-  // WHY STEPPING (not more ankle gain): the documented H1-2 limiter is ankle
-  // under-authority -- the ankle saturates once the CoP reaches the support-
-  // polygon edge, so a large capture-point excursion is UNRECOVERABLE by ankle
-  // torque (the ~56%-marginal stand / one-leg-strut ceiling every other lean
-  // strategy hits). Stepping RELOCATES the support polygon under the falling CoM
-  // (N-step capturability, Koolen/Pratt), extending the recoverable region far
-  // beyond the ankle limit -- the gradient-free win for a weak-ankle robot.
-  if (is_stumble) {
-    // Cartesian step height TARGET: kStepHeight (0.022) scaled by the trot-window
-    // swing scale (default 1 outside the window). At swing_scale 2.5 the target is
-    // ~0.055 m -- between the quadruped trot (0.03) and Unitree humanoid walk
-    // (0.08) clearance, sized for the bigger H1-2 foot.
-    double amp = kStepHeight * g_amp * trot_swing_scale;   // ramped Cartesian step height [m]
-    // --- Gait foot-height (dim 2): reinforce the SWING foot rising its bump in
-    //     task space; STANCE foot untracked (residual 0). Ground reference = the
-    //     lower (planted) foot, so it auto-calibrates with no hard-coded foot z.
-    //     trot_gait_wscale boosts this residual in the trot window -> the foot-
-    //     clearance cost DOMINATES (the references' #1 lesson), so the planner
-    //     actually lifts the foot instead of only rocking. ==1 outside the window
-    //     -> quiet stand + push-recovery catch-step byte-identical. --- //
-    double ref_z = mju_min(foot_left_pos[2], foot_right_pos[2]);
-    // CONTACT-SCHEDULE signal (the references' bilateral-alternation glue, e.g.
-    // Unitree's `contact` reward): a foot must be UNLOADED during its swing phase.
-    // Foot-height alone gave ONE-SIDED steps -- the rock unloaded only the lighter
-    // foot; the other stayed planted (loaded) so its height term just paid a fixed
-    // penalty. Penalising the swing foot's CONTACT FORCE forces the planner to
-    // shift the CoM far enough to take the load off EITHER foot in turn. Per-foot
-    // normal force summed from the live contacts; normalised by ~half body weight
-    // (~500 N) to sit at the same ~0.05 scale as the height target. Trot-window
-    // only (sched=0 when trot_gait_wscale==1) -> quiet stand + push-recovery
-    // byte-identical. Costs ~ncon iterations, stumble + trot only. --- //
-    double ff_l = 0.0, ff_r = 0.0;
-    // STUMBLE Tier A: contact-schedule unload is ALWAYS-ON while stepping (was
-    // trot-window-only) -- you cannot lift a LOADED foot, so penalise the swing
-    // foot's contact force during its scheduled swing to force the weight-transfer.
-    bool sched_on = (g_amp * mju_max(g_bump_l, g_bump_r) > 0.01) || (trot_gait_wscale > 1.01);
-    if (sched_on) {
-      int fl_body = mj_name2id(model, mjOBJ_BODY, "left_ankle_roll_link");
-      int fr_body = mj_name2id(model, mjOBJ_BODY, "right_ankle_roll_link");
-      for (int c = 0; c < data->ncon; c++) {
-        const mjContact& con = data->contact[c];
-        int ba = model->geom_bodyid[con.geom1], bb = model->geom_bodyid[con.geom2];
-        mjtNum f6[6];
-        mj_contactForce(model, data, c, f6);
-        double fn = mju_abs(f6[0]);  // normal force (contact-frame x)
-        if (ba == fl_body || bb == fl_body) ff_l += fn;
-        if (ba == fr_body || bb == fr_body) ff_r += fn;
-      }
-    }
-    constexpr double kSched = 0.12;  // 0.06->0.12 (Tier A): stronger swing-load penalty to force the unload
-    double sched_l = sched_on ? kSched * g_amp * g_bump_l * mju_min(2.0, ff_l / 500.0) : 0.0;
-    double sched_r = sched_on ? kSched * g_amp * g_bump_r * mju_min(2.0, ff_r / 500.0) : 0.0;
-    // SUBTRACT the contact penalty so it REINFORCES the height deficit (a planted
-    // swing foot has a NEGATIVE height residual -amp*g_bump; a loaded one makes it
-    // MORE negative -> larger cost -> forces the unload). Adding them cancels (the
-    // bug that left it one-sided). A correctly-lifted unloaded foot: height~0 and
-    // ff~0 -> residual~0 (no penalty).
-    // STUMBLE Tier A: ONE-SIDED clearance (MJPC quadruped Scramble pattern) -- only
-    // a swing foot BELOW its scheduled height is penalised; OVER-clearing is FREE,
-    // so the planner is never punished for lifting higher. -sched forces the unload.
-    residual[counter++] = trot_gait_wscale *
-        ((g_bump_l > 0.0) ? mju_min(0.0, (foot_left_pos[2]  - ref_z - amp * g_bump_l) - sched_l) : 0.0);
-    residual[counter++] = trot_gait_wscale *
-        ((g_bump_r > 0.0) ? mju_min(0.0, (foot_right_pos[2] - ref_z - amp * g_bump_r) - sched_r) : 0.0);
-
-    // --- Step Place (dim 4): aim each SWING foot's xy at a capture-point /
-    //     Raibert target: x_foot = com_xy + nominal_offset
-    //                            + (com_vel - v_des)*sqrt(z/g) + v_des*T_stance.
-    //     v_des=0, balanced -> nominal stance (march in place); a push -> target
-    //     shifts into the push -> recovery STEP; v_des>0 -> feet step in the
-    //     commanded direction -> walk (the nav hook). Stance foot untracked. --- //
-    int pelvis_id = mj_name2id(model, mjOBJ_BODY, "pelvis");
-    if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
-    const mjtNum *com_pos = data->subtree_com + 3 * pelvis_id;     // whole-body CoM xyz
-    double const *com_vel = SensorByName(model, data, "waist_lower_subcomvel");
-    double z_com     = mju_max(0.5, com_pos[2]);
-    double tau_cap   = mju_sqrt(z_com / 9.81);     // sqrt(z/g): capture-point time const
-    // CLAMP the capture offset to a physical step reach. Unclamped, an incipient
-    // topple spikes com_vel -> the foot target explodes metres away -> the swing
-    // leg FLINGS to chase it (seen as 0.5 m foot-height spikes that then caused
-    // the fall). A real step can only reach ~+/-0.22 m, so clamp there: the term
-    // still biases the step toward the capture point for recovery, but can never
-    // command an unreachable lunge.
-    constexpr double kStepReach = 0.30;   // max single-step xy reach [m] (0.22->0.30
-                                          // 2026-06-18: bigger CATCH-STEP for push
-                                          // recovery; forward shoves need a longer
-                                          // reach to plant the foot ahead of the CoM)
-    // PURE velocity-error catch (NO neutral feedforward). The Raibert neutral
-    // +v_des*t_stance places the swing foot AHEAD, which pushes the body BACKWARD
-    // near rest -- it only "maintains" a velocity the body already has, so without
-    // an independent propulsion source it backfires (verified: it produced a steady
-    // backward bias that only lost to the velocity-track cost at a destabilising
-    // weight). Propulsion now comes from the CoM-Vel tracking cost; placement only
-    // REGULATES, so error-catch alone is correct. v_des=0 (all non-trot, incl.
-    // strat 20) => identical to before (the neutral term was already 0 there).
-    double off_x = (com_vel[0] - kDesVelX) * tau_cap;
-    double off_y = (com_vel[1] - kDesVelY) * tau_cap;
-    off_x = mju_max(-kStepReach, mju_min(kStepReach, off_x));
-    off_y = mju_max(-kStepReach, mju_min(kStepReach, off_y));
-    // nominal foot offsets from the CoM at the standing stance (measured ~0.064 m
-    // fore, +/-0.26 m lateral). Biased to 0.09 fore so the feet land slightly
-    // AHEAD of the CoM -- countering the documented H1-2 forward CoM lean (~3-4 cm
-    // ahead) that topples the static stand. CoM-relative so the stance translates
-    // when walking.
-    // Fore-aft nominal stance offset: feet planted this far AHEAD of the CoM.
-    // +0.13 gave forward-push margin back when forward was the weak axis -- but it
-    // also CANCELS the backward catch-step's negative off_x (the rear foot only
-    // reaches TO the CoM, never behind it -> can't catch a backward fall). Now
-    // that the omnidirectional catch-step makes forward solid, REBALANCE this
-    // toward centre so backward gets margin too. Model numeric `stance_off_x`
-    // (default 0.13) -> tune live, no rebuild.
-    int sox_id = mj_name2id(model, mjOBJ_NUMERIC, "stance_off_x");
-    double kStanceOffX = (sox_id >= 0)
-        ? model->numeric_data[model->numeric_adr[sox_id]] : 0.13;
-    constexpr double kStanceOffY = 0.26;
-    // NOTE (2026-06-18): a STAGGERED/braced stance (L foot fore, R foot aft, via a
-    // staggered stumble_march keyframe + kStagger here) was TESTED to ~double the
-    // fore-aft support polygon (0.26->0.46 m). It improved the static baseline (4/4)
-    // but did NOT improve fwd/back PUSH survival and slightly hurt lateral -> REVERTED.
-    // Root cause: fore-aft recovery is reaction-BANDWIDTH limited (the planner doesn't
-    // exploit the bigger base / use the ankle headroom fast enough at spline 5), not
-    // support-geometry limited. The remaining principled lever is the HIP/arm
-    // angular-momentum strategy (ankle->HIP->step hierarchy) — unbuilt. The foot is
-    // already reference-grade fore-aft (G1 0.17 m / H1 0.20 m) so do NOT lengthen it.
-    constexpr double kStagL = 0.0, kStagR = 0.0;   // stagger off (see note)
-    residual[counter++] = (g_bump_l > 0.0)
-        ? (foot_left_pos[0]  - (com_pos[0] + kStanceOffX + kStagL + off_x)) : 0.0;
-    residual[counter++] = (g_bump_l > 0.0)
-        ? (foot_left_pos[1]  - (com_pos[1] + kStanceOffY + off_y)) : 0.0;
-    residual[counter++] = (g_bump_r > 0.0)
-        ? (foot_right_pos[0] - (com_pos[0] + kStanceOffX + kStagR + off_x)) : 0.0;
-    residual[counter++] = (g_bump_r > 0.0)
-        ? (foot_right_pos[1] - (com_pos[1] - kStanceOffY + off_y)) : 0.0;
-
-    // --- Foot Slip (dim 2): penalize the STANCE foot SLIDING horizontally (gated
-    //     on bump==0 = the planted foot). The reference MuJoCo Playground humanoid
-    //     relies on this (G1 feet_slip cost): a sampling planner has no learned
-    //     recovery reflex, so a stance foot that skids during the weight-shift
-    //     builds the exact lateral momentum that topples a weak-ankle stepper --
-    //     killing the slip at the source beats reacting to it via the capture
-    //     point. (Source: Playground g1/joystick.py _cost_feet_slip.) --- //
-    double const *vfl = SensorByName(model, data, "foot_left_velocity");
-    double const *vfr = SensorByName(model, data, "foot_right_velocity");
-    residual[counter++] =
-        (g_bump_l > 0.0) ? 0.0 : mju_sqrt(vfl[0]*vfl[0] + vfl[1]*vfl[1]);
-    residual[counter++] =
-        (g_bump_r > 0.0) ? 0.0 : mju_sqrt(vfr[0]*vfr[0] + vfr[1]*vfr[1]);
-  } else {
+  // Gait (dim 2) / Step Place (dim 4) / Foot Slip (dim 2): stepping-only cost
+  // terms, retired with the stepping strategies. The residual SLOTS are KEPT --
+  // they map 1:1 to the trailing <user> sensors in the model XML, so deleting a
+  // write here would silently shift every later cost term onto the wrong sensor.
+  {
     residual[counter++] = 0.0;  // Gait L
     residual[counter++] = 0.0;  // Gait R
     residual[counter++] = 0.0;  // Step Place Lx
@@ -4094,258 +2908,12 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
   }
   mju_copy3(data->mocap_pos, target_position_.data());
 
-  // ---- LIVE cmd_vel GOVERNOR (WASD/gamepad/Nav2 teleop, 2026-07-03) ------
-  // Single safety authority for live velocity commands: heartbeat watchdog,
-  // gait-arm lockout, envelope clamp, settle-through-zero on sign flips,
-  // slew limit, then ONE body->world yaw rotation. The result is stored on
-  // residual_ so BOTH v_des readers (Residual + lean::ModifyControl) consume
-  // the SAME world vector -- the mirrored-agreement requirement holds by
-  // construction. Inactive => members zeroed + cmd_active_=false => readers
-  // take the legacy trot_des_vel numeric path, byte-identical to the
-  // validated configs.
-  {
-    const bool cmd_on = (int)parameters.size() > kLeanCmdSeqParameterIndex &&
-                        parameters[kLeanCmdActiveParameterIndex] > 0.5;
-    if (cmd_on) {
-      double now = data->time;
-      double vx = parameters[kLeanCmdVxParameterIndex];  // BODY-frame m/s
-      double vy = parameters[kLeanCmdVyParameterIndex];
-      double seq = parameters[kLeanCmdSeqParameterIndex];
-      if (seq != residual_.cmd_last_seq_) {
-        residual_.cmd_last_seq_ = seq;
-        residual_.cmd_seq_time_ = now;
-      }
-      // client-heartbeat watchdog: Seq frozen > 1 s = dead client -> stop.
-      bool starved = (now - residual_.cmd_seq_time_) > 1.0;
-      // gait-arm lockout: kArmSec(2.0) swing arm-in + margin. The R6 lesson:
-      // acting on v_des during the bring-up transient topples the robot.
-      bool locked = (now - residual_.keyframe_start_time_) < 6.0;
-      if (starved || locked) { vx = 0.0; vy = 0.0; }
-      // envelope = the twin-validated speeds (2026-07-02): fwd 0.15 8/8,
-      // back 0.10 5/5. 0.20 is fast-marginal and deliberately excluded.
-      vx = mju_min(0.15, mju_max(-0.10, vx));
-      // V2 strafe (2026-07-07): the DRIVE strategy accepts lateral, clamped to
-      // the (weak-axis) drive_vy_max envelope; EVERY other strategy keeps vy=0
-      // (V0 byte-identical). drive_vy_max default 0.06; the twin campaign sets
-      // it without a rebuild.
-      {
-        int strat_g = (int)std::round(parameters[kLeanStrategyParameterIndex]);
-        auto snames_g = GetStrategyNames();
-        bool drive_g = strat_g >= 0 && strat_g < (int)snames_g.size() &&
-            snames_g[strat_g].find("drive") != std::string::npos;
-        double vy_max = 0.0;
-        if (drive_g) {
-          int vym_id = mj_name2id(model, mjOBJ_NUMERIC, "drive_vy_max");
-          vy_max = (vym_id >= 0)
-              ? model->numeric_data[model->numeric_adr[vym_id]] : 0.06;
-        }
-        vy = mju_min(vy_max, mju_max(-vy_max, vy));
-      }
-      // V3 yaw-rate (2026-07-07): drive strategy only; clamp to drive_wz_max and
-      // slew into cmd_wz_ (the FSM integrates it into a desired heading below).
-      {
-        int strat_w = (int)std::round(parameters[kLeanStrategyParameterIndex]);
-        auto sn_w = GetStrategyNames();
-        bool drive_w = strat_w >= 0 && strat_w < (int)sn_w.size() &&
-            sn_w[strat_w].find("drive") != std::string::npos;
-        double wz = 0.0;
-        if (drive_w && (int)parameters.size() > kLeanCmdWzParameterIndex &&
-            !starved && !locked) {
-          int wzm = mj_name2id(model, mjOBJ_NUMERIC, "drive_wz_max");
-          double wzmax = (wzm >= 0)
-              ? model->numeric_data[model->numeric_adr[wzm]] : 0.3;
-          wz = mju_min(wzmax,
-                       mju_max(-wzmax, parameters[kLeanCmdWzParameterIndex]));
-        }
-        double dtw = (residual_.cmd_prev_time_ > 0.0)
-                         ? mju_max(0.0, now - residual_.cmd_prev_time_) : 0.0;
-        double dwz = 1.0 * dtw;   // slew 1 rad/s^2
-        residual_.cmd_wz_ += mju_min(dwz, mju_max(-dwz, wz - residual_.cmd_wz_));
-      }
-      // settle-through-zero: a fwd<->back flip dwells at 0 for 1.5 s (~1.6
-      // gait cycles) so the capture catch kills momentum before reversing.
-      if (vx * residual_.cmd_filt_[0] < -1e-9)
-        residual_.cmd_settle_until_ = now + 1.5;
-      if (now < residual_.cmd_settle_until_) vx = 0.0;
-      // slew 0.08 m/s^2 (0 -> 0.15 in ~1.9 s); gentler than the validated
-      // campaigns' cold-start step changes.
-      double dt = residual_.cmd_prev_time_ > 0.0
-                      ? mju_max(0.0, now - residual_.cmd_prev_time_)
-                      : 0.0;
-      double dv = 0.08 * dt;
-      double tgt[2] = {vx, vy};
-      for (int a = 0; a < 2; a++) {
-        double d = tgt[a] - residual_.cmd_filt_[a];
-        residual_.cmd_filt_[a] += mju_min(dv, mju_max(-dv, d));
-      }
-      residual_.cmd_prev_time_ = now;
-      // body->world (yaw only; identity at yaw 0 => twin-validated behavior
-      // bit-unchanged). Also keeps "W = robot-forward" under IMU yaw drift.
-      double qw = data->qpos[3], qx = data->qpos[4], qy = data->qpos[5],
-             qz = data->qpos[6];
-      double yaw = std::atan2(2.0 * (qw * qz + qx * qy),
-                              1.0 - 2.0 * (qy * qy + qz * qz));
-      double cy = std::cos(yaw), sy = std::sin(yaw);
-      residual_.cmd_vdes_world_[0] =
-          cy * residual_.cmd_filt_[0] - sy * residual_.cmd_filt_[1];
-      residual_.cmd_vdes_world_[1] =
-          sy * residual_.cmd_filt_[0] + cy * residual_.cmd_filt_[1];
-      if (!residual_.cmd_active_)
-        std::fprintf(stderr, "[lean] cmd governor: ACTIVE (vx=%.3f)\n", vx);
-      else if (starved && !residual_.cmd_starved_)
-        std::fprintf(stderr, "[lean] cmd governor: starved=1 -> zeroing\n");
-      residual_.cmd_starved_ = starved;
-      residual_.cmd_active_ = true;
-    } else if (residual_.cmd_active_) {
-      residual_.cmd_active_ = false;
-      residual_.cmd_filt_[0] = residual_.cmd_filt_[1] = 0.0;
-      residual_.cmd_vdes_world_[0] = residual_.cmd_vdes_world_[1] = 0.0;
-      residual_.cmd_prev_time_ = -1.0;
-      std::fprintf(stderr, "[lean] cmd governor: OFF -> legacy numerics\n");
-    }
-  }
-
   // strategy-based contact keyframe progression
   const auto kStrategyNames = GetStrategyNames();
   int requested_strategy =
       (int)std::round(parameters[kLeanStrategyParameterIndex]);
   requested_strategy = std::max(
       0, std::min(requested_strategy, (int)kStrategyNames.size() - 1));
-
-  // ---- WSS DRIVE stand<->trot FSM (strat 24, 2026-07-07) -----------------
-  // Gait-enable latch: no command -> drive_gait_amp_ ramps to 0 (feet plant =
-  // real stand; the strat-20 balance-gate below still steps to catch a push);
-  // any command -> ramps to 1 (full get_rz trot). Hysteresis (engage fast,
-  // release after a dwell) avoids stand<->walk chatter at the boundary. Stored
-  // on residual_; ResidualLocked copies it into the plan snapshot so the cost
-  // agrees with ModifyControl. Drive-strategy only -> every other strategy is
-  // byte-identical (drive_gait_amp_ stays 0, unread outside is_drive).
-  {
-    const bool is_drive_strat =
-        kStrategyNames[requested_strategy].find("drive") != std::string::npos;
-    if (is_drive_strat) {
-      double now = data->time;
-      // command magnitude: the governor's slewed body command when a client is
-      // live; no client -> 0 (static trot_des_vel default 0 => idle => stand).
-      double cvx = residual_.cmd_active_ ? residual_.cmd_filt_[0] : 0.0;
-      double cvy = residual_.cmd_active_ ? residual_.cmd_filt_[1] : 0.0;
-      double cwz = residual_.cmd_active_ ? residual_.cmd_wz_ : 0.0;
-      // yaw contributes to engage (so Q/E alone spins in place = rotational
-      // in-place trot); 0.15 converts rad/s to a translation-comparable scale.
-      double m = std::sqrt(cvx * cvx + cvy * cvy) + 0.15 * std::fabs(cwz);
-      constexpr double kEngage = 0.02, kRelease = 0.01, kReleaseDwell = 1.2;
-      if (m > kEngage) {
-        if (!residual_.drive_walk_)
-          std::fprintf(stderr,
-                       "[lean] drive: WALK (m=%.3f) -> gait ramping up\n", m);
-        residual_.drive_walk_ = true;
-        residual_.drive_idle_since_ = -1.0;
-      } else if (m < kRelease) {
-        if (residual_.drive_idle_since_ < 0.0) residual_.drive_idle_since_ = now;
-        // R2 velocity-gated disengage (2026-07-08): don't release on the dwell
-        // timer alone -- hold the gait until the base has actually SLOWED
-        // (step-to-rest, the Unitree "track velocity to zero WHILE stepping"
-        // recipe) so we never plant the feet with forward momentum -> faceplant.
-        // kReleaseDwell is the MINIMUM dwell; then release once |base_vel| drops
-        // below kReleaseSpeed, OR after kMaxReleaseDwell as a backstop (R1's
-        // capture catch-step handles any residual velocity if we plant anyway).
-        double bspd = std::sqrt(data->qvel[0] * data->qvel[0] +
-                                data->qvel[1] * data->qvel[1]);
-        constexpr double kReleaseSpeed = 0.08, kMaxReleaseDwell = 3.0;
-        double idle_for = now - residual_.drive_idle_since_;
-        if (residual_.drive_walk_ && idle_for > kReleaseDwell &&
-            (bspd < kReleaseSpeed || idle_for > kMaxReleaseDwell)) {
-          residual_.drive_walk_ = false;
-          std::fprintf(stderr,
-                       "[lean] drive: STAND -> gait ramping down (v=%.2f)\n",
-                       bspd);
-        }
-      }
-      // ramp drive_gait_amp_ toward the latch over kDriveRampSec.
-      constexpr double kDriveRampSec = 1.5;
-      double tgt = residual_.drive_walk_ ? 1.0 : 0.0;
-      double dt = (residual_.drive_ramp_prev_ > 0.0)
-                      ? std::max(0.0, now - residual_.drive_ramp_prev_)
-                      : 0.0;
-      double da = dt / kDriveRampSec;
-      double d = tgt - residual_.drive_gait_amp_;
-      residual_.drive_gait_amp_ += std::min(da, std::max(-da, d));
-      residual_.drive_gait_amp_ =
-          std::min(1.0, std::max(0.0, residual_.drive_gait_amp_));
-      // ★ RE-PIN WHILE IDLE (2026-07-20): once the gait has fully ramped down the
-      // robot is standing on both planted feet, so re-anchor Foot Stability to
-      // where the feet ACTUALLY ended up. This is what makes the post-walk halt a
-      // clean stand instead of one fighting a stale target -- the feet legitimately
-      // moved during the walk, and without this the cost would drag them back to a
-      // pre-walk (and odometrically drifting) point. NOT done mid-gait: while
-      // stepping the feet are SUPPOSED to travel, and re-pinning every tick would
-      // zero out the weight-8 cost the walk was tuned with.
-      // ★ GUARDED (2026-07-20, after the real-robot sideways drag): opt-in via
-      // the drive_foot_anchor numeric (default 0 = OFF), only after the strategy
-      // has been live for kAnchorSettle so the estimator is initialised, and only
-      // if the reading is a PLAUSIBLE stance. Anything outside those bounds is a
-      // bad read, not a stance -- keep the previous anchor rather than pin to it.
-      constexpr double kAnchorSettle = 3.0;   // s since keyframe entry
-      const bool anchor_on =
-          GetNumberOrDefault(0.0, model, "drive_foot_anchor") > 0.5;
-      if (anchor_on && residual_.drive_gait_amp_ <= 1e-3 &&
-          !residual_.drive_walk_ &&
-          data->time - residual_.keyframe_start_time_ > kAnchorSettle) {
-        double *frp = SensorByName(model, data, "foot_right_pos");
-        double *flp = SensorByName(model, data, "foot_left_pos");
-        if (frp && flp) {
-          // right foot -y, left foot +y; half-stance 6..30 cm, |x| < 0.6 m.
-          const bool sane =
-              frp[1] < -0.06 && frp[1] > -0.30 && flp[1] > 0.06 && flp[1] < 0.30 &&
-              std::fabs(frp[0]) < 0.6 && std::fabs(flp[0]) < 0.6;
-          if (sane) {
-            residual_.drive_foot_anchor_[0] = frp[0];
-            residual_.drive_foot_anchor_[1] = frp[1];
-            residual_.drive_foot_anchor_[2] = flp[0];
-            residual_.drive_foot_anchor_[3] = flp[1];
-          }
-        }
-      }
-      // V3 heading integrator: idle + no yaw cmd -> track current heading (no
-      // rotation demand); else integrate cmd_wz_ into the desired WORLD yaw.
-      double qw = data->qpos[3], qx = data->qpos[4],
-             qy = data->qpos[5], qz = data->qpos[6];
-      double cur_yaw = std::atan2(2.0 * (qw * qz + qx * qy),
-                                  1.0 - 2.0 * (qy * qy + qz * qz));
-      if (!residual_.drive_walk_ && std::fabs(residual_.cmd_wz_) < 1e-4)
-        residual_.drive_yaw_des_ = cur_yaw;
-      else
-        residual_.drive_yaw_des_ += residual_.cmd_wz_ * dt;
-      residual_.drive_ramp_prev_ = now;
-    } else {
-      residual_.drive_gait_amp_ = 0.0;
-      residual_.drive_walk_ = false;
-      residual_.drive_idle_since_ = -1.0;
-      residual_.drive_ramp_prev_ = -1.0;
-      residual_.cmd_wz_ = 0.0;
-      // ★ HEADING LATCH for the non-drive trot (strat 23). BUGFIX 2026-07-12: it
-      // has no yaw command, so the heading it should hold is simply the one it had
-      // when the gait armed. TRACK the live yaw while the gait is still ramping in
-      // (< kArmSec, the same 2 s the swing amplitude uses), then FREEZE it -- from
-      // then on the Body Yaw lock above holds that heading instead of chasing the
-      // randomized reach target. Without this drive_yaw_des_ stays 0 for the trot,
-      // which is only ACCIDENTALLY right (the keyframe quat happens to be yaw 0)
-      // and breaks silently the moment the robot starts from any other heading.
-      const bool is_trot_strat =
-          kStrategyNames[requested_strategy].find("trot") != std::string::npos;
-      if (is_trot_strat) {
-        double qw = data->qpos[3], qx = data->qpos[4],
-               qy = data->qpos[5], qz = data->qpos[6];
-        double cur_yaw = std::atan2(2.0 * (qw * qz + qx * qy),
-                                    1.0 - 2.0 * (qy * qy + qz * qz));
-        constexpr double kArmSec = 2.0;   // matches the gait amplitude ramp
-        if (data->time - residual_.keyframe_start_time_ < kArmSec)
-          residual_.drive_yaw_des_ = cur_yaw;   // track, then hold
-      } else {
-        residual_.drive_yaw_des_ = 0.0;
-      }
-    }
-  }
 
   // Helper: diff old vs new keyframe contact-pair activity and mark which
   // pairs just appeared (active now, inactive before). ContactResidual
@@ -4442,28 +3010,6 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     // hauls both feet toward it). The anchor now starts at the legacy constants
     // and is only ever pinned by the drive-idle path below, which is gated on
     // settle time AND plausibility. Left as a note so nobody re-adds it.
-    // STRAIGHTEN (strat 25) live-seed (C3): capture the release pose ONCE here on
-    // the TRUE agent state (never per-rollout), so Residual ramps the upright +
-    // posture targets FROM it to nominal along a min-jerk — the "ramped reference
-    // IS the funnel" that keeps the corrective force small and prevents the
-    // static-target overshoot. Fires on cold boot into straighten AND on a live
-    // switch into it (mid-mission re-straighten). Every other strategy leaves
-    // straighten_seeded_ = false -> byte-identical.
-    if (residual_.residual_keyframe_.name.rfind("straighten", 0) == 0) {
-      int nq = mju_min(model->nq, 64);
-      for (int i = 0; i < nq; i++)
-        residual_.straighten_start_qpos_[i] = data->qpos[i];
-      double *pu = SensorByName(model, data, "pelvis_up");
-      double up_z = pu ? mju_max(-1.0, mju_min(1.0, pu[2])) : 1.0;
-      residual_.straighten_start_tilt_ = std::acos(up_z);
-      residual_.straighten_seeded_ = true;
-      std::fprintf(stderr,
-                   "[lean-straighten] seeded release: tilt=%.1fdeg base_z=%.3f\n",
-                   residual_.straighten_start_tilt_ * 180.0 / M_PI,
-                   data->qpos[2]);
-    } else {
-      residual_.straighten_seeded_ = false;
-    }
     if (cold_start) {
       // First load: no history to ramp from. Snap to the first phase's
       // targets (prev scales = 0, posture = 1.0 "no-boost", brace_force = 0),
@@ -4527,39 +3073,6 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
         motion_strategy_.CalculateTotalKeyframeDistance(
             data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
 
-    // ---- STRAIGHTEN->stand basin-containment gate (2026-07-11) --------- //
-    // Lean keyframes carry no contact pairs, so total_distance == 0 always
-    // and the bare rule below would advance the straighten bring-up phase on
-    // a PURE TIMER (Unitree-style blind ramp). For the handoff to the stand
-    // phase we instead require the robot to actually BE inside the stand
-    // basin on the TRUE agent state: upright (pelvis tilt), tall (base z,
-    // i.e. unslumped knees), and quiescent (base speed) -- sustained
-    // success_sustain_time like any other phase, re-armed on violation.
-    // Name-gated on the straighten keyframe -> every other strategy's
-    // advance logic is byte-identical.
-    bool straighten_gate_ok = true;
-    if (current_kf.name.rfind("straighten", 0) == 0) {
-      double *pu = SensorByName(model, data, "pelvis_up");
-      double up_z = pu ? mju_max(-1.0, mju_min(1.0, pu[2])) : 1.0;
-      double tilt_deg = std::acos(up_z) * 180.0 / M_PI;
-      double base_spd = std::sqrt(data->qvel[0] * data->qvel[0] +
-                                  data->qvel[1] * data->qvel[1] +
-                                  data->qvel[2] * data->qvel[2]);
-      // TIGHTENED 2026-07-11 after the first REAL run: the old bar (z>=0.95,
-      // no knee condition) released from a knee-0.76 crouch at t=1.6s -- phase 0
-      // never actually fixed the pose, and the weak stand-phase weights
-      // (Balance 2.5 / Posture 12) inherited an unfinished rise mid-bring-up.
-      // The gate's contract is "the pose IS ideal": full height (1.00 vs the
-      // 1.02 keyframe), legs extended (<=0.50 rad vs the 0.35 target; knee
-      // encoders carry no per-power-on zero error, unlike ankles), upright and
-      // quiet. Until then phase 0's high-authority weights (Balance 40 /
-      // Posture 35 / Pelvis Tilt 150) keep owning the straightening.
-      straighten_gate_ok = tilt_deg <= 3.0 && data->qpos[2] >= 1.00 &&
-                           base_spd <= 0.15 &&
-                           data->qpos[10] <= 0.50 &&   // left knee
-                           data->qpos[16] <= 0.50;     // right knee
-    }
-
     if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
             current_kf.time_limit &&
         total_distance > current_kf.target_distance_tolerance) {
@@ -4575,19 +3088,12 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
       residual_.keyframe_start_time_ = data->time;
       PrepareNextPhaseWeights(residual_.residual_keyframe_);
-    } else if (straighten_gate_ok &&
-               total_distance <= current_kf.target_distance_tolerance &&
+    } else if (total_distance <= current_kf.target_distance_tolerance &&
                data->time -
                        motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
                    current_kf.success_sustain_time) {
       // Normal phase advance — this is the path that fires after stand_up
       // succeeds. Snapshot first so the new ramp starts from the old scales.
-      if (current_kf.name.rfind("straighten", 0) == 0) {
-        std::fprintf(stderr,
-                     "[lean-straighten] basin gate PASS (z=%.3f kneeL=%.2f "
-                     "kneeR=%.2f) -> advancing to stand phase\n",
-                     data->qpos[2], data->qpos[10], data->qpos[16]);
-      }
       SnapshotEffectiveScales();
       SnapshotCurrentWeightsAsPrev();
       motion_strategy_.NextKeyframe();
@@ -4598,10 +3104,9 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
       residual_.keyframe_start_time_ = data->time;
       PrepareNextPhaseWeights(residual_.residual_keyframe_);
-    } else if (total_distance > current_kf.target_distance_tolerance ||
-               !straighten_gate_ok) {
-      // Re-arm the success clock: outside tolerance, or (straighten only)
-      // the basin gate is violated -- sustain must be CONSECUTIVE.
+    } else if (total_distance > current_kf.target_distance_tolerance) {
+      // Re-arm the success clock: outside tolerance -- sustain must be
+      // CONSECUTIVE.
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
     }
   }
@@ -4726,363 +3231,6 @@ void lean::ResetLocked(const mjModel *model) {
   }
 }
 
-// ============================================================================
-// ModifyControl — CAPTURE-POINT FOOTSTEP CONTROLLER for the TROT strategy
-// (slot 23, phase "stumble_trot"). Called by Task::ModifyControl after the
-// policy fills ctrl and before mj_step, in EVERY rollout (NoisyRollout) AND on
-// the executed action (CEM ActionFromPolicy). Open-loop drives ONLY the swing
-// leg: lift for clearance mid-swing, then PLACE the foot at the capture point
-//   xi = v * sqrt(z/g)   (inverted-pendulum "catch" spot)
-// by touchdown, so single-support is a PLANNED CATCH, not an unguided fall. The
-// sampler still owns the stance leg + torso (balance). A desired CoM velocity
-// (numerics trot_des_vel_x/y, default 0) biases the step: 0 = step in place
-// (trot/stumble), >0 = WALK forward -- ONE generalized controller. is_trot-
-// gated: strat 20 + every other strategy byte-identical. ctrl[i] == joint
-// target for qpos[7+i] (position-servo). FK-measured gains (twin model): +hip_
-// pitch -> foot BACK (0.80/rad), +hip_roll -> foot +y (0.79/rad), both legs.
-// ============================================================================
-void lean::ModifyControl(const mjModel *model, const double *qpos,
-                         const double *qvel, double time, double *ctrl) const {
-  const std::string &kfname = residual_.residual_keyframe_.name;
-  const bool is_trot = (kfname.rfind("stumble", 0) == 0) &&
-                       (kfname.find("trot") != std::string::npos);
-  const bool is_drive = is_trot &&
-                        (kfname.find("drive") != std::string::npos);
-  // ==================== JUMP push assist (strat 26) ======================= //
-  // v2 twin finding (2026-07-11): with the scheduled residual alone the
-  // sampler tracks the crouch but SMEARS the 0.2s extension impulse through
-  // the spline (rise 0.15 m/s vs the 1.4 m/s takeoff ask) -- the same
-  // "sampler refuses the explosive move" class the trot swing forcer solves.
-  // Same architecture: during the PUSH window only, blend the six leg
-  // position channels (hipP/knee/ankleP x L/R) to the jump_launch pose
-  // faster than the spline can represent; the COST already agrees (Control +
-  // Posture track the same schedule), the sampler balances arms/torso around
-  // it, and the override releases at flight start so touchdown stays fully
-  // sampler-adaptive. Runs in every rollout AND the executed action (the
-  // Task::ModifyControl contract) -> planner-consistent, no belief gap.
-  // jump_assist numeric (default 1.0) scales it; 0 disables. Name-gated ->
-  // every other strategy byte-identical.
-  const bool is_jump_mc = kfname.rfind("jump", 0) == 0;
-  if (is_jump_mc) {
-    if (model->nu < 11) return;
-    double assist = 1.0;
-    int ja_id = mj_name2id(model, mjOBJ_NUMERIC, "jump_assist");
-    if (ja_id >= 0) assist = model->numeric_data[model->numeric_adr[ja_id]];
-    if (assist <= 1e-6) return;
-    int k_crouch = mj_name2id(model, mjOBJ_KEY, "jump_crouch");
-    int k_launch = mj_name2id(model, mjOBJ_KEY, "jump_launch");
-    if (k_crouch < 0 || k_launch < 0) return;
-    auto num_or = [&](double dflt, const char *nm) {
-      int id = mj_name2id(model, mjOBJ_NUMERIC, nm);
-      return (id >= 0) ? model->numeric_data[model->numeric_adr[id]] : dflt;
-    };
-    const double kDelay   = num_or(4.0,  "jump_delay");
-    const double kCrouchS = num_or(0.90, "jump_crouch_sec");
-    const double kPushS   = num_or(0.20, "jump_push_sec");
-    double tau = time - residual_.keyframe_start_time_ - kDelay;
-    double t_push = tau - kCrouchS;               // 0 at push start
-    // active window: the push + a 0.08s release tail into flight
-    if (t_push <= 0.0 || t_push >= kPushS + 0.08) return;
-    // reference: crouch -> launch over an AGGRESSIVE half-push smoothstep
-    // (the PD impulse the spline cannot express), then hold launch.
-    // OVERDRIVE (v4, 2026-07-11): position-servo torque kp*(ref-q) collapses
-    // as the legs reach a ref CLAMPED at the launch pose -- exactly when
-    // takeoff velocity should peak (v3 finding: rise stalled at ~0.5 m/s).
-    // Extrapolate the reference PAST full extension (jump_overdrive * the
-    // crouch->launch delta, default 1.7) so the PD error -- and thus torque --
-    // survives through liftoff; per-channel ctrlrange clamp below keeps it
-    // legal (hip_pitch has room to +2.5 = the real authority; knee floors at
-    // -0.12; ankle kp=80/75Nm adds genuine late toe-off).
-    double kOd = num_or(1.7, "jump_overdrive");
-    double sref = mju_min(1.0, t_push / mju_max(1e-3, 0.5 * kPushS));
-    sref = sref * sref * (3.0 - 2.0 * sref);
-    sref *= mju_max(1.0, kOd);
-    // blend authority: fast 0.04s ramp-in, 0.08s ramp-out into flight
-    double a_in  = mju_min(1.0, t_push / 0.04);
-    double a_out = mju_min(1.0, mju_max(0.0, (kPushS + 0.08 - t_push) / 0.08));
-    double a = assist * mju_min(a_in, a_out);
-    a = mju_max(0.0, mju_min(1.0, a));
-    const mjtNum *qc = model->key_qpos + k_crouch * model->nq;
-    const mjtNum *ql = model->key_qpos + k_launch * model->nq;
-    // leg position channels in nu order: L hipP 1, knee 3, ankleP 4;
-    // R hipP 7, knee 9, ankleP 10 (keyframe joint block = qpos[7+i])
-    // Leg position channels in nu order: L hipP 1, knee 3, ankleP 4;
-    // R hipP 7, knee 9, ankleP 10 (keyframe joint block = qpos[7+ch]).
-    // ★ OVERDRIVE APPLIES TO KNEE + ANKLE ONLY (v8 2026-07-11). The hip tracks
-    // the launch pose EXACTLY (sref capped at 1). Overdriving the hip
-    // extrapolates it PAST neutral into hyper-EXTENSION (crouch -0.70 + 2.0 x
-    // 0.65 = +0.60 rad), which with an upright torso throws the trunk BACKWARD
-    // at precisely the moment of peak ground force -- a backward launch, not a
-    // vertical one. Anatomically the same rule: the hip extends TO neutral; the
-    // knee and ankle deliver the explosive push (and the ankle's plantarflexion
-    // overdrive is the toe-off the sampler never finds on its own).
-    // ARM SWING (v11): shoulder_pitch L=13, R=20 are driven too -- arms are back
-    // in the crouch and swing UP through the push. Accelerating ~8 kg of arm
-    // upward presses the body INTO the ground (reaction), raising the ground
-    // reaction impulse the legs get to push against (the standard countermovement
-    // arm-swing gain, ~10% of jump height), and the swing's forward pitching
-    // moment also opposes the backward tip. No overdrive on the arms.
-    static const int kJumpLegCh[8] = {1, 3, 4, 7, 9, 10, 13, 20};
-    //                                 hipL knL ankL hipR knR ankR shL  shR
-    // Overdrive ONLY the knees. Hip overdrive hyperextends past neutral (throws
-    // the trunk back); ANKLE overdrive is a toe-push delivered while the CoM is
-    // still over the ankle rather than out over the toes -- it pitched the launch
-    // backward by ~14 deg. The knees alone already deliver 1.76 m/s.
-    // Knees: full overdrive. ANKLES: a PARTIAL toe-push (jump_ankle_od, 0..1) --
-    // this is the TAKEOFF-ROTATION TRIM. Angular momentum is conserved in flight,
-    // so the launch rotation is set once, before liftoff, and it decides whether
-    // the landing is recoverable. Ankle OFF -> the GRF line passes behind the CoM
-    // -> nose-down (forward) rotation -> lands rotating forward -> tips past the
-    // toe (~9 deg) and cannot recover without a step. Ankle FULL -> a -14 deg
-    // backward launch. Trim between them until takeoff pitch-rate ~= 0.
-    static const bool kJumpChOverdrive[8] = {false, true, false, false, true, false,
-                                             false, false};
-    const double kAnkOd = GetNumberOrDefault(0.35, model, "jump_ankle_od");
-    for (int j = 0; j < 8; j++) {
-      int ch = kJumpLegCh[j];
-      double s_ch = kJumpChOverdrive[j] ? sref : mju_min(1.0, sref);
-      if (ch == 4 || ch == 10) {                 // ankle pitch: partial overdrive
-        s_ch = 1.0 + (sref - 1.0) * kAnkOd;
-        if (s_ch < 0.0) s_ch = 0.0;
-      }
-      double ref = qc[7 + ch] + s_ch * (ql[7 + ch] - qc[7 + ch]);
-      // clamp the overdriven ref to the actuator's ctrlrange
-      const double lo = model->actuator_ctrlrange[2 * ch];
-      const double hi = model->actuator_ctrlrange[2 * ch + 1];
-      ref = mju_max(lo, mju_min(hi, ref));
-      ctrl[ch] = (1.0 - a) * ctrl[ch] + a * ref;
-    }
-    return;
-  }
-  if (!is_trot || model->nu < 11) return;
-  auto clip = [](double x, double lo, double hi) {
-    return x < lo ? lo : (x > hi ? hi : x);
-  };
-
-  // continuous forced-march amplitude (matches the residual `arm`, kArmSec 2.0)
-  constexpr double kArmSec = 2.0;
-  double t_phase = mju_max(0.0, time - residual_.keyframe_start_time_);
-  double g_amp = mju_min(t_phase / kArmSec, 1.0);
-  g_amp = g_amp * g_amp * (3.0 - 2.0 * g_amp);
-  // DRIVE (strat 24): the stand<->trot latch gates the OPEN-LOOP swing, BUT the
-  // balance CATCH-STEP must survive a disengage. R1 fix (2026-07-08): gating by
-  // drive_gait_amp_ ALONE quit the forcer the instant the walk latch ramped to 0
-  // on release, WHILE the cost (residual line ~571, arm*max(drive_gait_amp_,
-  // recov)) still wanted the catch -- so the sampler alone would not lift the
-  // catch foot and forward momentum toppled the robot (walk->stop faceplant).
-  // Mirror the cost: gate by max(drive_gait_amp_, recov), computing the SAME
-  // signed capture-point danger as the residual from a base-quat tilt + base
-  // qvel proxy (ModifyControl has no mjData/sensors, and the capture step below
-  // already uses base qvel -- so this is consistent). Quiet idle: danger <
-  // catch_trig -> recov 0 -> g_amp 0 -> early-return (idle stand byte-identical);
-  // a push OR a come-to-rest tip -> recov > 0 -> the swing fires the come-to-rest
-  // capture step (cap_g*tau*qvel, computed below), catching the fall.
-  if (is_drive) {
-    double zc = mju_max(0.5, qpos[2]);
-    double tauc = mju_sqrt(zc / 9.81);
-    // base up-axis (x,y) from the pelvis free-joint quat qpos[3:7]=(w,x,y,z);
-    // matches the up_z = 1-2(x^2+y^2) convention used by the standing gate below.
-    double qw = qpos[3], qxx = qpos[4], qyy = qpos[5], qzz = qpos[6];
-    double up_x = 2.0 * (qxx * qzz + qw * qyy);
-    double up_y = 2.0 * (qyy * qzz - qw * qxx);
-    int lnx = mj_name2id(model, mjOBJ_NUMERIC, "lean_nominal_x");
-    double kLeanX =
-        (lnx >= 0) ? model->numeric_data[model->numeric_adr[lnx]] : 0.06;
-    double tx = up_x - kLeanX, ty = up_y;             // tilt rel. steady lean
-    double ex = zc * tx + tauc * qvel[0];             // signed fore-aft capture
-    double eyp = zc * ty;                             // lateral: tilt only
-    double danger = mju_sqrt(ex * ex + eyp * eyp);
-    int ct = mj_name2id(model, mjOBJ_NUMERIC, "catch_trig");
-    int cf = mj_name2id(model, mjOBJ_NUMERIC, "catch_full");
-    double kCT = (ct >= 0) ? model->numeric_data[model->numeric_adr[ct]] : 0.085;
-    double kCF = (cf >= 0) ? model->numeric_data[model->numeric_adr[cf]] : 0.16;
-    double recov = mju_min(
-        1.0, mju_max(0.0, (danger - kCT) / mju_max(1e-3, kCF - kCT)));
-    recov = recov * recov * (3.0 - 2.0 * recov);      // smoothstep (matches cost)
-    g_amp *= mju_max(residual_.drive_gait_amp_, recov);
-  }
-  if (g_amp <= 1e-4) return;                     // still settling -> planner owns
-
-  // gait clock (antiphase, duty 0.60; cadence live numeric)
-  constexpr double kCadenceHz = 1.1, kDutyRatio = 0.60;
-  int cad_id = mj_name2id(model, mjOBJ_NUMERIC, "stumble_cadence");
-  double kCad = (cad_id >= 0)
-      ? model->numeric_data[model->numeric_adr[cad_id]] : kCadenceHz;
-  int dty_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_duty");
-  double kDuty = (dty_id >= 0) ? model->numeric_data[model->numeric_adr[dty_id]]
-                               : kDutyRatio;  // matches the residual gait clock
-  double ph_l = std::fmod(time * kCad, 1.0);
-  double ph_r = std::fmod(time * kCad + 0.5, 1.0);
-
-  // ---- CAPTURE POINT (instantaneous, inverted-pendulum) -------------------
-  // base lin-vel (qvel[0:2], world) ~= CoM vel; step to xi = (v - v_des)*tau to
-  // CATCH while tracking the desired velocity. v_des>0 -> net forward travel.
-  double z = mju_max(0.5, qpos[2]);
-  double tau = mju_sqrt(z / 9.81);
-  int dvx_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_x");
-  int dvy_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_des_vel_y");
-  double dvx = (dvx_id >= 0) ? model->numeric_data[model->numeric_adr[dvx_id]] : 0.0;
-  double dvy = (dvy_id >= 0) ? model->numeric_data[model->numeric_adr[dvy_id]] : 0.0;
-  // LIVE teleop override (2026-07-03; mirrored in the residual -- MUST match).
-  if (residual_.cmd_active_) {
-    dvx = residual_.cmd_vdes_world_[0];
-    dvy = residual_.cmd_vdes_world_[1];
-  }
-  // STEP-AND-SETTLE pulse (MUST match the residual's pulse, same data time): walk
-  // for trot_step_walk s, settle (v_des=0 -> robust in-place trot) the rest of
-  // trot_step_period s. Tp<=0 => continuous (byte-identical).
-  {
-    int tp_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_period");
-    int tw_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_walk");
-    double Tp = (tp_id >= 0) ? model->numeric_data[model->numeric_adr[tp_id]] : 0.0;
-    double Tw = (tw_id >= 0) ? model->numeric_data[model->numeric_adr[tw_id]] : 0.0;
-    if (Tp > 1e-6 && std::fmod(mju_max(0.0, time), Tp) >= Tw) { dvx = 0.0; dvy = 0.0; }
-  }
-  // R6 SETTLE GOVERNOR (trot_settle_thresh [m], default 0 = off = byte-
-  // identical): the REACTIVE version of the step-and-settle pulse. When the
-  // velocity-error capture offset |v - v_des|*tau exceeds the band, fade v_des
-  // to 0 -- all walk terms gate off and the controller auto-reverts to the
-  // validated-robust in-place trot until the error re-enters the band. Fade is
-  // smooth (1 below thresh -> 0 at 1.5x) so there is no command chatter at the
-  // boundary. MUST match the residual-side governor (same qpos/qvel/time
-  // inputs -> deterministic cost/swing agreement, the step-pulse pattern).
-  {
-    // drive-scoped (see the residual-side twin of this block): strat 24 reads
-    // drive_settle_thresh, strat 23 keeps trot_settle_thresh=0 (byte-identical).
-    const char *st_name = is_drive ? "drive_settle_thresh" : "trot_settle_thresh";
-    int st_id = mj_name2id(model, mjOBJ_NUMERIC, st_name);
-    double st = (st_id >= 0) ? model->numeric_data[model->numeric_adr[st_id]] : 0.0;
-    if (st > 1e-6 && (dvx != 0.0 || dvy != 0.0)) {
-      double gex = (qvel[0] - dvx) * tau, gey = (qvel[1] - dvy) * tau;
-      double gerr = mju_sqrt(gex * gex + gey * gey);
-      double gg = clip((1.5 * st - gerr) / (0.5 * st), 0.0, 1.0);
-      gg = gg * gg * (3.0 - 2.0 * gg);
-      dvx *= gg; dvy *= gg;
-    }
-  }
-  // capture gain (live numeric, default 1.0 = deadbeat one-step capture): >1
-  // over-steps (catches harder, kills velocity faster), <1 under-steps. LATERAL
-  // gets its OWN gain (trot_cap_gain_lat, default = fore-aft gain) -- the sideways
-  // axis is the narrow-base biped's weak axis and usually needs a harder catch.
-  int cg_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_cap_gain");
-  double cap_g = (cg_id >= 0) ? model->numeric_data[model->numeric_adr[cg_id]] : 1.0;
-  int cgl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_cap_gain_lat");
-  double cap_gl = (cgl_id >= 0) ? model->numeric_data[model->numeric_adr[cgl_id]] : cap_g;
-  // trot_walk_gain (kw) = gain on the Raibert NEUTRAL (velocity-maintaining) step
-  // (T_st/2)*v_des; default 1.0 = the theoretical sustaining placement. v_des=0
-  // makes this term vanish, so in-place trot is byte-identical regardless of kw.
-  int wg_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_walk_gain");
-  double kw = (wg_id >= 0) ? model->numeric_data[model->numeric_adr[wg_id]] : 1.0;
-  // STANDING GATE (MJPC humanoid-walk's core robustness trick, walk.cc:91-95):
-  // scale the forward PROPULSION by an uprightness factor that -> 0 as the torso
-  // tips, so a tipping robot STOPS pushing forward and the pure capture CATCH
-  // (cap_g*v*tau, ungated) recovers it -- instead of driving itself into a
-  // forward faceplant. up_z = torso up-axis z from the base quat (1=upright).
-  double qx = qpos[4], qy = qpos[5];
-  double up_z = 1.0 - 2.0 * (qx * qx + qy * qy);
-  double standing = clip((up_z - 0.80) / (0.97 - 0.80), 0.0, 1.0);
-  standing = standing * standing * (3.0 - 2.0 * standing);  // smoothstep
-  // FOOT PLACEMENT = Raibert/DCM, NOT the come-to-rest capture point. Research
-  // (MJPC walk.cc, Playground G1/H1, Unitree RL, Khadiv DCM) verdict: placing the
-  // foot at the full capture point xi = v*tau = v/omega is a STOP target (~0.32*v
-  // for us); the VELOCITY-SUSTAINING step is only (T_st/2)*v (~0.15*v) -- stepping
-  // to the full capture point is ~2x too long, so every step bleeds forward
-  // momentum and the CoM drops behind the advancing feet -> backward fall (our
-  // 6-10 s symptom). Raibert:  foot_x = (T_st/2)*v_des + k*(v - v_des), k=cap_g*tau
-  //   neutral term kw*(T_st/2)*v_des = velocity-MAINTAINING placement (feedfwd)
-  //   error  term cap_g*tau*(v - v_des) = balance CATCH on the velocity error.
-  // standing-gated: upright -> full Raibert (walks); tipping (standing->0) -> the
-  // v_des terms drop and it collapses to the pure come-to-rest catch cap_g*tau*v
-  // (= validated in-place trot recovery, no forward faceplant). v_des=0 makes
-  // EVERY v_des term vanish -> byte-identical to the 9/9 in-place trot.
-  double T_st = (kCad > 1e-6) ? (kDuty / kCad) : 0.5;   // single-support duration
-  double step_x = clip(cap_g * tau * (qvel[0] - standing * dvx) +
-                       kw * standing * dvx * (0.5 * T_st), -0.30, 0.30);  // m
-  double step_y = clip(cap_gl * (qvel[1] - dvy) * tau, -0.12, 0.12);  // tight=stabler
-  // swing-height scale (live numeric, default 1.0): LOWER lift = smaller per-step
-  // disturbance = stabler trot (trades visible clearance for hold-rate).
-  int sh_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_swing_h");
-  double sh = (sh_id >= 0) ? model->numeric_data[model->numeric_adr[sh_id]] : 1.0;
-  // R4 TOUCHDOWN RELEASE (trot_release, default 0 = off = byte-identical): fade
-  // the swing script's authority over the LAST `rel` fraction of the swing so
-  // the SAMPLER loads the landing leg instead of the script holding placement
-  // targets through touchdown (the real-robot "pushes off fine, lands weak"
-  // asymmetry, 2026-06-30: a landing foot being POSITION-driven cannot be
-  // LOAD-driven). pl saturates by s~0.85 anyway, so releasing costs no accuracy;
-  // mirrors the 15% blend-IN at liftoff. Cost side needs no twin change -- the
-  // g_bump sin bell already fades to 0 at touchdown.
-  int rl_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_release");
-  double rel = (rl_id >= 0) ? model->numeric_data[model->numeric_adr[rl_id]] : 0.0;
-  rel = clip(rel, 0.0, 0.5);
-  // R5 STEP WIDTH (trot_step_width, default 0 = off = byte-identical): per-leg
-  // lateral placement DELTA from the home stance width -- left +w/2 (outward),
-  // right -w/2 (outward) -- so the lateral axis has a limit-cycle reference and
-  // the feet cannot scissor under a lateral catch (step_y alone is a SHARED
-  // catch term, same sign both legs; the widening is what needs the per-leg
-  // sign). Kept small: widening trades lateral catch reach for anti-scissor.
-  int swd_id = mj_name2id(model, mjOBJ_NUMERIC, "trot_step_width");
-  double w2 = 0.5 * ((swd_id >= 0)
-      ? model->numeric_data[model->numeric_adr[swd_id]] : 0.0);
-  double dHipP = clip(-step_x / 0.80, -0.45, 0.45);  // foot FWD -> less hip_pitch
-
-  // home stand pose = the "stumble_trot" keyframe (fallback home).
-  int pk = mj_name2id(model, mjOBJ_KEY, kfname.c_str());
-  if (pk < 0) pk = 0;
-  const mjtNum *q0 = model->key_qpos + pk * model->nq;
-  constexpr double kSwingHip = 0.35, kSwingKnee = 0.70, kSwingAnk = 0.12;
-
-  // ONE foot swings at a time (antiphase/duty): lift (clearance bell, peaks
-  // mid-swing) + place (capture ramp -> foot at xi by touchdown). Blend in over
-  // the first 15% so liftoff is smooth; held to s=1 (or released over the last
-  // trot_release fraction, R4) so the foot lands placed, then the next phase
-  // makes it stance and the planner takes the planted leg. ysign carries the
-  // per-leg step-width direction (R5): +1 left (outward=+y), -1 right.
-  // ctrl[i] == joint target for qpos[7+i]. L: hipP1 hipR2 knee3 ankP4; R:7 8 9 10
-  auto do_leg = [&](double ph, int iHipP, int iHipR, int iKnee, int iAnkP,
-                    double ysign) {
-    if (ph < kDuty) return;                        // stance -> planner owns
-    double s = (ph - kDuty) / (1.0 - kDuty);       // swing progress 0..1
-    double cl = SwingBell(s);                           // clearance bell 0..1..0 (Bezier, soft touchdown)
-    double pl = s * s * (3.0 - 2.0 * s);                // placement smoothstep
-    double w = mju_min(s / 0.15, 1.0) * g_amp;          // blend-in weight
-    if (rel > 1e-6) {                              // R4: hand back before landing
-      double r = mju_min((1.0 - s) / rel, 1.0);    // 1 until s=1-rel, 0 at s=1
-      w *= r * r * (3.0 - 2.0 * r);                // smooth release
-    }
-    double dHipR = clip((step_y + ysign * w2) / 0.79, -0.25, 0.25);  // R5 widen
-    double tHipP = q0[7 + iHipP] - kSwingHip * sh * cl * g_amp + dHipP * pl * g_amp;
-    double tHipR = q0[7 + iHipR] + dHipR * pl * g_amp;
-    double tKnee = q0[7 + iKnee] + kSwingKnee * sh * cl * g_amp;
-    double tAnkP = q0[7 + iAnkP] - kSwingAnk * sh * cl * g_amp;
-    ctrl[iHipP] += w * (tHipP - ctrl[iHipP]);
-    ctrl[iHipR] += w * (tHipR - ctrl[iHipR]);
-    ctrl[iKnee] += w * (tKnee - ctrl[iKnee]);
-    ctrl[iAnkP] += w * (tAnkP - ctrl[iAnkP]);
-  };
-  do_leg(ph_l, 1, 2, 3, 4, +1.0);    // LEFT  swing window ph_l in [duty,1]
-  do_leg(ph_r, 7, 8, 9, 10, -1.0);   // RIGHT swing window ph_r in [duty,1]
-
-  // ---- STANCE-SIDE ROCK (trot_rock_ff, default 0 = OFF = byte-identical) ----
-  // The missing half of a step: unload the foot BEFORE asking it to swing. This
-  // is ADDITIVE (not a blend-to-target like do_leg) on purpose -- the sampler
-  // still OWNS stance balance; we only bias the hip roll it was already being
-  // asked (weight 30, target shifted identically in Residual) to find. The
-  // swing leg's own hip_roll is set by do_leg above and is airborne anyway, so
-  // only the STANCE side gets the delta: g_bump_l>0 means LEFT is swinging, so
-  // the delta lands on the RIGHT (stance) hip_roll, and vice versa. Both bumps
-  // are 0 in double support => no delta => quiet stand untouched.
-  {
-    const double rock_m = GetNumberOrDefault(0.0, model, "trot_rock_ff");
-    if (rock_m > 1e-6) {
-      double droll_l = 0.0, droll_r = 0.0;
-      TrotRockHipRoll(rock_m,
-                      GetNumberOrDefault(0.0, model, "trot_rock_lead"), g_amp,
-                      ph_l, ph_r, kDuty, &droll_l, &droll_r);
-      ctrl[2] += droll_l;    // L hip_roll (nu idx 2) -- stance while RIGHT swings
-      ctrl[8] += droll_r;    // R hip_roll (nu idx 8) -- stance while LEFT swings
-    }
-  }
-}
 
 // ============================================================================
 // ComputeMetrics — phase-aware monitoring metrics for the Research GUI /
@@ -5093,86 +3241,6 @@ void lean::ModifyControl(const mjModel *model, const double *qpos,
 std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const {
   const auto names = GetStrategyNames();
   if (strategy < 0 || strategy >= static_cast<int>(names.size())) return {};
-  const std::string &name = names[strategy];
-  // "Stumble" is the only stepping strategy: its gait clock oscillates the legs,
-  // which the stand-tuned sampling_spline_points=3 cannot represent (the swing
-  // foot never lifts). spline=5 is the twin-validated sweet spot -- spline=8
-  // over-actuates and destabilises even a plain stand (2026-06-18). exploration
-  // 0.05 == the XML default, pinned here so stumble is unaffected if that
-  // default ever changes. Keyed by NAME so both the Lean_H12 and Lean_H12_Hands
-  // stumble slots match. Adding a future strategy that needs a different planner
-  // bandwidth is a one-line edit HERE (fork side) -- the deploy node stays
-  // strategy-agnostic and never changes.
-  // ===== STEPPING STRATEGIES (trot 23, drive 24): the DEPLOY-REAL budget ==========
-  // spline 5: the stand-tuned 3 knots cannot represent the leg oscillation.
-  //
-  // trajectories 17 (was 36): 36 was a LOCKSTEP-TWIN conclusion (16 = 1/5 hold, 36 = 5/5)
-  // and the lockstep twin is STRUCTURALLY BLIND to plan rate -- it waits for physics, so
-  // rollouts are free. On the REAL robot they are not: CEM schedules trajectories + 1 jobs
-  // (the nominal rides along) and blocks on ALL of them, so a plan iteration costs
-  // ceil((N+1)/threads) thread-WAVES. 36 traj on the old 12-thread pool = 4 waves =
-  // 27-30 plans/s measured -- BELOW the 50-100 Hz band that every real legged sampling-MPC
-  // deployment needs (CMU Go1 whole-body MPPI, the reference Tassa points hardware users
-  // to: 30 samples @ 100 Hz on CPU, and explicitly "limited computing is much better spent
-  // on achieving a ~100 Hz policy than additional sample evaluations during agile
-  // locomotion"; their cost plateaus at ~40 samples. Unitree's own H1-2 RL deploys decide
-  // at 50 Hz). Real 2026-07-11 at 18 traj / 18 threads measured 45-52 plans/s -- in band.
-  // 17 (not 18) because the NOMINAL rollout is scheduled alongside: 17 + 1 = 18 jobs = ONE
-  // wave on the auto-sized 18-thread pool (hw 24 - reserve 6), where 18 + 1 = 19 spilled a
-  // second wave that the whole pool then waited on for a single straggler. The node now
-  // prints a PLAN-RATE WARNING whenever (traj + 1) > threads, so this can't go silent again.
-  // Rate beats samples here because our swing is FORCED open-loop by lean::ModifyControl
-  // (rate-independent) -- the sampler only has to BALANCE, and the stance-leg weight shift
-  // is exactly what starves first.
-  //
-  // *** deploy_frc_parity is deliberately NOT set here -- it stays 0 (OFF). ***
-  // The ACTUATOR-AUTHORITY finding is real, but the parity fix is NOT the cure, and the
-  // twin said so before the robot did (authority_ab.py, faithful twin, n=5, 2026-07-12):
-  //     arm                          HELD    ankleP pinned at its budget
-  //     phantom (the twin as it was)  5/5     0%   <- the twin plant has INFINITE actuator torque
-  //     clamped (= the REAL deploy)   3-4/5  42%   <- the H2 clamp ALONE costs 1-2/5
-  //     parity  (planner told truth)  2/5    38%   <- NO BETTER; the knee went to its STOP
-  // Telling the sampler its real budget did not make it discover a hip/step solution -- it
-  // just strutted harder. Releasing the Hip Roll pin (30->0) and softening the capture
-  // over-step (2.2->1.4) did nothing either (3/5 each; `clamped` alone scored 3/5 then 4/5
-  // on IDENTICAL config, so +/-1/5 is CEM noise, not signal). The keyframe is innocent too:
-  // its static single-support ankle load is 19.2 Nm against a 48.6 Nm budget.
-  // What IS solid: the stance ankle sits pinned at EXACTLY its 48.6 Nm budget for 34-73% of
-  // upright ticks while the planner asks for 44-99 deg of ankle travel when only 35 deg is
-  // buyable. The trot's ankle DEMAND is structurally ~1.5-3x the H1-2 safety envelope. That
-  // is the wall; no cost lever tested moves it.
-  // The flag survives as a REAL-ROBOT A/B lever (--frc_parity=1). Do NOT promote it to a
-  // default on the strength of the mechanism alone -- hardware has to say it helps.
-  if (name == "h12_simple_trot" || name == "h12_hands_simple_trot" ||
-      name == "h12_simple_drive" || name == "h12_hands_simple_drive") {
-    return {{"sampling_spline_points", 5.0},
-            {"sampling_exploration", 0.05},
-            {"sampling_trajectories", 17.0}};
-  }
-  if (name == "h12_simple_stumble" || name == "h12_hands_simple_stumble") {
-    // foot-lift fix (2026-06-24): spline 5 (the stand-tuned 3 cannot represent the
-    // swing) + a mild rollout bump. The A (cost-release) + B (raised swing fold)
-    // changes are the deploy-ready lift (own-sim ~2.3cm, held). Tier-C aggressive
-    // exploration (std_initial 0.25 / explore_fraction 0.4) lifts HIGHER (~9-12cm)
-    // but DESTABILISES this marginal biped (yaw runaway -> topple ~8s) -- the
-    // documented sampling-only-humanoid frontier -- so it is left OFF here (the
-    // std_initial/explore_fraction/knot_var_growth numerics + planner code remain
-    // for twin experiments; default = legacy/off). 48 rollouts is also ~5x compute
-    // = not real-time on CPU. KEEP it conservative for the real robot.
-    return {{"sampling_spline_points", 5.0},
-            {"sampling_exploration", 0.05},
-            {"sampling_trajectories", 16.0}};
-  }
-  // JUMP (slot 26): deliberately NO override (2026-07-11). The launch impulse
-  // is carried OPEN-LOOP by the ModifyControl push assist + jump_overdrive, so
-  // the sampler only balances + lands -- validated 5/5 airborne at the STOCK
-  // spline 3 / 10 traj. A spline-6/36 override was tried and REMOVED: spline 6
-  // deterministically kills the twin stand (the documented spline-8 boundary
-  // is really <=6), and in the GUI (which, unlike agent_server, APPLIES these
-  // overrides) the 36-traj x spline-6 planner load drops the real plan rate ->
-  // under-planning "relaxed legs" backward fall right at crouch onset
-  // (user-observed 2026-07-11); headless repro at 6/36 also lunge-hopped
-  // asymmetrically. Stock numerics = the validated config everywhere.
   return {};
 }
 
