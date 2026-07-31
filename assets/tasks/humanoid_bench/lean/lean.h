@@ -448,55 +448,6 @@ class Lean_H12_Magpie : public lean {
   }
 };
 
-class Lean_H12_Hands : public lean {
- public:
-  std::string Name() const override { return "Lean H12 Hands"; }
-
-  std::string XmlPath() const override {
-    return GetModelPath("humanoid_bench/lean/Lean_H12_Hands.xml");
-  }
-
-  // Mirrors Lean_H12::GetStrategyNames slot-for-slot. NOTE: the Hands model's
-  // Posture cost (dim 27) does not reach the right arm (qpos[39:46] — the
-  // 12-DOF dexterous hands shift it), so right-arm pose tasks are partial on
-  // this variant until the Hands Posture dim is widened. Lower-body + left-arm
-  // poses (stand/crouch/lean_*/arms_forward-left) track correctly.
-  std::vector<std::string> GetStrategyNames() const override {
-    return {"h12_hands_pipeline_stand",
-            "h12_hands_pipeline_arm_extend",
-            "h12_hands_pipeline_lean_no_brace",
-            "h12_hands_pipeline_brace_hand_lean",
-            "h12_hands_pipeline_forearm_brace",
-            "h12_hands_pipeline_full_pipeline",
-            "h12_hands_simple_stand",
-            "h12_hands_simple_reach_forward",
-            "h12_hands_simple_crouch",
-            "h12_hands_simple_arms_sideways",
-            "h12_hands_simple_arms_forward",
-            "h12_hands_simple_arms_overhead",
-            "h12_hands_simple_single_arm_raise",
-            "h12_hands_simple_lean_left",
-            "h12_hands_simple_lean_right",
-            "h12_hands_simple_torso_twist",
-            "h12_hands_simple_counterbalance",  // 16 (mirrors Lean_H12 slot 16)
-            "h12_hands_simple_squat",   // 17 cyclic squat (mirrors Lean_H12 slot 17)
-            "h12_hands_simple_squatter",  // 18 native squatter (mirrors Lean_H12 slot 18)
-            "h12_hands_simple_jab",     // 19 standing boxing jab (mirrors Lean_H12 slot 19).
-                                        //    Right-arm punch tracks only partially on the
-                                        //    Hands model (Posture dim 27 misses the right arm).
-            "h12_hands_simple_stumble",  // 20 gait-clock stepping (mirrors Lean_H12 slot 20).
-            "h12_hands_simple_reach",    // 21 reach-to-target (mirrors Lean_H12 slot 21).
-            "h12_hands_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_hands_simple_trot", "h12_hands_simple_drive", "h12_hands_simple_stand", "h12_hands_simple_stand", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (mirrors base slot 24), 25-26 reserved
-            "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", "h12_hands_simple_stand", // 27-30 reserved
-            "h12_hands_lean_stand",            // 31
-            "h12_hands_lean_reach",            // 32
-            "h12_hands_lean_counterbalance",   // 33
-            "h12_hands_lean_brace",            // 34
-            "h12_hands_lean_full"};            // 35
-  }
-};
-
 }  // namespace mjpc
 
 #endif  // MJPC_TASKS_HUMANOID_BENCH_LEAN_LEAN_H_
