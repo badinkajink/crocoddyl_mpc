@@ -214,7 +214,7 @@
         ],
         "facing_target": [],
         "name": "forearm_brace_lean",
-        "success_sustain_time": 4.0,
+        "success_sustain_time": 16.0,
         "target_ramp_sec": 15.0,
         "target_distance_tolerance": 0.3,
         "time_limit": 9999.0,
