@@ -201,12 +201,10 @@ class lean : public Task {
                       std::map<std::string, double> *metrics,
                       std::string *phase_name) const override;
 
-  // Per-strategy planner model-numeric overrides (e.g. sampling_spline_points).
-  // See task.h PlannerNumericOverrides for the contract. Keyed by strategy NAME
-  // (GetStrategyNames()[strategy]) so the override follows the strategy across
-  // the Lean_H12 / Lean_H12_Hands model variants.
-  std::map<std::string, double> PlannerNumericOverrides(
-      int strategy) const override;
+  // No PlannerNumericOverrides override: the surviving lean strategies all run
+  // at the model's own planner bandwidth, so the base Task implementation
+  // (returns {}) is exactly right. deploy_common.cc still calls it through the
+  // base-class interface.
 
   // Slider layout (Lean H12) — user's 6-phase decomposition:
   //   0  stand            — stand_up

@@ -1018,17 +1018,13 @@
         <numeric name="residual_Reach X" data="0 -5 5" />
         <numeric name="residual_Reach Y" data="0 -5 5" />
         <numeric name="residual_Reach Z" data="0.9 0 2.5" />
-        <!-- LIVE cmd_vel teleop params (2026-07-03): BODY-frame m/s, driven by
-             wss_cmd_bridge / wasd_teleop via gRPC SetTaskParameters. The
-             TransitionLocked governor clamps to the validated envelope (vx
-             [-0.10,+0.15]; vy LOCKED to 0 until the V2 lateral campaign),
-             slews at 0.08 m/s^2, and yaw-rotates body->world. Cmd Seq =
-             client heartbeat counter (unchanged >1 s -> watchdog zero). -->
-        <numeric name="residual_Cmd Active" data="0 0 1" />
-        <numeric name="residual_Cmd Vx" data="0 -0.2 0.2" />
-        <numeric name="residual_Cmd Vy" data="0 -0.2 0.2" />
-        <numeric name="residual_Cmd Seq" data="0 0 1000000" />
-        <numeric name="residual_Cmd Wz" data="0 -1 1" />   <!-- V3 yaw-rate [rad/s], drive strat -->
+        <!-- The LIVE cmd_vel teleop params (residual_Cmd Active/Vx/Vy/Seq/Wz)
+             were removed 2026-07-30 with the drive/trot strategies that read
+             them; nothing in lean.cc consumes them any more. They lived at
+             parameter indices 7-11 (the TAIL), so their removal cannot shift
+             indices 0-6 (Height Goal, Strategy, Phase, Reach Active/X/Y/Z) that
+             lean.h hardcodes. wss_cmd_bridge.py becomes a no-op writer, which
+             SetParamByName handles by returning -1 (deploy_common.cc:791). -->
 
         <!-- JUMP (strat 26) schedule numerics, 2026-07-11. Read by the lean.cc
              jump block via GetNumberOrDefault (absent => code defaults, listed
@@ -1192,16 +1188,6 @@
              Tune the trot-walk strength via the trot_angmom_w numeric, NOT this weight. -->
         <user name="Angular Momentum" dim="3" user="0 1.0 0.0 100.0"/>
         <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>
-        <!-- Gait / Step Place: strategy-20 "stumble" stepping. Default weight 0
-             (inert for strategies 0-19, exactly like Symmetry/Angular Momentum/
-             Lateral Center above); enabled per-phase by h12_simple_stumble.json
-             and computed only when the keyframe name starts with "stumble"
-             (lean.cc name-gate). Gait(2)=swing-foot height per foot; Step
-             Place(4)=swing-foot xy capture-point/Raibert target (L xy, R xy).
-             These MUST stay the LAST two <user> sensors (residual append order). -->
-        <user name="Gait" dim="2" user="0 0.0 0.0 100.0"/>
-        <user name="Step Place" dim="4" user="0 0.0 0.0 100.0"/>
-        <user name="Foot Slip" dim="2" user="0 0.0 0.0 100.0"/>
         <!-- Brace Wrist Cock (dim 1, 2026-07-29). Holds the BRACING arm's wrist_yaw at
              `brace_wrist_cock_deg` during the `forearm_brace_lean` phase ONLY, so the
              hand/gripper stay lifted and the FOREARM is the lowest part of the arm.
@@ -1209,9 +1195,13 @@
              SITE POSITION and leaves wrist yaw free, so the -50 deg baked into the
              keyframe was tracked to only -8 deg. Default weight 0 AND default numeric
              0 => byte-identical until BOTH are set.
-             ⚠ MUST STAY THE LAST <user> SENSOR -- lean.cc appends this residual after
-             Foot Slip. (The older comment above claiming Gait/Step Place are last is
-             STALE: Foot Slip was appended after them, and now this.) -->
+             ⚠ MUST STAY THE LAST <user> SENSOR -- lean.cc appends this residual
+             immediately after `Lateral Center`, which is now the sensor directly
+             above (the Gait / Step Place / Foot Slip stepping terms that used to
+             sit between them were removed 2026-07-30, writer and XML in lockstep).
+             ⚠ Absent from Lean_H12.xml -- that PRE-EXISTING one-slot gap is why the
+             gripperless base model reports "residual length 174 != user_sensor_dim
+             173". Do not "fix" it by deleting this sensor. -->
         <user name="Brace Wrist Cock" dim="1" user="0 0.0 0.0 200.0"/>
 
         <!--        traces-->

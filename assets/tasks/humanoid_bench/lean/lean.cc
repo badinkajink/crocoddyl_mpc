@@ -2478,21 +2478,6 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     residual[counter++] = 0.0;
   }
 
-  // Gait (dim 2) / Step Place (dim 4) / Foot Slip (dim 2): stepping-only cost
-  // terms, retired with the stepping strategies. The residual SLOTS are KEPT --
-  // they map 1:1 to the trailing <user> sensors in the model XML, so deleting a
-  // write here would silently shift every later cost term onto the wrong sensor.
-  {
-    residual[counter++] = 0.0;  // Gait L
-    residual[counter++] = 0.0;  // Gait R
-    residual[counter++] = 0.0;  // Step Place Lx
-    residual[counter++] = 0.0;  // Step Place Ly
-    residual[counter++] = 0.0;  // Step Place Rx
-    residual[counter++] = 0.0;  // Step Place Ry
-    residual[counter++] = 0.0;  // Foot Slip L
-    residual[counter++] = 0.0;  // Foot Slip R
-  }
-
   // --- Brace Wrist Cock (dim 1, 2026-07-29) -----------------------------------
   // WHY THIS COST EXISTS. In the forearm brace the LEFT FOREARM must be the only
   // non-foot part bearing load (hand and wrist are BOTH illegal: loading the wrist
@@ -3238,12 +3223,6 @@ void lean::ResetLocked(const mjModel *model) {
 // hot-path work. See QUANTIFICATION_PLAN.html for the 10 metrics surfaced
 // here (reach, CoP, ICP, brace force, saturation, ...).
 // ============================================================================
-std::map<std::string, double> lean::PlannerNumericOverrides(int strategy) const {
-  const auto names = GetStrategyNames();
-  if (strategy < 0 || strategy >= static_cast<int>(names.size())) return {};
-  return {};
-}
-
 void lean::ComputeMetrics(const mjModel *model, const mjData *data,
                           std::map<std::string, double> *metrics,
                           std::string *phase_name) const {

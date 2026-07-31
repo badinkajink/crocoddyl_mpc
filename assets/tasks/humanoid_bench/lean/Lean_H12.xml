@@ -439,16 +439,6 @@
         <user name="Base Height" dim="1" user="0 0.0 0.0 100.0"/>
         <user name="Angular Momentum" dim="3" user="0 0.0 0.0 100.0"/>
         <user name="Lateral Center" dim="1" user="0 0.0 0.0 100.0"/>
-        <!-- Gait / Step Place: strategy-20 "stumble" stepping. Default weight 0
-             (inert for strategies 0-19, exactly like Symmetry/Angular Momentum/
-             Lateral Center above); enabled per-phase by h12_simple_stumble.json
-             and computed only when the keyframe name starts with "stumble"
-             (lean.cc name-gate). Gait(2)=swing-foot height per foot; Step
-             Place(4)=swing-foot xy capture-point/Raibert target (L xy, R xy).
-             These MUST stay the LAST two <user> sensors (residual append order). -->
-        <user name="Gait" dim="2" user="0 0.0 0.0 100.0"/>
-        <user name="Step Place" dim="4" user="0 0.0 0.0 100.0"/>
-        <user name="Foot Slip" dim="2" user="0 0.0 0.0 100.0"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>
