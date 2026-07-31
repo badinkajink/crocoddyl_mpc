@@ -238,7 +238,7 @@
              = right reaches, left braces); z=0.90 = table-object height. lean.cc pins
              data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
              numeric when wiring nav2+vision. -->
-        <numeric name="reach_target" data="1.4 -0.15 0.90"/>
+        <numeric name="reach_target" data="1.4 -0.15 0.895"/>
         <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
              omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
              (capture-point excursion, m). danger>catch_trig => step toward the fall;

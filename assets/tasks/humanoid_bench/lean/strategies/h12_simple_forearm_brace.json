@@ -1,30 +1,128 @@
 [
-  {
-    "contacts": [
-      {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0,0,0], "local_pos2": [0,0,0]},
-      {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0,0,0], "local_pos2": [0,0,0]},
-      {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0,0,0], "local_pos2": [0,0,0]},
-      {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0,0,0], "local_pos2": [0,0,0]},
-      {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0,0,0], "local_pos2": [0,0,0]}
-    ],
-    "facing_target": [],
-    "name": "forearm_brace_lean",
-    "success_sustain_time": 9999.0,
-    "target_ramp_sec": 6.0,
-    "target_distance_tolerance": 0.3,
-    "time_limit": 9999.0,
-    "brace_force_target": 50.0,
-    "weight": {
-      "Posture": 12.0, "Balance": 2.5, "Symmetry": 200.0, "Angular Momentum": 5.0,
-      "Lateral Center": 150.0, "CoM Vel.": 10.0, "Velocity": 0.625, "Joint Vel.": 0.01,
-      "Joint Vel. Limit": 5.0, "Waist Yaw": 30.0, "Control": 0.05, "Foot Stability": 15.0,
-      "Foot Left Up": 2000.0, "Foot Right Up": 2000.0,
-      "Hip Yaw L": 20.0, "Hip Roll L": 20.0, "Hip Yaw R": 20.0, "Hip Roll R": 20.0,
-      "Base Height": 450.0, "Height": 100.0, "Knees Straight": 5.0,
-      "Pelvis Tilt": 50.0, "Torso Forward Tilt": 20.0,
-      "Reaching Hand Dist": 80.0, "Object Dist": 0.0, "Pelvis Forward": 100.0,
-      "Brace Pos": 120.0, "Brace Force": 60.0, "Contact": 30.0,
-      "Hip Clearance": 200.0, "Leg Clearance": 200.0, "Body Table Clearance": 150.0
+    {
+        "contacts": [
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0,
+                    0,
+                    0
+                ],
+                "local_pos2": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0,
+                    0,
+                    0
+                ],
+                "local_pos2": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0,
+                    0,
+                    0
+                ],
+                "local_pos2": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0,
+                    0,
+                    0
+                ],
+                "local_pos2": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0,
+                    0,
+                    0
+                ],
+                "local_pos2": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "facing_target": [],
+        "name": "forearm_brace_lean",
+        "success_sustain_time": 9999.0,
+        "target_ramp_sec": 6.0,
+        "target_distance_tolerance": 0.3,
+        "time_limit": 9999.0,
+        "brace_force_target": 50.0,
+        "weight": {
+            "Posture": 60.0,
+            "Balance": 2.5,
+            "Symmetry": 200.0,
+            "Angular Momentum": 5.0,
+            "Lateral Center": 150.0,
+            "CoM Vel.": 10.0,
+            "Velocity": 0.625,
+            "Joint Vel.": 0.01,
+            "Joint Vel. Limit": 5.0,
+            "Waist Yaw": 30.0,
+            "Control": 0.05,
+            "Foot Stability": 15.0,
+            "Foot Left Up": 2000.0,
+            "Foot Right Up": 2000.0,
+            "Hip Yaw L": 20.0,
+            "Hip Roll L": 20.0,
+            "Hip Yaw R": 20.0,
+            "Hip Roll R": 20.0,
+            "Base Height": 450.0,
+            "Height": 100.0,
+            "Knees Straight": 5.0,
+            "Pelvis Tilt": 50.0,
+            "Torso Forward Tilt": 20.0,
+            "Reaching Hand Dist": 80.0,
+            "Object Dist": 0.0,
+            "Pelvis Forward": 100.0,
+            "Brace Pos": 120.0,
+            "Brace Force": 60.0,
+            "Contact": 30.0,
+            "Hip Clearance": 200.0,
+            "Leg Clearance": 200.0,
+            "Body Table Clearance": 0.0,
+            "Brace Wrist Cock": 150.0
+        }
     }
-  }
 ]

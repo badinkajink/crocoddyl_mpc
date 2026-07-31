@@ -396,6 +396,20 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       (brace_transition && residual_keyframe_.target_ramp_sec > 1e-9)
           ? residual_keyframe_.target_ramp_sec
           : kPhaseRampSeconds;
+  // ★ 2026-07-28 `phase_ramp_sec` numeric: 0 = OFF = BYTE-IDENTICAL (the logic above).
+  // >0 overrides the ramp for EVERY transition, not just brace ones.
+  // WHY: every surviving failure of the fixed strat-16/21 configs happens 58-61 s, i.e.
+  // ~2 s after the 57 s switch -- right as this 1.5 s ramp completes and the full new
+  // cost surface lands. That is a HANDOVER TRANSIENT, not a steady-state balance loss
+  // (the same configs then hold 240 s when they survive it). Non-brace transitions had
+  // NO way to slow this down: `target_ramp_sec` is gated on `brace_transition`, so the
+  // 16 and 21 JSONs' own target_ramp_sec was silently ignored. Live-tunable so the
+  // handover can be swept without a rebuild.
+  {
+    int pr_id = mj_name2id(model, mjOBJ_NUMERIC, "phase_ramp_sec");
+    double pr = (pr_id >= 0) ? model->numeric_data[model->numeric_adr[pr_id]] : 0.0;
+    if (pr > 1e-9) phase_ramp_seconds = pr;
+  }
   double alpha_lin     = mju_min(time_in_phase / phase_ramp_seconds, 1.0);
   double alpha         = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
   double phase_reach_scale =
@@ -499,6 +513,52 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
             from_target[i] + ra * (posture_target[i] - from_target[i]);
       }
       posture_target = ramped_posture_target;
+    }
+  }
+
+  // ---- POSTURE LEG-CHAIN LEVELLER (posture_leg_level, 0 = OFF) ------------ //
+  // ★★ 2026-07-27: THE STANDING ORDER TO LEAN FORWARD.
+  // A flat-footed, upright-pelvis pose requires the leg PITCH chain to close:
+  //     hip_pitch + knee + ankle_pitch == 0
+  // MEASURED on the compiled model (build tree), left leg:
+  //     stand / stand_up           -0.360 +0.550 -0.190 = +0.0000  ->  0.00 deg
+  //     reach_to_target            -0.250 +0.350 -0.210 = -0.1100  -> +6.30 deg FWD
+  //     counterbalance_standing    -0.250 +0.350 -0.210 = -0.1100  -> +6.30 deg FWD
+  //     stumble_trot               -0.250 +0.350 -0.210 = -0.1100  -> +6.30 deg FWD
+  //     stumble_trot_drive         -0.140 +0.350 -0.210 = -0.0000  ->  0.00 deg
+  // So with both soles flat on the floor, strat 21 / 16 are told -- at every
+  // rollout, for the whole run -- to pitch the pelvis 6.3 deg FORWARD. Posture
+  // weight is 12.0 in strat 21 and 12.0 in strat 6: IDENTICAL. The forward pull was
+  // never in a weight, which is why ~50 cost-re-weighting runs could not remove it.
+  //
+  // ★ THE IDENTICAL BUG WAS ALREADY FOUND AND FIXED ONCE, WITH THE IDENTICAL NUMBER.
+  // 2026-07-20 (DRIVE-24): "idle-tips-fwd keyframe lean FIXED hipP -0.25 -> -0.14
+  // (drive-only)". That is exactly -(knee + ankleP) = -(0.350 - 0.210) = -0.140, the
+  // value that closes the chain -- and `stumble_trot_drive` carries it today while its
+  // unfixed siblings `stumble_trot`, `reach_to_target` and `counterbalance_standing`
+  // still carry -0.250. The fix was simply never propagated.
+  //
+  // ★ CORROBORATION, independent: across n=30 genuinely-upright lean stages in the
+  // 78-run corpus the median-of-run-max forward tilt is 6.3 deg, matching the
+  // keyframe's built-in +6.30 deg to two decimals. That IS the observed fixed point.
+  //
+  // Target-side only -- no weight changes, no base-z change (with hipP -0.14 at base
+  // z 1.020 the sole sits at z +0.0059 vs stand's +0.0056). Provably a NO-OP for every
+  // keyframe whose chain already closes, which includes stand/stand_up/crouch/squat_*/
+  // stumble_trot_drive/jump_launch -- so strategy 6 stays byte-identical even with this
+  // numeric ON. It also levels straighten (-0.080) and forearm_brace_lean (-0.050);
+  // those are deliberately in scope but have NOT been separately gated -- see the doc.
+  // qpos leg layout: L hipY7 hipP8 hipR9 knee10 ankP11 ankR12 | R hipY13 hipP14 ...
+  mjtNum posture_level_buf[64];
+  {
+    int pll_id = mj_name2id(model, mjOBJ_NUMERIC, "posture_leg_level");
+    double pll = (pll_id >= 0)
+        ? model->numeric_data[model->numeric_adr[pll_id]] : 0.0;
+    if (pll > 0.5 && model->nq <= 64) {
+      mju_copy(posture_level_buf, posture_target, model->nq);
+      posture_level_buf[8]  = -(posture_level_buf[10] + posture_level_buf[11]);
+      posture_level_buf[14] = -(posture_level_buf[16] + posture_level_buf[17]);
+      posture_target = posture_level_buf;   // function scope: outlives every use below
     }
   }
 
@@ -1077,6 +1137,52 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // lateral position; the eventual ~60s slip seen in test 12 is the
   // known trade-off for accepting this baseline.
   double const *table_pos = SensorByName(model, data, "table_surface_pos");
+  // ★ 2026-07-28 `table_surface_pos` is a framepos on the table_top GEOM = its CENTRE
+  // (z 0.810), NOT the physical face (z 0.865). THREE separate targets were built on it
+  // and all three are therefore 55 mm too low:
+  //   * ideal_brace.z  (Brace Pos w120)  -> aims 115 mm INSIDE the wood at depth 0.06
+  //   * brace_air_target.z               -> "30 cm above the surface" is really 245 mm
+  //   * palm_height_error                -> targets the palm 55 mm INSIDE the wood
+  // Same frame confusion `brace_gate_fix` repaired on 2026-07-25, in three places it
+  // never touched. `table_face_z` resolves it ONCE, gated by `brace_target_face`
+  // (0 = OFF = byte-identical, so every historic verdict stays reproducible).
+  // Orientation-safe: support of the box half-extents along WORLD z.
+  double table_face_z = table_pos[2];
+  {
+    int btf_id0 = mj_name2id(model, mjOBJ_NUMERIC, "brace_target_face");
+    double btf0 = (btf_id0 >= 0)
+        ? model->numeric_data[model->numeric_adr[btf_id0]] : 0.0;
+    if (btf0 > 0.5) {
+      int tg = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+      if (tg < 0) tg = mj_name2id(model, mjOBJ_GEOM, "table_top");
+      if (tg >= 0) {
+        const double *Rg = data->geom_xmat + 9 * tg;   // row-major; row 2 = world z
+        const double *sg = model->geom_size + 3 * tg;
+        table_face_z = data->geom_xpos[3 * tg + 2] +
+                       mju_abs(Rg[6]) * sg[0] + mju_abs(Rg[7]) * sg[1] +
+                       mju_abs(Rg[8]) * sg[2];
+      }
+    }
+  }
+
+  // ---- SLAB NEAR EDGE, world x (2026-07-29) ---------------------------------
+  // Companion to table_face_z above, same orientation-safe support trick but along
+  // WORLD X, giving the edge of the slab NEAREST the robot. Used by the
+  // `brace_target_slab` gate to aim the brace at a point that is actually ON the
+  // surface. NaN-safe sentinel: stays -inf when the gate is off or the geom is
+  // missing, and every consumer checks for that.
+  double table_near_edge_x = -std::numeric_limits<double>::infinity();
+  {
+    int tg = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+    if (tg < 0) tg = mj_name2id(model, mjOBJ_GEOM, "table_top");
+    if (tg >= 0) {
+      const double *Rg = data->geom_xmat + 9 * tg;   // row 0 = world x
+      const double *sg = model->geom_size + 3 * tg;
+      double half_x = mju_abs(Rg[0]) * sg[0] + mju_abs(Rg[1]) * sg[1] +
+                      mju_abs(Rg[2]) * sg[2];
+      table_near_edge_x = data->geom_xpos[3 * tg] - half_x;
+    }
+  }
   // torso_pos declared above (near arm-selection) to keep one definition.
 
   // ----- Phase-dependent reach target ------------------------------------//
@@ -1111,7 +1217,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   if (is_forearm_brace) {
     brace_air_target[0] = object_pos[0];
     brace_air_target[1] = object_pos[1];
-    brace_air_target[2] = table_pos[2] + 0.30;  // ~30 cm above the table surface
+    brace_air_target[2] = table_face_z + 0.30;  // ~30 cm above the table FACE
+                                               // (was the geom CENTRE = 245 mm)
     reach_target = brace_air_target;
   }
   // counterbalance_standing (Strategy 16): FOOT-ANCHORED (lean-invariant) reach
@@ -1152,6 +1259,44 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       yaw_relative_target(data->mocap_pos, phase1_target_storage);
     else
       mju_copy3(phase1_target_storage, data->mocap_pos);
+    // COUNTERBALANCE WORKSPACE CLAMP (2026-07-25, `counterbalance_radius` [m];
+    // 0 = OFF = byte-identical = the historic unclamped target described above).
+    // Same projection as the reach_to_target clamp: put the (deliberately far)
+    // target onto the arm-reach sphere centred on the REACHING shoulder, recomputed
+    // each step from the LIVE shoulder so the point travels with the bow and the arm
+    // still max-extends along the target's own bearing.
+    // WHY: unclamped, |hand - target| has a ~0.9 m floor, so the reach cost can
+    // never null and its permanent slope is rectified into a forward CoM ratchet --
+    // and `reach_deadband` cannot help, because no sane deadband covers 0.9 m.
+    // Clamping makes the target ATTAINABLE so the deadband can actually engage.
+    // ⚠ DELIBERATELY WITHOUT reach_to_target's reach_drop gravity guard. At the
+    // shipped reach_drop 0.400 that guard would force horiz = sqrt(r^2 - 0.4^2), i.e.
+    // an arm aimed ~53 deg BELOW horizontal at r = 0.50 -- a steep droop, not the
+    // near-horizontal counterweight reach this strategy is built around. The guard is
+    // a forward-reach gravity guard for strat 21; strat 16 does not need it, because
+    // its target already sits only ~14 deg below the shoulder, so the bare projection
+    // keeps a natural bearing. If a future run shows the arm aiming too high, add a
+    // separate `counterbalance_drop` numeric rather than borrowing reach_drop (which
+    // would couple strat 16's tuning to strat 21's).
+    // A SEPARATE copy of the projection, not a shared helper, so the reach_to_target
+    // branch stays byte-for-byte untouched and strat 21 cannot move.
+    int cbr_id = mj_name2id(model, mjOBJ_NUMERIC, "counterbalance_radius");
+    double kCounterRadius = (cbr_id >= 0)
+        ? model->numeric_data[model->numeric_adr[cbr_id]] : 0.0;
+    if (kCounterRadius > 0.0) {
+      double shoulder_lat_cb = reach_right ? -0.148 : 0.148;
+      double shoulder_cb[3] = {
+          torso_pos[0] + shoulder_lat_cb * heading_lft[0],
+          torso_pos[1] + shoulder_lat_cb * heading_lft[1],
+          torso_pos[2] + 0.219};
+      double v_cb[3];
+      mju_sub3(v_cb, phase1_target_storage, shoulder_cb);
+      double r_cb = mju_norm3(v_cb);
+      if (r_cb > kCounterRadius && r_cb > 1.0e-6) {
+        mju_scl3(v_cb, v_cb, kCounterRadius / r_cb);   // project onto the sphere
+        mju_add3(phase1_target_storage, shoulder_cb, v_cb);
+      }
+    }
     reach_target = phase1_target_storage;
     // INVESTIGATED 2026-06-23: a deliberate static counterweight (free arm swung
     // back +/- knee bend) was trialed to add forward-push margin, but EVERY forced
@@ -1315,8 +1460,58 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // to the brace phases (it's 0 in stand/extend), so non-brace phases are
   // unaffected. Pairs with the contact local_pos2 y = -0.24 in the strategy
   // JSONs (hand + elbow share the same Y → forearm parallel to x, not slanted).
+  // ★ 2026-07-27 FRAME FIX — `brace_target_face` (0 = OFF = BYTE-IDENTICAL, 1 = ON).
+  // `table_surface_pos` is a framepos on the table_top GEOM, i.e. its CENTRE (z 0.810),
+  // NOT the physical face (z 0.865). Same frame confusion that killed the brace gate
+  // (fixed 2026-07-25 by `brace_gate_fix`) — it was never fixed HERE. Consequence:
+  //   brace_press_depth 0.06 -> ideal_brace.z 0.750 = 115 mm INSIDE the wood
+  //   brace_press_depth 0.00 -> ideal_brace.z 0.810 =  55 mm INSIDE the wood
+  // so the knob CANNOT express "press at the surface" — its whole range is below the
+  // slab. That is why lowering it SATURATED (34 deg) instead of shallowing the bow, and
+  // it means the 2026-07-27 refutation of `brace_press_depth` was a refutation of a
+  // control that could not reach the value it needed.
+  // At `Brace Pos` weight 120 this is a permanent, UN-NULLABLE downward demand: the pad
+  // is stopped by the wood at the face, the residual never reaches zero, and the body
+  // keeps bowing to chase it until the PELVIS lands on the slab. Measured (brace22_1,
+  // direct 6->22): pad seated 79.2 % of frames — the best seating ever recorded — with
+  // pelvis 486 N MEDIAN and torso 406 N median, while the only ALLOWED contact, the
+  // left forearm pad, carried 50 N. See [[feedback_audit_the_load_path_not_the_pose]].
+  // With this ON the depth is measured from the FACE: 0.06 = 60 mm below the surface,
+  // 0.0 = exactly at it. Orientation-safe (support along world z), so a tilted or
+  // re-placed slab stays correct.
+  double brace_press_z =
+      table_face_z - GetNumberOrDefault(0.06, model, "brace_press_depth");
+  // ---- brace_target_slab (2026-07-29): aim the brace at a point ON THE SLAB ----
+  // The legacy x below is `torso + 0.4 * (table - torso)` -- 40 % of the way to the
+  // table CENTRE, i.e. deliberately SHORT of the near edge -- and brace_press_z is
+  // 20-60 mm BELOW the face. That target sits INSIDE the slab's front face, in front
+  // of the surface. It is reachable ONLY in the planner's own sim, which <exclude>s
+  // the table from the whole arm chain and lets the arm pass THROUGH the wood while
+  // an inert pad reports newtons. On the twin the arm is SOLID, so the residual can
+  // never null: the body keeps bowing to chase the buried point until the PELVIS
+  // lands on the slab. That is the "drape" -- measured pelvis 486 N / torso 406 N
+  // while the only ALLOWED contact, the forearm pad, carried 50 N. It was never a
+  // balance failure; it is the same unattainable-target disease as every other lean
+  // stage, and it is also why the 07-13 own-sim video looked correct.
+  // ON: x = slab NEAR EDGE + `brace_target_inset` (default 0.07), so the pad lands on
+  // the surface. ★ inset must exceed the pad capsule's rear-end offset (~46 mm behind
+  // its centre) or the rear end hangs over thin air -- lean.xml's header records that
+  // 28 mm of overhang alone was enough to take seating to 0 %.
+  // Pair this with a SHALLOW `brace_press_depth` (~0.008): the deep 0.06 was tuned in
+  // the phantom-arm world where nothing stopped the pad, but on a solid slab the wood
+  // does the arresting, so a few mm is enough to build the Brace-Force gradient.
+  // 0 = OFF = BYTE-IDENTICAL (the legacy expression below is used verbatim).
+  double brace_x_target = torso_pos[0] + 0.4 * torso_to_table_x;
+  {
+    int bts_id = mj_name2id(model, mjOBJ_NUMERIC, "brace_target_slab");
+    double bts = (bts_id >= 0) ? model->numeric_data[model->numeric_adr[bts_id]] : 0.0;
+    if (bts > 0.5 && std::isfinite(table_near_edge_x)) {
+      brace_x_target = table_near_edge_x +
+                       GetNumberOrDefault(0.07, model, "brace_target_inset");
+    }
+  }
   double ideal_brace[3] = {
-      torso_pos[0] + 0.4 * torso_to_table_x,  // Partway between torso and far edge
+      brace_x_target,  // legacy: partway to the table centre; gated: on the slab
       // bracing arm = the OTHER arm (reach_right -> left arm braces, so +0.24).
       torso_pos[1] + (reach_right ? 0.24 : -0.24),
       // 2026-05-22: press TARGET 6 cm BELOW the surface (was -0.02). Under the
@@ -1332,7 +1527,24 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       // verified on the 0.87 probe). The proximity gate that engages load-transfer
       // + force is decoupled below (keyed on the pad's height above the PHYSICAL
       // surface, not this deliberately-unreachable drive target).
-      table_pos[2] - 0.06
+      // ★ 2026-07-27: DEPTH IS NOW A NUMERIC. `brace_press_depth` (default 0.06 =
+      // BYTE-IDENTICAL) sets how far BELOW the physical face this drive target sits.
+      // The 0.06 was chosen (2026-05-22) because "the downward Brace-Pos pull faded
+      // before contact" -- but that was measured while `brace_force_prox_gate` was
+      // DEAD (it read 0.000 even with the pad perfectly seated; fixed 2026-07-25 by
+      // `brace_gate_fix`), so Brace Pos was the ONLY thing pulling the pad down and
+      // needed a deep, unreachable target to keep pulling. With the gate restored,
+      // Brace Force (w60, ~2232/step uncontacted) supplies that pull directly.
+      // MEASURED COST of the deep sink: the pad target sits 115 mm inside the wood,
+      // so at w120 the residual never nulls and the body bows to chase it -- the
+      // keyframe commands +2.9 deg of pelvis pitch and the plant reaches 42-44 deg.
+      // That bow is what drops the RIGHT arm onto the table (right_forearm_pad
+      // 103-182 N peak, right_shoulder_yaw 107-146 N) and pushes the CoM to +0.4.
+      // Lower this to shallow the bow; the 2026-07-01 note that raising it makes the
+      // pad hover MORE was true only under the dead gate.
+      // ★ 2026-07-27: now computed above as `brace_press_z` so it can be referenced to
+      // the physical FACE instead of the geom centre (`brace_target_face`).
+      brace_press_z
   };
 
   double penalty_hand = hand_dist_penalty * hand_dist;
@@ -1367,7 +1579,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double palm_down_target[3] = {0, 0, -1};
     double palm_alignment = mju_dot3(right_palm_normal, palm_down_target);
 
-    double palm_height_error = mju_abs(right_palm_pos[2] - table_pos[2]);
+    // 2026-07-28: was table_pos[2] = the geom CENTRE, i.e. it rewarded driving the
+    // palm 55 mm INSIDE the slab; the face is what the palm can actually reach.
+    double palm_height_error = mju_abs(right_palm_pos[2] - table_face_z);
     double contact_score = (right_palm_contact[0] > 1.0) ? 1.0 : 0.0;
     double flatness_score = mju_max(0.0, palm_alignment);
     double height_score = mju_exp(-10.0 * palm_height_error);
@@ -2334,9 +2548,131 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the table un-gated, so there is no chicken-and-egg: position drives the
   // approach; the force demand ramps in (smoothstep) only over the last ~15 cm.
   double brace_reach_gap = mju_dist3(bracing_hand, ideal_brace);
+  // BRACE GATE FIX (2026-07-25, `brace_gate_fix` numeric; 0 = OFF = byte-identical).
+  // RESTORES THE DOCUMENTED DESIGN: the ideal_brace comment (~line 1333) already
+  // states this gate is "decoupled below (keyed on the pad's height above the
+  // PHYSICAL surface, not this deliberately-unreachable drive target)" -- but the
+  // line above keys it on the 3-D distance to that very drive target, and the drive
+  // target is deliberately BELOW the surface. Measured consequence: table_surface_pos
+  // is a framepos on the table_top GEOM FRAME (z 0.820), 50 mm under the physical
+  // face (z 0.870), and ideal_brace drops a further 60 mm to z 0.760 -- so a
+  // PERFECTLY SEATED pad sits 0.1745 m away, past the 0.15 m span, and this gate is
+  // EXACTLY 0.000. The entire Brace-Force demand (weight 60 x ~37 residual =
+  // ~2230/step) is therefore multiplied by zero even with the brace seated, which is
+  // why the forearm hovered a median 19 mm for all 75 s in 2/2 faithful-chain runs
+  // and why three separate weight sweeps moved nothing.
+  // Keying on CLEARANCE ABOVE THE FACE gives: seated -> 1.000, 19 mm hover -> 0.956,
+  // 150 mm -> 0.000, so the anti-dive purpose of the gate is preserved. The legacy
+  // 3-D distance is retained whenever the pad is NOT horizontally over the table, so
+  // the gate can never reward pressing into thin air (the documented "chase a contact
+  // it can't seat -> forward dive" failure). ideal_brace is deliberately left alone:
+  // its deep sub-surface drive is what bows the body, and raising it slackens the
+  // pull -> less bow -> MORE hover (verified on the 0.87 probe).
+  int bgf_id = mj_name2id(model, mjOBJ_NUMERIC, "brace_gate_fix");
+  double kBraceGateFix = (bgf_id >= 0)
+      ? model->numeric_data[model->numeric_adr[bgf_id]] : 0.0;
+  if (kBraceGateFix > 0.0 && is_forearm_brace) {
+    int tt_id = mj_name2id(model, mjOBJ_GEOM, "table_top");
+    double const *tsp = SensorByName(model, data, "table_surface_pos");
+    if (tt_id >= 0 && tsp) {
+      // half-extents of the table slab, from the COMPILED geom (never hardcoded)
+      double thx = model->geom_size[3 * tt_id + 0];
+      double thy = model->geom_size[3 * tt_id + 1];
+      double face_z = tsp[2] + model->geom_size[3 * tt_id + 2];
+      int pad_id = mj_name2id(model, mjOBJ_GEOM,
+                              reach_right ? "left_forearm_pad" : "right_forearm_pad");
+      // capsule radius: a flat-seated pad's SITE sits one radius above the face.
+      // half-length grows the footprint so a pad already touching via the near edge
+      // is not read as off-table.
+      double pad_r  = (pad_id >= 0) ? model->geom_size[3 * pad_id + 0] : 0.035;
+      double pad_hl = (pad_id >= 0) ? model->geom_size[3 * pad_id + 1] : 0.046;
+      // CONTINUOUS distance from the pad to the table SLAB (not a boolean switch
+      // between two unrelated metrics). Equals the pure height gap while the pad is
+      // over the slab, and grows smoothly as it leaves -- so there is no cost cliff
+      // at the near edge. A boolean over_table test here would step this gate
+      // 0.000 -> 0.956 across ~2 mm of pad travel at x = 0.400, and because the
+      // Brace-Force residual is a one-sided SHORTFALL, max(0, 50 N - F), crossing
+      // that edge before any force exists would COST ~2100/step while staying
+      // outside costs 0. The planner's cheapest in-horizon answer would be to hover
+      // just short of the edge -- the same hover this fix exists to cure, merely
+      // relocated, plus a non-differentiable cost a sampling planner reads as noise.
+      double dxo = mju_max(0.0, mju_abs(bracing_hand[0] - tsp[0]) - (thx + pad_hl));
+      double dyo = mju_max(0.0, mju_abs(bracing_hand[1] - tsp[1]) - (thy + pad_hl));
+      double dzo = bracing_hand[2] - (face_z + pad_r);
+      brace_reach_gap = mju_sqrt(dxo * dxo + dyo * dyo + dzo * dzo);
+    }
+  }
   double bgg = mju_min(1.0, brace_reach_gap / 0.15);
   double brace_force_prox_gate = 1.0 - bgg * bgg * (3.0 - 2.0 * bgg);
-  residual[counter++] = brace_force_prox_gate *
+
+  // ---- RECOVERABILITY GATE (2026-07-27) --------------------------------- //
+  // `lean_recover_bound` [m]: 0 = OFF = BYTE-IDENTICAL. Shrinks the two big FORWARD
+  // demands (Brace Force here, Reaching Hand Dist below) to zero once the capture
+  // point has advanced further past the FEET than a feet-only recovery could undo.
+  //
+  // WHY. The comment on the reach residual just below states the design intent:
+  // "Reach gradient is intentionally NOT balance-capped ... Balance's edge_amplifier
+  // above is what forces the trade-off". That assumption is QUANTITATIVELY FALSE, and
+  // it is the whole reason the braced lean drapes. Measured magnitudes in the active
+  // brace phase (h12_lean_brace.json phase[3] forearm_brace_lean):
+  //     Brace Force        w 60, SmoothAbs p=15, one-sided max(0, 50 - F)
+  //                        -> 60*(sqrt(50^2+15^2)-15) = 2232 / step when uncontacted
+  //     Reaching Hand Dist w 80 against a target ~1.0 m out vs a ~0.52 m arm, so the
+  //                        error NEVER nulls        ->      ~56 / step, permanently
+  //     Balance            w 2.5, incl. the 10x edge amplifier AND the 0.80 braced
+  //                        forward discount         ->        ~6 / step at a 0.30 m
+  //                                                            over-excursion
+  // i.e. ~380 : 1 against balance. The planner is not misbehaving -- it is correctly
+  // buying CoM excursion with brace reward. Measured consequence on the A2 twin
+  // (2026-07-27, pipeline_arpa_brace_fixed): a genuinely flat 39 s forearm brace
+  // (53% of frames, pad tilt 0.01 deg) at CoM margin +0.553 m -- 4x the toe limit
+  // +0.133 -- which then FELL FORWARD at 115.9 s.
+  //
+  // Raising Balance instead does NOT work and has been tried 3x independently: it
+  // removes the drape but supplies no feasible alternative, so it falls sooner. The
+  // asymmetry has to be fixed on the DEMAND side, which is what this gate does.
+  //
+  // ★ Deliberately keyed on the FEET-ONLY excursion, never on the load-limited
+  // {L_foot, R_foot, hand} triangle used for Balance. That triangle credits its hand
+  // vertex from the INSTANTANEOUS measured force (hand_load_frac = min(0.9, F/140)),
+  // which is positive feedback: press harder -> licensed further out -> more dependent
+  // on pressing. Nothing there requires the CoM to be able to come back if the force
+  // lapses, and a lapse is exactly what the forward fall looks like. A brace may still
+  // carry real load; it may no longer buy unrecoverable excursion.
+  //
+  // Forward axis = MEAN OF THE FEET'S OWN HEADINGS (midFeetZUp), matching the
+  // 2026-07-16 balance_frame fix and the com_x_offset_support block above.
+  // ⚠ NOT the perpendicular to the foot LINE -- that was measured 21 deg wrong
+  // (strat-27 support-frame bug).
+  double lean_recover_gate = 1.0;
+  int lrb_id = mj_name2id(model, mjOBJ_NUMERIC, "lean_recover_bound");
+  double kRecoverBound =
+      (lrb_id >= 0) ? model->numeric_data[model->numeric_adr[lrb_id]] : 0.0;
+  if (kRecoverBound > 0.0 && arm_contact_or_lean) {
+    int lrs_id = mj_name2id(model, mjOBJ_NUMERIC, "lean_recover_span");
+    double kRecoverSpan =
+        (lrs_id >= 0) ? model->numeric_data[model->numeric_adr[lrs_id]] : 0.0;
+    if (kRecoverSpan <= 1.0e-6) kRecoverSpan = 0.10;   // fade over 10 cm by default
+    double rg_fwd[2] = {1.0, 0.0};
+    double const *rg_flf = SensorByName(model, data, "foot_left_forward");
+    double const *rg_frf = SensorByName(model, data, "foot_right_forward");
+    if (rg_flf && rg_frf) {
+      double fx = rg_flf[0] + rg_frf[0], fy = rg_flf[1] + rg_frf[1];
+      double len = mju_sqrt(fx * fx + fy * fy);
+      if (len > 1.0e-6) { rg_fwd[0] = fx / len; rg_fwd[1] = fy / len; }
+    }
+    double mfx = 0.5 * (foot_left_pos[0] + foot_right_pos[0]);
+    double mfy = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
+    // signed forward excursion of the capture point past the midfoot, feet frame
+    double cp_fwd_feet = (capture_point[0] - mfx) * rg_fwd[0] +
+                         (capture_point[1] - mfy) * rg_fwd[1];
+    double over = (cp_fwd_feet - kRecoverBound) / kRecoverSpan;
+    over = mju_max(0.0, mju_min(1.0, over));
+    // smoothstep, so a sampling planner sees a continuous slope rather than a cliff
+    lean_recover_gate = 1.0 - over * over * (3.0 - 2.0 * over);
+  }
+
+  residual[counter++] = lean_recover_gate * brace_force_prox_gate *
                         mju_max(0.0, desired_brace_force - brace_contact_force);
 
   // ------ object distance (reaching hand) ------ //
@@ -2362,15 +2698,45 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
                                mju_min(1.0, brace_contact_force /
                                        mju_max(1.0, desired_brace_force))))
       : 1.0;
-  mju_sub3(&residual[counter], reaching_hand, reach_target);
+  // REACH DEADBAND (2026-07-25, `reach_deadband` numeric [m]; 0 = OFF =
+  // byte-identical). A zero-cost, zero-slope BALL of radius tol around the reach
+  // target. Both reach terms below are the SAME error vector, and every shipped
+  // reach target is DELIBERATELY unreachable (1.4 m out vs a ~0.52 m arm), so |e|
+  // never reaches 0 and the cost keeps a permanent forward slope for the entire
+  // run. A sampling planner rectifies that constant bias out of control noise into
+  // a forward CoM RATCHET: measured +0.364 m of drift over 600 s, ending with the
+  // robot draped on the table. Shrinking the error by (1 - tol/|e|) makes the
+  // residual EXACTLY zero inside the ball, so no sampled perturbation there is
+  // preferred over any other and there is nothing left to rectify; outside, the
+  // pull keeps its direction and full slope and is merely offset by tol. The kink
+  // at the boundary is smoothed for free by the cost norm itself (type 6 smooth-abs,
+  // p = 0.1), whose argument passes through 0 exactly there.
+  int rdb_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_deadband");
+  double kReachDeadband = (rdb_id >= 0)
+      ? model->numeric_data[model->numeric_adr[rdb_id]] : 0.0;
+  double reach_err[3];
+  mju_sub3(reach_err, reaching_hand, reach_target);
+  if (kReachDeadband > 0.0) {
+    double reach_err_norm = mju_norm3(reach_err);
+    // keep = 0 when |e| <= tol also avoids dividing by a vanishing norm.
+    double keep = (reach_err_norm > kReachDeadband)
+        ? (1.0 - kReachDeadband / reach_err_norm) : 0.0;
+    mju_scl3(reach_err, reach_err, keep);
+  }
+  // lean_recover_gate (== 1.0 unless `lean_recover_bound` > 0) retires the permanent
+  // forward pull once the capture point is past feet-only recovery -- see the long
+  // note at the Brace Force residual. This is the "balance-cap" the comment above
+  // says is intentionally absent; it is absent because Balance was ASSUMED to force
+  // the trade-off, and Balance loses that contest ~380:1.
+  mju_copy3(&residual[counter], reach_err);
   mju_scl3(&residual[counter], &residual[counter],
-           phase_reach_scale * leaning * brace_reach_gate);
+           phase_reach_scale * leaning * brace_reach_gate * lean_recover_gate);
   counter += 3;
 
   // ----- reaching hand distance to object ----- //
-  mju_sub3(&residual[counter], reaching_hand, reach_target);
+  mju_copy3(&residual[counter], reach_err);
   mju_scl3(&residual[counter], &residual[counter],
-           phase_reach_scale * brace_reach_gate);
+           phase_reach_scale * brace_reach_gate * lean_recover_gate);
   counter += 3;
 
   // ----- foot stability: restoring force toward home XY position ----- //
@@ -2736,8 +3102,151 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // must NOT rest on the table). At 0.87 m the forearm brace keeps the pelvis
   // ~x0.25 (well behind the 0.40 edge) so this penalises ONLY an actual pelvis/
   // torso-table graze (0 in the good pose) without fighting the forearm seat.
+  //
+  // ★★★★★ 2026-07-27: THE ALLOW-LIST ABOVE WAS THE BUG. Two independent holes, both
+  // MEASURED with table_contact_ledger.py on plant traces:
+  //   (1) It names only `pelvis` + `torso_link`. NOTHING watched the arms, hips or
+  //       grippers. In a direct 6->22 brace the ENTIRE RIGHT ARM landed on the wood
+  //       (right_forearm_pad 115 N median, right_shoulder_yaw 78 N, jaws, wrist pad)
+  //       while the only ALLOWED contact, left_forearm_pad, carried 7.9 N.
+  //   (2) The gate `(!any_arm_contact || is_forearm_brace)` DISABLES it whenever an
+  //       arm is already touching and the phase is not the brace itself -- i.e. for
+  //       ALL of reach (21) and counterbalance (16). So in the 21->16->22 ladder the
+  //       robot lay down on the table FOR FREE during reach: pelvis 433-521 N, torso
+  //       112-148 N, hip links, gripper -- on a 674 N robot, with the forearm at
+  //       22-44 N. By the time the brace phase switches this penalty on (weight 150,
+  //       ~62,700/step at 438 N) escaping would mean LIFTING 500 N, so it never does.
+  // ⇒ Every brace/lean verdict from 2026-07-24..27 -- pad flatness 0.01 deg, 53%
+  //   seating, "430 s no fall, drift -0.001", the "drape", CoM-past-toe, the failed
+  //   recovery, and the null result from brace_force_target 50->100 -- was measured on
+  //   a robot resting on UNAUTHORISED body parts. "Stable" meant "resting on furniture".
+  //
+  // FIX: `table_contact_exclusive` numeric. 0 = OFF = BYTE-IDENTICAL (legacy behaviour
+  // above). >0 = the requirement as actually stated by the user: "the only load-bearing
+  // places are the LEFT FOREARM and the two FEET; nothing else may touch the table."
+  // Written by EXCLUSION -- every robot geom in contact with the table is charged
+  // EXCEPT an explicit allow-list -- because an allow-list of two bodies is how hole (1)
+  // happened. Same residual slot / dim / weight as before, so the gRPC + GUI parameter
+  // ladder is untouched; only the QUANTITY changes.
+  //
+  // Still gated OFF for the LEGACY hand/palm brace phases (arm_plant / lean_forward /
+  // deep_reach / leg_lift), which deliberately plant other links and which the original
+  // gate existed to protect. The 21/16/22 pipeline is now covered in every phase.
+  int tce_id = mj_name2id(model, mjOBJ_NUMERIC, "table_contact_exclusive");
+  double kTableExclusive =
+      (tce_id >= 0) ? model->numeric_data[model->numeric_adr[tce_id]] : 0.0;
+  // legacy palm-brace phases keep the old escape hatch
+  const bool is_legacy_palm_phase =
+      (residual_keyframe_.name == "arm_plant" ||
+       residual_keyframe_.name == "lean_forward" ||
+       residual_keyframe_.name == "deep_reach" ||
+       is_leg_lift_stage_early);
+
+  // ---- MODE 2: PROXIMITY BARRIER (2026-07-27) -----------------------------
+  // `table_contact_exclusive >= 2` adds a clearance barrier that rises BEFORE contact.
+  // WHY: mode 1 charges contact FORCE, which only exists once the body is already
+  // down -- and by then escaping is as expensive as the pose itself, so the planner
+  // stays. MEASURED: at weight 150 (≈82,000/step at the observed 567 N) a strat-21 run
+  // STILL parked its torso on the slab for ~25% of frames. Pricing arrives too late.
+  // This term instead charges (margin - clearance) while the part is still above the
+  // face, where the escape is cheap. All observed illegal contact was with
+  // `table_top_collision` (the top face), never the legs, so a face-clearance barrier
+  // is the right instrument. Guarded set = the bodies actually caught offending;
+  // the left forearm/wrist pads are exempt because they are the intended contact.
+  // 2026-07-28: was [64] with a silent `n_guard < 64` truncation -- adding bodies to
+  // kGuardBodies below would have quietly DROPPED the last ones added and the barrier
+  // would have looked covered while missing them. 18 bodies = 41 geoms measured, so 96
+  // leaves headroom, and overflow now warns instead of truncating in silence.
+  static constexpr int kMaxGuard = 96;
+  static int guard_g[kMaxGuard];
+  static int n_guard = -1;
+  static int tabletop_g = -1;
+  if (n_guard < 0) {
+    n_guard = 0;
+    tabletop_g = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+    static const char* kGuardBodies[] = {
+        "pelvis", "torso_link", "left_hip_roll_link", "right_hip_roll_link",
+        "left_hip_pitch_link", "right_hip_pitch_link", "left_elbow_link",
+        "right_elbow_link", "left_wrist_roll_link", "right_wrist_roll_link",
+        "left_wrist_yaw_link", "right_wrist_yaw_link",
+        "left_magpie_gripper", "right_magpie_gripper",
+        // 2026-07-28 COVERAGE GAP: the shoulder-yaw links were missing. The contact
+        // ledger measured `right_shoulder_yaw_link` (geom51) at 214.9 N peak / 140.7 N
+        // median ON THE SLAB in prox21_3 -- it was the ONLY illegal body of 9 that this
+        // list did not watch, so the barrier could never see it. Both sides added.
+        "left_shoulder_yaw_link", "right_shoulder_yaw_link",
+        // Shoulder PITCH links also land: `right_shoulder_pitch_link` was the peak
+        // illegal part in mx_22_c (375.6 N). Guard them too -- the rule is written by
+        // EXCLUSION, so any arm link that can reach the slab belongs here.
+        "left_shoulder_pitch_link", "right_shoulder_pitch_link"};
+    for (const char* bn : kGuardBodies) {
+      int bid = mj_name2id(model, mjOBJ_BODY, bn);
+      if (bid < 0) continue;
+      for (int g = 0; g < model->ngeom && n_guard < kMaxGuard; g++) {
+        if (model->geom_bodyid[g] != bid) continue;
+        const char* gn = mj_id2name(model, mjOBJ_GEOM, g);
+        if (gn && (std::strcmp(gn, "left_forearm_pad") == 0 ||
+                   std::strcmp(gn, "left_wrist_pad") == 0)) continue;
+        guard_g[n_guard++] = g;
+      }
+      if (n_guard >= kMaxGuard) {
+        std::fprintf(stderr,
+                     "[lean] table_contact_exclusive: guard cache FULL at %d geoms -- "
+                     "bodies from '%s' onward are NOT guarded. Raise kMaxGuard.\n",
+                     kMaxGuard, bn);
+        break;
+      }
+    }
+  }
+  double body_table_prox = 0.0;
+  if (kTableExclusive >= 2.0 && !is_legacy_palm_phase && tabletop_g >= 0) {
+    int tpb = model->geom_bodyid[tabletop_g];
+    const double* tc = data->xpos + 3 * tpb;   // slab body origin
+    double thx = model->geom_size[3 * tabletop_g + 0];
+    double thy = model->geom_size[3 * tabletop_g + 1];
+    double face_z = data->geom_xpos[3 * tabletop_g + 2] +
+                    model->geom_size[3 * tabletop_g + 2];
+    int bm_id = mj_name2id(model, mjOBJ_NUMERIC, "table_clear_margin");
+    double kMargin = (bm_id >= 0)
+        ? model->numeric_data[model->numeric_adr[bm_id]] : 0.08;
+    if (kMargin <= 0.0) kMargin = 0.08;
+    for (int gi = 0; gi < n_guard; gi++) {
+      int g = guard_g[gi];
+      const double* gp = data->geom_xpos + 3 * g;
+      double rad = model->geom_size[3 * g];      // conservative radius
+      // only charge parts that are HORIZONTALLY over the slab footprint
+      if (mju_abs(gp[0] - tc[0]) > thx + rad) continue;
+      if (mju_abs(gp[1] - tc[1]) > thy + rad) continue;
+      double clear = (gp[2] - rad) - face_z;
+      if (clear < kMargin) body_table_prox += (kMargin - clear);
+    }
+  }
+
   double body_table_force = 0.0;
-  if (!any_arm_contact || is_forearm_brace) {
+  if (kTableExclusive > 0.0 && !is_legacy_palm_phase) {
+    int table_bid = mj_name2id(model, mjOBJ_BODY, "table");
+    // ALLOW-LIST BY GEOM: only these may bear on the table. The feet never reach it,
+    // so they need no entry; if a future scene puts the feet on the table, add them.
+    static const char* kAllowed[] = {"left_forearm_pad", "left_wrist_pad"};
+    for (int ci = 0; ci < data->ncon; ci++) {
+      const mjContact* con = &data->contact[ci];
+      int b1 = model->geom_bodyid[con->geom1];
+      int b2 = model->geom_bodyid[con->geom2];
+      bool table1 = (b1 == table_bid), table2 = (b2 == table_bid);
+      if (table1 == table2) continue;                 // not a robot<->table contact
+      int rg = table1 ? con->geom2 : con->geom1;       // the ROBOT-side geom
+      const char* gn = mj_id2name(model, mjOBJ_GEOM, rg);
+      bool allowed = false;
+      if (gn) {
+        for (const char* a : kAllowed)
+          if (std::strcmp(gn, a) == 0) { allowed = true; break; }
+      }
+      if (allowed) continue;
+      mjtNum f6[6];
+      mj_contactForce(model, data, ci, f6);
+      body_table_force += mju_abs(f6[0]);             // normal-force magnitude (N)
+    }
+  } else if (!any_arm_contact || is_forearm_brace) {
     int pelvis_bid = mj_name2id(model, mjOBJ_BODY, "pelvis");
     int torso_bid  = mj_name2id(model, mjOBJ_BODY, "torso_link");
     int table_bid  = mj_name2id(model, mjOBJ_BODY, "table");
@@ -2755,7 +3264,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       }
     }
   }
-  residual[counter++] = body_table_force;
+  // prox term is in METRES; scale it into the same newton-ish range as the force
+  // term so one weight governs both (100 N per metre of incursion).
+  residual[counter++] = body_table_force + 100.0 * body_table_prox;
 
   // ----- Knees straight during leg-lift --------------------------------- //
   // User (2026-05-20): the leg lift is only valuable if the STANDING leg is
@@ -3166,6 +3677,52 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     residual[counter++] = 0.0;  // Step Place Ry
     residual[counter++] = 0.0;  // Foot Slip L
     residual[counter++] = 0.0;  // Foot Slip R
+  }
+
+  // --- Brace Wrist Cock (dim 1, 2026-07-29) -----------------------------------
+  // WHY THIS COST EXISTS. In the forearm brace the LEFT FOREARM must be the only
+  // non-foot part bearing load (hand and wrist are BOTH illegal: loading the wrist
+  // can pop the gripper open, and the wrist load path binds at 52 N because it puts
+  // all three wrist joints in front of the elbow, versus 110 N through the forearm).
+  // At the `forearm_brace_lean` keyframe the ordering is already correct -- forearm
+  // pad bottom 0.862 vs wrist pad bottom 0.874, so the forearm lands 12 mm first.
+  // MEASURED over 18 twin runs the ordering INVERTS: the elbow tracks ~12 deg
+  // straighter and the shoulder ~10 deg lower than commanded, dropping the wrist
+  // BELOW the forearm, and `left_wrist_pad` then takes essentially all the load
+  // (370-1474 contact frames) while the forearm hovers ~23 mm clear.
+  // Cocking `left_wrist_yaw` to -50 deg lifts wrist clearance 8.7 -> 40.3 mm and the
+  // gripper 19.7 -> 71.9 mm while leaving forearm seating IDENTICAL, because the
+  // forearm pad sits on `left_elbow_link` -- PROXIMAL to the wrist, so a wrist DOF
+  // cannot move it. Putting that angle in the keyframe was NOT enough: it was tracked
+  // to only -8 deg of -50, because NO existing term owns this DOF. `Brace Pos` (w120)
+  // constrains the forearm SITE POSITION and leaves wrist yaw free, and `Posture` is
+  // too diffuse -- raising it to 120 made things WORSE (the pad stopped reaching the
+  // slab at all). Hence a dedicated, phase-gated term rather than another weight.
+  // ⚠ Name-gated to `forearm_brace_lean` ONLY: the counterbalance (16/33) and reach
+  // (21) phases brace with the HAND and must keep their wrist free.
+  // Default `brace_wrist_cock_deg` 0 => residual identically 0 => BYTE-IDENTICAL.
+  {
+    double wrist_cock_err = 0.0;
+    int bwc_id = mj_name2id(model, mjOBJ_NUMERIC, "brace_wrist_cock_deg");
+    double cock_deg =
+        (bwc_id >= 0) ? model->numeric_data[model->numeric_adr[bwc_id]] : 0.0;
+    if (is_forearm_brace && cock_deg != 0.0) {
+      // reach_right == true means the RIGHT arm reaches, so the LEFT arm braces.
+      int j = mj_name2id(model, mjOBJ_JOINT,
+                         reach_right ? "left_wrist_yaw_joint"
+                                     : "right_wrist_yaw_joint");
+      if (j >= 0) {
+        double tgt = cock_deg * (M_PI / 180.0);
+        // Clamp the target into the joint's own range so a bad numeric cannot ask
+        // for an unreachable angle -- that is the "unattainable target" failure
+        // mode that killed every other lean stage (residual never nulls, its
+        // permanent slope rectifies into a body drift).
+        tgt = mju_min(model->jnt_range[2 * j + 1],
+                      mju_max(model->jnt_range[2 * j], tgt));
+        wrist_cock_err = data->qpos[model->jnt_qposadr[j]] - tgt;
+      }
+    }
+    residual[counter++] = wrist_cock_err;
   }
 
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
@@ -4096,13 +4653,22 @@ void lean::SnapshotCurrentWeightsAsPrev() {
 // Lerp weight[] from prev → next using the same smoothstep curve the
 // residual uses for its phase scales, so the rollouts' cost surface evolves
 // continuously across phase boundaries.
+// 2026-07-28: shared resolver for the phase ramp so the WEIGHT ramp and the residual
+// scale ramp cannot drift apart. `phase_ramp_sec` numeric: 0 = OFF = byte-identical.
+static double LeanPhaseRampSeconds(const mjModel *model, double fallback) {
+  int pr_id = mj_name2id(model, mjOBJ_NUMERIC, "phase_ramp_sec");
+  double pr = (pr_id >= 0) ? model->numeric_data[model->numeric_adr[pr_id]] : 0.0;
+  return (pr > 1e-9) ? pr : fallback;
+}
+
 void lean::ApplyRampedWeights(const mjModel *model, const mjData *data) {
   const std::size_t n = weight_names.size();
   if (prev_phase_weights_.size() != n || next_phase_weights_.size() != n) {
     return;
   }
   double dt = mju_max(0.0, data->time - residual_.keyframe_start_time_);
-  double alpha_lin = mju_min(dt / ResidualFn::kPhaseRampSeconds, 1.0);
+  double alpha_lin = mju_min(
+      dt / LeanPhaseRampSeconds(model, ResidualFn::kPhaseRampSeconds), 1.0);
   double alpha = alpha_lin * alpha_lin * (3.0 - 2.0 * alpha_lin);
   for (std::size_t i = 0; i < n; ++i) {
     weight[i] = prev_phase_weights_[i] +

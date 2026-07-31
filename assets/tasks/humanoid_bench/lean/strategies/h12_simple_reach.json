@@ -1,11 +1,86 @@
 [
     {
         "contacts": [
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]},
-            {"body1": -1, "body2": -1, "geom1": -1, "geom2": -1, "local_pos1": [0.0, 0.0, 0.0], "local_pos2": [0.0, 0.0, 0.0]}
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            {
+                "body1": -1,
+                "body2": -1,
+                "geom1": -1,
+                "geom2": -1,
+                "local_pos1": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "local_pos2": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
         ],
         "facing_target": [],
         "name": "reach_to_target",
@@ -16,7 +91,7 @@
         "weight": {
             "humanoid_bench": 0.0,
             "Object Dist": 0.0,
-            "Reaching Hand Dist": 80.0,
+            "Reaching Hand Dist": 25.0,
             "Brace Pos": 0.0,
             "Brace Force": 0.0,
             "Contact": 0.0,

@@ -29,8 +29,64 @@
              table -- stand still failed at 0.77 with a fresh binary), then set BACK to 0.87 (body z
              0.42) to re-align with the 0.87-tuned forearm_brace keyframe. Real stand issue = the
              real-hardware base-velocity chain, not the model. -->
-        <body name="table" pos="1.1 0 0.42">
-            <geom name="table_top" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="visual" material="wooden_cover"/>
+        <!-- 2026-07-25: RE-AIMED AT THE REAL ARPA BATTERY WORKCELL (user). The slab is now a
+             copy of `CL_Assets/battery/arpa_system.xml`'s `battery_collision` proxy, resolved
+             into robot-relative world coords exactly as `CL_Assets/battery/scene_h1_2_battery.xml`
+             places it (arpa_cell pos 1.080 0.066 0, euler 0 0 -1.5708; battery_link
+             0.067 -0.0235 -1.1869 under gantry_link z 1.9419, local euler 0 0 1.57, so the box
+             comes out axis-aligned in world):
+                 half-extents  0.6125 x 1.06 x 0.055   (2120 x 1225 x 110 mm pack)
+                 TOP FACE      z = 0.810 + 0.055 = 0.865   (was 0.870)
+             ★ STANDOFF IS A DEPLOYMENT CHOICE, NOT A FIDELITY NUMBER. The pack's DIMENSIONS
+             and SURFACE HEIGHT are physical facts and are copied exactly. How far the robot
+             stands from the pack is set by whoever positions the robot in the cell, so it is
+             chosen here to preserve the validated brace geometry: centre x = 1.0125 so the
+             NEAR EDGE stays at x 0.400, exactly where the 0.87-era brace was solved.
+             Resolving the CL_Assets placement literally would put the centre at 1.0565 /
+             near edge 0.444 -- i.e. the robot standing 44 mm farther back -- and that was
+             MEASURED to break the brace outright: the `left_forearm_pad` capsule's REAR END
+             sits at x 0.4157, so at a 0.444 edge 28 mm of the pad hangs over thin air. A
+             strat-22 twin run then braced 2/1575 frames (0%) with the forearm hovering
+             84-150 mm, versus 38% braced and a 0.03 deg flat hold at a 0.400 edge. Re-solving
+             the ARM ALONE cannot recover it (7 arm joints cannot translate the shoulder; the
+             solver's best was a rear end at 0.4284, still off-slab), so the fix is to stand
+             the robot 44 mm closer -- trivially realistic, and it changes no physical
+             property of the pack.
+             ⚠ Measure pad seating on the capsule's ENDS, never its centre: the centre reads
+             +61.8 mm onto the slab while the rear end reads +15.7 mm.
+             `table_surface_pos` (framepos on the table_top GEOM FRAME) therefore now reads
+             z 0.810, and `brace_gate_fix` derives the face as tsp_z + geom half-thickness, so it
+             tracks this automatically -- do NOT hardcode 0.865 anywhere.
+             NET EFFECT ON THE BRACE KEYFRAME: horizontally nothing changed (near edge held at
+             0.400, pad centre +61.8 mm / rear end +15.7 mm onto the slab, as before). Vertically
+             the pad now hovers +6.3 mm above the face instead of +1.3 mm, because the face
+             dropped 5 mm. `brace_gate_fix` at a 6.3 mm gap is 0.995 -- essentially fully open --
+             so the force gradient is intact and the planner just closes 5 mm more, which it
+             already does dynamically. ⇒ the keyframe was NOT re-solved, and does not need to be.
+             (The keyframe comment's "site x0.44" refers to the brace SITE, not the pad geom.)
+             Legs are cosmetic (the real pack is gantry-borne) and were shortened to stand on the
+             floor under the new 0.755 slab underside.
+             ⚠ arpa_system.xml's own header says "battery surface ~0.73 m" -- that is STALE; its
+             geoms and all 12 screw bodies put the mounting plane at 0.865. -->
+        <!-- ★ TABLE X MOVED 1.0125 -> 0.78 (2026-07-29). MUST STAY IDENTICAL to the
+             plant scene h1_mujoco/unitree_robots/h1_2/scene_handless_magpie_table.xml
+             or the planner and twin disagree about where the slab is and every
+             brace target is wrong.
+             WHY: at x 1.0125 the slab's near edge sits at 0.400, but the robot spawns
+             with its feet at x ~0.015 and cannot step in strat 22. Measured over 12
+             runs, the left forearm pad only ever reached x 0.224-0.272 -- 128-176 mm
+             SHORT of the edge -- so it was never over the slab and could not touch;
+             only the wrist/gripper (x 0.397-0.441) reached, which is why they took
+             all the load. Pad HEIGHT was already correct (0.904 vs 0.906 intended).
+             0.78 puts the near edge at 0.168, ~70 mm inboard of the achieved pad x.
+             ⚠ NOT the 456 mm that would reproduce the keyframe's assumed stance
+             (feet 0.471): at that shift the near table LEGS (table_x-0.4 +-0.05)
+             land inside the foot footprint and the toes would strike them. At 0.78
+             the legs sit at 0.33..0.43 vs toes reaching ~0.195.
+             Slab SIZE/FACE unchanged -> the ARPA battery reference (face z 0.865,
+             thickness 0.11) is preserved; only its distance from the robot changes. -->
+        <body name="table" pos="0.91 0 0.4200">
+            <geom name="table_top" type="box" pos="0 0 0.39" size="0.6125 1.06 0.055" class="visual" material="wooden_cover"/>
             <!-- ITER 28 (2026-05-18): solref 0.04 → 0.08 (doubled time-const
                  again from R9's 40 ms → 80 ms). User reported feet lift
                  BRIEFLY at the moment of arm contact in iter 27 — diagnosed
@@ -41,25 +97,28 @@
                  instantly. Trade-off: slightly squishier contact feel, but
                  the user cares about feet staying planted more than rigid
                  contact response. priority=1 still wins over the hand side. -->
-            <geom name="table_top_collision" type="box" pos="0 0 0.4" size="0.7 1 0.05" class="collision"
+            <geom name="table_top_collision" type="box" pos="0 0 0.39" size="0.6125 1.06 0.055" class="collision"
                   priority="1" solref="0.08 1" solimp="0.85 0.95 0.001 0.5 2"/>
-            <geom name="table_leg_1" type="box" pos="0.4 0.85 -0.05" size="0.05 0.05 0.4" class="visual"
+            <!-- legs: cosmetic support for the slab (the real pack is gantry-borne). Half-height
+                 0.3775 at pos z -0.0425 spans world 0.000 .. 0.755, i.e. floor to the new slab
+                 underside (0.810 - 0.055). Inset to +-0.4 x / +-0.9 y, inside the wider footprint. -->
+            <geom name="table_leg_1" type="box" pos="0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_2" type="box" pos="0.4 -0.85 -0.05" size="0.05 0.05 0.4" class="visual"
+            <geom name="table_leg_2" type="box" pos="0.4 -0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_3" type="box" pos="-0.4 0.85 -0.05" size="0.05 0.05 0.4" class="visual"
+            <geom name="table_leg_3" type="box" pos="-0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_4" type="box" pos="-0.4 -0.85 -0.05" size="0.05 0.05 0.4" class="visual"
+            <geom name="table_leg_4" type="box" pos="-0.4 -0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_1_collision" type="box" pos="0.4 0.85 -0.05" size="0.05 0.05 0.4" class="collision"/>
-            <geom name="table_leg_2_collision" type="box" pos="0.4 -0.85 -0.05" size="0.05 0.05 0.4" class="collision"/>
-            <geom name="table_leg_3_collision" type="box" pos="-0.4 0.85 -0.05" size="0.05 0.05 0.4" class="collision"/>
-            <geom name="table_leg_4_collision" type="box" pos="-0.4 -0.85 -0.05" size="0.05 0.05 0.4"
+            <geom name="table_leg_1_collision" type="box" pos="0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="collision"/>
+            <geom name="table_leg_2_collision" type="box" pos="0.4 -0.9 -0.0425" size="0.05 0.05 0.3775" class="collision"/>
+            <geom name="table_leg_3_collision" type="box" pos="-0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="collision"/>
+            <geom name="table_leg_4_collision" type="box" pos="-0.4 -0.9 -0.0425" size="0.05 0.05 0.3775"
                   class="collision"/>
         </body>
         <!-- Object placed farther on table to require leaning -->
         <!-- Detachable object - child of world initially -->
-        <body name="object_anchor" pos="1.5 0 0.95">
+        <body name="object_anchor" pos="1.5 0 0.945">
             <joint name="object_anchor_joint" type="free" limited="false"/>
             
             <body name="object" pos="0 0 0">
@@ -72,7 +131,7 @@
             </body>
         </body>
         <!-- Target position visualization -->
-        <body name="target" mocap="true" pos="1.5 0.0 0.95">
+        <body name="target" mocap="true" pos="1.5 0.0 0.945">
             <geom type="sphere" size="0.03" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
         </body>
     </worldbody>

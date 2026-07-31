@@ -58,7 +58,7 @@
                  <body name="left_wrist_roll_link" pos="0.121 -0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
                    <joint name="left_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -271,7 +291,38 @@
+@@ -271,7 +291,54 @@
                        <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
@@ -81,8 +81,24 @@
 +                           Zero extra DOF -> keeps nu=27 / nq=41 (sysid loaders unchanged). -->
 +                      <body name="left_magpie_gripper">
 +                        <geom type="mesh" mesh="h12_mount" pos="0.054 0 0" quat="0.7071068 0 0.70710685 0" mass="0.506" contype="0" conaffinity="0" group="1" rgba="0.1 0.1 0.1 1"/>
-+                        <geom name="left_gripper_collision" class="collision" type="box" size="0.035 0.05 0.06"
-+                              pos="0.10 0 0" quat="0.7071068 0 0.70710685 0" contype="1" conaffinity="1"/>
++                                                <!-- ★★★ REAL JAW GEOMETRY (2026-07-24). The old single box under-bounded
++                             the real magpie: measured from magpie/meshes/magpie/*.stl the gripper is
++                             171 mm long and the OPEN JAWS SPAN 212 mm, so the box stopped at x=0.16
++                             where finger tips reach x=0.225, and covered +-35 mm where a finger
++                             reaches +-106 mm -- on the brace keyframe the model claimed +33 mm table
++                             clearance while the real lower finger root sat at +13 mm, i.e. the
++                             planner could not see the finger it was about to put through the wood.
++                             Body-frame map for quat 0.7071 0 0.7071 0: mesh z -> +x (finger length),
++                             mesh y -> +y (thin), mesh x -> -z (JAW SEPARATION). mass/density 0: the
++                             0.506 kg still comes from the mount mesh geom, dynamics unchanged.
++                             ★ wrist ROLL decides jaws LEFT/RIGHT (both clear) vs UP/DOWN (one finger
++                             at the wood) -- audit with brace_jaw_audit.py. -->
++                        <geom name="left_gripper_collision" class="collision" type="box" size="0.0425 0.0315 0.0667"
++                              pos="0.0965 0 0" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <geom name="left_gripper_jaw_a" class="collision" type="box" size="0.0459 0.008 0.0261"
++                              pos="0.1795 -0.0038 -0.0801" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <geom name="left_gripper_jaw_b" class="collision" type="box" size="0.0459 0.008 0.0261"
++                              pos="0.1795 -0.0038 0.0801" contype="1" conaffinity="1" mass="0" density="0"/>
 +                        <!-- gripper-gripper KEEP-AWAY (2026-06-25): planning-only buffer on a
 +                             dedicated collision channel (contype/conaffinity bit 2) so the two
 +                             grippers repel each OTHER with a 2.5 cm soft margin, but are INVISIBLE
@@ -97,7 +113,7 @@
                      </body>
                    </body>
                  </body>
-@@ -303,6 +354,11 @@
+@@ -303,6 +370,11 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="right_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="right_elbow_link"/>
                  <!-- <geom class="visual" mesh="right_elbow_link"/> -->
@@ -109,7 +125,7 @@
                  <body name="right_wrist_roll_link" pos="0.121 0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
                    <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -322,7 +378,27 @@
+@@ -322,7 +394,32 @@
                        <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
@@ -124,8 +140,13 @@
 +                           Zero extra DOF -> keeps nu=27 / nq=41 (sysid loaders unchanged). -->
 +                      <body name="right_magpie_gripper">
 +                        <geom type="mesh" mesh="h12_mount" pos="0.054 0 0" quat="0.7071068 0 0.70710685 0" mass="0.506" contype="0" conaffinity="0" group="1" rgba="0.1 0.1 0.1 1"/>
-+                        <geom name="right_gripper_collision" class="collision" type="box" size="0.035 0.05 0.06"
-+                              pos="0.10 0 0" quat="0.7071068 0 0.70710685 0" contype="1" conaffinity="1"/>
++                                                <!-- real jaw geometry, mirror of the left side -->
++                        <geom name="right_gripper_collision" class="collision" type="box" size="0.0425 0.0315 0.0667"
++                              pos="0.0965 0 0" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <geom name="right_gripper_jaw_a" class="collision" type="box" size="0.0459 0.008 0.0261"
++                              pos="0.1795 -0.0038 -0.0801" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <geom name="right_gripper_jaw_b" class="collision" type="box" size="0.0459 0.008 0.0261"
++                              pos="0.1795 -0.0038 0.0801" contype="1" conaffinity="1" mass="0" density="0"/>
 +                        <!-- gripper-gripper KEEP-AWAY (2026-06-25): see left_gripper_keepaway.
 +                             Dedicated channel (bit 2) -> repels the other gripper only, invisible
 +                             to floor/table/body, zero contact-parity impact. -->
