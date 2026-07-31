@@ -320,85 +320,29 @@ class lean : public Task {
   //
   // Each slot is a literal truncation of the index-5 pipeline with the
   // last phase forced indefinite (sustain/time_limit = 9999).
+  // STRATEGY IS A POSITIONAL INDEX, NOT A NAME. lean.cc rounds
+  // parameters[kLeanStrategyParameterIndex] to an int and subscripts this
+  // vector; an out-of-range value is CLAMPED to the last entry, not rejected.
+  // So the roster keeps all 36 slots even though only a few are live: that is
+  // what makes `--strategy 6` (deploy default, deploy_common.h:130) and
+  // `--strategy 22` keep meaning what every run note says they mean, and what
+  // keeps grasp.h's `names[21]` patch landing on a slot that exists.
+  //
+  // Retired slots are padded with "h12_simple_stand" -- the same idiom already
+  // used here for 27-30 and used throughout stabilize.h. A padded slot MUST
+  // name a file that exists: LoadStrategy's failure return is ignored by
+  // lean.cc, which has already cleared the keyframes, and GetCurrentKeyframe()
+  // then indexes an empty vector (undefined behaviour). A mistyped strategy
+  // number must land on a robot that stands, not on garbage.
   virtual std::vector<std::string> GetStrategyNames() const {
-    return {// 0-5: the lean pipeline (unchanged; default Strategy=5)
-            "h12_pipeline_stand",
-            "h12_pipeline_arm_extend",
-            "h12_pipeline_lean_no_brace",
-            "h12_pipeline_brace_hand_lean",
-            "h12_pipeline_forearm_brace",
-            "h12_pipeline_full_pipeline",
-            // 6+: standalone single-skill tasks for incremental sim2real
-            // bring-up. Each is one indefinite phase. Pose tasks (crouch,
-            // arms_*, lean_*, torso_twist) name a model <key> keyframe that
-            // the Posture/Control costs track (see lean.cc pose-library
-            // block). Slide the Strategy parameter to select; raise the
-            // residual_Strategy slider max in Lean_H12.xml accordingly.
-            "h12_simple_stand",          // 6  balance hold at home pose
-            "h12_simple_reach_forward",  // 7  left arm forward, body squared
-            "h12_simple_crouch",         // 8  symmetric squat, torso upright
-            "h12_simple_arms_sideways",  // 9  bilateral lateral raise (T)
-            "h12_simple_arms_forward",   // 10 bilateral front raise
-            "h12_simple_arms_overhead",  // 11 both arms overhead
-            "h12_simple_single_arm_raise",  // 12 right arm to the side
-            "h12_simple_lean_left",      // 13 lateral weight-shift onto L
-            "h12_simple_lean_right",     // 14 lateral weight-shift onto R
-            "h12_simple_torso_twist",    // 15 waist yaw to the left
-            "h12_simple_counterbalance", // 16 left-arm forward reach + emergent
-                                         //    right-arm/torso counterweight
-            "h12_simple_squat",          // 17 cyclic squat: crouch(5s)->stand(5s)->loop
-                                         //    2-phase strategy; phase machine wraps
-                                         //    via NextKeyframe() modulo (motion_strategy.cc)
-            "h12_simple_squatter",       // 18 native squatter: 2-phase stand_up<->crouch
-                                         //    auto-cycle reusing strat 6 (stand) + strat 8
-                                         //    (crouch) weight blocks VERBATIM. The MJPC-side
-                                         //    twin of the node's --strategy 18 sequencer
-                                         //    (h12_control_node.cc), so the planner/monitor/
-                                         //    analyzer can drive the squat natively.
-            "h12_simple_jab",            // 19 standing boxing jab: 3-phase
-                                         //    stand_up -> jab_guard -> jab_extend auto-cycle. A
-                                         //    stand_up LEAD-IN (gentle 3s ramp from home, like the
-                                         //    stand/squatter strategies) settles the legs/balance
-                                         //    FIRST, THEN the arms raise to guard, THEN the RIGHT
-                                         //    arm punches straight forward (shoulder_pitch -1.0,
-                                         //    elbow straightens) and retracts. The lead-in is what
-                                         //    gives the real robot a proper home->stand->guard
-                                         //    transition (raising arms straight from home spun it).
-                                         //    WBC base = strat 6 (stand) weights, Posture 60 for
-                                         //    punch authority; asymmetric arms are free (Symmetry
-                                         //    penalizes only legs). Slow, deliberate cadence.
-            "h12_simple_stumble",        // 20 stumble: gait-clock STEPPING. A
-                                         //    stand_up LEAD-IN settles balance, THEN a continuous
-                                         //    gait clock alternates the feet (antiphase, ~1.6 Hz,
-                                         //    duty 0.65, 6 cm step) so the robot STEPS IN PLACE to
-                                         //    stay up ("stumble") and WALKS when a desired CoM
-                                         //    velocity is commanded (nav-package hook in lean.cc).
-                                         //    Unlike every other lean strategy (both feet planted,
-                                         //    ankle-only balance) it RELOCATES the support polygon
-                                         //    under the CoM -> escapes the weak-ankle ceiling. New
-                                         //    Gait + Step Place cost terms, name-gated; Symmetry/
-                                         //    Lateral Center/Knees OFF (stepping breaks the static-
-                                         //    stance symmetry on purpose).
-            "h12_simple_reach",          // 21 reach-to-target: standalone REACH
-                                         //    primitive. A stand_up LEAD-IN (reach_stand)
-                                         //    settles balance, THEN the nearer hand reaches an
-                                         //    EXTERNAL target (object_pos mocap = the `reach_target`
-                                         //    numeric, or a vision/nav input) while the body stays
-                                         //    upright and the feet planted -- no lean, no brace. The
-                                         //    target is auto-clamped to a balance-safe workspace box
-                                         //    (lean.cc reach_to_target): in-reach => hand on target,
-                                         //    out-of-reach => fully-extended arm, still standing
-                                         //    (the beyond-reach regime is LEAN's job). The reusable
-                                         //    base primitive for pick/retrieve; the lean pipeline is
-                                         //    this reach + brace + whole-body pitch for FAR targets.
-            "h12_simple_forearm_brace",  // 22  pre-lean forearm brace
-            "h12_simple_trot",  "h12_simple_drive", "h12_straighten", "h12_simple_jump", // 23 trot (leg-lift test vehicle), 24 WSS teleop drive (stand<->trot FSM), 25 pre-stand STRAIGHTEN/bring-up (wide-basin drive-to-upright), 26 JUMP (one-shot in-place hop: time-scheduled crouch->push->flight->absorb->stand, flip-pattern residual schedule; Magpie-primary)
-            "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", "h12_simple_stand", // 27-30 reserved
-            "h12_lean_stand",            // 31
-            "h12_lean_reach",            // 32
-            "h12_lean_counterbalance",   // 33
-            "h12_lean_brace",            // 34
-            "h12_lean_full"};            // 35
+    const std::string kPad = "h12_simple_stand";
+    std::vector<std::string> names(36, kPad);
+    names[6]  = "h12_simple_stand";         // stand: mission phase 0, deploy default
+    names[21] = "h12_simple_reach";         // plain reach bench; Grasp overrides this slot
+    names[22] = "h12_simple_forearm_brace"; // brace: mission phase 1
+    // 33 = h12_simple_grasp        (filled by Task 7)
+    // 34 = h12_mission_brace_grasp (filled by Task 8)
+    return names;
   }
 
   // Live per-phase weight blending --------------------------------------- //
