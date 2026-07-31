@@ -245,7 +245,7 @@ class lean : public Task {
     names[21] = "h12_simple_reach";         // plain reach bench; Grasp overrides this slot
     names[22] = "h12_simple_forearm_brace"; // brace: mission phase 1
     names[33] = "h12_simple_grasp";         // grasp-reach bench: mission phase 2 source
-    // 34 = h12_mission_brace_grasp (filled by Task 8)
+    names[34] = "h12_mission_brace_grasp"; // 4-phase retrieval mission (see docs/plans)
     return names;
   }
 
