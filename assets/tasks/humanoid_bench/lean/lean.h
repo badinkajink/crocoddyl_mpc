@@ -86,13 +86,13 @@ class lean : public Task {
     // interpolate from their previous-phase values to the new-phase values
     // over this many seconds after each keyframe advance. 1.5s gives the
     // robot time to absorb the new gradient instead of being shoved forward.
-    // Tried bumping to 3.0 to slow the arm swing during 2→3 — backfired:
-    // with MPC horizon 1.0s the lean_forward gradient stayed weak for ~2s
-    // while Height (head wants to stay high, weight 35 effective in
-    // arm_contact_or_lean) was full strength — body settled into a slight
-    // backward bend as the cheap local optimum. If arm swing is still too
-    // fast at 1.5s, a surgical fix (Brace Hand Velocity residual active
-    // only during arm_plant) is preferable to slowing every cost ramp.
+    // Tried bumping to 3.0 to slow the arm swing into the brace — backfired:
+    // with MPC horizon 1.0s the lean gradient stayed weak for ~2s while Height
+    // (head wants to stay high, weight 35 effective under any_arm_contact) was
+    // full strength — body settled into a slight backward bend as the cheap
+    // local optimum. If arm swing is still too fast at 1.5s, a surgical fix (a
+    // Brace Hand Velocity residual gated to the brace phase) is preferable to
+    // slowing every cost ramp.
     static constexpr mjtNum kPhaseRampSeconds = 1.5;
 
     // STAND-UP-only target-pose ramp duration (see the asymmetric target ramp
@@ -113,12 +113,6 @@ class lean : public Task {
     // over ~0.6s instead of instantaneous, capping the overshoot. So short that
     // single-phase pose strategies (which settle for seconds) are unaffected.
     static constexpr mjtNum kDescentTargetRampSeconds = 0.6;
-
-    enum LeanMode {
-      kModeReach = 0,
-      kModeRetrieve,
-      kNumMode
-    };
 
    protected:
     mjpc::humanoid::ContactKeyframe residual_keyframe_;
@@ -206,24 +200,22 @@ class lean : public Task {
   // (returns {}) is exactly right. deploy_common.cc still calls it through the
   // base-class interface.
 
-  // Slider layout (Lean H12) — user's 6-phase decomposition:
-  //   0  stand            — stand_up
-  //   1  arm_extend       — stand → arm_extend_standing (arm out, body upright)
-  //   2  lean_no_brace    — stand → extend → lean_with_arm_no_brace
-  //   3  brace_hand_lean  — stand → extend → lean → arm_plant → lean_forward
-  //   4  forearm_brace    — above + forearm_brace_lean (hand+elbow on table)
-  //   5  full_pipeline    — identical to slot 4 now: ends in a HELD two-foot
-  //                         braced lean (DEFAULT).
+  // Slider layout (Lean H12). Live roster -- everything else is padding:
+  //    6  h12_simple_stand          — stand_up (DEFAULT, and the deploy default)
+  //   21  h12_simple_reach          — reach_to_target
+  //   22  h12_simple_forearm_brace  — forearm_brace_lean
+  //   33  h12_simple_grasp          — reach_to_target (grasp bench; grasp.h patches 21)
+  //   34  h12_mission_brace_grasp   — 4-phase retrieval mission
+  //                                   (stand_up -> forearm_brace_lean ->
+  //                                    reach_to_target -> stand_up)
+  // stand_up / reach_to_target / forearm_brace_lean are the ONLY phase names any
+  // live strategy uses; lean.cc's phase gates recognise nothing else.
   //
-  // DESIGN (2026-05-26): the leg-lift phase (leg_lift_arm_plant) is DROPPED
-  // permanently. BOTH feet stay stable on the ground through EVERY phase of
-  // the pipeline. The only lower-body motion allowed is WBC-driven foot
-  // re-placement / hip twist IN SERVICE OF the brace (to hold balance while
-  // reaching/leaning) — never lifting a leg off the floor. No strategy JSON
-  // contains leg_lift_arm_plant anymore, so slot 5 == slot 4.
+  // DESIGN (2026-05-26): the leg-lift phase is DROPPED permanently. BOTH feet
+  // stay stable on the ground through EVERY phase. The only lower-body motion
+  // allowed is WBC-driven foot re-placement / hip twist IN SERVICE OF the brace
+  // (to hold balance while reaching/leaning) — never lifting a leg off the floor.
   //
-  // Each slot is a literal truncation of the index-5 pipeline with the
-  // last phase forced indefinite (sustain/time_limit = 9999).
   // STRATEGY IS A POSITIONAL INDEX, NOT A NAME. lean.cc rounds
   // parameters[kLeanStrategyParameterIndex] to an int and subscripts this
   // vector; an out-of-range value is CLAMPED to the last entry, not rejected.

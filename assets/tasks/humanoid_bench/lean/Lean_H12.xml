@@ -62,15 +62,14 @@
              stand "twisted its ankles" at leg_extension_gain=3.5). H1-2 feet are narrow
              laterally; this is the research's lateral-margin lever. Stand targets this home
              pose, so it widens the stand stance. Revert: set both hip_roll back to 0. -->
-        <!-- Pose-library targets for the standalone simple-task strategies
-             (Strategy 8-15). The phase name in each strategy JSON matches one
-             of these keyframe names; lean.cc points the Posture + Control
-             costs at the matching key. qpos = home with only the relevant
-             joints set (validated vs joint limits + self-collision by
-             strategies/_gen_simple_strategies.py). -->
+        <!-- Pose-library keyframes left over from the retired single-skill strategies.
+             The keyframe LIST is index-sensitive (lean.cc resolves a phase name to a key
+             BY NAME and falls back to key 0), so they stay in the model even though no
+             live strategy names them. lean.cc points the Posture + Control costs at the
+             key matching the active phase name. -->
         <key name="crouch" qpos="0.19 0 0.97 1 0 0 0 0 -0.4 0.12 0.7 -0.3 0 0 -0.4 -0.12 0.7 -0.3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- crouch_mid: TRUE midpoint between stand_up (knee 0.35, z 1.020) and crouch
-             (knee 0.70, z 0.97) for the NATIVE squatter (strategy 18, h12_simple_squatter.json).
+             (knee 0.70, z 0.97) for the NATIVE squatter (retired native squatter).
              Staging pose on BOTH the descent and the ascent so each stand<->crouch transition is
              HALVED: standing up no longer snaps the full 0.35 rad and launches the body forward
              (the ~t20s 9deg->39deg->86deg fall), and the descent pauses here so the gantry harness
@@ -220,11 +219,6 @@
              the un-sysid'd model). The value that stands it upright == the real CoM forward
              offset. XML-tunable, no rebuild. Default 0 = exact prior behavior. Try ~0.04. -->
         <numeric name="com_x_offset" data="0.0"/>
-        <!-- stumble_balance_gated (2026-06-19, strategy 20 only): 1 = STAND STILL
-             (bent-knee) and step ONLY when balance is being lost (tilt / fore-aft
-             CoM speed past a deadband), easing back to a still stand on recovery.
-             0 = legacy ALWAYS-ON in-place march. XML-tunable, no rebuild. -->
-        <numeric name="stumble_balance_gated" data="1.0"/>
         <!-- reach_hand (2026-06-20, strategy 21 only): which hand reaches the
              target. 0 = AUTO (nearer hand by target side), 1 = force LEFT,
              2 = force RIGHT (keeps the other arm free for a future brace/grasp).
@@ -239,13 +233,6 @@
              data->mocap_pos to this, no vision needed. Set reach_hand=0 + remove this
              numeric when wiring nav2+vision. -->
         <numeric name="reach_target" data="1.4 -0.15 0.895"/>
-        <!-- catch_trig / catch_full (2026-06-20, strategy 20 only): the DECISIVE
-             omnidirectional catch-step trigger. danger = z*sin(tilt) + sqrt(z/g)*|fore-aft vel|
-             (capture-point excursion, m). danger>catch_trig => step toward the fall;
-             danger>=catch_full => full-authority snap. LOWER catch_trig = steps earlier
-             (more decisive, risk false-steps); RAISE = waits longer. XML-tunable, no rebuild. -->
-        <numeric name="catch_trig" data="0.06"/>
-        <numeric name="catch_full" data="0.12"/>
         <!-- stance_off_x (2026-06-20, strategy 20): feet planted this far AHEAD of
              the CoM (m). LOWER -> CoM more centred -> better BACKWARD margin; HIGHER
              -> more forward margin. XML-tunable, no rebuild. -->
@@ -254,12 +241,6 @@
              torso_up[0] at rest (~sin(3-4deg)). Subtracted from tilt so the catch-step
              is SYMMETRIC about equilibrium (fixes late/wrong-way BACKWARD catch). -->
         <numeric name="lean_nominal_x" data="0.06"/>
-        <!-- recover_pitch_gain / recover_roll_gain (2026-06-20, strategy 20): the
-             HIP/ARM angular-momentum RECOVERY tier. Targets counter-momentum =
-             gain * capture_excursion (throw torso+arms opposite the fall) so the CoM
-             is hauled back flat-footed BEFORE a step. 0 = off. XML-tunable, no rebuild. -->
-        <numeric name="recover_pitch_gain" data="0.0"/>
-        <numeric name="recover_roll_gain" data="0.0"/>
         <!-- Default 1.70 matches the actual head-feet error at the home
              pose: head site z=1.728, foot COM z=0.029 → head_feet=1.699.
              The old 1.65 made the Height residual +0.05 at home with cost
@@ -267,31 +248,18 @@
              down by 5 cm during the upright stand_up phase. Max raised to
              2.0 so the slider can sweep above the home value if needed. -->
         <numeric name="residual_Height Goal" data="1.68 0.0 2.0"/>
-        <!-- Slider → strategy (user's 6-phase decomposition):
-               0 = pipeline_stand             (stand_up)
-               1 = pipeline_arm_extend        (+ arm out, body upright)
-               2 = pipeline_lean_no_brace     (+ body tilts forward, arm out)
-               3 = pipeline_brace_hand_lean   (+ hand lands, deeper lean)
-               4 = pipeline_forearm_brace     (+ elbow lands, deeper lean)
-               5 = pipeline_full_pipeline     (= forearm_brace; held two-foot
-                   braced lean) — DEFAULT
-             DESIGN (2026-05-26): the leg-lift phase is DROPPED — BOTH feet
-             stay grounded through every phase; only WBC-driven foot
-             re-placement / hip twist for the brace is allowed, never a leg
-             lift. So slot 5 now == slot 4.
-             Each slot truncates the index-5 pipeline at one of the user's
-             phase boundaries; last keyframe of each is indefinite.
-             Indices 6-15 are the standalone single-skill tasks (see
-             GetStrategyNames in lean.h): 6 stand, 7 reach_forward, 8 crouch,
-             9 arms_sideways, 10 arms_forward, 11 arms_overhead,
-             12 single_arm_raise, 13 lean_left, 14 lean_right, 15 torso_twist,
-             16 counterbalance, 17 squat (cyclic), 18 squatter (native
-             stand<->crouch auto-cycle, made of strat 6 + 8),
-             19 jab (standing boxing jab: left arm guard, right arm punches
-             forward and retracts; 3-phase stand_up->jab_guard->jab_extend
-             auto-cycle with a stand lead-in; jab_extend gets a dedicated
-             right-hand forward reach reward so the punch fully extends).
-             Slider max raised 5 → 19 so these are reachable. -->
+        <!-- Slider → strategy. GetStrategyNames() in lean.h is 36 slots long and every
+             slot not listed here is PADDED with h12_simple_stand: Strategy is a
+             POSITIONAL index and out-of-range values are CLAMPED, not rejected, so the
+             length must not change. Live roster:
+                6 = h12_simple_stand          (stand_up)  -- DEFAULT, also the deploy default
+               21 = h12_simple_reach          (reach_to_target)
+               22 = h12_simple_forearm_brace  (forearm_brace_lean)
+               33 = h12_simple_grasp          (reach_to_target, grasp bench)
+               34 = h12_mission_brace_grasp   (4-phase retrieval mission:
+                    stand_up -> forearm_brace_lean -> reach_to_target -> stand_up)
+             Those five are the whole roster, and stand_up / reach_to_target /
+             forearm_brace_lean are the only phase names that can ever be active. -->
         <numeric name="residual_Strategy" data="6 0 35" />
         <!-- Manual phase scrubber. -1 = auto-advance through keyframes
              (default behaviour, runs the whole loaded pipeline). 0..6 =
@@ -399,14 +367,14 @@
              hip (butt back, knees forward), which sets the body up to
              tip backward. Residual = max(0, midfoot_x + 0.05 - pelvis_x)
              so being AT or AHEAD of midfoot costs nothing; being behind
-             grows linearly. Gated on arm_contact_or_lean in lean.cc so
-             phase 1 (arm_extend_standing, body upright at home pose where
-             pelvis IS behind feet by 3 cm) doesn't get pulled forward. -->
+             grows linearly. Gated on any_arm_contact in lean.cc so an
+             unbraced upright phase (home pose, pelvis 3 cm behind the feet)
+             doesn't get pulled forward. -->
         <user name="Pelvis Forward" dim="1" user="6 100.0 0.0 300.0 0.05"/>
-        <!-- ITER 37 (2026-05-18): Contact weight 400 → 1000. After iter 36
-             elbow-in-lean_forward was reverted (geometry infeasible — H1-2
+        <!-- ITER 37 (2026-05-18): Contact weight 400 → 1000. After the
+             elbow-in-lean variant was reverted (geometry infeasible — H1-2
              forearm is 0.40 m but spec required 0.10 m compression), the
-             left-foot anchor in lean_forward is the only thing holding
+             left-foot anchor during the lean is the only thing holding
              standing leg position. Bumping to 1000 makes a 5 cm drift
              cost ~12 (was 5 at weight 400), a 20 cm drift cost ~124 —
              strong enough to actually anchor the leg during dynamic
@@ -491,8 +459,8 @@
 
     <!-- Strip non-essential collision pairs for real-time MPC.
          arXiv 2503.04613 disabled upper-body collision for parts that
-         don't participate in contact. For h12_table_lean_reach, only
-         the right hand contacts the table; the left arm, the head, and
+         don't participate in contact. In this task only the bracing
+         arm contacts the table; the other arm, the head, and
          the pelvis-vs-table never collide in valid plans. -->
     <contact>
         <!-- left arm never contacts the table in single-arm lean -->
