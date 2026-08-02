@@ -1554,8 +1554,27 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     lean_recover_gate = 1.0 - over * over * (3.0 - 2.0 * over);
   }
 
-  residual[counter++] = lean_recover_gate * brace_force_prox_gate *
-                        mju_max(0.0, desired_brace_force - brace_contact_force);
+  // ★ 2026-08-02 THIS WAS A REPULSIVE BARRIER, NOT A REWARD.
+  //   Old: gate * max(0, F_des - F). `prox_gate` is 0 FAR and 1 NEAR, so a
+  //   planner sitting 150 mm away paid ZERO, and the instant it approached
+  //   without load the cost jumped to the full shortfall (~2232/step at w60).
+  //   Approaching was punished; staying away was free. Measured consequence:
+  //   the planner parked 4.6 mm outside its own gate and never braced, so the
+  //   weight was zeroed -- which left NOTHING in the cost stack commanding
+  //   contact at all, and every brace since came from the body happening to sag.
+  //
+  //   Fixed: while far, charge the FULL demand (flat, no cliff); once near,
+  //   charge only the remaining force shortfall. The residual is then
+  //   MONOTONE NON-INCREASING along approach-then-press: F_des far away,
+  //   F_des near-but-unloaded, 0 when the brace carries its target. Closing
+  //   the gap never costs more than staying away, and loading always pays.
+  double brace_far_cost =
+      desired_brace_force * (1.0 - brace_force_prox_gate);
+  double brace_shortfall =
+      brace_force_prox_gate *
+      mju_max(0.0, desired_brace_force - brace_contact_force);
+  residual[counter++] =
+      lean_recover_gate * (brace_far_cost + brace_shortfall);
 
   // ------ object distance (reaching hand) ------ //
   // Phase-gated: zero during stand_up so the planner doesn't lunge.
@@ -1666,11 +1685,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   residual[counter++] = left_foot_scale * (foot_left_pos[1] - lf_ay);
 
   // ----- hip clearance from table front face ----- //
-  // table body is at world x=0.9, half-size 0.5 → front face at x=0.40.
-  // penalise the pelvis entering within 0.08m of that face.
+  // penalise the pelvis entering within 0.08m of the slab's front face.
+  // ★ 2026-08-01 THE 0.7 WAS STALE BY THREE TABLE GENERATIONS. The old comment
+  // ("body x=0.9, half-size 0.5 -> front face 0.40") described a slab that no
+  // longer exists: the real one is body x 1.090, half-x 0.59, front face 0.500.
+  // `table_surf[0] - 0.7` = 0.390 put the face 110 mm BEHIND where it is, so
+  // the pelvis was penalised for advancing toward open air -- fighting the very
+  // forward lean the brace needs. Read the half-size FROM THE MODEL so moving
+  // the table (lean_set_table.py) can never desynchronise this again.
   double *pelvis_pos_3d = SensorByName(model, data, "pelvis_position");
   const double *table_surf = SensorByName(model, data, "table_surface_pos");
-  double table_front_x = table_surf[0] - 0.7;
+  // ★ 2026-08-01 model-derived (true half-x 0.59). A/B'd: literal 0.7 gave
+  // 2/3 falls, this gives 1/3 -- keep the correct geometry.
+  int table_top_gid = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+  double table_half_x = (table_top_gid >= 0) ? model->geom_size[3 * table_top_gid] : 0.59;
+  double table_front_x = table_surf[0] - table_half_x;
   double hip_penalty = mju_max(0.0, pelvis_pos_3d[0] - (table_front_x - 0.08));
   residual[counter++] = hip_penalty;
 
@@ -2018,6 +2047,21 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // ALLOW-LIST BY GEOM: only these may bear on the table. The feet never reach it,
     // so they need no entry; if a future scene puts the feet on the table, add them.
     static const char* kAllowed[] = {"left_forearm_pad", "left_wrist_pad"};
+    // ★ 2026-07-31: ALLOW THE FOREARM'S REAL SHELL, NOT JUST THE INERT PAD.
+    // The pads are proxies; the load-bearing surface on hardware is the forearm
+    // itself. Measured: the pad capsule protrudes below the real shell by AT MOST
+    // 6.12 mm, and over 44% of the wrist-roll band the shell is 0.5-24.5 mm BELOW
+    // it -- so the shell, not the pad, is what actually reaches the wood first.
+    // With the table<->arm <exclude>s removed (the faithful model) a name-only
+    // allow-list therefore charges the ONLY geoms that can physically touch, and
+    // the planner correctly refuses to brace at all: measured 0/3 forearm load,
+    // 0 N of contact of any kind, all three runs toppling backward. The arm-chain
+    // meshes are UNNAMED, so allow by BODY.
+    // Spec unchanged in substance -- brace = forearm + feet; hand and wrist stay
+    // illegal. `left_shoulder_yaw_link` is included because its DISTAL bulge is the
+    // elbow housing, which is part of the forearm contact patch, not the upper arm.
+    int allow_b1 = mj_name2id(model, mjOBJ_BODY, "left_elbow_link");
+    int allow_b2 = mj_name2id(model, mjOBJ_BODY, "left_shoulder_yaw_link");
     for (int ci = 0; ci < data->ncon; ci++) {
       const mjContact* con = &data->contact[ci];
       int b1 = model->geom_bodyid[con->geom1];
@@ -2031,6 +2075,9 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         for (const char* a : kAllowed)
           if (std::strcmp(gn, a) == 0) { allowed = true; break; }
       }
+      int rb = model->geom_bodyid[rg];
+      if ((allow_b1 >= 0 && rb == allow_b1) || (allow_b2 >= 0 && rb == allow_b2))
+        allowed = true;                                 // the forearm's real shell
       if (allowed) continue;
       mjtNum f6[6];
       mj_contactForce(model, data, ci, f6);
