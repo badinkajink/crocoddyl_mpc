@@ -954,30 +954,124 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // CoM back — then this gate opens and the CoM advances into a real brace.
     // No floor here (unlike leg-lift): the whole point is zero forward credit
     // until the hand actually presses. divisor 140 N ≈ a solid brace, cap 0.9.
-    double midfoot_x = 0.5 * (foot_left_pos[0] + foot_right_pos[0]);
-    double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
+    //
+    // ★ FOOT-EXTENT FIX (2026-08-02). The two foot vertices used
+    // `foot_{left,right}_pos`, which is
+    //     <framepos objtype="body" objname="left_ankle_roll_link"/>
+    // -- the ANKLE JOINT ORIGIN, not the foot. The load-bearing sole runs
+    // -0.0835 m (heel) to +0.1348 m (toe) along the foot's forward axis from
+    // that origin (mesh vertices within 2 mm of the sole plane, both feet,
+    // `stand` keyframe), so the polygon was throwing away 134 mm of real
+    // forward support and 84 mm of rear support. The planner believed its
+    // support ended AT THE ANKLE and pinned the CoM there.
+    //
+    // Measured consequence before the fix: the brace keyframe commanded
+    // CoM +0.142 m (ankle frame) and the controller held +0.036 -- 25%
+    // tracking, sitting on the phantom ankle edge with the 10x edge
+    // amplifier holding it. Worse, combined with the load gate below, at a
+    // measured 45-60 N the third vertex landed at +0.11, i.e. the "expanded"
+    // braced polygon was NARROWER THAN THE BARE FEET -- Balance actively
+    // pulled the CoM backward. That is the backward-squat/backward-fall
+    // signature (falls 10/20 at t~7.4 s, CoM never leaving the heel half).
+    //
+    // Same bug class as the 2026-07-25 `table_surface_pos` defect (framepos
+    // on the GEOM CENTRE, not the face) that had the brace gate reading
+    // 0.000 while perfectly seated. Ask what a framepos is actually ON.
+    constexpr double kSoleHeel = -0.079;   // m, along foot forward axis
+    constexpr double kSoleToe  = +0.133;   // m (measured +0.1348, held back)
+    double flf_x = 1.0, flf_y = 0.0, frf_x = 1.0, frf_y = 0.0;
+    {
+      double const *flf = SensorByName(model, data, "foot_left_forward");
+      double const *frf = SensorByName(model, data, "foot_right_forward");
+      if (flf) {
+        double n = mju_sqrt(flf[0]*flf[0] + flf[1]*flf[1]);
+        if (n > 1.0e-6) { flf_x = flf[0]/n; flf_y = flf[1]/n; }
+      }
+      if (frf) {
+        double n = mju_sqrt(frf[0]*frf[0] + frf[1]*frf[1]);
+        if (n > 1.0e-6) { frf_x = frf[0]/n; frf_y = frf[1]/n; }
+      }
+    }
+    // Four sole corners along each foot's own forward axis, so a yawed or
+    // staggered stance stays correct (the 2026-07-16 balance_frame lesson).
+    double fvx[4] = {foot_left_pos[0]  + kSoleToe  * flf_x,
+                     foot_right_pos[0] + kSoleToe  * frf_x,
+                     foot_right_pos[0] + kSoleHeel * frf_x,
+                     foot_left_pos[0]  + kSoleHeel * flf_x};
+    double fvy[4] = {foot_left_pos[1]  + kSoleToe  * flf_y,
+                     foot_right_pos[1] + kSoleToe  * frf_y,
+                     foot_right_pos[1] + kSoleHeel * frf_y,
+                     foot_left_pos[1]  + kSoleHeel * flf_y};
+    // Load-gated brace vertex, unchanged in spirit: it grows from the foot
+    // centroid toward the real contact only as fast as MEASURED brace force
+    // justifies, so there is still zero forward credit before the arm
+    // presses. It now starts INSIDE the true foot polygon rather than at a
+    // point 134 mm behind the toes, so frac=0 degenerates to exactly the
+    // feet instead of to something smaller than the feet.
+    double midfoot_x = 0.25 * (fvx[0] + fvx[1] + fvx[2] + fvx[3]);
+    double midfoot_y = 0.25 * (fvy[0] + fvy[1] + fvy[2] + fvy[3]);
     double hand_load_frac = mju_min(0.9, brace_contact_force / 140.0);
     double hand_vert_x = midfoot_x + hand_load_frac * (bracing_hand[0] - midfoot_x);
     double hand_vert_y = midfoot_y + hand_load_frac * (bracing_hand[1] - midfoot_y);
-    double vx[3] = {foot_left_pos[0], foot_right_pos[0], hand_vert_x};
-    double vy[3] = {foot_left_pos[1], foot_right_pos[1], hand_vert_y};
-    // CCW sort by angle from centroid (3 vertices, bubble sort).
-    double ccx = (vx[0] + vx[1] + vx[2]) / 3.0;
-    double ccy = (vy[0] + vy[1] + vy[2]) / 3.0;
-    for (int i = 0; i < 2; i++) {
-      for (int j = 0; j < 2 - i; j++) {
-        double a1 = std::atan2(vy[j]   - ccy, vx[j]   - ccx);
-        double a2 = std::atan2(vy[j+1] - ccy, vx[j+1] - ccx);
-        if (a1 > a2) {
-          double t = vx[j]; vx[j] = vx[j+1]; vx[j+1] = t;
-          t = vy[j]; vy[j] = vy[j+1]; vy[j+1] = t;
+    // ⚠ MUST BE A REAL CONVEX HULL, NOT AN ANGLE SORT. The brace vertex STARTS
+    // AT THE FOOT CENTROID (hand_load_frac = 0 before the arm presses) and stays
+    // inside the foot quad until the force is large enough to push it past the
+    // toe line. Angle-sorting a set containing an INTERIOR point produces a
+    // non-convex star: the interior vertex is spliced between two hull vertices
+    // and carves a dent, so the convex "all left turns" test below reports
+    // OUTSIDE for capture points that are genuinely supported. At exactly
+    // frac = 0 the vertex IS the centroid and atan2(0,0) = 0, so the ordering is
+    // degenerate outright. Andrew's monotone chain drops interior points instead.
+    double px_in[5] = {fvx[0], fvx[1], fvx[2], fvx[3], hand_vert_x};
+    double py_in[5] = {fvy[0], fvy[1], fvy[2], fvy[3], hand_vert_y};
+    // sort lexicographically by (x, y)
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4 - i; j++) {
+        if (px_in[j] > px_in[j+1] ||
+            (px_in[j] == px_in[j+1] && py_in[j] > py_in[j+1])) {
+          double t = px_in[j]; px_in[j] = px_in[j+1]; px_in[j+1] = t;
+          t = py_in[j]; py_in[j] = py_in[j+1]; py_in[j+1] = t;
+        }
+      }
+    }
+    double hx[12], hy[12];
+    int nh = 0;
+    auto cross_ok = [&](double ax, double ay, double bx, double by,
+                        double cx2, double cy2) {
+      return (bx - ax) * (cy2 - ay) - (by - ay) * (cx2 - ax) <= 1.0e-12;
+    };
+    for (int i = 0; i < 5; i++) {                       // lower hull
+      while (nh >= 2 && cross_ok(hx[nh-2], hy[nh-2], hx[nh-1], hy[nh-1],
+                                 px_in[i], py_in[i])) nh--;
+      hx[nh] = px_in[i]; hy[nh] = py_in[i]; nh++;
+    }
+    for (int i = 3, lower = nh + 1; i >= 0; i--) {      // upper hull
+      while (nh >= lower && cross_ok(hx[nh-2], hy[nh-2], hx[nh-1], hy[nh-1],
+                                     px_in[i], py_in[i])) nh--;
+      hx[nh] = px_in[i]; hy[nh] = py_in[i]; nh++;
+    }
+    int kNV = nh - 1;                                   // last == first
+    if (kNV < 3) kNV = nh;                              // degenerate: keep what we have
+    double vx[12], vy[12];
+    for (int i = 0; i < kNV; i++) { vx[i] = hx[i]; vy[i] = hy[i]; }
+    // monotone chain emits CW for a y-up frame; the test below wants CCW.
+    {
+      double area2 = 0.0;
+      for (int i = 0; i < kNV; i++) {
+        int j = (i + 1) % kNV;
+        area2 += vx[i] * vy[j] - vx[j] * vy[i];
+      }
+      if (area2 < 0.0) {
+        for (int i = 0; i < kNV / 2; i++) {
+          double t = vx[i]; vx[i] = vx[kNV-1-i]; vx[kNV-1-i] = t;
+          t = vy[i]; vy[i] = vy[kNV-1-i]; vy[kNV-1-i] = t;
         }
       }
     }
     double px = capture_point[0], py = capture_point[1];
     bool inside = true;
-    for (int i = 0; i < 3; i++) {
-      int j = (i + 1) % 3;
+    for (int i = 0; i < kNV; i++) {
+      int j = (i + 1) % kNV;
       double abx = vx[j] - vx[i];
       double aby = vy[j] - vy[i];
       double apx = px - vx[i];
@@ -992,8 +1086,8 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     } else {
       double best_dist2 = 1.0e9;
       pcp[0] = px; pcp[1] = py; pcp[2] = 1.0e-3;
-      for (int i = 0; i < 3; i++) {
-        int j = (i + 1) % 3;
+      for (int i = 0; i < kNV; i++) {
+        int j = (i + 1) % kNV;
         double ax = vx[i], ay = vy[i];
         double bx = vx[j], by = vy[j];
         double abx = bx - ax, aby = by - ay;
