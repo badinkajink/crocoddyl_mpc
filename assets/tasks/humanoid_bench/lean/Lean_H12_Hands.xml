@@ -46,8 +46,8 @@
              does not reach the right arm, so the right-arm punch tracks only
              partially on this variant (mirrors arms_overhead/single_arm_raise). -->
         <key name="jab_stand" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jab_guard" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 -0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jab_extend" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_guard" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -0.95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 -0.15 0 -0.95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_extend" qpos="0.19 0 1.02 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.3 0.15 0 -0.95 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- stumble_march (strategy 20, Hands variant): the validated stand pose
              (hip -0.25 / knee 0.35 / ankle -0.21, z=1.02), arms at home. Mirrors
              the Lean_H12 stumble_march; the Gait/Step Place costs are model-

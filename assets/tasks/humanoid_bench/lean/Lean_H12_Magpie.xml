@@ -222,8 +222,8 @@
              induces during the ramp; the ankle compensates to keep the foot flat at
              z=1.020. Scoped to the jab (stand-6/squatter keep their stand_up). -->
         <key name="jab_stand"  qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jab_guard"  qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.30 0.15 0 -1.00 0 0 0 -0.30 -0.15 0 -1.00 0 0 0 1.5 0 0.75 1 0 0 0"/>
-        <key name="jab_extend" qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.30 0.15 0 -1.00 0 0 0 -1.00 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_guard"  qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.30 0.15 0 -0.95 0 0 0 -0.30 -0.15 0 -0.95 0 0 0 1.5 0 0.75 1 0 0 0"/>
+        <key name="jab_extend" qpos="0.19 0 1.020 1 0 0 0 0 -0.18 0.12 0.35 -0.29 0 0 -0.18 -0.12 0.35 -0.29 0 0 -0.30 0.15 0 -0.95 0 0 0 -1.00 0 0 0 0 0 0 1.5 0 0.75 1 0 0 0"/>
         <!-- stumble_march: the gait-clock STEPPING pose (strategy 20). Identical
              to stand_up (validated stand: hip -0.25 / knee 0.35 / ankle -0.21,
              z=1.020) -- the Posture cost holds this stance at LOW weight while
