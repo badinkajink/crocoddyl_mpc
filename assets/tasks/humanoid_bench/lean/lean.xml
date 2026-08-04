@@ -85,8 +85,14 @@
              the legs sit at 0.33..0.43 vs toes reaching ~0.195.
              Slab SIZE/FACE unchanged -> the ARPA battery reference (face z 0.865,
              thickness 0.11) is preserved; only its distance from the robot changes. -->
-        <body name="table" pos="0.91 0 0.4200">
-            <geom name="table_top" type="box" pos="0 0 0.39" size="0.6125 1.06 0.055" class="visual" material="wooden_cover"/>
+        <body name="table" pos="1.0900 0 0.5400">
+            <!-- 2026-07-31 REAL ADJUSTABLE TABLE (CL_Assets lean_table parity): top
+                 118 x 59.5 cm, SHORT side toward the robot -> half-size 0.59 x 0.2975.
+                 Half-thickness stays 0.055 (real top is 4 cm; the thicker planner slab
+                 only affects under-table clearance, conservatively) so the
+                 body_z + 0.445 = surface formula lean_config.sh relies on is unchanged.
+                 Near edge = body_x - 0.59; lean_config.sh table <X> [SURFACE_H] moves it. -->
+            <geom name="table_top" type="box" pos="0 0 0.39" size="0.59 0.2975 0.055" class="visual" material="wooden_cover"/>
             <!-- ITER 28 (2026-05-18): solref 0.04 → 0.08 (doubled time-const
                  again from R9's 40 ms → 80 ms). User reported feet lift
                  BRIEFLY at the moment of arm contact in iter 27 — diagnosed
@@ -97,28 +103,28 @@
                  instantly. Trade-off: slightly squishier contact feel, but
                  the user cares about feet staying planted more than rigid
                  contact response. priority=1 still wins over the hand side. -->
-            <geom name="table_top_collision" type="box" pos="0 0 0.39" size="0.6125 1.06 0.055" class="collision"
+            <geom name="table_top_collision" type="box" pos="0 0 0.39" size="0.59 0.2975 0.055" class="collision"
                   priority="1" solref="0.08 1" solimp="0.85 0.95 0.001 0.5 2"/>
             <!-- legs: cosmetic support for the slab (the real pack is gantry-borne). Half-height
                  0.3775 at pos z -0.0425 spans world 0.000 .. 0.755, i.e. floor to the new slab
                  underside (0.810 - 0.055). Inset to +-0.4 x / +-0.9 y, inside the wider footprint. -->
-            <geom name="table_leg_1" type="box" pos="0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
+            <geom name="table_leg_1" type="box" pos="0.53 0.2375 -0.0875" size="0.025 0.025 0.4225" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_2" type="box" pos="0.4 -0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
+            <geom name="table_leg_2" type="box" pos="0.53 -0.2375 -0.0875" size="0.025 0.025 0.4225" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_3" type="box" pos="-0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
+            <geom name="table_leg_3" type="box" pos="-0.53 0.2375 -0.0875" size="0.025 0.025 0.4225" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_4" type="box" pos="-0.4 -0.9 -0.0425" size="0.05 0.05 0.3775" class="visual"
+            <geom name="table_leg_4" type="box" pos="-0.53 -0.2375 -0.0875" size="0.025 0.025 0.4225" class="visual"
                   material="dark_wooden_cover"/>
-            <geom name="table_leg_1_collision" type="box" pos="0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="collision"/>
-            <geom name="table_leg_2_collision" type="box" pos="0.4 -0.9 -0.0425" size="0.05 0.05 0.3775" class="collision"/>
-            <geom name="table_leg_3_collision" type="box" pos="-0.4 0.9 -0.0425" size="0.05 0.05 0.3775" class="collision"/>
-            <geom name="table_leg_4_collision" type="box" pos="-0.4 -0.9 -0.0425" size="0.05 0.05 0.3775"
+            <geom name="table_leg_1_collision" type="box" pos="0.53 0.2375 -0.0875" size="0.03 0.03 0.4225" class="collision"/>
+            <geom name="table_leg_2_collision" type="box" pos="0.53 -0.2375 -0.0875" size="0.03 0.03 0.4225" class="collision"/>
+            <geom name="table_leg_3_collision" type="box" pos="-0.53 0.2375 -0.0875" size="0.03 0.03 0.4225" class="collision"/>
+            <geom name="table_leg_4_collision" type="box" pos="-0.53 -0.2375 -0.0875" size="0.03 0.03 0.4225"
                   class="collision"/>
         </body>
         <!-- Object placed farther on table to require leaning -->
         <!-- Detachable object - child of world initially -->
-        <body name="object_anchor" pos="1.5 0 0.945">
+        <body name="object_anchor" pos="0.9047 -0.2348 1.0350">
             <joint name="object_anchor_joint" type="free" limited="false"/>
             
             <body name="object" pos="0 0 0">
@@ -131,7 +137,7 @@
             </body>
         </body>
         <!-- Target position visualization -->
-        <body name="target" mocap="true" pos="1.5 0.0 0.945">
+        <body name="target" mocap="true" pos="0.9047 -0.2348 1.0350">
             <geom type="sphere" size="0.03" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
         </body>
     </worldbody>
