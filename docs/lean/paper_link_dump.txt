@@ -1,0 +1,19 @@
+inria:
+Flow Matching Imitation Learning for Multi-Support Manipulation (2024, humanoids) https://arxiv.org/abs/2407.12381
+Multi-Contact Whole-Body Force Control for Position-Controlled Robots (2023, ral) https://arxiv.org/abs/2312.16465
+Words2Contact: Identifying Support Contacts from Verbal... (2024, humanoids) https://arxiv.org/abs/2407.14229
+
+ihmc:
+Stability-Aware Retargeting for Humanoid Multi-Contact Teleoperation (2025, ral) https://arxiv.org/abs/2510.04353
+
+Yoshida group:
+Whole-body Multi-contact Motion Control for Humanoid Robots Based... (2025, ral) https://arxiv.org/abs/2505.19580v1
+TACT: Humanoid Whole-body Contact Manipulation through Deep... (2025, ral, less relevant) https://arxiv.org/abs/2506.15146
+
+agility ai / Georgia tech (danfei xu)
+Opt2Skill: Imitating Dynamically-feasible Whole-Body Trajectories... (2024, ral) https://arxiv.org/abs/2409.20514
+
+manchester
+Whole-Body Model-Predictive Control of Legged Robots with MuJoCo (2025, icra) https://arxiv.org/abs/2503.04613
+
+review on multiple contact planning and control (2023, robotics and autonomous systems) https://www.sciencedirect.com/science/article/pii/S0921889023000878

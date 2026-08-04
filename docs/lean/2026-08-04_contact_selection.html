@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact selection for the H12 braced lean — 2026-08-04</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  .key{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;font-size:.85rem;color:var(--ink2);margin:.6rem 0}
+  .key span{display:inline-flex;align-items:center;gap:.4rem}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid #0002}
+  ul{padding-left:1.15rem}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Contact selection for the H12 braced lean</h1>
+<p class="sub">A static formulation that decides <em>which</em> surfaces the robot should brace on
+to reach a given target — solved by enumeration over candidate contact sets, not authored by hand.</p>
+<p class="meta">2026-08-04 · branch <code>asset-unification</code> · worktree
+<code>/home/humanoid/Programs/mjpc_icra2026</code> · code in <code>lean_analysis/</code></p>
+
+<h2>What this is</h2>
+<p>The lean pipeline in <code>mjpc/tasks/humanoid_bench/lean/</code> currently specifies bracing
+contacts by hand: each strategy phase carries a <code>contacts</code> array of
+(robot body, point) ↔ (table, point) pairs plus a scalar <code>brace_force_target</code>. This
+study asks whether that array can be <em>computed</em> from the reach target instead.</p>
+
+<p>The pipeline is three stages, all offline:</p>
+<ol>
+<li><b>Pose.</b> Gauss–Newton IK, one QP per step (<code>quadprog</code>): feet pinned, reach target
+and bracing sites as weighted objectives, <b>non-penetration as hard inequalities</b> taken from
+MuJoCo's own narrowphase with a 25&nbsp;mm look-ahead margin, trust region inside the QP.</li>
+<li><b>Statics.</b> At that pose, solve
+<code>Sᵀτ + ΣJᵢᵀλᵢ = qfrc_bias</code> — base rows as hard equality, joint torques bounded by the
+actuator limits, friction as a linearised pyramid at μ=0.6, 4 contact points per foot.</li>
+<li><b>Selection.</b> Enumerate every subset of the candidate sites (2⁵ = 32) and keep the
+admissible one minimising normalised actuator effort Σ(τ/τ<sub>max</sub>)².</li>
+</ol>
+
+<div class="note">
+<b>Why enumeration and not an MIQP.</b> The reference method for this problem class
+(SCSP, IEEE T-RO 26-0767) needs a mixed-integer program because it samples ~70 candidate
+points on an arbitrary object surface. Our surface is a flat table and our candidate set is
+five named links, so all 32 subsets can be solved exhaustively. The combinatorial machinery
+that paper needs is simply not required here.
+</div>
+
+<h2>Proof: the contacts are actually made</h2>
+<p>Each clip runs the IK from the <code>stand_up</code> seed into the braced pose, so the contacts are
+seen <em>being established</em> rather than only held. Markers are ghosted until that link is
+genuinely in contact with the table, then become solid — so a solid marker is MuJoCo reporting
+a real contact, not an assertion.</p>
+
+<div class="key">
+  <span><i class="dot" style="background:#fff"></i>reach target (commanded)</span>
+  <span><i class="dot" style="background:#2a78d6"></i>elbow</span>
+  <span><i class="dot" style="background:#eb6834"></i>forearm</span>
+  <span><i class="dot" style="background:#1baf7a"></i>palm</span>
+  <span><i class="dot" style="background:#e87ba4"></i>hip</span>
+  <span><i class="dot" style="background:#eda100"></i>torso</span>
+</div>
+<p style="font-size:.85rem;color:var(--ink3)">The second green sphere further out on the table is
+the <em>model's own</em> object marker (<code>reach_target</code> numeric), not part of this study —
+ignore it. The commanded target is the white sphere.</p>
+
+<div class="grid2">
+<figure>
+  <video controls loop muted playsinline src="media/approach_EFH.mp4"></video>
+  <figcaption><b>elbow + forearm + hip</b> — target (1.00, 0.15, 0.95). The selected set at most
+  far targets. Watch the forearm marker go solid as the arm lands, then the hip as the pelvis
+  meets the table edge.</figcaption>
+</figure>
+<figure>
+  <video controls loop muted playsinline src="media/approach_EF.mp4"></video>
+  <figcaption><b>elbow + forearm</b> — same target, trunk contact excluded. This is the
+  arm-only alternative that the steerability gate selects instead.</figcaption>
+</figure>
+<figure>
+  <video controls loop muted playsinline src="media/approach_P.mp4"></video>
+  <figcaption><b>palm only</b> — target (0.52, 0.15, 0.95). A near reach needs only a light
+  hand brace; the body stays nearly upright and the measured normal force is a few newtons.</figcaption>
+</figure>
+<figure>
+  <video controls loop muted playsinline src="media/approach_EFP.mp4"></video>
+  <figcaption><b>elbow + forearm + palm</b> — target (1.24, 0.15, 1.09). The whole upper limb
+  along the table, the configuration Allen's photograph shows.</figcaption>
+</figure>
+</div>
+
+<h3>Orbits around the settled poses</h3>
+<p>Markers occluded in the side view (the elbow especially) are visible here.</p>
+<div class="grid2">
+<figure><video controls loop muted playsinline src="media/orbit_EFH.mp4"></video>
+  <figcaption>elbow + forearm + hip</figcaption></figure>
+<figure><video controls loop muted playsinline src="media/orbit_P.mp4"></video>
+  <figcaption>palm only</figcaption></figure>
+</div>
+
+<h2>The map</h2>
+<p>45 reach targets × 32 contact subsets, magpie grippers fitted, CL_Assets torque limits,
+torso free. Letters: <b>E</b> elbow, <b>F</b> forearm, <b>P</b> palm, <b>H</b> hip, <b>T</b> torso.</p>
+<div class="scroll"><pre>z=1.16 |   EFHT   EFHT      P   EFHT   EFHT    EFH    EHT    EFH   EFPT
+z=1.09 |  EFPHT   EFHT   EFHT   EFHT   EFHT    EFH    EFH    EFH    EFH
+z=1.02 |    EFH      P   EFHT   EFHT   EFHT    EFH    EFH    EFH    EFH
+z=0.95 |    EFH      P   EFHT    EFT   EFHT   EFHT    EFH    EFH     HT
+z=0.88 |    EFH      P    EFH   EFHT   EFHT    EFH    EFH    EFT    EFH
+           0.40   0.52   0.64   0.76   0.88   1.00   1.12   1.24   1.36   ← reach x (m)</pre></div>
+
+<p>Structure: near reaches take a light <b>palm</b> brace; everything further takes the
+<b>elbow + forearm</b> pair, usually supplemented by a trunk contact. That near→far split was
+predicted before any of this was computed, and it emerges from a min-effort objective with
+nothing about "near" or "far" encoded.</p>
+
+<h2>Trunk contacts: preferred everywhere, required nowhere</h2>
+<p>The hips touch the table edge in ~80&nbsp;% of solved poses and the torso in ~60&nbsp;% — they
+were bearing load long before they were modelled. Promoting them to candidates:</p>
+<div class="scroll"><table>
+<thead><tr><th>Measure</th><th>trunk allowed</th><th>arm-only</th><th>cost of excluding</th></tr></thead>
+<tbody>
+<tr><td>targets where it is the best set</td><td>41 / 45</td><td>—</td><td>—</td></tr>
+<tr><td>targets with an admissible set</td><td>45 / 45</td><td><b>45 / 45</b></td><td><b>none</b></td></tr>
+<tr><td>mean effort Σ(τ/τmax)²</td><td>0.184</td><td>0.284</td><td>+55 %</td></tr>
+<tr><td>mean peak |τ|/limit</td><td>0.228</td><td>0.291</td><td>+27 %</td></tr>
+<tr><td>worst-case peak |τ|/limit</td><td>0.32</td><td>0.39</td><td>still far from saturation</td></tr>
+</tbody></table></div>
+
+<h3>Are they controllable? Two measurements</h3>
+<p><b>Force authority and release</b> (<code>controllability.py</code>) — LP bounds on each contact's
+normal force over the feasible set, and whether the same pose stays in equilibrium with the
+contact deleted. At (1.00, 0.95):</p>
+<div class="scroll"><table>
+<thead><tr><th>contact</th><th>normal force</th><th>admissible band</th><th>release in place?</th></tr></thead>
+<tbody>
+<tr><td>elbow</td><td>63.6 N</td><td>0 – 478 N</td><td>yes (peak 0.25)</td></tr>
+<tr><td>forearm</td><td>67.5 N</td><td>0 – 432 N</td><td>yes (peak 0.26)</td></tr>
+<tr><td>hip</td><td>66.2 N</td><td><b>0 – 544 N</b></td><td>yes (peak 0.25)</td></tr>
+</tbody></table></div>
+
+<p><b>Placement steerability</b> (<code>precision.py</code>) — largest singular value of the contact
+point's Jacobian over actuated joints, and the effective number of joints carrying it:</p>
+<div class="scroll"><table>
+<thead><tr><th>site</th><th>σmax (m/rad)</th><th>placement error @1°</th><th>effective joints</th></tr></thead>
+<tbody>
+<tr><td>hip</td><td>0.05</td><td>0.9 mm</td><td><b>1.0</b> (torso only)</td></tr>
+<tr><td>torso</td><td>0.07</td><td>1.2 mm</td><td><b>1.0</b> (torso only)</td></tr>
+<tr><td>elbow</td><td>0.46</td><td>8.0 mm</td><td>2.6</td></tr>
+<tr><td>forearm</td><td>0.49</td><td>8.6 mm</td><td>2.5</td></tr>
+<tr><td>palm</td><td>0.72</td><td>12.5 mm</td><td>2.9</td></tr>
+</tbody></table></div>
+
+<div class="note">
+<b>Read this the right way round.</b> Naively the trunk looks ~10× better placed. But low
+sensitivity means low <em>authority</em>: the hip contact depends on effectively one joint, so it
+cannot be steered — the whole body is placed and the hip lands where it lands. The arm sites are
+less precisely determined but carry 2.5–3 joints of redundancy with which to servo the contact.
+<b>The trunk contact is not a controllable contact; it is a consequence of the body pose.</b>
+</div>
+
+<div class="note">
+<b>Recommendation.</b> Gate trunk sites out on a steerability criterion (≥2 effective joints).
+It costs no coverage — every target has an arm-only solution — and the price is ~55 % effort and
+~27 % peak load, leaving the worst case at 0.39 of limit. Efficiency is the resource we have
+most of; controllability is the one we are short of.
+</div>
+
+<h2>Model findings worth acting on</h2>
+<ul>
+<li><b>Gripper jaw geometry decides the palm result.</b> With the jaws modelled (±106 mm from the
+grasp axis) the palm is placeable at 17/45 targets and wins none. With any jaw-free proxy
+(sphere, mount mesh) it is placeable 45/45 and wins 6. Nothing else about the primitive shape
+matters. The jaws are real, so the pessimistic number is the honest one.</li>
+<li><b>Arm torque limits in the lean model are stale.</b> Model carries shoulder ±32,
+shoulder-yaw/elbow ±14.4, wrist ±9.5. CL_Assets — which
+<code>_gen_h12_base_limits.py</code> declares the source of truth, cross-checked against
+<code>h12_safety_layer/core/joint_limits.py</code> — has ±40 / ±18 / <b>±19</b>. The wrist is out by
+2×. Joint <em>ranges</em> import correctly; <code>actuatorfrcrange</code> does not.</li>
+<li><b>right_shoulder_yaw range is L/R mirrored</b>: model <code>[-3.01, 2.66]</code> vs CL
+<code>[-2.66, 3.01]</code>.</li>
+<li><b>The <code>stand_up</code> keyframe has the manipulation object embedded 42.5 mm into the
+tabletop.</b> Harmless to the planner, confusing to any static analysis.</li>
+<li><code>mjpc/tasks/humanoid_bench/avoid/avoid.cc:702</code> breaks a clean GCC build
+(<code>-Werror=unused-result</code> on an ignored <code>system()</code>).</li>
+</ul>
+
+<h2>Limitations — what this cannot tell you</h2>
+<ul>
+<li><b>It is static.</b> Every result is about an equilibrium existing, never about reaching it.
+The lean's real failure mode is dynamic — the capture point leaving the support polygon during
+the transition — and this formulation is blind to it. Treat the output as a <em>prior</em> for the
+planner, which is also how the reference paper frames its own selection stage.</li>
+<li><b>Selected ≠ required.</b> At many targets the legs alone are admissible and the chosen
+brace wins only on effort.</li>
+<li><b>Single deterministic solve per cell.</b> No seeds, no replicates.</li>
+<li><b>The z = 0.88 row was unsolvable</b> in the jawed model because the grasp point cannot sit
+15 mm above the table with the jaw axis vertical. That needs a wrist-roll orientation task —
+the concrete form of "rotate the gripper 90° to brace on its side" — which is not implemented,
+so read that row as <em>not solved</em> rather than infeasible.</li>
+</ul>
+
+<h2>Corrections made along the way</h2>
+<p>Recorded because several of these produced confident, wrong intermediate results, and the
+same traps apply to anyone extending this.</p>
+<div class="scroll"><table>
+<thead><tr><th>Bug</th><th>Symptom</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code>mj_inverse</code> used for gravity</td><td>base residual ~1e6; it folds in
+<code>qfrc_constraint</code>, 20.2 kN at the seed pose</td><td><code>qfrc_bias</code> at rest</td></tr>
+<tr><td>IK by weighted normal equations + step clipping</td><td>never descended; feet flew
+0.2–1.7 m off their pins, insensitive to a 30× weight change</td><td>one <code>quadprog</code> QP per
+step, trust region inside the QP</td></tr>
+<tr><td>non-penetration sign</td><td><code>n'J·dq ≥ −depth</code> permits sinking further</td>
+<td><code>≥ depth − tol</code></td></tr>
+<tr><td>hard foot equality + collision inequalities</td><td>infeasible 245/250 iterations, and the
+handler silently dropped non-penetration</td><td>feet soft at w=300, non-penetration stays hard</td></tr>
+<tr><td>reactive collision</td><td>IK only learned about the table from inside it</td>
+<td>25 mm <code>geom_margin</code> look-ahead</td></tr>
+<tr><td>elbow site from <code>geom_size</code></td><td>for a MESH that is the bounding box — the point
+floated 68 mm past the joint, so "elbow" was placeable 1/12 and every elbow set was wrongly
+excluded</td><td>anchor at the joint (−0.182); 12/12</td></tr>
+<tr><td>friction pyramid by negating the row</td><td>pins |λt| <em>to</em> the cone boundary; every LP
+infeasible</td><td>two rows, ±λt − μλn/√2 ≤ 0</td></tr>
+<tr><td>site "placed" tested at the nominal point</td><td>the point sits inside the link, so a
+resting contact still leaves ~35 mm</td><td>read actual MuJoCo contacts</td></tr>
+</tbody></table></div>
+
+<h2>Reproducing</h2>
+<pre>cd /home/humanoid/Programs/mjpc_icra2026/lean_analysis
+
+# variant: handless | magpie (box proxies+jaws) | sphere | mesh
+# CL_ARM_TORQUE=1 overrides the model's stale arm actuatorfrcrange
+CL_ARM_TORQUE=1 LEAN_MODEL=sphere python3 sweep5_full.py     # 45 targets x 32 subsets, ~2 h
+CL_ARM_TORQUE=1 LEAN_MODEL=sphere python3 controllability.py 1.00 0.15 0.95 elbow,forearm,hip
+CL_ARM_TORQUE=1 LEAN_MODEL=sphere python3 precision.py       1.00 0.15 0.95 elbow,forearm,hip
+LEAN_MODEL=sphere python3 pose_audit.py 1.00 0.15 0.95       # numeric pose sanity check
+MUJOCO_GL=egl python3 make_videos.py                         # the clips on this page</pre>
+
+<p style="font-size:.85rem;color:var(--ink3);margin-top:2rem">Session-by-session record, including
+the results that were later overturned, is in <code>LEAN_CONTACT_PLAN.md</code> at the repo root of
+the <code>sampling</code> worktree.</p>
+
+</div></body></html>
