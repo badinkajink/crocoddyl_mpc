@@ -156,6 +156,10 @@
              right arm is NEUTRAL, Posture pulled the reaching arm back while
              Reaching Hand Dist pushed it out. -->
         <key name="forearm_brace_reach" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.471239 -1.01229 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_release" qpos="0.300182 0 0.915396 0.974693 0 0.223547 0 0 -0.983672 0.12 0.989648 -0.456879 0 0 -0.983672 -0.12 0.989648 -0.456879 0 0 -0.907571 -0.139626 0.767945 0.10472 0.261799 -0.471239 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="standback_r1" qpos="0.256109 0.000000 0.968080 0.990865 0.000000 0.134859 0.000000 0.000000 -0.734203 0.120000 0.813789 -0.350127 0.000000 0.000000 -0.734203 -0.120000 0.813789 -0.350127 0.000000 0.000000 -0.544543 -0.083776 0.460767 0.062832 0.157079 -0.282743 -0.607374 0.210000 -0.090000 0.000000 0.180000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
+        <key name="standback_r2" qpos="0.231869 0.000000 0.985412 0.996332 0.000000 0.085567 0.000000 0.000000 -0.596995 0.120000 0.717066 -0.291414 0.000000 0.000000 -0.596995 -0.120000 0.717066 -0.291414 0.000000 0.000000 -0.344877 -0.053058 0.291819 0.039794 0.099484 -0.179071 -0.384670 0.133000 -0.057000 0.000000 0.114000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
+        <key name="standback_r3" qpos="0.209833 0.000000 0.998210 0.999177 0.000000 0.040570 0.000000 0.000000 -0.472261 0.120000 0.629137 -0.238038 0.000000 0.000000 -0.472261 -0.120000 0.629137 -0.238038 0.000000 0.000000 -0.163363 -0.025133 0.138230 0.018850 0.047124 -0.084823 -0.182212 0.063000 -0.027000 0.000000 0.054000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
         <!-- ^ 2026-07-31 HIP-HINGE BRACE for the 0.955 adjustable table -- the first
              keyframe in the campaign that is (a) forearm-seated, (b) wrist/jaw clear,
              AND (c) STATICALLY ATTAINABLE FROM THE STAND:
@@ -825,6 +829,8 @@
              cost clamps into the range anyway. ⚠ MUST sit BEFORE the first `residual_*`
              numeric -- mjpc::ParameterIndex counts from the first residual_ entry, so a
              numeric added after it shifts every task parameter index. -->
+        <numeric name="body_yaw_ref_deg" data="0.0"/> <!-- fixed world heading (deg) the stand-back squares up to; used when body_yaw_feet_ref=0 -->
+        <numeric name="body_yaw_feet_ref" data="0.0"/> <!-- 1 = Body Yaw faces the FEET mean heading (placement-invariant); 0 = legacy normalize(reach_target-torso), the world-frame heading lottery stabilize.cc fixed 2026-07-17 -->
         <numeric name="brace_wrist_cock_deg" data="-58.0"/>
         <!-- brace_target_slab / brace_target_inset (2026-07-29): 0 = OFF = BYTE-IDENTICAL.
              ON aims the brace POSITION target at the slab's NEAR EDGE + inset instead of the
@@ -1038,6 +1044,13 @@
              gripperless base model reports "residual length 174 != user_sensor_dim
              173". Do not "fix" it by deleting this sensor. -->
         <user name="Brace Wrist Cock" dim="1" user="0 0.0 0.0 200.0"/>
+        <!-- 2026-08-03 arm-plane guard: keeps shoulder->elbow->wrist coplanar and the
+             forearm pointing FORWARD. Measured: forearm splayed +29.6 deg left and the
+             elbow tucked 35 mm inboard, putting the wrist at y=+0.288 against a slab edge
+             at +0.297 (9 mm from sliding off the side) and loading shoulder_roll on a
+             lateral moment arm. MUST be appended to BOTH lean models in lockstep or the
+             residual counts desync. -->
+        <user name="Brace Arm Plane" dim="1" user="0 0.0 0.0 100.0"/>
 
         <!--        traces-->
         <framepos name="trace0" objtype="body" objname="torso_link"/>

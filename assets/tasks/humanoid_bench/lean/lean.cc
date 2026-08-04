@@ -162,8 +162,33 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       active_contact_count_early++;
     }
   }
+  // ★ 2026-08-02 THE ARM IS STILL ON THE TABLE DURING THE REACH AND THE RELEASE.
+  // `is_forearm_brace` matches the EXACT name "forearm_brace_lean", so
+  // any_arm_contact used to go FALSE the instant the reach phase began, even
+  // though the forearm was still pressing the slab with 55-60 N. At that single
+  // tick three things flipped at once:
+  //   * the braced support polygon collapsed to the free-standing FOOT-FOOT LINE
+  //     (which has no forward extent at all) while the CoM sat at +0.153, i.e.
+  //     PAST the toe -- Balance suddenly reported a huge excursion;
+  //   * fwd_scale jumped 0.80 -> 1.0, so that excursion was also priced strictly;
+  //   * the Base-Height anti-sink anchor (JSON weight 450) switched ON.
+  // That is a cost CLIFF, not a transition -- `target_ramp_sec` ramps the
+  // keyframe target, never these booleans. It is the recorded "falls cluster
+  // right after the REACH starts", and the rough, un-tendered stand-up the user
+  // saw on the render.
+  // Widen the gate to every phase where the forearm is on the table, WITHOUT
+  // touching `is_forearm_brace` itself -- its other 11 call sites (wrist cock,
+  // brace_foot_x, brace_reach_gate, kBraceGateFix) are genuinely lean-only.
+  // Honesty is preserved by the load gate downstream: the polygon's third vertex
+  // still grows only with MEASURED brace force, so as the arm lifts during the
+  // release the support shrinks back to the feet on its own and the planner is
+  // obliged to bring the CoM home before it can stand.
+  const bool arm_braced_phase =
+      is_forearm_brace ||
+      residual_keyframe_.name == "forearm_brace_reach" ||
+      residual_keyframe_.name == "forearm_brace_release";
   // any_arm_contact: arm is on the table (stand_up has 0 contacts)
-  const bool any_arm_contact      = (active_contact_count_early >= 1) || is_forearm_brace;
+  const bool any_arm_contact      = (active_contact_count_early >= 1) || arm_braced_phase;
   // DESIGN (2026-05-26): the leg-lift phase is DROPPED permanently — both feet
   // stay grounded through the whole pipeline (see the lean.h header). The
   // single-support branches that keyed off the old lift phase names were removed
@@ -1820,11 +1845,41 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // the XML, a 5 cm heel-lift now costs 250 × (0.03)² = 0.22 vs 0.06
   // previously — small but the gradient is steeper near zero where it
   // matters for keeping the foot pressed down through the lean.
-  if (any_arm_contact) {
-    residual[counter++] = mju_max(0.0, 0.42 - left_knee_pos_3d[2])
-                        + mju_max(0.0, foot_left_pos[2] - 0.02);
-  } else {
-    residual[counter++] = 0.0;
+  // ★★ REPURPOSED 2026-08-03 -- SLOT NAME IS STALE. The <user> sensor is still
+  // called "Left Leg Anchor" (renaming it would have to be done in BOTH
+  // Lean_H12.xml and Lean_H12_Magpie.xml or the writer/model residual counts
+  // desync -- the exact 2026-07-30 bug where every later residual hit the WRONG
+  // cost). This slot now means FOOT FLATNESS, BOTH FEET.
+  //
+  // WHY. The old term was `max(0, foot_left_pos[2] - 0.02)` -- the ANKLE BODY
+  // ORIGIN's height. When a heel lifts, the foot rotates about the TOE and the
+  // ankle origin barely moves (measured: 0.0445..0.0608 over a whole run, a
+  // 1.6 cm wiggle against a 0.02 threshold), so the cost was STRUCTURALLY BLIND
+  // to heel-lift -- and it could not tell heel-up from toe-up either. Same class
+  // as the `foot_left_pos` framepos bug in the Balance polygon.
+  //
+  // Measured defect it exists to fix (bench20_ladder run02): the RIGHT heel is
+  // off the floor from t~31 to t~47 -- the ENTIRE reach and brace hold -- and
+  // BOTH heels lift at t=37-39, exactly at peak right-arm reach (728 mm). On
+  // its forefeet the foot is free to rotate about the toe, so the ankle has NO
+  // restoring authority at all, and the Balance hull is meanwhile crediting
+  // heel area that is not in contact.
+  //
+  // Signal: the foot's own forward axis z-component. Flat => ~0 (measured
+  // -0.0000/-0.0008 at a plain stand); heel-up/toe-down => NEGATIVE (-0.084 L,
+  // -0.172 R at t=38); toe-up/rocking-back => POSITIVE (+0.104 at t=70, which is
+  // the backward-overshoot mode behind the 3 late falls). Penalise BOTH signs so
+  // one term guards the forefoot tip AND the heel rock. 0.02 deadband ~ 1.1 deg.
+  {
+    double const *lf = SensorByName(model, data, "foot_left_forward");
+    double const *rf = SensorByName(model, data, "foot_right_forward");
+    constexpr double kFlatTol = 0.02;
+    double flat = 0.0;
+    if (lf) flat += mju_max(0.0, mju_abs(lf[2]) - kFlatTol);
+    if (rf) flat += mju_max(0.0, mju_abs(rf[2]) - kFlatTol);
+    // keep the old knee-height guard, which was never the broken half
+    residual[counter++] =
+        flat + (any_arm_contact ? mju_max(0.0, 0.42 - left_knee_pos_3d[2]) : 0.0);
   }
 
   // ----- right foot: lift during leg-lift, ground during arm-only stages ----- //
@@ -1990,6 +2045,63 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // onto the xy-plane and check alignment there. Pitch drops out because
   // pitching down shortens torso_forward's xy length without changing
   // its xy direction.
+  // ★ 2026-08-02 PORT OF THE STABILIZE `body_yaw_feet_ref` FIX (2026-07-17).
+  // As written above, this residual aligns the torso with `reach_dir` =
+  // normalize(reach_target - torso) -- a WORLD-frame heading that depends on
+  // where the reach target happens to sit. stabilize.cc calls that a "+-11 deg
+  // world-frame heading lottery" that "steered the calibrated real stand -22 ->
+  // +7 deg and dragged the feet", and fixed it there; lean never got the port.
+  // It mattered here because lean ships Body Yaw at weight ZERO in every phase,
+  // so nothing has ever anchored the floating-root yaw: measured, the robot
+  // twists 20 deg of yaw and 9 deg of roll in the 20 s AFTER the stand-up
+  // begins (yaw +2.7 at t=60 -> -17.9 at t=80, worst run -31.6), which leaves
+  // the two legs in different configurations -- the left ankle then sits 12 deg
+  // off its target while the RIGHT ankle lands exactly, and that asymmetry IS
+  // the residual bow that stops the robot standing back up square.
+  // Enabling the cost as-is would import the lottery. Face the FEET'S OWN MEAN
+  // HEADING instead: placement-invariant, no world anchor, the reference
+  // FOLLOWS the stance rather than steering it -- same family as the
+  // balance_frame and support-polygon fixes.
+  // ⚠ MEASURED 2026-08-02: NEITHER of the two existing references works here.
+  //  * FEET reference (the stabilize port): torso yaw ~= feet yaw to within
+  //    1-8 deg, i.e. the WHOLE ROBOT PIVOTS ON THE FLOOR, feet included. The
+  //    reference rotates WITH the failure, so the cost is blind by
+  //    construction. Measured effect: yaw -11.7 -> -12.5 deg. Nothing.
+  //    (It is still the right instrument for stabilize, whose failure is the
+  //    torso twisting against PLANTED feet -- different disease.)
+  //  * LEGACY world reference normalize(reach_target - torso) resolves to
+  //    -18.2 deg here, because the reach target sits off to the robot's right.
+  //    Anchoring to it would pull the stand FURTHER from square than the
+  //    -12.5 deg it already drifts to.
+  // What a stand-back actually wants is a FIXED heading: end facing where you
+  // started. `body_yaw_ref_deg` supplies exactly that (default 0 = +x = the
+  // spawn heading), and it is only ever weighted in the release/stand_up
+  // phases, so it cannot fight the reach.
+  //   body_yaw_feet_ref: 1 = feet mean heading, 0 = use body_yaw_ref_deg.
+  {
+    int fr_id = mj_name2id(model, mjOBJ_NUMERIC, "body_yaw_feet_ref");
+    bool fr = (fr_id >= 0) &&
+              (model->numeric_data[model->numeric_adr[fr_id]] > 0.5);
+    double const *flf_y = SensorByName(model, data, "foot_left_forward");
+    double const *frf_y = SensorByName(model, data, "foot_right_forward");
+    if (fr && flf_y && frf_y) {
+      double fx = flf_y[0] + frf_y[0], fy = flf_y[1] + frf_y[1];
+      double fl = mju_sqrt(fx * fx + fy * fy);
+      if (fl > 1.0e-6) {
+        reach_dir[0] = fx / fl;
+        reach_dir[1] = fy / fl;
+        reach_dir[2] = 0.0;
+      }
+    } else if (!fr) {
+      int ry_id = mj_name2id(model, mjOBJ_NUMERIC, "body_yaw_ref_deg");
+      double ry = (ry_id >= 0)
+          ? model->numeric_data[model->numeric_adr[ry_id]] * (mjPI / 180.0)
+          : 0.0;
+      reach_dir[0] = std::cos(ry);
+      reach_dir[1] = std::sin(ry);
+      reach_dir[2] = 0.0;
+    }
+  }
   double tf_xy_len = mju_sqrt(torso_forward[0] * torso_forward[0] +
                               torso_forward[1] * torso_forward[1]);
   double rd_xy_len = mju_sqrt(reach_dir[0] * reach_dir[0] +
@@ -2381,6 +2493,62 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       }
     }
     residual[counter++] = wrist_cock_err;
+  }
+
+  // --- Brace Arm Plane (dim 1, 2026-08-03) ------------------------------------
+  // Keep shoulder -> elbow -> wrist roughly COPLANAR and pointing forward, so the
+  // brace load line runs along the arm instead of across it.
+  //
+  // MEASURED DEFECT (bench20_ladder run02, torso frame): during the reach the
+  // forearm splays 20-30 deg out to the robot's LEFT (heading +29.6 deg at t=35)
+  // while the elbow tucks up to 35 mm INBOARD of the shoulder -- a "chicken wing".
+  // Two consequences: (1) the wrist wanders to y=+0.288 against a slab edge at
+  // +0.297, i.e. 9 mm from sliding off the SIDE of the table, which is the same
+  // failure as 2026-08-02 creeping back; (2) the contact force then acts on a
+  // LATERAL moment arm about the shoulder, and shoulder_roll is already the
+  // largest single term in the load path (0.1510 N.m per N for a forearm
+  // contact). Straightening the arm shrinks that arm and raises the 198 N ceiling.
+  //
+  // Two terms, both in the TORSO frame so torso yaw does not leak in:
+  //   splay  = |atan2(dy, dx)| of the elbow->wrist vector   (forearm points fwd)
+  //   tuck   = lateral offset of the elbow from the shoulder->wrist chord
+  // Deadbands keep the natural brace pose free; only the excursion is charged.
+  // ★ Read the BODY FRAMES directly -- there are no left_shoulder_pos /
+  // left_elbow_pos / left_wrist_pos sensors in this model (they belong to the
+  // H12_Hands variant). Using SensorByName here would return null, the guard
+  // would zero the term, and the cost would be silently INERT.
+  // ⚠ These are body ORIGINS, which for these links sit at the driving joint --
+  // fine for a heading/coplanarity measure, but do NOT reuse them as surface
+  // points (the `foot_left_pos`-is-the-ankle-origin trap).
+  {
+    int b_sh = mj_name2id(model, mjOBJ_BODY, "left_shoulder_yaw_link");
+    int b_el = mj_name2id(model, mjOBJ_BODY, "left_elbow_link");
+    int b_wr = mj_name2id(model, mjOBJ_BODY, "left_wrist_yaw_link");
+    int b_to = mj_name2id(model, mjOBJ_BODY, "torso_link");
+    double plane_err = 0.0;
+    if (b_sh >= 0 && b_el >= 0 && b_wr >= 0 && b_to >= 0) {
+      double const *T = data->xpos + 3 * b_to;
+      double const *R = data->xmat + 9 * b_to;
+      double sl[3], el_[3], wl[3], tmp[3];
+      mju_sub3(tmp, data->xpos + 3 * b_sh, T); mju_mulMatTVec(sl, R, tmp, 3, 3);
+      mju_sub3(tmp, data->xpos + 3 * b_el, T); mju_mulMatTVec(el_, R, tmp, 3, 3);
+      mju_sub3(tmp, data->xpos + 3 * b_wr, T); mju_mulMatTVec(wl, R, tmp, 3, 3);
+
+      constexpr double kSplayTol = 0.17;   // rad, ~10 deg of free heading
+      constexpr double kTuckTol  = 0.03;   // m, 3 cm of free lateral offset
+      double splay = std::atan2(wl[1] - el_[1], wl[0] - el_[0]);
+      plane_err += mju_max(0.0, mju_abs(splay) - kSplayTol);
+
+      // lateral distance of the elbow from the shoulder->wrist chord, in xy
+      double cx = wl[0] - sl[0], cy = wl[1] - sl[1];
+      double cn = mju_sqrt(cx * cx + cy * cy);
+      if (cn > 1.0e-6) {
+        double px = el_[0] - sl[0], py = el_[1] - sl[1];
+        double lat = mju_abs((px * cy - py * cx) / cn);
+        plane_err += mju_max(0.0, lat - kTuckTol);
+      }
+    }
+    residual[counter++] = plane_err;
   }
 
   // // ========== FOREARM BRACING (H12_Hands only - OPTIONAL) ========== //
