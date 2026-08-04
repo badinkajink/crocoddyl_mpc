@@ -6,7 +6,7 @@
    <compiler angle="radian" meshdir="meshes/" autolimits="true"/>
  
    <default>
-@@ -41,8 +41,17 @@
+@@ -41,8 +41,26 @@
             ~67 N·m gravity moment. kp=80 at 0.5 rad = 40 N·m → still
             60% short, but combined with knee+hip torques should be enough
             to hold the lean as a stable basin. -->
@@ -21,11 +21,20 @@
 +           the position error needed to reach a given torque. -->
        <default class="ankle">
 -        <position forcerange="-75 75" kp="80" kv="4"/>
-+        <position forcerange="-75 75" kp="160" kv="6"/>
++        <!-- 2026-08-03 ANKLE SIM2REAL PARITY. kp/kv now MATCH the deployed node exactly
++           (h12_control_node.cc KP[4]=KP[10]=200, KV[4]=KV[10]=4) instead of my
++           interim 160/6 -- the node already raised ankle-pitch to 200 on 2026-07-20
++           for this exact reason ("that droop IS the forward lean"). forcerange
++           tightened 75 -> 48.6 = 0.9 x TAU_ESTOP[4] (54), the real H2 command clamp:
++           ownsim never runs PatchActuators, so it had been planning on 60 Nm
++           (min of 75 and jnt_actfrcrange) that the robot cannot emit -- ~23% phantom
++           authority on the joint the whole recovery depends on. Expect performance to
++           DROP; that is the point. -->
++        <position forcerange="-48.6 48.6" kp="200" kv="4"/>
        </default>
        <default class="torso">
          <position forcerange="-200 200" kp="200" kv="5"/>
-@@ -99,6 +108,7 @@
+@@ -99,6 +117,7 @@
      <mesh name="left_wrist_roll_link" file="left_wrist_roll_link.STL"/>
      <mesh name="left_wrist_pitch_link" file="left_wrist_pitch_link.STL"/>
      <mesh name="wrist_yaw_link" file="wrist_yaw_link.STL"/>
@@ -33,7 +42,7 @@
      <mesh name="right_shoulder_pitch_link" file="right_shoulder_pitch_link.STL"/>
      <mesh name="right_shoulder_roll_link" file="right_shoulder_roll_link.STL"/>
      <mesh name="right_shoulder_yaw_link" file="right_shoulder_yaw_link.STL"/>
-@@ -153,7 +163,7 @@
+@@ -153,7 +172,7 @@
                    <joint name="left_ankle_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.261799 0.261799" actuatorfrcrange="-40 40" armature="0.1" frictionloss="0.2"/>
                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="left_ankle_roll_link"/>
                    <!-- <geom class="visual" mesh="left_ankle_roll_link"/> -->
@@ -42,7 +51,7 @@
                    <!-- <geom class="foot1"/>
                    <geom class="foot2"/>
                    <geom class="foot3"/> -->
-@@ -197,7 +207,7 @@
+@@ -197,7 +216,7 @@
                    <inertial pos="0.029589 0 -0.015973" quat="0 0.725858 0 0.687845" mass="0.747" diaginertia="0.00359178 0.00343534 0.000640307"/>
                    <joint name="right_ankle_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.261799 0.261799" actuatorfrcrange="-40 40" armature="0.1" frictionloss="0.2"/>
                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="right_ankle_roll_link"/>
@@ -51,7 +60,7 @@
                    <!-- <geom class="visual" mesh="right_ankle_roll_link"/> -->
                    <!-- <geom class="foot1"/>
                    <geom class="foot2"/>
-@@ -252,6 +262,25 @@
+@@ -252,6 +271,25 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="left_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="left_elbow_link"/>
                  <!-- <geom class="visual" mesh="left_elbow_link"/> -->
@@ -77,7 +86,7 @@
                  <body name="left_wrist_roll_link" pos="0.121 -0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
                    <joint name="left_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -271,7 +300,54 @@
+@@ -271,7 +309,54 @@
                        <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
@@ -132,7 +141,7 @@
                      </body>
                    </body>
                  </body>
-@@ -303,6 +379,11 @@
+@@ -303,6 +388,11 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="right_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="right_elbow_link"/>
                  <!-- <geom class="visual" mesh="right_elbow_link"/> -->
@@ -144,7 +153,7 @@
                  <body name="right_wrist_roll_link" pos="0.121 0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
                    <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -322,7 +403,32 @@
+@@ -322,7 +412,32 @@
                        <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
