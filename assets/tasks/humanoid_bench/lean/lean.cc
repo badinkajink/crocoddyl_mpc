@@ -2212,6 +2212,31 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         const char* gn = mj_id2name(model, mjOBJ_GEOM, g);
         if (gn && (std::strcmp(gn, "left_forearm_pad") == 0 ||
                    std::strcmp(gn, "left_wrist_pad") == 0)) continue;
+        // ★ 2026-08-03: the REACHING arm's distal links are exempt from the
+        // PROXIMITY barrier (this list) but stay in the CONTACT charge below.
+        //
+        // The barrier is preventive: it charges any guarded geom that comes within
+        // `table_clear_margin` (0.08 m) of the slab face while over the footprint.
+        // The right gripper/wrist/elbow were in it -- and the reach target sits at
+        // z 1.035 against a face at 0.955, i.e. EXACTLY 0.080 above it. So the
+        // barrier (w 150) fired precisely where Reaching Hand Dist (w 80) was
+        // pulling, ~2:1 against it. Measured consequence (gateB run01): the right
+        // gripper never crossed the slab's near edge (x 0.500), sat 18-21 cm BELOW
+        // the face for the whole run, and stayed 0.513 m from a target its arm
+        // could reach with 5-11 cm to spare. The reach simply never happened.
+        //
+        // Exempting only the DISTAL right links keeps the intent intact: the right
+        // SHOULDER links stay guarded (they should never be over the slab -- one was
+        // the peak illegal part at 375.6 N in mx_22_c), and every right-arm geom is
+        // still charged by `body_table_force` if it actually TOUCHES. So the hand may
+        // hover over the table to do its job; it still may not rest on it.
+        static const char* kReachExempt[] = {
+            "right_magpie_gripper", "right_wrist_yaw_link",
+            "right_wrist_roll_link", "right_wrist_pitch_link", "right_elbow_link"};
+        bool reach_exempt = false;
+        for (const char* rn : kReachExempt)
+          if (std::strcmp(bn, rn) == 0) { reach_exempt = true; break; }
+        if (reach_exempt) continue;
         guard_g[n_guard++] = g;
       }
       if (n_guard >= kMaxGuard) {
@@ -2546,6 +2571,26 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         double px = el_[0] - sl[0], py = el_[1] - sl[1];
         double lat = mju_abs((px * cy - py * cx) / cn);
         plane_err += mju_max(0.0, lat - kTuckTol);
+      }
+
+      // ★ SLAB CONTAINMENT (2026-08-04). The two terms above straighten the arm
+      // but say nothing about WHERE it lands, and straightening turned out to
+      // push the contact OUTBOARD: the forearm now lies parallel to x at the
+      // shoulder's lateral offset instead of angling across the slab. Measured
+      // over the brace window, contact y went 0.194 -> 0.289 and 0.180 -> 0.332
+      // (slab edge +0.297) WITH this cost, versus 0.217 -> 0.135 and 0.232 ->
+      // 0.142 without it. Base lateral drift (+0.07 m left) stacks on top.
+      // So charge the bracing elbow for leaving the slab footprint, in WORLD y
+      // against the actual table geom -- the objective is "stay on the table",
+      // which neither an arm-frame nor a torso-frame term can express.
+      int g_tab = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+      int b_el2 = mj_name2id(model, mjOBJ_BODY, "left_elbow_link");
+      if (g_tab >= 0 && b_el2 >= 0) {
+        double ty = data->geom_xpos[3 * g_tab + 1];
+        double half_y = model->geom_size[3 * g_tab + 1];
+        constexpr double kEdgeKeepout = 0.06;   // m of slab we refuse to use
+        double dy = mju_abs(data->xpos[3 * b_el2 + 1] - ty);
+        plane_err += mju_max(0.0, dy - (half_y - kEdgeKeepout));
       }
     }
     residual[counter++] = plane_err;

@@ -85,7 +85,7 @@
              the legs sit at 0.33..0.43 vs toes reaching ~0.195.
              Slab SIZE/FACE unchanged -> the ARPA battery reference (face z 0.865,
              thickness 0.11) is preserved; only its distance from the robot changes. -->
-        <body name="table" pos="1.0900 0 0.5100">
+        <body name="table" pos="1.0900 0 0.5400">
             <!-- 2026-07-31 REAL ADJUSTABLE TABLE (CL_Assets lean_table parity): top
                  118 x 59.5 cm, SHORT side toward the robot -> half-size 0.59 x 0.2975.
                  Half-thickness stays 0.055 (real top is 4 cm; the thicker planner slab

@@ -503,7 +503,7 @@
    "Reaching Hand Dist": 0.0,
    "Object Dist": 0.0,
    "Pelvis Forward": 100.0,
-   "Brace Pos": 500.0,
+   "Brace Pos": 60.0,
    "Brace Force": 60.0,
    "Contact": 30.0,
    "Hip Clearance": 0.0,
@@ -608,12 +608,12 @@
    "humanoid_bench": 0.0,
    "Object Dist": 0.0,
    "Reaching Hand Dist": 0.0,
-   "Brace Pos": 0.0,
-   "Brace Force": 0.0,
+   "Brace Pos": 40.0,
+   "Brace Force": 50.0,
    "Contact": 0.0,
    "Left Leg Anchor": 400.0,
    "Right Foot Lift": 0.0,
-   "Pelvis Forward": 0.0,
+   "Pelvis Forward": 40.0,
    "Support Polygon": 0.0,
    "Body Yaw": 40.0,
    "Body Table Clearance": 150.0,
@@ -627,7 +627,7 @@
    "Angular Momentum": 5.0,
    "Lateral Center": 150.0,
    "Height": 100.0,
-   "CoM Vel.": 10.0,
+   "CoM Vel.": 15.0,
    "Joint Vel.": 0.01,
    "Pelvis Tilt": 100.0,
    "Foot Right Up": 2000.0,
@@ -642,9 +642,9 @@
    "Foot Stability": 15.0,
    "Joint Vel. Limit": 5.0,
    "Knees Straight": 40.0,
-   "Brace Arm Plane": 0.0
+   "Brace Arm Plane": 300.0
   },
-  "brace_force_target": 0.0
+  "brace_force_target": 70.0
  },
  {
   "contacts": [
@@ -739,12 +739,12 @@
    "humanoid_bench": 0.0,
    "Object Dist": 0.0,
    "Reaching Hand Dist": 0.0,
-   "Brace Pos": 0.0,
-   "Brace Force": 0.0,
+   "Brace Pos": 30.0,
+   "Brace Force": 35.0,
    "Contact": 0.0,
    "Left Leg Anchor": 400.0,
    "Right Foot Lift": 0.0,
-   "Pelvis Forward": 0.0,
+   "Pelvis Forward": 40.0,
    "Support Polygon": 0.0,
    "Body Yaw": 40.0,
    "Body Table Clearance": 150.0,
@@ -758,7 +758,7 @@
    "Angular Momentum": 5.0,
    "Lateral Center": 150.0,
    "Height": 100.0,
-   "CoM Vel.": 10.0,
+   "CoM Vel.": 15.0,
    "Joint Vel.": 0.01,
    "Pelvis Tilt": 100.0,
    "Foot Right Up": 2000.0,
@@ -773,9 +773,9 @@
    "Foot Stability": 15.0,
    "Joint Vel. Limit": 5.0,
    "Knees Straight": 40.0,
-   "Brace Arm Plane": 0.0
+   "Brace Arm Plane": 300.0
   },
-  "brace_force_target": 0.0
+  "brace_force_target": 45.0
  },
  {
   "contacts": [
@@ -870,12 +870,12 @@
    "humanoid_bench": 0.0,
    "Object Dist": 0.0,
    "Reaching Hand Dist": 0.0,
-   "Brace Pos": 0.0,
-   "Brace Force": 0.0,
+   "Brace Pos": 20.0,
+   "Brace Force": 15.0,
    "Contact": 0.0,
    "Left Leg Anchor": 400.0,
    "Right Foot Lift": 0.0,
-   "Pelvis Forward": 0.0,
+   "Pelvis Forward": 40.0,
    "Support Polygon": 0.0,
    "Body Yaw": 40.0,
    "Body Table Clearance": 150.0,
@@ -904,9 +904,9 @@
    "Foot Stability": 15.0,
    "Joint Vel. Limit": 5.0,
    "Knees Straight": 40.0,
-   "Brace Arm Plane": 0.0
+   "Brace Arm Plane": 300.0
   },
-  "brace_force_target": 0.0
+  "brace_force_target": 15.0
  },
  {
   "contacts": [
