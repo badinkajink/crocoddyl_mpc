@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The reach envelope was censored, and MJPC does not brace — 2026-08-04</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  .key{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;font-size:.85rem;color:var(--ink2);margin:.6rem 0}
+  .key span{display:inline-flex;align-items:center;gap:.4rem}
+  .dot{width:12px;height:12px;display:inline-block;border:1px solid #0002;flex:0 0 auto}
+  ul{padding-left:1.15rem}
+  .plot{background:var(--panel);border-radius:8px;padding:.4rem}
+  .plot svg{width:100%;height:auto;display:block}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  table td[rowspan]{white-space:normal;vertical-align:middle;color:var(--ink2)}
+
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     A fenced block gets a rule on the left so a derivation reads as a unit. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>The reach envelope was censored, and MJPC does not brace</h1>
+<p class="sub">Session 11. The headline number from the last page — “bracing buys +0.20&nbsp;m of reach”
+— was measuring arm length, not balance. Fixing it shows what bracing actually buys: not more reach,
+but reach that survives a margin requirement. Separately: the torso e-stop does not trace to the safety layer,
+friction stops mattering below <span class="m">μ&nbsp;=&nbsp;0.3</span>, and MJPC sampling never
+established a brace in 12&nbsp;s.</p>
+<p class="meta">§11 supersedes §3.1 and restates §3.2 · 2026-08-04 · branch <code>asset-unification</code> · follows
+<a href="2026-08-04_allen_parity.html">Allen parity, and what the real table broke</a> ·
+code in <code>lean_analysis/</code> · run dir <code>lean_analysis/runs/2026-08-04_session11/</code></p>
+
+<div class="note warn">
+<b>Correction to the previous page.</b> Its reach-envelope table reported <code>slvd=NO</code> for the
+braced sets at <span class="m">x&nbsp;≥&nbsp;1.35</span> and I read that as a geometric limit on the
+brace. It is not: the gate that failed is the <em>reaching</em> hand’s, not the brace’s. Every braced
+set’s envelope ended because the arm ran out, at which point no contact set can beat any other. The
+“+0.20 m” was a censored lower bound. §3 has the corrected number, and it is larger.
+</div>
+
+<h2>0. Answers to the two questions</h2>
+
+<h3>Is the torso e-stop really 40 N·m?</h3>
+<p><b>The 40 is the deploy node’s own number and I cannot trace it to the safety layer.</b> Chasing it
+through every table in the tree gives three different answers, none of which is 40:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Source</th><th>Torso</th><th>Ankle&nbsp;P</th><th>Knee</th><th>Traceable?</th></tr></thead>
+<tbody>
+<tr><td><code>h12_control_node.cc</code> <code>TAU_ESTOP</code> — what the node enforces</td>
+    <td class="bad">40</td><td>54</td><td>300</td><td>hand-entered</td></tr>
+<tr><td><code>h12_safety_layer/config/tight_safety_full.yaml</code> × URDF</td>
+    <td>0.10 × 200 = <b>20</b></td><td>0.90 × 60 = 54</td><td>0.40 × 300 = 120</td><td>yes</td></tr>
+<tr><td><code>default_safety_full.yaml</code> × URDF (<code>torque_ratio: 1.0</code>)</td>
+    <td>1.00 × 200 = <b>200</b></td><td>60</td><td>300</td><td>yes</td></tr>
+<tr><td><code>_gen_stand_model.py</code> <code>ESTOP_RATIO</code> (in-tree copy of an older yaml)</td>
+    <td>0.30 × 200 = <b>60</b></td><td>0.90 × 60 = 54</td><td>300</td><td>yes</td></tr>
+</tbody></table></div>
+
+<p>The node’s table is <em>mixed provenance</em>. Its ankle rows (54, 36) match the tight config’s 0.90
+ratio exactly; hip roll (200) and knee (300) match a 1.00 ratio; the arm rows (32 / 32 / 14.4 / 14.4 /
+9.5 / 9.5 / 9.5) are not from any yaml at all — they are the MJPC model’s own <code>forcerange</code>
+class defaults, verified against the loaded model. The torso 40 matches nothing. It entered at
+<code>f47b051</code> (2026-06-09, “added proper actuatorforcerange from safety layer”) alongside
+hip-pitch 130, which is equally untraceable.</p>
+
+<div class="note">
+<b>What is real about it.</b> The node <em>does</em> clamp the torso at
+<span class="m">0.9 × 40 = 36.0</span> N·m, and that clamp has been observed binding on hardware:
+<code>deploy_common.h</code> records the 2026-07-11 run where “the stance ankle pitch railed at EXACTLY
+48.6 Nm and the torso at EXACTLY 36.0 Nm for 6 s.” So 36 is the real emitted ceiling regardless of where
+40 came from. <b>Holding it at 40 per your call.</b> Nothing was retuned.
+</div>
+
+<div class="note warn">
+<b>The live risk is the other direction.</b> If a deployment runs <code>tight_safety_full.yaml</code>,
+the safety layer’s torso e-stop threshold is <b>20 N·m</b> — and the node will happily emit 36. A plan
+that spends the torso budget the analysis currently grants it would trip the e-stop at 56 % of that
+budget. Worth a five-minute check of which config the machine actually launches with before the next
+run; I could not determine it from the tree (the README documents all four as options and
+<code>safety_layer_main.py</code> defaults to <code>default_safety_full.yaml</code>).
+</div>
+
+<p>Where does it bind in practice? At the braced poses measured this session the torso runs at
+<b>0.34–0.38</b> of its 36 N·m clamp, and the binding joint is <code>right_shoulder_pitch</code> at 0.48.
+So the torso is not currently the limiting joint, and the 0.2× envelope has room — which is the
+comfortable case for holding the prescribed limit.</p>
+
+<h3>Allen’s ankle patch</h3>
+<p><b>Held in the magpie patch. Nothing moved to <code>CL_assets</code>.</b> Recorded here so the
+divergence is on the record rather than in a patch file: the base H1-2 models and every non-magpie lean
+variant still plan the ankle at 60 N·m, i.e. <span class="m">1.23×</span> the 48.6 N·m the node will
+emit. Every non-magpie result in this study therefore carries an ankle-authority over-estimate. All
+numbers on this page are <code>Lean_H12_Magpie.xml</code>, which has the patch.</p>
+
+<h2>1. The math</h2>
+<p>Rendered properly this time. Three stages: a pose, a force distribution at that pose, and a region
+of poses. Everything downstream — slip, margin, push, the reach envelope — is one of these three with
+a different objective.</p>
+
+<h3>1.1 Pose: the IK step</h3>
+<p>Gauss–Newton over the 33 robot DOFs, one quadratic program per iteration. The step
+<math><mi>δ</mi><mi>q</mi></math> solves</p>
+
+<div class="eq">
+<math display="block"><mrow>
+  <munder><mo movablelimits="false">min</mo><mrow><mi>δ</mi><mi>q</mi></mrow></munder>
+  <mspace width="0.6em"/>
+  <mfrac><mn>1</mn><mn>2</mn></mfrac>
+  <mi>δ</mi><msup><mi>q</mi><mo>⊤</mo></msup><mi>G</mi><mi>δ</mi><mi>q</mi>
+  <mo>−</mo><msup><mi>a</mi><mo>⊤</mo></msup><mi>δ</mi><mi>q</mi>
+</mrow></math>
+<math display="block"><mrow>
+  <mtext>s.t.</mtext><mspace width="0.6em"/>
+  <msubsup><mi>n</mi><mi>c</mi><mo>⊤</mo></msubsup><msub><mi>J</mi><mi>c</mi></msub><mi>δ</mi><mi>q</mi>
+  <mo>≥</mo><msub><mi>d</mi><mi>c</mi></msub><mo>−</mo><mi>ε</mi>
+  <mspace width="1.4em"/><mo>∀</mo><mi>c</mi><mo>∈</mo><mi mathvariant="script">C</mi>
+</mrow></math>
+<math display="block"><mrow>
+  <mo>−</mo><mi>Δ</mi><mo>≤</mo><mi>δ</mi><msub><mi>q</mi><mi>i</mi></msub><mo>≤</mo><mi>Δ</mi>
+</mrow></math>
+<p class="where">with <math><mi>G</mi><mo>=</mo><msub><mo>∑</mo><mi>k</mi></msub><msubsup><mi>w</mi><mi>k</mi><mn>2</mn></msubsup><msubsup><mi>J</mi><mi>k</mi><mo>⊤</mo></msubsup><msub><mi>J</mi><mi>k</mi></msub><mo>+</mo><mi>λ</mi><mi>I</mi></math>,
+<math><mi>a</mi><mo>=</mo><msub><mo>∑</mo><mi>k</mi></msub><msubsup><mi>w</mi><mi>k</mi><mn>2</mn></msubsup><msubsup><mi>J</mi><mi>k</mi><mo>⊤</mo></msubsup><msub><mi>e</mi><mi>k</mi></msub></math>
+over the task terms <math><mi>k</mi></math> (reach, brace sites, pinned feet, posture),
+<math><mi mathvariant="script">C</mi></math> the near-contacts inside the look-ahead margin,
+<math><msub><mi>d</mi><mi>c</mi></msub></math> their signed distances, and
+<math><mi>Δ</mi><mo>=</mo><mn>0.05</mn></math> the trust region. Non-penetration is an
+<em>inequality inside the QP</em>, not a penalty — that is what stopped the solver walking through
+the table.</p>
+</div>
+
+<h3>1.2 Pose: aligning the gripper’s flat face (new)</h3>
+<p>To brace on the <em>side</em> of the gripper the wrist has to roll until that face meets the wood.
+Writing <math><mi>a</mi></math> for the face normal (a body-fixed axis, in world) and
+<math><mi>t</mi><mo>=</mo><mo>(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mo>−</mo><mn>1</mn><mo>)</mo></math>,
+the residual and its Jacobian are</p>
+
+<div class="eq">
+<math display="block"><mrow>
+  <mi>r</mi><mo>=</mo><mi>a</mi><mo>×</mo><mi>t</mi>
+  <mo>,</mo><mspace width="2em"/>
+  <mfrac><mrow><mo>∂</mo><mi>r</mi></mrow><mrow><mo>∂</mo><mi>ω</mi></mrow></mfrac>
+  <mo>=</mo>
+  <mrow><mo>[</mo><mi>a</mi><msup><mi>t</mi><mo>⊤</mo></msup>
+  <mo>−</mo><mo>(</mo><mi>a</mi><mo>·</mo><mi>t</mi><mo>)</mo><mi>I</mi><mo>]</mo></mrow>
+</mrow></math>
+<p class="where">from <math><mover><mi>a</mi><mo>˙</mo></mover><mo>=</mo><mi>ω</mi><mo>×</mo><mi>a</mi></math>.
+Using the scalar cost <math><mn>1</mn><mo>−</mo><mi>a</mi><mo>·</mo><mi>t</mi></math> instead has zero
+gradient at <em>both</em> the aligned and the anti-aligned pose, so the solver can park the face pointing
+at the ceiling; the cross-product residual has no such stationary point on the wrong side.</p>
+</div>
+
+<h3>1.3 Force: static equilibrium at a fixed pose</h3>
+<p>With <math><mover><mi>q</mi><mo>˙</mo></mover><mo>=</mo><mover><mi>q</mi><mo>¨</mo></mover><mo>=</mo><mn>0</mn></math>,</p>
+
+<div class="eq">
+<math display="block"><mrow>
+  <msup><mi>S</mi><mo>⊤</mo></msup><mi>τ</mi>
+  <mo>+</mo><munder><mo>∑</mo><mi>i</mi></munder>
+  <msubsup><mi>J</mi><mi>i</mi><mo>⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub>
+  <mo>=</mo><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo>
+</mrow></math>
+<p class="where">splitting the 6 unactuated floating-base rows from the 27 actuated ones:</p>
+<math display="block"><mrow>
+  <munder><mo>∑</mo><mi>i</mi></munder>
+  <msubsup><mi>J</mi><mrow><mi>i</mi><mo>,</mo><mn>1</mn><mo>:</mo><mn>6</mn></mrow><mo>⊤</mo></msubsup>
+  <msub><mi>λ</mi><mi>i</mi></msub>
+  <mo>=</mo><msub><mi>g</mi><mrow><mn>1</mn><mo>:</mo><mn>6</mn></mrow></msub>
+  <mspace width="2.2em"/>
+  <mi>τ</mi><mo>=</mo><msub><mi>g</mi><mrow><mn>7</mn><mo>:</mo><mn>33</mn></mrow></msub>
+  <mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder>
+  <msubsup><mi>J</mi><mrow><mi>i</mi><mo>,</mo><mn>7</mn><mo>:</mo><mn>33</mn></mrow><mo>⊤</mo></msubsup>
+  <msub><mi>λ</mi><mi>i</mi></msub>
+</mrow></math>
+<p class="where"><math><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo></math> is <code>qfrc_bias</code> at rest
+(pure gravity), <b>not</b> <code>mj_inverse</code> — the latter folds in <code>qfrc_constraint</code>,
+i.e. whatever the pose happens to be penetrating, which at the seed keyframe is 20 kN against the
+668 N actually being balanced.</p>
+</div>
+
+<h3>1.4 Force: the friction pyramid</h3>
+<p>Per contact, in the <em>contact</em> frame — <math><msub><mi>λ</mi><mi>n</mi></msub></math> along
+MuJoCo’s own resolved normal, not world <math><mi>z</mi></math>:</p>
+
+<div class="eq">
+<math display="block"><mrow>
+  <msub><mi>λ</mi><mi>n</mi></msub><mo>≥</mo><mn>0</mn>
+  <mo>,</mo><mspace width="2em"/>
+  <mo>|</mo><msub><mi>λ</mi><mrow><mi>t</mi><mo>,</mo><mi>k</mi></mrow></msub><mo>|</mo>
+  <mo>≤</mo><mfrac><mrow><mi>μ</mi><msub><mi>λ</mi><mi>n</mi></msub></mrow><msqrt><mn>2</mn></msqrt></mfrac>
+  <mo>,</mo><mspace width="1em"/><mi>k</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>2</mn>
+</mrow></math>
+<p class="where">Two rows per tangent, not one negated row. Negating the whole row pins
+<math><mo>|</mo><msub><mi>λ</mi><mi>t</mi></msub><mo>|</mo></math> <em>to</em> the boundary instead of
+bounding it, and every LP comes back infeasible — that bug cost a session (S10c.1).</p>
+</div>
+
+<h3>1.5 Region: which centres of mass are holdable</h3>
+<p>The multi-contact generalisation of the support polygon (Bretl &amp; Lall 2008; Caron et al. 2015).
+For CoM <math><mi>c</mi></math>, robot mass <math><mi>M</mi></math>, and an optional horizontal
+disturbance <math><mi>f</mi></math> applied at the CoM:</p>
+
+<div class="eq">
+<math display="block"><mrow>
+  <munder><mo>∑</mo><mi>i</mi></munder>
+  <msubsup><mi>R</mi><mi>i</mi><mo>⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub>
+  <mo>=</mo>
+  <mo>(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mi>M</mi><mi>g</mi><mo>)</mo>
+  <mo>−</mo><mi>f</mi>
+</mrow></math>
+<math display="block"><mrow>
+  <munder><mo>∑</mo><mi>i</mi></munder>
+  <msub><mi>p</mi><mi>i</mi></msub><mo>×</mo>
+  <msubsup><mi>R</mi><mi>i</mi><mo>⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub>
+  <mo>=</mo>
+  <mo>(</mo><mo>−</mo><mi>M</mi><mi>g</mi><msub><mi>c</mi><mi>y</mi></msub>
+  <mo>,</mo><mspace width="0.3em"/><mi>M</mi><mi>g</mi><msub><mi>c</mi><mi>x</mi></msub>
+  <mo>,</mo><mspace width="0.3em"/><mn>0</mn><mo>)</mo>
+  <mo>−</mo><mi>c</mi><mo>×</mo><mi>f</mi>
+</mrow></math>
+<p class="where">The moment is independent of <math><msub><mi>c</mi><mi>z</mi></msub></math>, so this is
+genuinely a 2-D set and needs no height assumption. Solved twice: <b>contact-only</b> (these six rows
+plus the cones — exact) and <b>actuated</b> (also
+<math><mo>|</mo><mi>τ</mi><mo>|</mo><mo>≤</mo><msub><mi>τ</mi><mtext>max</mtext></msub></math>, which
+freezes <math><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo></math> at the solved pose and is therefore a
+linearisation, reported separately for that reason). The boundary is ray-shot at 10° resolution with
+18 bisection steps; <b>margin</b> is the distance from the pose’s own CoM to that boundary.</p>
+</div>
+
+<h3>1.6 The derived scalars</h3>
+<div class="eq">
+<math display="block"><mrow>
+  <msub><mi>u</mi><mi>i</mi></msub><mo>=</mo>
+  <mfrac>
+    <mrow><mo>‖</mo><msub><mi>λ</mi><mrow><mi>t</mi><mo>,</mo><mi>i</mi></mrow></msub><mo>‖</mo></mrow>
+    <mrow><mi>μ</mi><msub><mi>λ</mi><mrow><mi>n</mi><mo>,</mo><mi>i</mi></mrow></msub></mrow>
+  </mfrac>
+  <mspace width="2.5em"/>
+  <mi>ρ</mi><mo>(</mo><mi>μ</mi><mo>)</mo><mo>=</mo>
+  <munder><mo movablelimits="false">max</mo><mi>j</mi></munder>
+  <mfrac><mrow><mo>|</mo><msub><mi>τ</mi><mi>j</mi></msub><mo>|</mo></mrow>
+         <msubsup><mi>τ</mi><mi>j</mi><mtext>max</mtext></msubsup></mfrac>
+</mrow></math>
+<p class="where">slip utilisation (<math><mi>u</mi><mo>=</mo><mn>1</mn></math> is on the cone) and peak
+normalised actuator effort. The friction threshold this page reports is</p>
+<math display="block"><mrow>
+  <msubsup><mi>μ</mi><mi>τ</mi><mo>*</mo></msubsup><mo>=</mo>
+  <mo>min</mo><mo>{</mo><mi>μ</mi><mo>:</mo>
+  <mo>|</mo><mi>ρ</mi><mo>(</mo><mi>μ</mi><mo>)</mo><mo>−</mo>
+  <mi>ρ</mi><mo>(</mo><mi>∞</mi><mo>)</mo><mo>|</mo><mo>≤</mo><mi>δ</mi><mo>}</mo>
+</mrow></math>
+<p class="where">with <math><mi>ρ</mi><mo>(</mo><mi>∞</mi><mo>)</mo></math> computed <em>directly</em>,
+by deleting the cone rows and leaving the normals unilateral — not extrapolated from the tail of a
+sweep.</p>
+</div>
+
+<h2>2. Friction: solved for, not assumed</h2>
+<p>Your point stands, so <code>MU</code> stopped being a constant. Since the IK never sees
+<math><mi>μ</mi></math> (it is purely kinematic), one pose per contact set is re-scored at every
+<math><mi>μ</mi></math> — same pose, same contacts, same Jacobians, one parameter moving.</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Contact set</th><th>μ*<sub>τ</sub></th><th>μ*<sub>slip</sub></th><th>μ*<sub>region</sub></th>
+<th>ρ(∞)</th><th>margin at μ=0.6</th><th>margin at μ=∞</th></tr></thead>
+<tbody>
+<tr><td>palm</td><td class="good">0.2</td><td>0.2</td><td class="bad">none ≤ 5.0</td><td>0.504</td><td>0.121</td><td>0.312</td></tr>
+<tr><td>elbow + forearm</td><td class="good">0.2</td><td>0.2</td><td class="bad">none ≤ 5.0</td><td>0.491</td><td>0.196</td><td>0.427</td></tr>
+<tr><td>elbow + forearm + palm</td><td class="good">0.2</td><td>0.3</td><td class="bad">none ≤ 5.0</td><td>0.503</td><td>0.183</td><td>0.411</td></tr>
+<tr><td>elbow + forearm + hip</td><td class="good">0.3</td><td>0.2</td><td class="bad">none ≤ 5.0</td><td>0.406</td><td>0.264</td><td>0.492</td></tr>
+</tbody></table></div>
+
+<div class="note ok">
+<b>The answer you wanted: <math><msubsup><mi>μ</mi><mi>τ</mi><mo>*</mo></msubsup><mo>≤</mo><mn>0.3</mn></math>.</b>
+Above <math><mi>μ</mi><mo>=</mo><mn>0.3</mn></math> the pose’s peak torque is within 1 % of its
+frictionless limit and does not move again out to <math><mi>μ</mi><mo>=</mo><mn>5</mn></math>. So at the
+study’s <math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math> the torque numbers <b>are</b> characterising the
+joint envelope, with a 2× cushion. Handbook dry values put steel-on-wood around 0.3–0.5 and
+rubber-on-wood at 0.7–1.0, so this holds for any plausible contact material — though that is a
+literature range standing in for a measurement, not a measurement. <b>Every torque and reach result below is friction-independent in that
+sense.</b>
+</div>
+
+<div class="note warn">
+<b>But this does not hold at the envelope edge, which is where it matters.</b> Re-running the same
+sweep at <math><mi>x</mi><mo>=</mo><mn>1.35</mn></math> m — the elbow+forearm strength limit rather
+than an interior pose — gives <math><msubsup><mi>μ</mi><mi>τ</mi><mo>*</mo></msubsup><mo>=</mo><mn>0.8</mn></math>
+for elbow+forearm and <b>1.5</b> for elbow+forearm+palm. At the study's
+<math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math> the limiting pose is therefore <em>still</em>
+friction-affected, and the reach envelope in §3 would move with a grippier table. The interior result
+above does not transfer to the boundary, because the boundary is exactly where shear demand is highest.
+<b>So the previous page's “the limit is friction, not torque” was closer to correct than I first
+credited</b>, and the §3 envelope numbers are conditional on
+<math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math>.
+</div>
+
+<div class="note warn">
+<b>And the region metric never becomes friction-free at all.</b>
+<math><msubsup><mi>μ</mi><mtext>region</mtext><mo>*</mo></msubsup></math> is never reached — at
+<math><mi>μ</mi><mo>=</mo><mn>5</mn></math> the actuated equilibrium region is still 6–10 cm short of its
+frictionless limit. The region’s <em>boundary</em> is exactly where shear demand peaks, so extra friction
+keeps buying region long after it has stopped changing what the pose costs. Concretely: the
+<b>margin</b>, <b>max-push</b> and <b>reach-envelope</b> columns everywhere on this page remain
+functions of the assumed <math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math> and would grow with a grippier
+table. Only the interior peak-torque figures are friction-free. <b>Measuring
+<math><mi>μ</mi></math> on the real tabletop is still the single cheapest experiment on the
+list, and it has not been de-risked.</b>
+</div>
+
+<h2>3. The reach envelope was censored — the correction</h2>
+<p>The previous page’s envelope collapses four independent conditions into one bit. Separated
+(<code>reach_diag.py</code>), the drop-out reason at the old centred stance is:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Contact set</th><th>Envelope</th><th>Ends because</th><th>Is that about bracing?</th></tr></thead>
+<tbody>
+<tr><td>legs-only</td><td>1.10 m</td><td class="good">STRENGTH</td><td>yes</td></tr>
+<tr><td>palm</td><td>1.30 m</td><td class="good">STRENGTH</td><td>yes</td></tr>
+<tr><td>elbow + forearm</td><td>1.30 m</td><td class="bad">reach — hand 46 mm short</td><td><b>no</b></td></tr>
+<tr><td>elbow + forearm + palm</td><td>1.30 m</td><td class="bad">reach</td><td><b>no</b></td></tr>
+<tr><td>elbow + forearm + hip</td><td>1.30 m</td><td class="bad">reach</td><td><b>no</b></td></tr>
+</tbody></table></div>
+
+<p>Three of the five ended on the arm, not the robot. Brace placement was never the problem —
+<code>placed</code> stayed true at every target, torque peaked at 0.48–0.9, and margins kept growing.
+That is the exact paradox you flagged: margin is a stability quantity and reach had stopped being one.
+Warm-starting each target from the previous solution moves nothing (1.30 either way), so it is real arm
+length, not an IK basin artifact.</p>
+
+<h3>3.1 Moving the wall: the stance</h3>
+<p>Your suggestion, measured. A rigid relocation of the whole robot (feet included), sweeping
+<math><mi>Δ</mi><mi>y</mi></math> toward the reaching side:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Stance Δy</th><th>Kinematic wall</th><th>Strength envelope</th>
+<th>Arm over the table</th><th>Site clearance to side edge</th></tr></thead>
+<tbody>
+<tr><td>0.00 (as studied)</td><td>1.30</td><td>1.30</td><td>0.56</td><td class="bad">−4.8 mm</td></tr>
+<tr><td>−0.05</td><td>1.30</td><td>1.30</td><td>0.67</td><td class="bad">−2.9 mm</td></tr>
+<tr><td>−0.10</td><td>1.35</td><td>1.35</td><td>0.78</td><td class="bad">−1.3 mm</td></tr>
+<tr><td>−0.20</td><td>1.35</td><td>1.35</td><td>0.78</td><td class="bad">−1.3 mm</td></tr>
+<tr><td><b>−0.25</b></td><td class="good">≥ 1.60</td><td class="good">1.40</td><td class="good">1.00</td><td class="good">+143 mm</td></tr>
+</tbody></table></div>
+
+<p>The clearance column is the direct measurement of “the forearm, wrist and hand are clear off the
+table”: at the centred stance a <em>placed</em> brace site sits <b>4.8 mm outside</b> the table’s side
+edge. The table is 0.595 m wide and 1.18 m deep and the arm was using the narrow axis. At
+<math><mi>Δ</mi><mi>y</mi><mo>=</mo><mo>−</mo><mn>0.25</mn></math> the whole arm is over the wood and the
+kinematic wall retreats past the grid.</p>
+
+<h3>3.2 The un-censored envelope</h3>
+<p>Same stance for every set, grid extended to 1.80 m:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Contact set</th><th>Envelope</th><th>Gain vs legs-only</th><th>Limited by</th></tr></thead>
+<tbody>
+<tr><td>legs-only</td><td>1.10 m</td><td>—</td><td class="good">STRENGTH</td></tr>
+<tr><td>palm</td><td>1.20 m</td><td>+0.10 m</td><td class="good">STRENGTH</td></tr>
+<tr><td>elbow + forearm</td><td>1.35 m</td><td>+0.25 m</td><td class="good">STRENGTH</td></tr>
+<tr><td>elbow + forearm + palm</td><td><b>1.40 m</b></td><td><b>+0.30 m</b></td><td class="good">STRENGTH</td></tr>
+<tr><td>elbow + forearm + hip</td><td>≥ 1.25 m</td><td>≥ +0.15 m</td><td class="bad">reach (censored)</td></tr>
+</tbody></table></div>
+
+<div class="note ok">
+<b>Reach is now monotone in the contact set: 1.10 → 1.20 → 1.35 → 1.40 m, every one of them a
+strength limit.</b> Your intuition was right and the flat result was an artifact. The benefit of the
+full brace is <b>+0.30 m</b>, not +0.20, and unlike the old number this one compares like with like.
+</div>
+
+<p>One genuine non-monotonicity survives, and it is informative rather than a bug:
+<b>elbow+forearm+hip is still censored</b>, and by <em>reach</em> — the hip contact pins the torso, which
+costs forward extension. It buys the largest margin of any set (0.492 m at
+<math><mi>μ</mi><mo>→</mo><mi>∞</mi></math>) and pays for it in reach. That is a real trade, and it is
+the second piece of evidence that the trunk contact is a consequence of the body pose rather than a
+steerable contact (S10c.2).</p>
+
+<h2>4. Contact-site rework</h2>
+
+<h3>4.1 The palm is now the side of the gripper</h3>
+<p>The old “palm” was a point on the wrist-yaw link <em>axis</em>, 130 mm out — the wrist housing, driven
+into the table by wrist <em>pitch</em>. It is now the centre of the flat side face of
+<code>*_gripper_collision</code> on the <code>*_magpie_gripper</code> body, and the wrist rolls to put
+that face down (§1.2). Measured on the model:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Joint</th><th>Travel</th><th>Limit</th><th>Axis lateral-ness at roll 0</th><th>at roll ≈ 90°</th></tr></thead>
+<tbody>
+<tr><td>wrist pitch (old driver)</td><td>53°</td><td>19 N·m</td><td>—</td><td>—</td></tr>
+<tr><td><b>wrist yaw</b> (new driver)</td><td><b>146°</b></td><td>19 N·m</td><td>0.29</td><td class="good">0.73–0.88</td></tr>
+</tbody></table></div>
+
+<p>Rolling swings the yaw axis from mostly-vertical (yaw swings the hand sideways) to mostly-lateral
+(yaw pitches the hand into the table), and yaw has 2.75× the travel for the same torque ceiling. The
+solver finds roll <b>85°</b> unprompted at <code>elbow+forearm+palm</code>, with alignment residual
+0.001.</p>
+
+<div class="note ok">
+<b>This recovers the contact you said was being lost.</b> With the old site, <code>elbow+forearm+palm</code>
+could not place the palm. It now places all three. And the wrist yaw is finally load-bearing and therefore
+characterisable: at a palm-only brace it carries <b>4.12 / 8.55 N·m = 48 %</b> of its clamped budget,
+the second-most-loaded joint in the robot. That number did not exist before, because the force was
+being applied proximal of the joint.
+</div>
+
+<p>It also exposes why the palm is the weak contact. At
+<math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math> in the triple brace the palm runs at slip utilisation
+<b>0.996</b> — exactly on the cone — carrying 10 N normal and 6 N tangential. It is not adding much
+because friction will not let it, which is the concrete version of your friction point.</p>
+
+<h3>4.2 The forearm site moved distally</h3>
+<p>From 50 mm to 110 mm along the forearm link — the distal end of <code>left_forearm_pad</code>, the
+capsule that is the forearm’s actual brace surface (<code>fromto</code> 0.02 → 0.11). Past that is the
+wrist-roll joint at 0.121, so this is as far as the modelled pad goes. Site separation at the seed:</p>
+
+<div class="scroll"><table>
+<thead><tr><th></th><th>elbow → forearm</th><th>forearm → palm</th></tr></thead>
+<tbody>
+<tr><td>v1 (S1–S10)</td><td class="bad">57 mm</td><td>~230 mm</td></tr>
+<tr><td>v2 (this session)</td><td class="good">115 mm</td><td>172 mm</td></tr>
+</tbody></table></div>
+
+<p>Three contacts now sit at roughly 0, 110 and 325 mm along the arm instead of 0, 50 and 230 — visually
+separable, and with genuinely different moment arms for the QP to choose between. Both revisions are
+switchable: <code>SITE_SET=v1</code> reproduces every earlier run byte-for-byte.</p>
+
+<h2>5. Support regions, coloured by contact</h2>
+<p>As requested. Dots are coloured by identity, sized by normal load, and the table footprint is drawn
+so “is the arm even over the table” is answerable by looking. Target
+<math><mi>x</mi><mo>=</mo><mn>1.30</mn></math> m, decentred stance — a target the legs alone
+<em>cannot</em> hold, so the growth is the whole story.</p>
+
+<div class="key"><span><i class="dot" style="background:var(--ink3);"></i>foot</span><span><i class="dot" style="background:var(--s3);border-radius:50%"></i>palm</span><span><i class="dot" style="background:var(--s1);border-radius:50%"></i>elbow</span><span><i class="dot" style="background:var(--s4);border-radius:50%"></i>forearm</span><span><i class="dot" style="background:var(--s5);transform:rotate(45deg)"></i>hip</span><span><i class="dot" style="background:none;border:2px solid var(--ink)"></i>CoM</span><span style="color:var(--ink3)">dot area &prop; normal force</span></div>
+<div class="grid2">
+<figure><div class="plot"><svg viewBox="0 0 300 250" role="img" aria-label="equilibrium region, legs only"><rect x="131.1" y="36.6" width="312.5" height="125.8" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/><line x1="26" y1="240" x2="52.5" y2="240" stroke="var(--ink3)" stroke-width="1.5"/><text x="57.5" y="243.5" font-size="9" fill="var(--ink3)">10 cm</text><polygon points="101.5,152.4 101.5,148.6 101.4,144.5 101.0,140.1 99.7,135.4 97.8,130.1 95.4,123.3 92.0,113.8 85.4,102.8 74.4,102.7 63.5,103.2 52.6,104.6 47.3,114.9 47.3,126.6 47.3,134.2 47.3,139.9 47.3,144.5 47.3,148.6 47.3,152.4 47.3,156.2 47.3,160.3 47.3,164.9 47.3,170.5 47.3,178.2 47.3,189.9 47.8,210.7 61.4,211.4 74.4,212.0 86.5,207.1 92.2,191.3 95.5,181.5 97.8,174.6 99.6,169.2 100.9,164.6 101.3,160.2 101.5,156.2" fill="var(--ink3)" fill-opacity="0.16" stroke="var(--ink3)" stroke-width="1.8"/><rect x="47.1" y="109.3" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="45.7" y="92.5" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="97.7" y="104.3" width="7.7" height="7.7" fill="var(--ink3)" opacity="0.75"/><rect x="98.6" y="89.8" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="45.7" y="209.0" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="47.1" y="192.2" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="98.6" y="211.8" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="97.3" y="192.4" width="8.4" height="8.4" fill="var(--ink3)" opacity="0.75"/><circle cx="116.5" cy="159.1" r="4.5" fill="none" stroke="var(--ink)" stroke-width="1.8"/><circle cx="116.5" cy="159.1" r="1.6" fill="var(--ink)"/></svg></div><figcaption><b style="color:var(--ink)">legs only</b> — margin <b style="color:var(--ink)">-57 mm</b> actuated, -56 mm contact-only. Dashed polygon = legs-only region; dashed rectangle = the table.</figcaption></figure>
+<figure><div class="plot"><svg viewBox="0 0 300 250" role="img" aria-label="equilibrium region, palm"><rect x="131.1" y="36.6" width="312.5" height="125.8" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/><line x1="26" y1="240" x2="52.5" y2="240" stroke="var(--ink3)" stroke-width="1.5"/><text x="57.5" y="243.5" font-size="9" fill="var(--ink3)">10 cm</text><polygon points="101.5,152.4 101.5,148.6 101.4,144.5 101.0,140.1 99.7,135.4 97.8,130.1 95.4,123.3 92.0,113.8 85.4,102.8 74.4,102.7 63.5,103.2 52.6,104.6 47.3,114.9 47.3,126.6 47.3,134.2 47.3,139.9 47.3,144.5 47.3,148.6 47.3,152.4 47.3,156.2 47.3,160.3 47.3,164.9 47.3,170.5 47.3,178.2 47.3,189.9 47.8,210.7 61.4,211.4 74.4,212.0 86.5,207.1 92.2,191.3 95.5,181.5 97.8,174.6 99.6,169.2 100.9,164.6 101.3,160.2 101.5,156.2" fill="none" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/><polygon points="119.7,160.2 119.8,159.8 119.8,159.3 119.8,158.7 119.9,158.0 120.0,157.0 120.1,155.4 120.3,152.2 120.7,141.9 116.6,113.2 102.9,98.2 88.2,97.9 72.7,99.5 56.6,103.1 47.3,113.8 47.3,128.3 47.3,140.1 47.3,150.5 47.3,160.2 47.3,170.0 47.3,180.4 47.3,192.2 47.3,206.7 62.8,211.4 79.0,212.3 94.8,208.0 107.9,199.6 116.6,178.1 118.9,170.7 119.3,166.3 119.5,164.2 119.6,163.0 119.6,162.2 119.7,161.6 119.7,161.1 119.7,160.7" fill="var(--s3)" fill-opacity="0.16" stroke="var(--s3)" stroke-width="1.8"/><rect x="46.8" y="109.0" width="3.8" height="3.8" fill="var(--ink3)" opacity="0.75"/><rect x="45.7" y="92.5" width="3.2" height="3.2" fill="var(--ink3)" opacity="0.75"/><rect x="97.9" y="104.6" width="7.2" height="7.2" fill="var(--ink3)" opacity="0.75"/><rect x="96.8" y="88.0" width="6.8" height="6.8" fill="var(--ink3)" opacity="0.75"/><rect x="44.7" y="208.0" width="5.2" height="5.2" fill="var(--ink3)" opacity="0.75"/><rect x="46.1" y="191.3" width="5.1" height="5.1" fill="var(--ink3)" opacity="0.75"/><rect x="96.0" y="209.2" width="8.4" height="8.4" fill="var(--ink3)" opacity="0.75"/><rect x="97.4" y="192.4" width="8.3" height="8.3" fill="var(--ink3)" opacity="0.75"/><circle cx="252.7" cy="64.4" r="3.1" fill="var(--s3)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="116.6" cy="160.2" r="4.5" fill="none" stroke="var(--ink)" stroke-width="1.8"/><circle cx="116.6" cy="160.2" r="1.6" fill="var(--ink)"/></svg></div><figcaption><b style="color:var(--ink)">palm</b> — margin <b style="color:var(--ink)">12 mm</b> actuated, 111 mm contact-only. Worst brace slip <b style="color:var(--ink)">0.48</b> (palm). Dashed polygon = legs-only region; dashed rectangle = the table.</figcaption></figure>
+<figure><div class="plot"><svg viewBox="0 0 300 250" role="img" aria-label="equilibrium region, elbow + forearm"><rect x="131.1" y="36.6" width="312.5" height="125.8" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/><line x1="26" y1="240" x2="52.5" y2="240" stroke="var(--ink3)" stroke-width="1.5"/><text x="57.5" y="243.5" font-size="9" fill="var(--ink3)">10 cm</text><polygon points="101.5,152.4 101.5,148.6 101.4,144.5 101.0,140.1 99.7,135.4 97.8,130.1 95.4,123.3 92.0,113.8 85.4,102.8 74.4,102.7 63.5,103.2 52.6,104.6 47.3,114.9 47.3,126.6 47.3,134.2 47.3,139.9 47.3,144.5 47.3,148.6 47.3,152.4 47.3,156.2 47.3,160.3 47.3,164.9 47.3,170.5 47.3,178.2 47.3,189.9 47.8,210.7 61.4,211.4 74.4,212.0 86.5,207.1 92.2,191.3 95.5,181.5 97.8,174.6 99.6,169.2 100.9,164.6 101.3,160.2 101.5,156.2" fill="none" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/><polygon points="148.8,160.5 151.5,155.6 155.0,149.3 160.0,140.5 168.1,125.9 170.1,109.6 166.6,91.2 151.3,84.1 133.7,82.5 116.5,85.1 100.4,87.9 85.1,91.7 69.6,95.7 53.7,100.8 47.3,114.2 47.3,128.6 47.3,140.4 47.3,150.8 47.3,160.5 47.3,170.3 47.3,180.6 47.3,192.4 47.3,206.9 63.0,211.5 79.1,212.3 93.8,210.3 106.6,205.4 116.5,198.2 123.5,192.2 128.9,187.7 133.3,183.9 137.3,180.4 139.9,176.2 142.1,172.4 144.2,168.6 146.4,164.8" fill="var(--s1)" fill-opacity="0.16" stroke="var(--s1)" stroke-width="1.8"/><rect x="45.5" y="107.8" width="6.3" height="6.3" fill="var(--ink3)" opacity="0.75"/><rect x="44.3" y="91.2" width="5.9" height="5.9" fill="var(--ink3)" opacity="0.75"/><rect x="98.1" y="104.7" width="6.9" height="6.9" fill="var(--ink3)" opacity="0.75"/><rect x="96.9" y="88.1" width="6.6" height="6.6" fill="var(--ink3)" opacity="0.75"/><rect x="43.4" y="206.7" width="7.9" height="7.9" fill="var(--ink3)" opacity="0.75"/><rect x="44.8" y="190.0" width="7.7" height="7.7" fill="var(--ink3)" opacity="0.75"/><rect x="96.0" y="209.2" width="8.4" height="8.4" fill="var(--ink3)" opacity="0.75"/><rect x="97.4" y="192.5" width="8.3" height="8.3" fill="var(--ink3)" opacity="0.75"/><circle cx="169.2" cy="112.2" r="3.8" fill="var(--s1)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="165.1" cy="101.6" r="3.5" fill="var(--s4)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="116.5" cy="160.5" r="4.5" fill="none" stroke="var(--ink)" stroke-width="1.8"/><circle cx="116.5" cy="160.5" r="1.6" fill="var(--ink)"/></svg></div><figcaption><b style="color:var(--ink)">elbow + forearm</b> — margin <b style="color:var(--ink)">111 mm</b> actuated, 121 mm contact-only. Worst brace slip <b style="color:var(--ink)">0.71</b> (elbow). Dashed polygon = legs-only region; dashed rectangle = the table.</figcaption></figure>
+<figure><div class="plot"><svg viewBox="0 0 300 250" role="img" aria-label="equilibrium region, elbow + forearm + palm"><rect x="131.1" y="36.6" width="312.5" height="125.8" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/><line x1="26" y1="240" x2="52.5" y2="240" stroke="var(--ink3)" stroke-width="1.5"/><text x="57.5" y="243.5" font-size="9" fill="var(--ink3)">10 cm</text><polygon points="101.5,152.4 101.5,148.6 101.4,144.5 101.0,140.1 99.7,135.4 97.8,130.1 95.4,123.3 92.0,113.8 85.4,102.8 74.4,102.7 63.5,103.2 52.6,104.6 47.3,114.9 47.3,126.6 47.3,134.2 47.3,139.9 47.3,144.5 47.3,148.6 47.3,152.4 47.3,156.2 47.3,160.3 47.3,164.9 47.3,170.5 47.3,178.2 47.3,189.9 47.8,210.7 61.4,211.4 74.4,212.0 86.5,207.1 92.2,191.3 95.5,181.5 97.8,174.6 99.6,169.2 100.9,164.6 101.3,160.2 101.5,156.2" fill="none" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/><polygon points="150.1,160.6 153.0,155.5 156.7,148.9 162.0,139.7 170.5,124.5 173.7,106.3 166.9,91.0 151.8,83.5 133.9,82.3 116.6,84.3 100.4,87.1 84.9,91.0 69.4,95.4 53.3,100.4 47.3,114.2 47.3,128.7 47.3,140.5 47.3,150.8 47.3,160.6 47.3,170.4 47.3,180.7 47.3,192.5 47.3,207.0 63.1,211.5 79.2,212.3 93.9,210.3 106.7,205.5 116.6,199.0 123.9,193.8 129.6,189.1 133.9,184.5 137.5,180.5 140.9,176.9 143.1,172.8 145.3,169.0 147.6,165.0" fill="var(--s2)" fill-opacity="0.16" stroke="var(--s2)" stroke-width="1.8"/><rect x="45.6" y="107.9" width="6.1" height="6.1" fill="var(--ink3)" opacity="0.75"/><rect x="44.4" y="91.3" width="5.7" height="5.7" fill="var(--ink3)" opacity="0.75"/><rect x="98.1" y="104.8" width="6.8" height="6.8" fill="var(--ink3)" opacity="0.75"/><rect x="96.9" y="88.1" width="6.5" height="6.5" fill="var(--ink3)" opacity="0.75"/><rect x="43.4" y="206.7" width="7.9" height="7.9" fill="var(--ink3)" opacity="0.75"/><rect x="44.8" y="190.0" width="7.7" height="7.7" fill="var(--ink3)" opacity="0.75"/><rect x="96.0" y="209.2" width="8.4" height="8.4" fill="var(--ink3)" opacity="0.75"/><rect x="97.4" y="192.5" width="8.3" height="8.3" fill="var(--ink3)" opacity="0.75"/><circle cx="170.0" cy="112.5" r="3.8" fill="var(--s1)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="165.9" cy="101.8" r="3.4" fill="var(--s4)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="244.7" cy="58.4" r="2.4" fill="var(--s3)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="116.6" cy="160.6" r="4.5" fill="none" stroke="var(--ink)" stroke-width="1.8"/><circle cx="116.6" cy="160.6" r="1.6" fill="var(--ink)"/></svg></div><figcaption><b style="color:var(--ink)">elbow + forearm + palm</b> — margin <b style="color:var(--ink)">115 mm</b> actuated, 137 mm contact-only. Worst brace slip <b style="color:var(--ink)">0.82</b> (palm). Dashed polygon = legs-only region; dashed rectangle = the table.</figcaption></figure>
+<figure><div class="plot"><svg viewBox="0 0 300 250" role="img" aria-label="equilibrium region, elbow + forearm + hip"><rect x="131.1" y="36.6" width="312.5" height="125.8" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/><line x1="26" y1="240" x2="52.5" y2="240" stroke="var(--ink3)" stroke-width="1.5"/><text x="57.5" y="243.5" font-size="9" fill="var(--ink3)">10 cm</text><polygon points="101.5,152.4 101.5,148.6 101.4,144.5 101.0,140.1 99.7,135.4 97.8,130.1 95.4,123.3 92.0,113.8 85.4,102.8 74.4,102.7 63.5,103.2 52.6,104.6 47.3,114.9 47.3,126.6 47.3,134.2 47.3,139.9 47.3,144.5 47.3,148.6 47.3,152.4 47.3,156.2 47.3,160.3 47.3,164.9 47.3,170.5 47.3,178.2 47.3,189.9 47.8,210.7 61.4,211.4 74.4,212.0 86.5,207.1 92.2,191.3 95.5,181.5 97.8,174.6 99.6,169.2 100.9,164.6 101.3,160.2 101.5,156.2" fill="none" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/><polygon points="160.7,145.1 164.7,139.6 170.1,132.2 178.4,120.8 193.2,99.9 193.6,80.5 180.9,68.8 162.5,64.5 143.4,65.3 125.7,66.4 108.6,67.7 91.7,70.5 75.9,76.2 62.7,85.2 49.7,94.2 47.3,109.0 47.3,122.3 47.3,134.1 47.3,145.1 47.3,156.2 47.3,167.9 47.3,181.3 47.3,197.7 60.2,207.5 80.8,207.3 99.7,202.2 114.5,195.8 125.7,186.7 133.3,179.5 138.8,173.8 142.8,168.8 146.2,164.5 149.0,160.7 151.7,157.1 154.5,153.5 157.4,149.6" fill="var(--s5)" fill-opacity="0.16" stroke="var(--s5)" stroke-width="1.8"/><rect x="45.3" y="107.6" width="6.7" height="6.7" fill="var(--ink3)" opacity="0.75"/><rect x="44.1" y="90.9" width="6.4" height="6.4" fill="var(--ink3)" opacity="0.75"/><rect x="97.9" y="104.5" width="7.2" height="7.2" fill="var(--ink3)" opacity="0.75"/><rect x="96.7" y="87.9" width="7.0" height="7.0" fill="var(--ink3)" opacity="0.75"/><rect x="43.3" y="206.7" width="7.9" height="7.9" fill="var(--ink3)" opacity="0.75"/><rect x="44.8" y="190.0" width="7.8" height="7.8" fill="var(--ink3)" opacity="0.75"/><rect x="96.0" y="209.2" width="8.4" height="8.4" fill="var(--ink3)" opacity="0.75"/><rect x="97.4" y="192.5" width="8.3" height="8.3" fill="var(--ink3)" opacity="0.75"/><circle cx="185.2" cy="97.3" r="4.1" fill="var(--s1)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><circle cx="207.7" cy="81.2" r="3.9" fill="var(--s4)" opacity="0.9" stroke="var(--bg)" stroke-width="0.8"/><polygon points="131.3,34.2 133.7,36.6 131.3,39.0 128.9,36.6" fill="var(--s5)" opacity="0.9"/><circle cx="125.7" cy="145.1" r="4.5" fill="none" stroke="var(--ink)" stroke-width="1.8"/><circle cx="125.7" cy="145.1" r="1.6" fill="var(--ink)"/></svg></div><figcaption><b style="color:var(--ink)">elbow + forearm + hip</b> — margin <b style="color:var(--ink)">113 mm</b> actuated, 120 mm contact-only. Worst brace slip <b style="color:var(--ink)">0.73</b> (hip). Dashed polygon = legs-only region; dashed rectangle = the table.</figcaption></figure>
+</div>
+
+<div class="note">
+<b>Reading the panels.</b> Legs-only at this target has margin <b>−57 mm</b> — the CoM is outside its own
+equilibrium region, i.e. not in static equilibrium at all — and peak torque 1.077, over the limit. Palm
+alone gets the CoM barely inside (+12 mm) but still needs 1.374× the torque budget. The three braced sets
+all land near +111–115 mm of margin at 0.71–0.76 peak torque. The dashed polygon in each panel is the
+legs-only region, so the forward growth is visible rather than asserted.
+</div>
+
+<h2>6. MJPC handoff: sampling does not find the brace</h2>
+<p>Not started last session; started and answered this one. <code>testspeed</code> grew
+<code>--dump_traj</code>, <code>--start_key</code> and <code>--strategy</code> so a headless run can be
+scored with the <em>same</em> static machinery as the offline solve — pose against pose, rather than an
+average cost against a margin in metres.</p>
+
+<p>Setup: <code>Lean H12 Magpie</code>, strategy 22 (<code>h12_simple_forearm_brace</code>), starting from
+the <code>stand</code> keyframe, 15 planner threads, at the task’s own
+<code>reach_target</code> = (0.9047, −0.2348, 1.0982). Three repeats at 12 s. Your timing data point
+reproduces: <b>250 planning steps in 3.87 s, 0.517× realtime</b> (you measured 3.91 s, 0.51×).</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Run</th><th>Reach residual</th><th>Contacts established</th><th>Peak τ</th><th>Margin</th><th>Ever braced?</th></tr></thead>
+<tbody>
+<tr><td><b>QP solve</b> (elbow+forearm+palm)</td><td class="good">0.004 m</td><td>elbow + forearm + palm</td><td>0.455</td><td>0.087</td><td>—</td></tr>
+<tr><td>MJPC repeat 0</td><td class="bad">0.294 m</td><td>palm only</td><td>0.398</td><td>0.071</td><td class="bad">NO</td></tr>
+<tr><td>MJPC repeat 1</td><td class="bad">0.315 m</td><td>palm only</td><td>0.424</td><td>0.044</td><td class="bad">NO</td></tr>
+<tr><td>MJPC repeat 2</td><td class="bad">0.354 m</td><td>palm only</td><td>0.465</td><td>0.025</td><td class="bad">NO</td></tr>
+</tbody></table></div>
+
+<p><b>Doubling to 30 s changes nothing.</b> Two further repeats at 30 s: still no elbow or forearm
+contact at any point, reach residual 0.314 and 0.340 m, peak effort 0.42–0.44. So it is not a horizon
+problem — the rollout is not slowly converging toward a brace, it has settled somewhere else.</p>
+
+<p>Scored over the <em>entire</em> rollout, not the final frame — strategy 22 is an eight-phase
+brace-<em>and-return</em> sequence (stand_up → forearm_brace_lean → forearm_brace_reach →
+forearm_brace_release → standback ×3 → stand_up), so its last frame is the robot deliberately standing
+back up. My first pass scored that frame and would have reported the recovery as a failure to brace.
+The corrected scan reports the best braced frame anywhere in the run, plus a contact timeline.</p>
+
+<div class="note warn">
+<b>In 12 s, across three repeats, the elbow and forearm never touched the table at all.</b> The only
+contact ever established was an incidental gripper touch, present from 0.2–2.3 s onward. The robot stays
+upright the whole time (base tilt 0–1°, pelvis 0.99 m) and leaves the hand <b>0.29–0.35 m</b> from a target
+the QP reaches to within 4 mm. It is not failing from lack of torque — peak effort is 0.40–0.47, less
+than half the budget. It simply never goes there.
+</div>
+
+<p><b>What this is and is not evidence for.</b> It is one configuration: one strategy, one start pose,
+one horizon, the shipped cost weights. A negative result here does not prove sampling cannot do it — it
+shows that the task <em>as currently configured</em> does not get there, and that the gap is not a torque
+gap. It is also consistent with your read that this is what a phase-structured optimiser like crocoddyl
+is built for: the brace is a discrete contact-mode decision, and a sampler perturbing around a nominal
+that never touches the table gets no gradient toward touching it. The 30 s runs already rule out the
+cheapest alternative explanation.</p>
+
+<h2>7. Clips</h2>
+<div class="grid2">
+<figure><video controls muted playsinline preload="metadata" src="media/approach_s11_EFP.mp4"></video>
+<figcaption><b>elbow + forearm + palm at x = 1.40 m</b>, decentred stance — the set's own
+strength-limited envelope, 0.30 m past what the legs can hold alone. The palm marker is the
+<em>side of the gripper</em>; watch the wrist roll to put that face down as the brace lands.</figcaption></figure>
+
+<figure><video controls muted playsinline preload="metadata" src="media/approach_s11_EFP_centred.mp4"></video>
+<figcaption><b>The same set at the centred stance, x = 1.30 m.</b> This is what the stance sweep
+measures: the arm crosses the table's near corner diagonally and its distal half runs off the
+<em>side</em> edge — a placed site sits 4.8 mm outside the table.</figcaption></figure>
+
+<figure><video controls muted playsinline preload="metadata" src="media/orbit_s11_EFP.mp4"></video>
+<figcaption>Orbit of the settled triple brace. The three contacts now sit at roughly 0, 110 and 325 mm
+along the arm; in v1 they sat at 0, 50 and 230, and the first two were 57 mm apart.</figcaption></figure>
+
+<figure><video controls muted playsinline preload="metadata" src="media/approach_s11_EF.mp4"></video>
+<figcaption><b>elbow + forearm at x = 1.35 m</b>, its own strength limit. Adding the palm buys the
+last 5 cm — and the palm is the contact running at slip utilisation 0.996, i.e. friction-limited,
+not torque-limited.</figcaption></figure>
+
+<figure><video controls muted playsinline preload="metadata" src="media/approach_s11_legs.mp4"></video>
+<figcaption><b>legs-only at x = 1.10 m</b>, the unbraced strength limit. Every number on this page is
+measured against this pose.</figcaption></figure>
+
+<figure><video controls muted playsinline preload="metadata" src="media/orbit_s11_EFP_centred.mp4"></video>
+<figcaption>Orbit of the centred-stance pose, for the side-by-side with the decentred orbit above.
+The table's short axis faces the robot; the arm is using it.</figcaption></figure>
+</div>
+
+
+<h2>11. Follow-up: the skew, the hip, and what the MJPC result actually means</h2>
+<p class="sub" style="margin-bottom:1.2rem">Three observations from review, all of which changed a
+conclusion. The first retracts the stance recommendation in §3.1.</p>
+
+<h3>11.1 The decentred stance was a bad pose, and you spotted it by eye</h3>
+<p>“The bracing arm is skewed to the left, and the body looks like it is precariously leaning down to
+the right, probably placing large torques on the right leg.” All three are measurable, and all three
+are true — of the stance <em>I recommended</em>:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Stance</th><th>Forearm skew</th><th>Base roll</th><th>Lateral CoM</th>
+<th>Right-foot load</th><th>R/L leg effort</th><th>Right ankle pitch</th></tr></thead>
+<tbody>
+<tr><td>centred (Δy = 0)</td><td>−3°</td><td>2.4°</td><td>−8 mm</td><td>64 %</td><td>+0.13</td><td>0.27</td></tr>
+<tr><td><b>decentred (Δy = −0.25)</b></td><td class="bad">25°</td><td class="bad">7.4°</td>
+    <td class="bad">−79 mm</td><td class="bad">81 %</td><td class="bad">+0.33</td><td class="bad">0.49</td></tr>
+</tbody></table></div>
+
+<p>Translating the robot bought table access by dumping it onto one leg: the right foot carries 404 N
+against the left’s 94 N, and the right ankle pitch runs at half its clamped budget while the left sits
+at a quarter. The reach number in §3.2 was real, but the pose it came from is not one to stand in.</p>
+
+<h3>11.2 Aiming the forearm replaces the decentring — and it is one task, not a new penalty</h3>
+<p>Your proposed fix, implemented as a <em>heading</em> task on the forearm (elbow→wrist direction
+projected into the table plane), reusing the same cross-product residual as the palm-face alignment
+in §1.2. Deliberately heading-only: constraining the forearm’s full 3-D direction would also pin its
+pitch, which is the freedom the brace needs to get down onto the table at different distances.</p>
+
+<div class="eq">
+<math display="block"><mrow>
+  <mi>r</mi><mo>=</mo><mtext>wrap</mtext><mo>(</mo><msub><mi>ψ</mi><mtext>ref</mtext></msub>
+  <mo>−</mo><mi>θ</mi><mo>)</mo><mo>,</mo><mspace width="1em"/>
+  <mi>θ</mi><mo>=</mo><mtext>atan2</mtext><mo>(</mo><msub><mi>v</mi><mi>y</mi></msub><mo>,</mo>
+  <msub><mi>v</mi><mi>x</mi></msub><mo>)</mo>
+</mrow></math>
+<math display="block"><mrow>
+  <mfrac><mrow><mo>∂</mo><mi>θ</mi></mrow><mrow><mo>∂</mo><mi>ω</mi></mrow></mfrac>
+  <mo>=</mo>
+  <mfrac>
+   <mrow><mo>[</mo><mo>−</mo><msub><mi>v</mi><mi>x</mi></msub><msub><mi>v</mi><mi>z</mi></msub>
+   <mo>,</mo><mspace width="0.3em"/><mo>−</mo><msub><mi>v</mi><mi>y</mi></msub><msub><mi>v</mi><mi>z</mi></msub>
+   <mo>,</mo><mspace width="0.3em"/><msubsup><mi>v</mi><mi>x</mi><mn>2</mn></msubsup>
+   <mo>+</mo><msubsup><mi>v</mi><mi>y</mi><mn>2</mn></msubsup><mo>]</mo></mrow>
+   <mrow><msubsup><mi>v</mi><mi>x</mi><mn>2</mn></msubsup><mo>+</mo>
+         <msubsup><mi>v</mi><mi>y</mi><mn>2</mn></msubsup></mrow>
+  </mfrac>
+</mrow></math>
+<p class="where">from <math><mover><mi>v</mi><mo>˙</mo></mover><mo>=</mo><mi>ω</mi><mo>×</mo><mi>v</mi></math>.
+One row, one scalar residual, weight <b>below</b> the site-placement weight so that where the two
+conflict the contact wins and the heading degrades gracefully.</p>
+</div>
+
+<div class="scroll"><table>
+<thead><tr><th>Heading</th><th>Stance Δy</th><th>Envelope</th><th>Arm on table</th>
+<th>Skew</th><th>Base roll</th><th>Leg imbalance</th></tr></thead>
+<tbody>
+<tr><td>off</td><td>0.00</td><td>1.30</td><td class="bad">0.56</td><td>2.9°</td><td>2.4°</td><td>+0.126</td></tr>
+<tr><td>off</td><td>−0.25</td><td>1.40</td><td>1.00</td><td class="bad">25.0°</td><td class="bad">7.5°</td><td class="bad">+0.347</td></tr>
+<tr><td><b>0°</b></td><td><b>0.00</b></td><td>1.30</td><td class="good">1.00</td><td>0.0°</td><td>2.7°</td><td>+0.128</td></tr>
+<tr><td><b>0°</b></td><td><b>−0.10</b></td><td class="good">1.35</td><td class="good">1.00</td><td>0.0°</td><td class="good">0.8°</td><td class="good">+0.089</td></tr>
+<tr><td>−10°</td><td>−0.10</td><td class="good">1.35</td><td class="good">1.00</td><td>−10.0°</td><td class="good">0.9°</td><td class="good">+0.080</td></tr>
+<tr><td>−20°</td><td>−0.10</td><td>1.30</td><td class="good">1.00</td><td>−19.9°</td><td>1.2°</td><td>+0.090</td></tr>
+</tbody></table></div>
+
+<div class="note ok">
+<b>You were right that it would not need the decentring, and right that it would not need a penalty.</b>
+Heading alone at <em>zero</em> stance offset takes the arm from 0.56 to <b>1.00</b> over the table.
+The recommended operating point is <b>heading 0°, Δy = −0.10</b>: envelope 1.35 m (0.05 m less than the
+lopsided pose), base roll <b>0.8°</b> against 7.5°, leg imbalance <b>+0.089</b> against +0.347 — better
+balanced than even the original centred stance. Skewing in to −10° is marginally better still on
+imbalance and buys 14 cm of extra side-edge clearance; −20° starts costing reach. <b>No left/right
+penalty term was needed</b>, so the cost stack did not grow.
+</div>
+
+<h3>11.3 Reach as hip actuation, thresholded by margin</h3>
+<p>Your reformulation is the right one and it is now the primary experiment. Hip pitch is
+<em>commanded</em> (both hips, as a heavily weighted posture target — hard-clamping it removes a DOF the
+pinned-foot task needs and the feet drift 40 mm), the reach target is set deliberately unreachable so
+the arm extends as far as that flexion allows, and reach is <em>measured</em>.</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Contact set</th><th>reach @ m ≥ 0</th><th>m ≥ 0.02</th><th>m ≥ 0.05</th><th>m ≥ 0.10</th></tr></thead>
+<tbody>
+<tr><td>legs-only</td><td>1.386</td><td>1.377</td><td class="bad">1.232</td><td class="bad">— none</td></tr>
+<tr><td>palm</td><td>1.397</td><td>1.397</td><td>1.379</td><td>1.345</td></tr>
+<tr><td>elbow + forearm</td><td>1.384</td><td>1.384</td><td class="good">1.384</td><td class="good">1.384</td></tr>
+<tr><td>elbow + forearm + palm</td><td>1.384</td><td>1.384</td><td class="good">1.384</td><td class="good">1.384</td></tr>
+<tr><td>elbow + forearm + hip</td><td>1.350</td><td>1.350</td><td>1.350</td><td>1.350</td></tr>
+</tbody></table></div>
+
+<div class="note">
+<b>This confirms the mechanism and corrects its conclusion.</b> At <em>zero</em> margin every set reaches
+about the same distance — 1.35–1.40 m — so bracing does not buy reach outright. What it buys is
+<b>reach that survives a margin requirement</b>: legs-only decays from 1.386 → 1.232 m by m ≥ 0.05 and
+cannot hold m ≥ 0.10 <em>at all</em>, while the braced sets sit flat at 1.384 m across every threshold.
+The right way to state the benefit is therefore <b>“the same reach with 0.10 m of margin instead of
+none”</b>, not “30 cm further”.
+</div>
+
+<p>One refinement to the causal chain. Reach is <b>not monotone</b> in hip flexion: it peaks at
+hip ≈ −0.90 rad (1.384 m) and <em>falls</em> to 1.204 m by −1.80 rad. Past the optimum, deeper flexion
+lowers the shoulder, and holding the hand at a fixed target height then costs forward extension. So
+“more stability → more hip actuation → more reach” holds only up to that optimum; beyond it the extra
+flexion is spent fighting the target’s height. Hip-pitch torque meanwhile climbs 0.28 → 0.49 of its
+clamped limit and the brace normal load <em>falls</em> 126 → 62 N, i.e. the deep-flexion poses shift load
+off the brace and back onto the legs — the opposite of what the brace is for.</p>
+
+<h3>11.4 MJPC does not fail to find the brace — it rejects it</h3>
+<p>Agreed on the conclusion, but the evidence turned out to say something sharper than “sampling cannot
+find it”, and it changes the recommendation. <code>testspeed</code> gained <code>--start_qpos</code>, so
+the planner can be started <em>on top of</em> the QP answer. Handed the braced pose directly — in
+contact, margin +0.233 m:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Time</th><th>Reach residual</th><th>Contacts</th><th>Pelvis z</th><th>Base tilt</th><th>Peak τ</th><th>Margin</th></tr></thead>
+<tbody>
+<tr><td><b>QP pose, as handed over</b></td><td class="good">0.030 m</td><td>elbow + forearm + hip + wrist</td><td>0.907</td><td>36.0°</td><td>—</td><td class="good">+0.233</td></tr>
+<tr><td>t = 0.5 s</td><td>0.365 m</td><td>palm</td><td>1.003</td><td>19.7°</td><td class="bad">1.111</td><td>—</td></tr>
+<tr><td>t = 1.0 s</td><td>0.492 m</td><td>palm</td><td>1.001</td><td>14.9°</td><td class="bad">1.111</td><td class="bad">−0.048</td></tr>
+<tr><td>t = 8.0 s</td><td class="bad">0.561 m</td><td>palm</td><td>0.991</td><td>16.6°</td><td class="bad">1.000</td><td class="bad">−0.049</td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<b>Within half a second it stands back up.</b> It leaves a pose with +0.233 m of margin for one with
+−0.05, drives the hand <em>away</em> from the target (0.03 → 0.56 m), drops from four contacts to one,
+and saturates its actuators at peak τ = 1.111 doing it. Two repeats, same behaviour. This is not a
+search failure — the planner was placed at the optimum and walked away from it.
+</div>
+
+<div class="note">
+<b>Which means a solver swap is not yet a testable proposition.</b> If the cost function’s optimum is
+the upright pose, then crocoddyl, iLQG, or a MuJoCo-native DDP will all converge to the upright pose —
+faster, and just as wrong. The current experiment does not distinguish “sampling is the wrong
+algorithm” from “the task is asking for something else”, and the second explanation now has direct
+evidence behind it.
+<br><br>
+It is also worth being clear about what crocoddyl would and would not give us: DDP-family solvers take a
+<em>prescribed</em> contact schedule and produce a dynamically feasible trajectory that respects it. They
+do not search over contact modes either. We already have the schedule — that is exactly what this
+study’s QP produces. So the missing piece is not mode search; it is a trajectory between two poses under
+a known contact sequence.
+</div>
+
+<p><b>Recommendation: do not spin out crocoddyl yet.</b> The cheap experiment that has to come first is
+making the QP pose the tracked reference and re-running — if MJPC holds a pose it is actually asked to
+hold, the handoff can stay where it is and the architecture becomes “QP solves the contact set and pose
+offline, MPC tracks and refines online”, which is what the original plan sketched. If it still will not
+hold it, <em>that</em> is the result that justifies the pinocchio dependency, and it would come with a
+concrete failure mode to hand to the next solver rather than an average cost. The homespun MuJoCo-native
+route only becomes attractive after that second measurement, because until then we do not know whether
+we are buying a better solver or a different bug.</p>
+
+<h2>8. Corrections</h2>
+<div class="scroll"><table>
+<thead><tr><th>Claim</th><th>Where</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>“Bracing buys +0.20 m of reach”</td><td>previous page, §reach envelope</td>
+    <td class="bad">Censored lower bound. Braced sets ended on arm length, not strength. Corrected to <b>+0.30 m</b> (§3.2).</td></tr>
+<tr><td>Braced sets drop out at x ≥ 1.35 on a brace-geometry limit</td><td>previous page</td>
+    <td class="bad">Wrong gate. Brace placement held at every target; the <em>reaching</em> hand fell 46 mm short (§3).</td></tr>
+<tr><td>Torso e-stop = 40 N·m “from the safety layer”</td><td><code>h12_control_node.cc</code> comment</td>
+    <td class="bad">Not traceable. The named yaml gives 200; the tight yaml gives 20; the in-tree ratio table gives 60 (§0).</td></tr>
+<tr><td>Arm e-stop rows “from default_safety_full.yaml”</td><td>same comment</td>
+    <td class="bad">They are the MJPC model’s <code>forcerange</code> class defaults, verified against the loaded model.</td></tr>
+<tr><td>MJPC handoff scored on the final frame</td><td>this session, first pass</td>
+    <td class="bad">Wrong frame — strategy 22 ends standing by design. Rescored over the full rollout (§6). Conclusion unchanged.</td></tr>
+<tr><td>“Decentre the stance to Δy = −0.25”</td><td>this page, §3.1</td>
+    <td class="bad">Retracted. That pose puts 81 % of body weight on the right foot at 7.4° of roll. Aiming the forearm gets the same table access at Δy = −0.10 with 0.8° of roll (§11.2).</td></tr>
+<tr><td>“Bracing buys +0.30 m of reach”</td><td>this page, §3.2</td>
+    <td class="bad">Overstated as phrased. At zero margin every set reaches ~1.35–1.40 m. Bracing buys reach that <em>survives a margin requirement</em>: 1.384 m at m ≥ 0.10 where legs-only has no admissible pose at all (§11.3).</td></tr>
+<tr><td>“MJPC sampling never finds the brace”</td><td>this page, §6</td>
+    <td>Sharpened. Started <em>on</em> the QP pose it abandons it in 0.5 s for a worse one, so the cost's optimum is elsewhere — a task-definition finding, not a search finding (§11.4).</td></tr>
+<tr><td>μ = 0.6 is an unmeasured assumption everything rests on</td><td>previous page, §slip</td>
+    <td>Stands, mostly. Interior poses go friction-free above μ = 0.3, but at the envelope EDGE μ*<sub>τ</sub> is 0.8–1.5, so the reach numbers are still μ-conditional (§2).</td></tr>
+<tr><td>Method: contact resolution, torque basis, region LP</td><td>previous page</td>
+    <td class="good">Unchanged and re-used verbatim, including the wrench self-test.</td></tr>
+</tbody></table></div>
+
+<h2>9. What this leaves open</h2>
+<ul>
+<li><b>Which safety config the robot launches with.</b> If it is <code>tight</code>, the torso e-stop is
+20 N·m against the node’s 36 — a plan inside the analysis budget trips the layer. Cheapest check on this
+list, and the only one with a hardware consequence.</li>
+<li><b>μ on the actual tabletop.</b> Still unmeasured, now with a bounded blast radius: it moves margin
+and max-push, not torque or reach.</li>
+<li><b>Make the QP pose the tracked reference and re-run MJPC.</b> This is now the top of the list: it
+is the experiment that decides whether the handoff needs a new solver at all (§11.4).</li>
+<li><b>The Δy = −0.10 stance is still an offline choice.</b> Nothing has checked that the robot can
+<em>get</em> to it without stepping, which is the constraint the whole keyframe campaign is built around.</li>
+<li><b>elbow+forearm+hip is still censored</b> — its envelope ends on reach at 1.25 m. Its true strength
+limit is unmeasured, and it is the set with the largest margin.</li>
+<li><b>The MJPC result needs a second configuration</b> before it can carry weight: strategy 34 (the
+4-phase mission), a longer horizon, and cost weights that actually reward the contact.</li>
+<li><b>Everything here is static.</b> No result on this page says the robot can transition into or out of
+these poses — only that the poses exist and are admissible.</li>
+</ul>
+
+<h2>10. Repro</h2>
+<pre>cd lean_analysis
+
+# §0  torque bases
+python3 -c "import contact_select as cs, mujoco; m,_=cs.load(0); print(cs.torque_limits(m,'clamp'))"
+
+# §2  friction: solve for mu* instead of assuming 0.6
+STANCE_DY=-0.25 OUT=runs/2026-08-04_session11/friction_sweep2.json python3 friction_sweep.py
+
+# §3  why the envelope ends where it ends, then move the wall, then re-measure
+OUT=runs/2026-08-04_session11/reach_diag.json      python3 reach_diag.py
+OUT=runs/2026-08-04_session11/stance_sweep.json    python3 stance_sweep.py elbow+forearm+palm
+OUT=runs/2026-08-04_session11/reach_headtohead.json python3 reach_headtohead.py -0.25
+
+# §4  the reworked sites (SITE_SET=v1 reproduces S1-S10)
+python3 wrist_probe.py
+
+# §5  regions with labelled, coloured contacts
+STANCE_DY=-0.25 OUT=runs/2026-08-04_session11/regions.json python3 make_regions.py 1.30 -0.2348 1.0982
+python3 make_region_svg.py runs/2026-08-04_session11/regions.json region_svg.html
+
+# §6  MJPC handoff  (testspeed gained --dump_traj / --start_key / --strategy)
+python3 mjpc_handoff.py --seeds 3 --time 12 --strategy 22 \
+        --outdir runs/2026-08-04_session11/mjpc_handoff
+python3 mjpc_rescore.py runs/2026-08-04_session11/mjpc_handoff
+python3 mjpc_handoff.py --seeds 2 --time 30 --strategy 22 \
+        --outdir runs/2026-08-04_session11/mjpc_handoff_30s
+python3 mjpc_rescore.py runs/2026-08-04_session11/mjpc_handoff_30s
+
+# §7  clips
+python3 make_videos.py
+
+# §11 the skew, the hip, and what MJPC actually does
+STANCE_DY=-0.25 python3 asymmetry.py 1.35 -0.2348 1.0982     # the lopsided pose
+OUT=runs/2026-08-04_session11/heading_stance.json python3 heading_stance.py elbow+forearm+palm
+STANCE_DY=-0.10 FOREARM_HEADING=0 \
+    OUT=runs/2026-08-04_session11/hip_reach.json python3 hip_reach.py
+# hand MJPC the QP pose directly and watch it leave
+build/bin/testspeed --task="Lean H12 Magpie" --total_time=8 --strategy=22 \
+    --start_key=forearm_brace_reach \
+    --start_qpos=runs/2026-08-04_session11/qp_brace_qpos.txt \
+    --dump_traj=runs/2026-08-04_session11/hold_qp_0.csv</pre>
+
+<p class="meta">All results: <code>lean_analysis/runs/2026-08-04_session11/</code>.
+Torque basis <code>clamp</code> (0.9 × TAU_ESTOP) throughout, model <code>Lean_H12_Magpie.xml</code>,
+sites <code>v2</code>, μ = 0.6 unless swept.</p>
+
+</div></body></html>
