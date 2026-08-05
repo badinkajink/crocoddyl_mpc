@@ -363,14 +363,14 @@
              toward positive (= flexion) commands. Same story for hip_roll
              [-0.43, 3.14]. Keep σ small relative to the tightest one-sided
              ctrlrange (knee's -0.12) so samples stay in the unclipped band. -->
-        <numeric name="sampling_exploration" data="0.05"/>
+        <numeric name="sampling_exploration" data="0.12"/>
         <!-- CEM sampler knobs (foot-lift Tier C). LEGACY-SAFE defaults here
              (= current behaviour for stand/crouch/reach); bumped for stumble
              ONLY via lean::PlannerNumericOverrides so the calm strats are
              unaffected. std_initial=CEM init std; explore_fraction=share of
              samples at the wide std each step; sampling_knot_var_growth=far-
              horizon knots noisier (action-level annealing). -->
-        <numeric name="sampling_trajectories" data="10"/>
+        <numeric name="sampling_trajectories" data="20"/>
         <numeric name="std_initial" data="0.1"/>
         <numeric name="explore_fraction" data="0.0"/>
         <numeric name="sampling_knot_var_growth" data="0.0"/>
