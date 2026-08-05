@@ -186,3 +186,65 @@
                      </body>
                    </body>
                  </body>
+@@ -341,33 +456,33 @@
+ 
+ 
+   <actuator>
+-    <position name="left_hip_yaw_joint" joint="left_hip_yaw_joint" ctrlrange="-0.43 0.43" class="hip_yaw"/>
+-    <position name="left_hip_pitch_joint" joint="left_hip_pitch_joint" ctrlrange="-3.14 2.5" class="hip_pr"/>
+-    <position name="left_hip_roll_joint" joint="left_hip_roll_joint" ctrlrange="-0.43 3.14" class="hip_pr"/>
+-    <position name="left_knee_joint" joint="left_knee_joint" ctrlrange="-0.12 2.05" class="knee"/>
+-    <position name="left_ankle_pitch_joint" joint="left_ankle_pitch_joint" ctrlrange="-0.897334 0.523598" class="ankle"/>
+-    <position name="left_ankle_roll_joint" joint="left_ankle_roll_joint" ctrlrange="-0.261799 0.261799" class="ankle"/>
+-    <position name="right_hip_yaw_joint" joint="right_hip_yaw_joint" ctrlrange="-0.43 0.43" class="hip_yaw"/>
+-    <position name="right_hip_pitch_joint" joint="right_hip_pitch_joint" ctrlrange="-3.14 2.5" class="hip_pr"/>
+-    <position name="right_hip_roll_joint" joint="right_hip_roll_joint" ctrlrange="-3.14 0.43" class="hip_pr"/>
+-    <position name="right_knee_joint" joint="right_knee_joint" ctrlrange="-0.12 2.05" class="knee"/>
+-    <position name="right_ankle_pitch_joint" joint="right_ankle_pitch_joint" ctrlrange="-0.897334 0.523598" class="ankle"/>
+-    <position name="right_ankle_roll_joint" joint="right_ankle_roll_joint" ctrlrange="-0.261799 0.261799" class="ankle"/>
+-    <position name="torso_joint" joint="torso_joint" ctrlrange="-3.14 1.57" class="torso"/>
+-    <position name="left_shoulder_pitch_joint" joint="left_shoulder_pitch_joint" ctrlrange="-3.14 1.57" class="shoulder1"/>
+-    <position name="left_shoulder_roll_joint" joint="left_shoulder_roll_joint" ctrlrange="-0.38 3.4" class="shoulder1"/>
+-    <position name="left_shoulder_yaw_joint" joint="left_shoulder_yaw_joint" ctrlrange="-3.01 2.66" class="shoulder2"/>
+-    <position name="left_elbow_joint" joint="left_elbow_joint" ctrlrange="-2.53 1.6" class="elbow"/>
+-    <position name="left_wrist_roll_joint" joint="left_wrist_roll_joint" ctrlrange="-2.967 2.967" class="wrist"/>
+-    <position name="left_wrist_pitch_joint" joint="left_wrist_pitch_joint" ctrlrange="-0.471 0.349" class="wrist"/>
+-    <position name="left_wrist_yaw_joint" joint="left_wrist_yaw_joint" ctrlrange="-1.012 1.012" class="wrist"/>
+-    <position name="right_shoulder_pitch_joint" joint="right_shoulder_pitch_joint" ctrlrange="-1.57 3.14" class="shoulder1"/>
+-    <position name="right_shoulder_roll_joint" joint="right_shoulder_roll_joint" ctrlrange="-3.4 0.19" class="shoulder1"/>
+-    <position name="right_shoulder_yaw_joint" joint="right_shoulder_yaw_joint" ctrlrange="-2.66 3.01" class="shoulder2"/>
+-    <position name="right_elbow_joint" joint="right_elbow_joint" ctrlrange="-1.6 2.53" class="elbow"/>
+-    <position name="right_wrist_roll_joint" joint="right_wrist_roll_joint" ctrlrange="-2.967 2.967" class="wrist"/>
+-    <position name="right_wrist_pitch_joint" joint="right_wrist_pitch_joint" ctrlrange="-0.471 0.349" class="wrist"/>
+-    <position name="right_wrist_yaw_joint" joint="right_wrist_yaw_joint" ctrlrange="-1.012 1.012" class="wrist"/>
++    <position name="left_hip_yaw_joint" joint="left_hip_yaw_joint" ctrlrange="-0.43 0.43" class="hip_yaw" forcerange="-54.0 54.0"/>
++    <position name="left_hip_pitch_joint" joint="left_hip_pitch_joint" ctrlrange="-3.14 2.5" class="hip_pr" forcerange="-117.0 117.0"/>
++    <position name="left_hip_roll_joint" joint="left_hip_roll_joint" ctrlrange="-0.43 3.14" class="hip_pr" forcerange="-180.0 180.0"/>
++    <position name="left_knee_joint" joint="left_knee_joint" ctrlrange="-0.12 2.05" class="knee" forcerange="-270.0 270.0"/>
++    <position name="left_ankle_pitch_joint" joint="left_ankle_pitch_joint" ctrlrange="-0.897334 0.523598" class="ankle" forcerange="-48.6 48.6"/>
++    <position name="left_ankle_roll_joint" joint="left_ankle_roll_joint" ctrlrange="-0.261799 0.261799" class="ankle" forcerange="-32.4 32.4"/>
++    <position name="right_hip_yaw_joint" joint="right_hip_yaw_joint" ctrlrange="-0.43 0.43" class="hip_yaw" forcerange="-54.0 54.0"/>
++    <position name="right_hip_pitch_joint" joint="right_hip_pitch_joint" ctrlrange="-3.14 2.5" class="hip_pr" forcerange="-117.0 117.0"/>
++    <position name="right_hip_roll_joint" joint="right_hip_roll_joint" ctrlrange="-3.14 0.43" class="hip_pr" forcerange="-180.0 180.0"/>
++    <position name="right_knee_joint" joint="right_knee_joint" ctrlrange="-0.12 2.05" class="knee" forcerange="-270.0 270.0"/>
++    <position name="right_ankle_pitch_joint" joint="right_ankle_pitch_joint" ctrlrange="-0.897334 0.523598" class="ankle" forcerange="-48.6 48.6"/>
++    <position name="right_ankle_roll_joint" joint="right_ankle_roll_joint" ctrlrange="-0.261799 0.261799" class="ankle" forcerange="-32.4 32.4"/>
++    <position name="torso_joint" joint="torso_joint" ctrlrange="-3.14 1.57" class="torso" forcerange="-36.0 36.0"/>
++    <position name="left_shoulder_pitch_joint" joint="left_shoulder_pitch_joint" ctrlrange="-3.14 1.57" class="shoulder1" forcerange="-28.8 28.8"/>
++    <position name="left_shoulder_roll_joint" joint="left_shoulder_roll_joint" ctrlrange="-0.38 3.4" class="shoulder1" forcerange="-28.8 28.8"/>
++    <position name="left_shoulder_yaw_joint" joint="left_shoulder_yaw_joint" ctrlrange="-3.01 2.66" class="shoulder2" forcerange="-13.0 13.0"/>
++    <position name="left_elbow_joint" joint="left_elbow_joint" ctrlrange="-2.53 1.6" class="elbow" forcerange="-13.0 13.0"/>
++    <position name="left_wrist_roll_joint" joint="left_wrist_roll_joint" ctrlrange="-2.967 2.967" class="wrist" forcerange="-8.6 8.6"/>
++    <position name="left_wrist_pitch_joint" joint="left_wrist_pitch_joint" ctrlrange="-0.471 0.349" class="wrist" forcerange="-8.6 8.6"/>
++    <position name="left_wrist_yaw_joint" joint="left_wrist_yaw_joint" ctrlrange="-1.012 1.012" class="wrist" forcerange="-8.6 8.6"/>
++    <position name="right_shoulder_pitch_joint" joint="right_shoulder_pitch_joint" ctrlrange="-1.57 3.14" class="shoulder1" forcerange="-28.8 28.8"/>
++    <position name="right_shoulder_roll_joint" joint="right_shoulder_roll_joint" ctrlrange="-3.4 0.19" class="shoulder1" forcerange="-28.8 28.8"/>
++    <position name="right_shoulder_yaw_joint" joint="right_shoulder_yaw_joint" ctrlrange="-2.66 3.01" class="shoulder2" forcerange="-13.0 13.0"/>
++    <position name="right_elbow_joint" joint="right_elbow_joint" ctrlrange="-1.6 2.53" class="elbow" forcerange="-13.0 13.0"/>
++    <position name="right_wrist_roll_joint" joint="right_wrist_roll_joint" ctrlrange="-2.967 2.967" class="wrist" forcerange="-8.6 8.6"/>
++    <position name="right_wrist_pitch_joint" joint="right_wrist_pitch_joint" ctrlrange="-0.471 0.349" class="wrist" forcerange="-8.6 8.6"/>
++    <position name="right_wrist_yaw_joint" joint="right_wrist_yaw_joint" ctrlrange="-1.012 1.012" class="wrist" forcerange="-8.6 8.6"/>
+   </actuator>
+ 
+ </mujoco>
+\ No newline at end of file
