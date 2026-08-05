@@ -2436,7 +2436,22 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
     const mjtNum *angmom = data->subtree_angmom + 3 * pelvis_id;
     double Lx_tgt = 0.0, Ly_tgt = 0.0;
-    double angmom_w = 0.0;
+    // 2026-08-04 REVIVED. This was a hard-coded 0.0, so all three residuals were
+    // identically zero while h12_simple_forearm_brace.json carried
+    // "Angular Momentum": 5.0 in ALL EIGHT phases -- the JSON weight multiplied a
+    // zeroed residual and the term has been inert for the entire gate series.
+    // Same bug, same fix as stabilize.cc:2651 (which was trot-gated there): set the
+    // carrier to 1.0 and let the JSON weight do the scaling. That fix produced the
+    // first stable non-collapsing real stand (91.7 s, 2026-06-30).
+    // WHY IT MATTERS HERE: regulating centroidal angular momentum IS the hip
+    // strategy, and Koolen's capturability analysis identifies the reaction-mass
+    // model -- the one WITH angular momentum -- as having a LARGER capture region
+    // than the ankle-only one. Our 2*tau/W bound is the ankle-only bound, which is
+    // exactly what a zeroed angmom term describes. With full parity the ankle lost
+    // authority, so the hip strategy is the lever that is supposed to cover it.
+    // Gate is unchanged (!any_arm_contact), so this switches on for the later
+    // standback rungs and the final stand -- where the un-bow has to complete.
+    double angmom_w = 1.0;
     residual[counter++] = angmom_w * 0.1 * (angmom[0] - Lx_tgt);
     residual[counter++] = angmom_w * 0.1 * (angmom[1] - Ly_tgt);
     residual[counter++] = angmom_w * 0.1 * angmom[2];
