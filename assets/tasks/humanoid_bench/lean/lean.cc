@@ -2639,6 +2639,101 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // }
   // // ========== END FOREARM BRACING ========== //
 
+  // ===== PER-SITE SEAT COSTS: Brace Elbow / Forearm / Palm ================ //
+  // (2026-08-05) Three interchangeable terms, one per candidate brace link,
+  // replacing the single `Brace Pos`. Three things are wrong with Brace Pos as
+  // a way to ask for a brace, and each is fixed here:
+  //
+  //   1. It hardcodes ONE link. The offline enumeration's output is a SUBSET of
+  //      {elbow, forearm, palm} -- it selects elbow+forearm at this target and
+  //      something else at another. With one term per link the selected subset
+  //      maps onto the task by switching weights on, so "which contacts do you
+  //      want" is an INPUT rather than a property of a hand-authored keyframe.
+  //   2. Its target is a point interpolated toward a keyframe, so it needs the
+  //      14 s `target_ramp_sec` to be reachable, and the ramp is open-loop.
+  //      The target here is the TABLE, which does not move: signed distance to
+  //      the slab is well defined from any pose, so no ramp is needed and none
+  //      is applied. Only the inter-phase weight blend still applies.
+  //   3. It aims 115 mm INSIDE the wood and never stops pulling (see the note at
+  //      the Brace Pos residual), so it fights the contact solver forever. This
+  //      saturates: once the site is kSeatDepth below the surface the term is
+  //      exactly zero and the pose is free. It is an attractor with a floor,
+  //      which is what "magnet" means here.
+  //
+  // Deliberately NOT force-based. Contact force is an output of the constraint
+  // solver, discontinuous across make/break, and the planner is a 10-sample CEM
+  // differencing it -- the estimator sees mostly noise. Signed distance is
+  // continuous, is defined while the link is still in the air, and has an
+  // unambiguous gradient the whole way in. `Brace Force` stays in the build for
+  // the old strategies; the refactored one runs at weight 0.
+  //
+  // The distance is mj_geomDistance() against the table slab, minimised over the
+  // link's COLLIDABLE geoms -- not a hand-picked point. The first version of this
+  // used the contact_select.py SITES offsets and measured site-centre to slab
+  // plane, which is wrong by the link's own thickness: at the QP-certified braced
+  // pose those sites sit 34-43 mm ABOVE the slab while the links are demonstrably
+  // touching it, so a "seat 5 mm inside" target asked for ~40 mm of penetration
+  // and could never be satisfied -- reproducing the exact defect (aim inside the
+  // wood, never stop pulling) that this term exists to remove. mj_geomDistance
+  // handles the mesh links correctly and needs no per-link calibration.
+  //
+  // Saturation point is the model's OWN declared pair margin, not an invented
+  // constant: *_forearm_brace_pair sets margin="0.002", so a link within 2 mm is
+  // in contact and the term goes to exactly zero there. Measured at the QP
+  // certificate: elbow -2.0 mm (residual 0), forearm +3.1 mm (residual 1.1 mm),
+  // versus 281 mm and 199 mm standing.
+  //
+  // XML default weight 0 => OFF for every strategy that does not opt in.
+  {
+    const int g_tab = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+    // Bracing arm is the one that is NOT reaching (reach_hand numeric, resolved
+    // into `reach_right` at the top of Residual).
+    const char *arm = reach_right ? "left" : "right";
+    const char *site_body[3] = {"_shoulder_yaw_link",   // "elbow" in the study
+                                "_elbow_link",          // "forearm"
+                                "_magpie_gripper"};     // "palm"
+    constexpr double kContactMargin = 0.002;  // m, = the brace pair's margin
+    constexpr double kEdgeKeepout = 0.06;     // m of slab edge we refuse to use
+    constexpr double kCutoff = 1.0;           // m, beyond this we stop caring
+
+    for (int s = 0; s < 3; s++) {
+      double err = 0.0;
+      std::string bname = std::string(arm) + site_body[s];
+      int b = mj_name2id(model, mjOBJ_BODY, bname.c_str());
+      if (b >= 0 && g_tab >= 0) {
+        double best = kCutoff, best_pt[3] = {0, 0, 0};
+        for (int g = 0; g < model->ngeom; g++) {
+          if (model->geom_bodyid[g] != b) continue;
+          // visual-only geoms cannot brace on anything
+          if (!model->geom_contype[g] && !model->geom_conaffinity[g]) continue;
+          const char *gn = mj_id2name(model, mjOBJ_GEOM, g);
+          if (gn && std::strstr(gn, "keepaway")) continue;
+          double fromto[6];
+          double dg = mj_geomDistance(model, data, g, g_tab, kCutoff, fromto);
+          if (dg < best) {
+            best = dg;
+            mju_copy3(best_pt, fromto);   // closest point ON THE LINK
+          }
+        }
+        // Seat: pull until the link is inside the contact margin, then flat.
+        err += mju_max(0.0, best - kContactMargin);
+        // Stay ON the slab, not merely at slab height. geomDistance already
+        // punishes a link that is beside the table, but not one perched on the
+        // lip -- charge the closest point for entering the edge keepout, the
+        // same 60 mm Brace Arm Plane already refuses to use.
+        double tx = data->geom_xpos[3 * g_tab + 0];
+        double ty = data->geom_xpos[3 * g_tab + 1];
+        double hx = model->geom_size[3 * g_tab + 0];
+        double hy = model->geom_size[3 * g_tab + 1];
+        if (best < kCutoff) {
+          err += mju_max(0.0, mju_abs(best_pt[0] - tx) - (hx - kEdgeKeepout));
+          err += mju_max(0.0, mju_abs(best_pt[1] - ty) - (hy - kEdgeKeepout));
+        }
+      }
+      residual[counter++] = err;
+    }
+  }
+
   // sensor dim sanity check
   int user_sensor_dim = 0;
   for (int i = 0; i < model->nsensor; i++) {

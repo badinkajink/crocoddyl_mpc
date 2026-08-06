@@ -236,6 +236,27 @@ class lean : public Task {
     names[6]  = "h12_simple_stand";         // stand: mission phase 0, deploy default
     names[21] = "h12_simple_reach";         // plain reach bench; Grasp overrides this slot
     names[22] = "h12_simple_forearm_brace"; // brace: mission phase 1
+    // 23/24 (2026-08-05): strategy 22 with the SILENTLY INHERITED weights made
+    // explicit. TransitionLocked falls back to the XML default for any cost the
+    // JSON weight map omits, and the three forearm_brace_* keyframes are the only
+    // ones that omit `Right Foot Lift` (XML default 180), `Support Polygon` (80)
+    // and `Body Yaw` (60) -- every other keyframe sets them deliberately. So the
+    // braced lean has been running with a weight-180 "lift the right foot" term
+    // that lean.h's own design note says must never be on ("BOTH feet stay stable
+    // on the ground through EVERY phase"), opposed by Foot Right Up at 2000.
+    // 24 isolates that one term; 23 fills all three omissions. 22 is kept
+    // byte-identical as the control, so all three run from one binary.
+    names[23] = "h12_forearm_brace_fix";    // 22 + all three omissions filled
+    names[24] = "h12_forearm_brace_rfl";    // 22 + Right Foot Lift = 0 only
+    // 25 (2026-08-05): the cost REFACTOR. Per-site signed-distance seat costs
+    // (Brace Elbow/Forearm/Palm Seat) replace the single keyframe-targeted
+    // `Brace Pos`; `Brace Force` is off; the terms that impose a specific POSE
+    // rather than a task-space invariant (Symmetry, Lateral Center, Left Leg
+    // Anchor, most of Posture) are off; and Reaching Hand Dist is raised from
+    // 80 to 400 so the objective is actually the reach phase's largest non-foot
+    // term. Feet-planted, trunk standoff, balance region and the limit barriers
+    // are untouched. Runs against 22 as the control.
+    names[25] = "h12_forearm_brace_v2";     // per-site contacts, reduced pose stack
     names[33] = "h12_simple_grasp";         // grasp-reach bench: mission phase 2 source
     names[34] = "h12_mission_brace_grasp"; // 4-phase retrieval mission (see docs/plans)
     return names;
