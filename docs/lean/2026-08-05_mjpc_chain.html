@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MJPC braces, and does not reach — 2026-08-05</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  .key{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;font-size:.85rem;color:var(--ink2);margin:.6rem 0}
+  .key span{display:inline-flex;align-items:center;gap:.4rem}
+  .swatch{width:22px;height:3px;display:inline-block;flex:0 0 auto;border-radius:2px}
+  ul{padding-left:1.15rem}
+  .plot{background:var(--panel);border-radius:8px;padding:.6rem;overflow-x:auto}
+  .plot svg{width:100%;min-width:34rem;height:auto;display:block;color:var(--ink)}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  table td[rowspan]{white-space:normal;vertical-align:middle;color:var(--ink2)}
+</style>
+</head>
+<body><div class="wrap">
+<h1>MJPC braces, and does not reach</h1>
+<p class="sub">Session 12, second pass. The first draft of this page reported that MJPC enters a brace
+8 of 10 times, holds it, reaches while braced, and returns — and concluded the handoff could stay in
+MJPC. The bracing is real. The reaching is not: across eight independent braces the reaching hand ends
+<b>where it already was standing still</b>, and the contact forces I used to argue the rest were computed
+with the actuators switched off.</p>
+<p class="meta">2026-08-05 · branch <code>asset-unification</code> · task <code>Lean H12 Magpie</code>,
+strategy 22 · runs under <code>lean_analysis/runs/2026-08-05_session12/</code>, re-scored in place</p>
+
+<div class="note warn">
+<b>What this revision retracts from its own first draft.</b>
+<br>• <b>All contact-force numbers.</b> Computed with <code>d.ctrl</code> at zero against
+<code>&lt;position&gt;</code> actuators — the forces of a robot commanded to the all-zeros pose. §1.
+<br>• <b>“Phase 0 survives by cheating — 492–758 N through the trunk, at or above body weight.”</b>
+True load is 45 N in one seed and 398 N in the other. §6.
+<br>• <b>“Arm load ramps 65 → 89 → 85 → 57 → 57 → 24 → 23 N”</b> as evidence of progressive unloading.
+True: 113 → 153 → 138 → 113 → 130 → 108 → 84 N. It does not unload. §6.
+<br>• <b>“Phase 1 holds a genuine brace … MJPC sits in it for 12 s.”</b> That seed has an arm on the
+table 10% of the time. §6.
+<br>• <b>“MJPC gives up 0.34–0.54 m of reach and takes margin for it — a different objective optimised
+competently.”</b> There is no trade: the reach gain is −0.041 m. §2.
+<br>• <b>“The handoff can stay in MJPC … there is no longer a capability gap.”</b> §5, §7, §10.
+<br><br>
+What survives unchanged: the <code>9999</code> phase-gate mechanism (§8), the 200 N·m torso basis and
+the finding that it binds nothing, and the structural contact agreement — which is computed from
+<code>qpos</code> alone and is untouched by the force bug.
+</div>
+
+<h2>1. The scoring bug</h2>
+
+<p>Every per-frame number came from <code>cheap_frame()</code>, which re-solved a logged pose:</p>
+
+<pre>d.qpos[:] = q
+d.qvel[:] = 0
+d.qacc[:] = 0        # no-op: mj_forward overwrites it
+mujoco.mj_forward(m, d)</pre>
+
+<p><code>d.ctrl</code> is never assigned, so it stays at its initialised zero. Every actuator on this
+robot is a position servo — <code>&lt;position forcerange="-200 200" kp="150" kv="5"/&gt;</code> and
+similar, kp&nbsp;40–200 across the tree. <b><code>ctrl = 0</code> is not “no command”; it commands every
+joint to angle&nbsp;0.</b> So each frame was re-solved as a robot being driven hard toward a pose it was
+not in, and the contact forces reported are that robot's, not the rollout's.</p>
+
+<p>The fix is to replay the logged command with the logged velocity:</p>
+
+<pre>d.qpos[:] = q;  d.qvel[:] = qv;  d.ctrl[:] = u
+mujoco.mj_forward(m, d)</pre>
+
+<div class="note">
+<b>Blast radius.</b> Contact <em>detection</em> depends on <code>qpos</code> alone, so which links touch
+the table was always right — §5's structural result stands. Reach residual, margin, tilt, pelvis height
+and peak torque are also <code>qpos</code>- or log-derived and did not move. <b>Only the forces were
+wrong, and they were the evidence for three of the first draft's four conclusions.</b>
+</div>
+
+<p>The trajectories are fine; only the scoring was broken, so this is a re-score rather than a re-run —
+<code>mjpc_chain.py --rescore</code> reads the CSVs already on disk. The numbers below therefore still
+describe the rollouts in the videos.</p>
+
+<h2>2. The reach never happens</h2>
+
+<p>The first draft reported reach as a residual — 0.348–0.551 m — and compared it to the QP's 0.007 m.
+It never compared it to the only baseline that makes the number mean anything: <b>where the hand already
+was before the robot did anything.</b> At <code>t = 0</code>, standing, the right wrist point is
+<b>0.352 m</b> from the target.</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Run (stand start, reached a brace)</th><th>t = 0</th><th>end of <code>brace_reach</code></th>
+<th>reach gained</th></tr></thead>
+<tbody>
+<tr><td><code>enter</code> seed 0</td><td>0.352</td><td>0.355</td><td class="bad">−0.003</td></tr>
+<tr><td><code>enter</code> seed 1</td><td>0.352</td><td>0.381</td><td class="bad">−0.029</td></tr>
+<tr><td><code>enter</code> seed 2</td><td>0.352</td><td>0.348</td><td class="good">+0.004</td></tr>
+<tr><td><code>enter</code> seed 4</td><td>0.352</td><td>0.351</td><td>+0.000</td></tr>
+<tr><td><code>enter</code> seed 5</td><td>0.352</td><td>0.443</td><td class="bad">−0.091</td></tr>
+<tr><td><code>enter</code> seed 0 (2nd batch)</td><td>0.352</td><td>0.355</td><td class="bad">−0.003</td></tr>
+<tr><td><code>enter</code> seed 1 (2nd batch)</td><td>0.352</td><td>0.551</td><td class="bad">−0.199</td></tr>
+<tr><td><code>chain</code> seed 1</td><td>0.352</td><td>0.355</td><td class="bad">−0.004</td></tr>
+<tr><td><b>mean over the 8 braces</b></td><td>0.352</td><td>0.392</td><td class="bad"><b>−0.041 m</b></td></tr>
+<tr><td><b>offline QP certificate</b></td><td>0.352</td><td class="good">0.007</td><td class="good"><b>+0.345 m</b></td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<b>Eight braces, zero reach.</b> The best run gains 4 mm; the mean is negative. A 27-second stand → lean →
+reach sequence leaves the hand slightly further from the target than standing there would have. The QP
+pose, for comparison, is on the target.
+<br><br>
+So “MJPC trades reach for margin” was not a finding, it was a missing baseline. There is no trade — one
+side of it is zero. And the extra margin the first draft credited MJPC with (+0.118…+0.174 against the
+QP's +0.094) is the margin of a robot that has leaned on a table without extending, which is not the same
+quantity the QP is maximising subject to.
+</div>
+
+<p>One run is worth singling out. <code>enter</code> seed 4 ends <code>brace_lean</code> with the hand
+<b>0.127 m</b> from the target — the closest approach anywhere in the study. Then <code>brace_reach</code>
+switches on, <code>Reaching Hand Dist</code> goes to weight 80, and the hand ends the phase at 0.351 m.
+<b>Turning the reach cost on moved the hand away from the target.</b></p>
+
+<h2>3. Which arm goes to the target</h2>
+
+<p>Watching the chain video rather than its summary row: the limb that visibly travels toward the target
+is the <em>bracing</em> arm. Measured, on the same rollout —</p>
+
+<div class="plot">
+<svg viewBox="0 0 760 250" role="img" aria-label="Distance from the reaching hand and from the bracing forearm to the reach target, over the 66 s chain rollout.">
+<line x1="46" y1="220.0" x2="746" y2="220.0" stroke="currentColor" stroke-opacity=".14"/>
+<text x="40" y="224.0" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="end">0.0</text>
+<line x1="46" y1="171.1" x2="746" y2="171.1" stroke="currentColor" stroke-opacity=".14"/>
+<text x="40" y="175.1" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="end">0.2</text>
+<line x1="46" y1="122.1" x2="746" y2="122.1" stroke="currentColor" stroke-opacity=".14"/>
+<text x="40" y="126.1" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="end">0.4</text>
+<line x1="46" y1="73.2" x2="746" y2="73.2" stroke="currentColor" stroke-opacity=".14"/>
+<text x="40" y="77.2" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="end">0.6</text>
+<line x1="46" y1="24.2" x2="746" y2="24.2" stroke="currentColor" stroke-opacity=".14"/>
+<text x="40" y="28.2" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="end">0.8</text>
+<line x1="78.0" y1="12" x2="78.0" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="81.0" y="22" font-size="10" fill="currentColor" fill-opacity=".5">lean</text>
+<line x1="249.0" y1="12" x2="249.0" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="252.0" y="22" font-size="10" fill="currentColor" fill-opacity=".5">reach</text>
+<line x1="334.5" y1="12" x2="334.5" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="337.5" y="22" font-size="10" fill="currentColor" fill-opacity=".5">release</text>
+<line x1="484.1" y1="12" x2="484.1" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="487.1" y="22" font-size="10" fill="currentColor" fill-opacity=".5">r1</text>
+<line x1="537.6" y1="12" x2="537.6" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="540.6" y="22" font-size="10" fill="currentColor" fill-opacity=".5">r2</text>
+<line x1="591.0" y1="12" x2="591.0" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="594.0" y="22" font-size="10" fill="currentColor" fill-opacity=".5">r3</text>
+<line x1="644.5" y1="12" x2="644.5" y2="220.0" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="3 3"/>
+<text x="647.5" y="22" font-size="10" fill="currentColor" fill-opacity=".5">stand</text>
+<text x="46.0" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">0</text>
+<text x="152.8" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">10</text>
+<text x="259.7" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">20</text>
+<text x="366.6" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">30</text>
+<text x="473.5" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">40</text>
+<text x="580.3" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">50</text>
+<text x="687.2" y="238" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">60</text>
+<text x="396.0" y="249" font-size="11" fill="currentColor" fill-opacity=".55" text-anchor="middle">time [s]</text>
+<line x1="46" y1="134.0" x2="746" y2="134.0" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="52" y="128.0" font-size="11" fill="var(--warn)">standing at t = 0 (0.352 m)</text>
+<polyline fill="none" stroke="var(--s2)" stroke-width="2" points="46.0,37.1 51.3,35.1 56.7,37.2 62.0,37.1 67.4,36.4 72.7,37.0 78.1,36.6 83.4,35.6 88.7,39.3 94.1,49.9 99.4,56.6 104.8,56.7 110.1,59.7 115.5,68.5 120.8,71.5 126.2,74.8 131.5,70.0 136.8,74.3 142.2,84.0 147.5,93.6 152.9,100.4 158.2,102.3 163.6,102.2 168.9,106.7 174.2,108.1 179.6,104.7 184.9,106.1 190.3,105.1 195.6,127.5 201.0,126.5 206.3,126.4 211.6,126.6 217.0,126.9 222.3,125.7 227.7,123.4 233.0,122.8 238.4,122.4 243.7,122.8 249.1,123.6 254.4,124.3 259.7,123.9 265.1,123.3 270.4,122.6 275.8,121.0 281.1,119.9 286.5,119.3 291.8,118.6 297.1,117.9 302.5,117.3 307.8,117.6 313.2,116.3 318.5,115.6 323.9,115.1 329.2,114.7 334.5,113.8 339.9,113.3 345.2,113.5 350.6,114.5 355.9,116.1 361.3,117.5 366.6,117.5 372.0,117.6 377.3,118.4 382.6,119.2 388.0,120.7 393.3,118.2 398.7,116.7 404.0,116.3 409.4,115.3 414.7,114.4 420.0,114.9 425.4,115.0 430.7,116.1 436.1,117.0 441.4,116.4 446.8,116.6 452.1,116.6 457.5,116.1 462.8,116.1 468.1,116.5 473.5,116.9 478.8,116.5 484.2,116.4 489.5,116.4 494.9,116.2 500.2,117.0 505.5,120.3 510.9,123.7 516.2,125.2 521.6,126.8 526.9,126.7 532.3,128.4 537.6,130.7 542.9,130.8 548.3,131.0 553.6,131.5 559.0,131.6 564.3,132.5 569.7,134.0 575.0,135.1 580.4,133.4 585.7,132.8 591.0,132.7 596.4,132.7 601.7,132.4 607.1,132.6 612.4,135.7 617.8,137.5 623.1,137.6 628.4,138.5 633.8,138.4 639.1,137.4 644.5,137.8 649.8,139.8 655.2,142.2 660.5,142.3 665.8,143.9 671.2,142.8 676.5,144.3 681.9,150.5 687.2,152.6 692.6,154.3 697.9,154.1 703.3,155.5 708.6,157.3 713.9,157.7 719.3,157.6 724.6,157.4 730.0,159.4 735.3,158.8 740.7,159.6 746.0,160.5"/>
+<polyline fill="none" stroke="var(--s1)" stroke-width="2" points="46.0,134.0 51.3,128.9 56.7,131.7 62.0,131.3 67.4,130.9 72.7,130.2 78.1,129.1 83.4,122.1 88.7,117.5 94.1,126.5 99.4,141.7 104.8,151.6 110.1,153.8 115.5,154.4 120.8,156.2 126.2,151.8 131.5,144.8 136.8,132.8 142.2,126.7 147.5,127.6 152.9,132.1 158.2,124.5 163.6,113.1 168.9,100.1 174.2,94.6 179.6,102.1 184.9,91.2 190.3,87.9 195.6,78.7 201.0,76.9 206.3,63.0 211.6,56.0 217.0,54.9 222.3,59.7 227.7,70.1 233.0,72.5 238.4,74.5 243.7,75.2 249.1,73.3 254.4,73.9 259.7,78.5 265.1,79.9 270.4,83.8 275.8,84.3 281.1,83.3 286.5,85.4 291.8,86.5 297.1,87.8 302.5,102.5 307.8,113.4 313.2,122.5 318.5,128.1 323.9,131.3 329.2,131.8 334.5,133.1 339.9,132.8 345.2,136.1 350.6,137.3 355.9,138.9 361.3,139.1 366.6,135.8 372.0,136.0 377.3,136.9 382.6,136.0 388.0,138.3 393.3,136.9 398.7,135.5 404.0,136.5 409.4,135.3 414.7,134.5 420.0,134.9 425.4,132.9 430.7,129.5 436.1,132.1 441.4,126.9 446.8,122.7 452.1,122.5 457.5,124.1 462.8,123.8 468.1,117.9 473.5,113.2 478.8,109.3 484.2,106.5 489.5,107.0 494.9,101.7 500.2,102.0 505.5,96.4 510.9,92.2 516.2,87.6 521.6,85.2 526.9,87.1 532.3,89.5 537.6,85.6 542.9,86.2 548.3,87.2 553.6,82.1 559.0,79.9 564.3,76.6 569.7,79.3 575.0,79.0 580.4,80.4 585.7,80.8 591.0,74.9 596.4,75.6 601.7,78.9 607.1,82.4 612.4,76.1 617.8,71.4 623.1,73.9 628.4,73.5 633.8,76.5 639.1,80.6 644.5,86.7 649.8,75.5 655.2,66.0 660.5,67.4 665.8,58.2 671.2,60.0 676.5,63.0 681.9,63.4 687.2,57.2 692.6,55.3 697.9,63.1 703.3,64.7 708.6,61.8 713.9,60.1 719.3,58.6 724.6,63.1 730.0,51.7 735.3,58.8 740.7,57.1 746.0,57.2"/>
+</svg>
+</div>
+<div class="key">
+  <span><i class="swatch" style="background:var(--s1)"></i>reaching hand (right wrist + 0.13 m)</span>
+  <span><i class="swatch" style="background:var(--s2)"></i>bracing forearm site (left elbow link)</span>
+  <span><i class="swatch" style="background:var(--warn)"></i>reaching hand at t = 0, standing</span>
+</div>
+
+<p>The bracing forearm closes from 0.747 m to 0.378 m — it travels <b>0.37 m toward the target</b> and
+stays there. The reaching hand oscillates about its starting value for 66 s and ends 0.30 m further out
+than it began. Through <code>brace_reach</code> the mean distances are: reaching hand <b>0.496 m</b>,
+bracing forearm <b>0.412 m</b>, bracing elbow <b>0.386 m</b> — <b>both bracing links are closer to the
+reach target than the reaching hand is.</b></p>
+
+<div class="note warn">
+<b>And <code>lean.cc</code> is measuring the wrong arm too.</b> The metrics block at
+<code>lean.cc:3354</code> reads
+<br><code>// Right arm always braces, left arm always reaches (lean.cc convention).</code>
+<br><code>double *reaching_hand = left_hand;</code>
+<br>while the model sets <code>&lt;numeric name="reach_hand" data="2"/&gt;</code>, which
+<code>Residual()</code> resolves to <b>right hand reaches, left arm braces</b>. So
+<code>reach_from_pelvis</code> and <code>reach_beyond_foot_edge</code> — the metrics the deploy monitor
+surfaces — are computed on the bracing arm for this strategy. Not a control bug; the residuals are
+unaffected. It does mean the deploy-side reach telemetry has never measured the reaching hand.
+</div>
+
+<h2>4. Nothing settles</h2>
+
+<p>The videos show continuous tremor. Quantified as the path length of the command against its net
+displacement over a phase — a converged hold runs 1–3×:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Phase (chain seed 1)</th><th>command path</th><th>net move</th><th>churn</th>
+<th>contact duty over the phase</th><th>contacts at end</th></tr></thead>
+<tbody>
+<tr><td><code>stand_up</code></td><td>49.8 rad</td><td>3.48</td><td class="bad">14.3×</td><td>palm 93%</td><td>palm</td></tr>
+<tr><td><code>brace_lean</code></td><td>245.8</td><td>8.78</td><td class="bad">28.0×</td><td class="bad">forearm 33%</td><td>forearm</td></tr>
+<tr><td><code>brace_reach</code></td><td>124.0</td><td>5.20</td><td class="bad">23.9×</td><td class="good">forearm 100%</td><td>forearm</td></tr>
+<tr><td><code>brace_release</code></td><td>208.3</td><td>3.76</td><td class="bad">55.4×</td><td class="good">forearm 100%</td><td>forearm</td></tr>
+<tr><td><code>standback_r1</code></td><td>75.3</td><td>3.90</td><td class="bad">19.3×</td><td>forearm 100%</td><td>forearm</td></tr>
+<tr><td><code>standback_r2</code></td><td>80.6</td><td>2.87</td><td class="bad">28.1×</td><td>elbow 77%, forearm 59%</td><td>elbow+forearm</td></tr>
+<tr><td><code>standback_r3</code></td><td>81.0</td><td>2.70</td><td class="bad">30.0×</td><td>elbow 100%, forearm 27%</td><td>elbow</td></tr>
+<tr><td><code>stand_up</code> (end)</td><td>161.5</td><td>3.53</td><td class="bad">45.8×</td><td>elbow 100%</td><td>elbow</td></tr>
+</tbody></table></div>
+
+<p>During <code>brace_reach</code> the command travels 124 rad to accomplish 5.2 rad of net motion.
+Nothing in any phase, including plain standing, is settled. §7 says why.</p>
+
+<p>The duty column also corrects a reporting habit. <code>contacts@end</code> credits whatever happened
+to be touching on the last frame. Over the phase, <code>brace_lean</code> has the forearm down only
+<b>33%</b> of the time — most of that phase is the 14 s ramp with the arm in the air. And in the
+first draft's headline “phase 1 holds a genuine brace for 12 s” run (<code>hold_p1</code> seed 0), the
+duty is <b>elbow 7%, forearm 3%, palm 15%</b>. That seed is intermittently grazing the table, not
+holding a brace. Its sibling seed 1 (elbow 44%, forearm 55%) is the one that braces.</p>
+
+<h2>5. A contact set is not a contact mode</h2>
+
+<p>The structural result stands: in eight independent braces MJPC touched the table only with
+<code>{elbow, forearm}</code>, never the palm, wrist or trunk — the same links the enumeration selects,
+and the ones it rejects stayed rejected. That is computed from <code>qpos</code> and the force bug does
+not touch it.</p>
+
+<p>But the first draft used it to argue that MJPC reaches the selected mode, and a mode is a pose, not a
+list of link names. Joint-space distance from the QP solution to MJPC's pose at the end of
+<code>brace_reach</code>, over the 27 actuated joints:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Run</th><th>‖Δq‖</th><th>max |Δq|</th><th>largest single-joint disagreements</th></tr></thead>
+<tbody>
+<tr><td><code>enter</code> seed 0</td><td>1.579</td><td>0.985</td><td class="m">R_shoulder_pitch +0.98, L_wrist_roll +0.55, L_knee −0.48</td></tr>
+<tr><td><code>enter</code> seed 1</td><td>1.522</td><td>1.161</td><td class="m">R_shoulder_pitch +1.16, R_wrist_pitch −0.40, R_elbow −0.38</td></tr>
+<tr><td><code>enter</code> seed 2</td><td>1.470</td><td>0.957</td><td class="m">R_shoulder_pitch +0.96, R_elbow −0.58, L_wrist_roll +0.49</td></tr>
+<tr><td><code>enter</code> seed 4</td><td>1.242</td><td>0.546</td><td class="m">R_elbow −0.55, L_shoulder_roll −0.48, L_wrist_roll +0.45</td></tr>
+<tr><td><code>enter</code> seed 5</td><td>1.597</td><td>1.158</td><td class="m">R_shoulder_pitch +1.16, R_elbow −0.54, L_wrist_roll +0.51</td></tr>
+<tr><td><code>chain</code> seed 1</td><td>1.663</td><td>0.934</td><td class="m">R_shoulder_pitch +0.93, L_wrist_roll +0.68, R_elbow −0.45</td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<b>MJPC arrives at the contact set and nowhere near the mode.</b> Roughly 1.5 rad away in configuration,
+and the dominant term in five of six runs is <b><code>right_shoulder_pitch</code>, 0.93–1.16 rad</b> —
+53° to 66°. That is the reaching arm's shoulder, and §9 of the first draft identified it as the joint
+that actually carries a braced lean (ratio 0.46–0.47, the binding joint at every contact set tested).
+The single joint the certificate most depends on is the single joint MJPC most disagrees about, and the
+disagreement is in the direction of not extending.
+<br><br>
+Nothing in these runs shows the selected mode is dynamically reachable. Two links touching the right
+slab is a much weaker statement than “the planner found the certified pose”, and the first draft spent
+that weaker statement as if it were the stronger one.
+</div>
+
+<h2>6. The corrected numbers</h2>
+
+<h3>6.1 Phase 0 does not put body weight through the trunk</h3>
+
+<p>The first draft's most quoted line was that the stand cost “survives by cheating”, driving 492–758 N —
+at or above the robot's 668 N weight — through <code>torso_link</code>. Re-measured over the last 6 s,
+both seeds:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>hold_p0</th><th>trunk, as published</th><th>trunk, true</th><th>arm, true</th></tr></thead>
+<tbody>
+<tr><td>seed 0</td><td class="bad">440 N median (max 464)</td><td class="good">45 N median (max 77)</td><td>34 N</td></tr>
+<tr><td>seed 1</td><td class="bad">697 N median (max 861)</td><td>398 N median (max 671)</td><td>21 N</td></tr>
+</tbody></table></div>
+
+<p>So the effect is real but half as common and half as large as reported: one seed rests its trunk on
+the table at ~60% of body weight, the other barely touches it. “At or above body weight in both seeds”
+was the artefact. The qualitative warning — that the stand cost will happily use the trunk as a support
+and that is not something to deploy — survives on seed 1 alone.</p>
+
+<h3>6.2 The chain, re-scored</h3>
+
+<div class="scroll"><table>
+<thead><tr><th>Phase</th><th>t</th><th>arm load, published</th><th>arm load, true</th><th>peak τ</th>
+<th>margin</th><th>reach</th><th>gain vs standing</th></tr></thead>
+<tbody>
+<tr><td><code>stand_up</code></td><td>0–3 s</td><td>8 N</td><td>33 N</td><td>0.48</td><td>+0.025</td><td>0.371</td><td class="bad">−0.020</td></tr>
+<tr><td><code>brace_lean</code></td><td>3–19 s</td><td>65 N</td><td>113 N</td><td>0.35</td><td>+0.174</td><td>0.600</td><td class="bad">−0.248</td></tr>
+<tr><td><code>brace_reach</code></td><td>19–27 s</td><td>89 N</td><td>153 N</td><td>0.42</td><td>+0.135</td><td>0.355</td><td class="bad">−0.004</td></tr>
+<tr><td><code>brace_release</code></td><td>27–41 s</td><td>85 N</td><td>138 N</td><td>0.61</td><td>+0.151</td><td>0.461</td><td class="bad">−0.109</td></tr>
+<tr><td><code>standback_r1</code></td><td>41–46 s</td><td>57 N</td><td>113 N</td><td>0.61</td><td>+0.191</td><td>0.547</td><td class="bad">−0.196</td></tr>
+<tr><td><code>standback_r2</code></td><td>46–51 s</td><td>57 N</td><td>130 N</td><td>0.78</td><td>+0.206</td><td>0.589</td><td class="bad">−0.238</td></tr>
+<tr><td><code>standback_r3</code></td><td>51–56 s</td><td>24 N</td><td>108 N</td><td>0.75</td><td>+0.196</td><td>0.549</td><td class="bad">−0.197</td></tr>
+<tr><td><code>stand_up</code></td><td>56–66 s</td><td>23 N</td><td>84 N</td><td>0.63</td><td>+0.202</td><td>0.649</td><td class="bad">−0.298</td></tr>
+</tbody></table></div>
+
+<p>The published column falls monotonically and the true column does not. The “progressive unloading
+through the three standback rungs” narrative was an artefact of the zero command: <b>the arm is still
+carrying 84 N at the end of the final <code>stand_up</code> phase</b>, when the robot is supposedly back
+on its feet and off the table. The elbow is on the slab 100% of that phase.</p>
+
+<div class="grid2">
+<figure><video src="media/mjpc_chain_seed1.mp4" controls muted playsinline preload="metadata"></video>
+<figcaption><b>The full chain, 5× speed.</b> The brace is genuine and persistent. The reaching hand
+never arrives, and the bracing forearm is the limb that closes on the target. Note the tremor
+throughout — §4 puts it at 14–55× churn.</figcaption></figure>
+<figure><video src="media/mjpc_chain_seed0.mp4" controls muted playsinline preload="metadata"></video>
+<figcaption><b>The other seed.</b> Topples during the <code>brace_lean</code> ramp around t = 8 s and
+spends the remaining 58 s on the floor while the phases advance on schedule around it.</figcaption></figure>
+</div>
+
+<h3>6.3 What did not move</h3>
+
+<p>Reach residual, margin, tilt, pelvis height and peak torque are computed from <code>qpos</code> or
+read from the logged actuator forces, and re-scoring reproduced every one of them to the printed
+precision — chain seed 1's margins are still +0.174, +0.135, +0.151, +0.191, +0.206, +0.196, +0.202. The
+entry statistics are unchanged too: 8 of 10 rollouts establish a brace, all two failures are during the
+<code>brace_lean</code> ramp, and no run that established a brace subsequently lost it. That part of the
+first draft was measuring something real. It just was not measuring a reach.</p>
+
+<h2>7. What MJPC is actually configured as here</h2>
+
+<p>The first draft asked whether the planner could find the brace. The more useful question is what the
+planner is being asked to do at all. From the model:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Setting</th><th>Value</th><th>Consequence</th></tr></thead>
+<tbody>
+<tr><td><code>agent_planner</code></td><td>5 = <b>Cross Entropy</b></td><td>derivative-free, resampled every step</td></tr>
+<tr><td><code>sampling_trajectories</code></td><td><b>10</b></td><td>ten rollouts per planning iteration</td></tr>
+<tr><td><code>n_elite</code></td><td><b>6</b></td><td class="bad">the update averages the best 6 of 10 — a 60% elite fraction, so the “selection” barely discriminates</td></tr>
+<tr><td><code>sampling_spline_points</code></td><td><b>3</b></td><td>27 actuators × 3 knots = an 81-dimensional decision variable</td></tr>
+<tr><td><code>agent_horizon</code></td><td><b>1.0 s</b></td><td class="bad">the manoeuvre it is “planning” is a 14 s ramp</td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<b>This is a 10-sample stochastic search over 81 dimensions, keeping 6 of 10 samples as elite, looking
+1 second ahead at a 14-second manoeuvre.</b> Two things follow directly, and both are visible in the
+data above.
+<br><br>
+<b>The chatter is the algorithm.</b> Re-estimating a distribution over 81 parameters from 10 draws, and
+averaging 60% of them, produces an update dominated by the sampling noise rather than by the cost. That
+is the 14–55× churn in §4, and it is why even plain standing never settles.
+<br><br>
+<b>MJPC is not planning the brace — the keyframe ramp is.</b> With a 1 s horizon the planner cannot see
+past the current phase's setpoint. The thing that actually sequences the lean is
+<code>target_ramp_sec = 14</code> interpolating toward a hand-authored keyframe, with CEM acting as a
+short-horizon stabiliser around a setpoint that is being dragged. “MJPC does the task” was never the
+right description of this: a human authored the trajectory as keyframes, and MJPC tracked it, badly.
+</div>
+
+<p>That also reframes the 2/10 entry failure. It is not a planner failure and not a cost failure — it is
+an open-loop ramp toward a pose, with a 1 s-horizon stabiliser that cannot anticipate the topple and no
+abort condition (both the abort and the auto-advance are disabled by the <code>9999</code> pair, §8).</p>
+
+<h2>8. What survives from the first draft</h2>
+
+<p><b>The <code>9999</code> gate.</b> Strategy 22's eight keyframes each carry
+<code>"success_sustain_time": 9999.0</code> and <code>"time_limit": 9999.0</code>, and the XML default
+<code>residual_Phase = -1</code> selects auto-advance, whose only two exits are those two timers. So a
+headless run spends its entire duration in keyframe 0, whose weight map has
+<code>Reaching Hand Dist</code>, <code>Brace Pos</code>, <code>Brace Force</code> and
+<code>Contact</code> all at 0.0. Session 11's “MJPC rejects the brace” was measured under the stand cost
+with every brace term switched off. That finding is correct and is the reason this session exists.</p>
+
+<p><b>The <code>--phase_schedule</code> harness.</b> <code>lean.cc</code> is still untouched at zero
+lines; the sequencing lives in <code>testspeed.cc</code> and the CSV carries a <code>phase</code> column
+so a rollout cannot be scored without knowing what it was being asked to do.</p>
+
+<p><b>Torso torque.</b> 200 N·m adopted from <code>default_safety_full</code>'s estop
+(<code>torque_ratio</code> 1.0 × the URDF's 200), and it changes nothing: the torso carries 1.0–1.9 N·m,
+about 1% of its ceiling, and every derived number agrees to four decimals across a five-fold change in
+the limit. The joints that carry a braced lean are the reaching arm's shoulder pitch (ratio 0.46–0.47)
+and the hips (0.29–0.32). The S11 warning about e-stopping the torso was aimed at an idle joint.</p>
+
+<p><b>What the enumeration proves.</b> Unchanged, and §5 leans on it harder now: the choice among the
+2<sup>4</sup> contact modes is exhaustive and the feasibility of each is a certified LP, but the pose
+<em>within</em> a mode is a single damped-least-squares descent from one seed, the contact
+<em>locations</em> are five hand-placed sites nobody is optimising, and dynamic reachability is out of
+scope — which §5 now shows is not a hypothetical gap.</p>
+
+<h2>9. Scoping the replacement task</h2>
+
+<p>The current cost stack does encode real engineering and should not be thrown away. But it is not
+steerable, and the weights say why. At <code>brace_reach</code>:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Cost</th><th>Weight</th><th>What it constrains</th></tr></thead>
+<tbody>
+<tr><td><code>Foot Left Up</code> / <code>Foot Right Up</code></td><td>2000 each</td><td>feet planted</td></tr>
+<tr><td><code>Brace Pos</code></td><td class="bad">700</td><td>pulls the forearm pad to a fixed table point</td></tr>
+<tr><td><code>Base Height</code></td><td>450</td><td class="bad">a specific pelvis height</td></tr>
+<tr><td><code>Left Leg Anchor</code></td><td>400</td><td>a specific leg configuration</td></tr>
+<tr><td><code>Brace Arm Plane</code></td><td>300</td><td class="bad">a specific arm plane</td></tr>
+<tr><td><code>Symmetry</code></td><td>200</td><td class="bad">mirrored posture — actively wrong for an asymmetric brace</td></tr>
+<tr><td><code>Right Foot Lift</code></td><td class="bad">180</td><td class="bad">inherited by omission — see 9.1</td></tr>
+<tr><td><code>Brace Wrist Cock</code>, <code>Lateral Center</code>, <code>Body Table Clearance</code></td><td>150 each</td><td class="bad">wrist angle, lateral CoM, trunk standoff</td></tr>
+<tr><td><code>Pelvis Forward</code>, <code>Height</code></td><td>100 each</td><td class="bad">more pose</td></tr>
+<tr><td><b><code>Reaching Hand Dist</code></b></td><td class="bad"><b>80</b></td><td><b>the actual task</b></td></tr>
+<tr><td><code>Support Polygon</code></td><td>80</td><td class="bad">inherited by omission — see 9.1</td></tr>
+<tr><td><code>Posture</code></td><td>60</td><td class="bad">tracks the hand-authored keyframe</td></tr>
+<tr><td><code>Body Yaw</code></td><td>60</td><td class="bad">inherited by omission — see 9.1</td></tr>
+<tr><td><code>Pelvis Tilt</code></td><td>50</td><td class="bad">more pose</td></tr>
+<tr><td><code>Brace Force</code></td><td>40</td><td>one-sided max(0, 50 − F)</td></tr>
+</tbody></table></div>
+
+<p>The objective — put the hand on the target — sits <b>15th of the 35 active terms</b>: thirteen
+outweigh it outright, and the only thing it ties with is a term nobody enabled on purpose (§9.1). It is
+outweighed roughly 9:1 by the brace-position term alone and by an order of magnitude by the whole
+pose-imposing stack.
+That is exactly the non-interpretability: you cannot predict where the hand goes from where you put the
+target, because the target barely participates.</p>
+
+<h3>9.1 Three costs are on during the brace only because the JSON forgot them</h3>
+
+<p>Building that table turned up something that is not a weighting opinion but a bug.
+<code>TransitionLocked</code> fills a phase's weight vector from the JSON map and falls back to the
+<em>XML default</em> for any name the map omits:</p>
+
+<pre>auto it = kf.weight.find(name);
+next_phase_weights_[i] = (it != kf.weight.end()) ? it-&gt;second : xml_default_weights_[i];</pre>
+
+<p>Three terms with non-zero XML defaults are explicitly zeroed in five of the eight keyframes and
+<em>omitted</em> from the other three — which are, precisely, the three brace phases:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>Term (XML default)</th><th><code>stand_up</code></th><th><code>brace_lean</code></th>
+<th><code>brace_reach</code></th><th><code>brace_release</code></th><th>3 × <code>standback</code>, <code>stand_up</code></th></tr></thead>
+<tbody>
+<tr><td><code>Right Foot Lift</code> (180)</td><td>0</td><td class="bad">180</td><td class="bad">180</td><td class="bad">180</td><td>0</td></tr>
+<tr><td><code>Support Polygon</code> (80)</td><td>0</td><td class="bad">80</td><td class="bad">80</td><td class="bad">80</td><td>0</td></tr>
+<tr><td><code>Body Yaw</code> (60)</td><td>0</td><td class="bad">60</td><td class="bad">60</td><td>40</td><td>40</td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<b>During the braced lean the robot is being asked to lift its right foot, at weight 180.</b> Every other
+keyframe in the strategy sets <code>"Right Foot Lift": 0.0</code> deliberately; the three brace phases
+just do not mention it, so it comes back at its XML default. It is opposed by <code>Foot Right Up</code>
+at 2000, which is presumably why the robot mostly stays planted — but this is a 180-weight term pulling
+against a 2000-weight term for the entire 14 s entry ramp, in the exact window where 2 of 10 rollouts
+topple. <b>Zeroing these three in the brace keyframes is a three-line JSON change and should be the
+first thing tested, before any redesign.</b> It is also the cleanest available example of why the
+current task is not interpretable: nothing in the strategy file says these terms are on.
+</div>
+
+<h3>9.1 The shape I would build</h3>
+
+<ul>
+<li><b>Per-site contact costs, one per candidate link, on signed distance.</b> Replace the single
+<code>Brace Pos</code> (which hardcodes one pad against one table point, matching one hand-authored
+keyframe) with an <code>elbow</code>, a <code>forearm</code> and a <code>palm</code> term, each a
+one-sided penalty on the site's signed distance to the table plane, saturating just inside the surface so
+it behaves like an attractor that stops pulling once seated. Then the offline enumeration's output — a
+<em>subset</em> — maps onto the task by switching terms on, and “which contacts do you want” becomes an
+input rather than a property of a keyframe.</li>
+<li><b>Agreed on dropping force feedback.</b> <code>Brace Force</code> should go. Contact force is an
+output of the constraint solver, discontinuous across make/break, and it is being differenced by a
+10-sample CEM — the estimator sees mostly noise. Signed distance is continuous, defined when the link is
+in the air, and has an unambiguous gradient. If a load target is genuinely needed, it belongs as a
+post-hoc check or a slow outer loop, not inside the sampled cost.</li>
+<li><b>Retire the pose-imposing terms, but not into thin air.</b> <code>Symmetry</code>,
+<code>Base Height</code>, <code>Lateral Center</code>, <code>Posture</code>, <code>Left Leg Anchor</code>
+and <code>Brace Arm Plane</code> are doing the work of keeping the robot standing, and deleting them
+outright will produce a squat or a collapse. Replace them with the task-space invariants they are
+proxies for: CoM inside the support polygon, foot contact maintained, pelvis height as a <em>lower
+bound</em> rather than a target, joint and torque limits as barriers. Fewer terms, each one a thing you
+would defend to a reviewer. Note that <code>Support Polygon</code> already exists in
+<code>lean.cc</code> and is — by the omission in 9.1 rather than by anyone's decision — the only
+balance-region term currently live during the brace, at weight 80. Turning it into the deliberate
+balance term is a smaller step than it looks.</li>
+<li><b>Make the objective dominant in its own phase</b>, or make it a constraint. If the reach term is
+not the largest term in <code>brace_reach</code>, the phase is not a reach phase.</li>
+<li><b>Score reach gain, not reach residual</b>, in every future sweep — the whole error in §2 was one
+missing baseline.</li>
+</ul>
+
+<p>Two things this will not fix on its own, and it is worth saying before the sweep rather than after.
+The 1 s horizon still cannot see a multi-second weight-transfer, and 10 samples over 81 dimensions is a
+weak search however the costs are shaped. Reweighting is cheap and worth doing; expecting it to produce
+a precise, legible reach is optimistic. The planner budget (<code>sampling_trajectories</code>,
+<code>n_elite</code>, horizon, knot count) should be swept in the same experiment as the weights, or the
+result will be attributed to the wrong knob.</p>
+
+<h2>10. The solver question, revisited</h2>
+
+<p>The first draft asserted that “a DDP with a prescribed contact schedule would have exactly the same
+failure, faster”, and treated DDP taking the mode schedule as an input as a mark against it. <b>That was
+wrong, and the objection is a good one.</b></p>
+
+<p>Crocoddyl is built for precisely this problem: whole-body multi-contact trajectory optimisation over a
+<em>prescribed contact sequence</em>, with the contact constraints entering the dynamics rather than the
+cost, friction cones and torque limits as constraints, and impulse models for the make/break transitions.
+Needing to be told the contact schedule is not a limitation here — <b>the schedule is exactly what the
+offline enumeration already produces</b>, and it is the one thing in this pipeline that is not in doubt
+(exhaustive over 2<sup>4</sup> modes, feasibility certified by LP). The two halves fit together; I argued
+they did not.</p>
+
+<p>The sharper way to see it is §7. What the current system calls planning is a human-authored keyframe
+ramp; MJPC is a 1 s-horizon stabiliser tracking it. The open question was never “sampling MPC or DDP” —
+it is <b>“who authors the trajectory”</b>, and the honest answer today is: a person did, by hand, in
+keyframes, and the result is 1.5 rad from the certified pose with zero net reach. Replacing that author
+with a trajectory optimiser that respects the dynamics and the contact schedule is the obvious move, and
+it is what crocoddyl is for.</p>
+
+<div class="note ok">
+<b>The architecture that follows.</b>
+<br>1. Enumeration → contact mode + certified pose <code>q*</code> (have it).
+<br>2. Crocoddyl → dynamically feasible <code>stand → q* → stand</code> trajectory over that contact
+schedule, with the friction cone and torque limits as constraints (missing today; the 14 s hand ramp is
+the placeholder).
+<br>3. MJPC / a WBC → track it, and reject disturbances. This is what MJPC is actually good at, and the
+part it is currently being asked to do that it does adequately.
+<br><br>
+Under this split the task rewrite in §9 is still worth doing — step 3 needs a cost that expresses “track
+this trajectory, keep these contacts, stay balanced”, which is a much smaller and more defensible stack
+than the current 30 terms.
+</div>
+
+<p>Risks worth costing before committing, so the estimate is not just the happy path: crocoddyl is a
+local optimiser and needs a warm start (the existing keyframe ramp is a serviceable one); its rigid
+contact model is not MuJoCo's soft constraint model, so any trajectory it produces must be validated in
+MuJoCo before it means anything; and it brings a Pinocchio model of the robot that has to be kept in
+sync with the MJCF, which is a real maintenance surface. None of these is a reason not to try it. All of
+them are reasons to try it on the <code>brace_lean</code> entry alone — the 14 s window that produces
+2/10 of the failures and 100% of the reach shortfall — before porting the whole mission.</p>
+
+<h2>11. Corrections</h2>
+
+<div class="scroll"><table>
+<thead><tr><th>Claim</th><th>Where</th><th>Status</th><th>Now</th></tr></thead>
+<tbody>
+<tr><td>“492–758 N through the trunk, at or above the robot's own weight”</td><td>S12 §2</td>
+    <td class="bad">artefact</td><td>45 N one seed, 398 N the other. §6.1</td></tr>
+<tr><td>“Arm load ramps 65 → 89 → 85 → 57 → 57 → 24 → 23 N”</td><td>S12 §5</td>
+    <td class="bad">artefact</td><td>113 → 153 → 138 → 113 → 130 → 108 → 84 N; no unloading. §6.2</td></tr>
+<tr><td>“Phase 1 holds a genuine brace … sits in it for 12 s”</td><td>S12 §2</td>
+    <td class="bad">wrong seed</td><td>That seed has an arm down 10% of the time. §4</td></tr>
+<tr><td>“MJPC gives up 0.34–0.54 m of reach and takes margin for it”</td><td>S12 §6</td>
+    <td class="bad">no baseline</td><td>Reach gain −0.041 m. There is no trade. §2</td></tr>
+<tr><td>“Sampling MPC and exhaustive enumeration agree on the contact structure”</td><td>S12 §6</td>
+    <td>stands, narrowed</td><td>Agreement is on the link <em>set</em>. The poses are ~1.5 rad apart. §5</td></tr>
+<tr><td>“The handoff can stay in MJPC; no capability gap”</td><td>S12 §9</td>
+    <td class="bad">withdrawn</td><td>No evidence the certified mode is reachable. §5, §10</td></tr>
+<tr><td>“A DDP with a prescribed contact schedule would have the same failure, faster”</td><td>S12 §9</td>
+    <td class="bad">wrong</td><td>The prescribed schedule is the fit, not the flaw. §10</td></tr>
+<tr><td>“The remaining defect is the 2/10 entry failure”</td><td>S12 §9</td>
+    <td class="bad">incomplete</td><td>The 8/10 that succeed do not reach either. §2</td></tr>
+<tr><td>The <code>9999</code> gate; S11 measured keyframe 0</td><td>S12 §1</td>
+    <td class="good">stands</td><td>Unchanged. §8</td></tr>
+<tr><td>Torso 200 N·m, carries 1–2 N·m, binds nothing</td><td>S12 §7</td>
+    <td class="good">stands</td><td>Unchanged. §8</td></tr>
+<tr><td>8/10 entry rate, all failures in the <code>brace_lean</code> ramp</td><td>S12 §4</td>
+    <td class="good">stands</td><td>qpos-derived; re-score reproduced it. §6.3</td></tr>
+</tbody></table></div>
+
+<h2>12. Caveats and reproduction</h2>
+<ul>
+<li><b>Ten samples, unseeded.</b> The planner RNG is not seeded on this branch, so no rollout is
+reproducible run-to-run. 8/10 is roughly 44–97% at 95% confidence — it supports “usually enters, fails
+identifiably”, not a reliability figure. The CSVs are kept and the re-score is deterministic given them.</li>
+<li><b>The reach result is not sample-limited.</b> Eight braces, gain range −0.199 to +0.004 m. The
+spread is small and the sign is consistent; this one does not need more seeds.</li>
+<li><b>Dwell times are mine.</b> The phase schedule is an experimental choice, generous at 16 s for a
+14 s ramp. A deployment needs a completion condition, not a clock.</li>
+<li><b>One target</b> — <code>reach_target</code> = (0.9047, −0.2348, 1.0982) — and simulation only, at
+μ = 0.6, which S11 §2 showed is not de-risked at the envelope edge.</li>
+<li><b>Re-score, not re-run:</b> <code>python3 mjpc_chain.py --rescore --episodes … --outdir
+runs/2026-08-05_session12/&lt;dir&gt;</code>. The trajectories are the ones in the videos.</li>
+</ul>
+
+</div></body></html>

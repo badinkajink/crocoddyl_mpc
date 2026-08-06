@@ -156,24 +156,11 @@ a different objective.</p>
 <math><mi>δ</mi><mi>q</mi></math> solves</p>
 
 <div class="eq">
-<math display="block"><mrow>
-  <munder><mo movablelimits="false">min</mo><mrow><mi>δ</mi><mi>q</mi></mrow></munder>
-  <mspace width="0.6em"/>
-  <mfrac><mn>1</mn><mn>2</mn></mfrac>
-  <mi>δ</mi><msup><mi>q</mi><mo>⊤</mo></msup><mi>G</mi><mi>δ</mi><mi>q</mi>
-  <mo>−</mo><msup><mi>a</mi><mo>⊤</mo></msup><mi>δ</mi><mi>q</mi>
-</mrow></math>
-<math display="block"><mrow>
-  <mtext>s.t.</mtext><mspace width="0.6em"/>
-  <msubsup><mi>n</mi><mi>c</mi><mo>⊤</mo></msubsup><msub><mi>J</mi><mi>c</mi></msub><mi>δ</mi><mi>q</mi>
-  <mo>≥</mo><msub><mi>d</mi><mi>c</mi></msub><mo>−</mo><mi>ε</mi>
-  <mspace width="1.4em"/><mo>∀</mo><mi>c</mi><mo>∈</mo><mi mathvariant="script">C</mi>
-</mrow></math>
-<math display="block"><mrow>
-  <mo>−</mo><mi>Δ</mi><mo>≤</mo><mi>δ</mi><msub><mi>q</mi><mi>i</mi></msub><mo>≤</mo><mi>Δ</mi>
-</mrow></math>
-<p class="where">with <math><mi>G</mi><mo>=</mo><msub><mo>∑</mo><mi>k</mi></msub><msubsup><mi>w</mi><mi>k</mi><mn>2</mn></msubsup><msubsup><mi>J</mi><mi>k</mi><mo>⊤</mo></msubsup><msub><mi>J</mi><mi>k</mi></msub><mo>+</mo><mi>λ</mi><mi>I</mi></math>,
-<math><mi>a</mi><mo>=</mo><msub><mo>∑</mo><mi>k</mi></msub><msubsup><mi>w</mi><mi>k</mi><mn>2</mn></msubsup><msubsup><mi>J</mi><mi>k</mi><mo>⊤</mo></msubsup><msub><mi>e</mi><mi>k</mi></msub></math>
+<math display="block"><mrow><munder><mo movablelimits="false">min</mo><mrow><mi>δ</mi><mi>q</mi></mrow></munder><mspace width="0.6em"/><mfrac><mn>1</mn><mn>2</mn></mfrac><mi>δ</mi><msup><mi>q</mi><mo lspace="0em" rspace="0em">⊤</mo></msup><mi>G</mi><mi>δ</mi><mi>q</mi><mo>−</mo><msup><mi>a</mi><mo lspace="0em" rspace="0em">⊤</mo></msup><mi>δ</mi><mi>q</mi></mrow></math>
+<math display="block"><mrow><mtext>s.t.</mtext><mspace width="0.6em"/><msubsup><mi>n</mi><mi>c</mi><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>J</mi><mi>c</mi></msub><mi>δ</mi><mi>q</mi><mo>≥</mo><msub><mi>d</mi><mi>c</mi></msub><mo>−</mo><mi>ε</mi><mspace width="1.4em"/><mo>∀</mo><mi>c</mi><mo>∈</mo><mi mathvariant="script">C</mi></mrow></math>
+<math display="block"><mrow><mo>−</mo><mi>Δ</mi><mo>≤</mo><mi>δ</mi><msub><mi>q</mi><mi>i</mi></msub><mo>≤</mo><mi>Δ</mi></mrow></math>
+<p class="where">with <math><mi>G</mi><mo>=</mo><munder><mo>∑</mo><mi>k</mi></munder><msubsup><mi>w</mi><mi>k</mi><mn>2</mn></msubsup><msubsup><mi>J</mi><mi>k</mi><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>J</mi><mi>k</mi></msub><mo>+</mo><mi>λ</mi><mi>I</mi></math>,
+<math><mi>a</mi><mo>=</mo><munder><mo>∑</mo><mi>k</mi></munder><msubsup><mi>w</mi><mi>k</mi><mn>2</mn></msubsup><msubsup><mi>J</mi><mi>k</mi><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>e</mi><mi>k</mi></msub></math>
 over the task terms <math><mi>k</mi></math> (reach, brace sites, pinned feet, posture),
 <math><mi mathvariant="script">C</mi></math> the near-contacts inside the look-ahead margin,
 <math><msub><mi>d</mi><mi>c</mi></msub></math> their signed distances, and
@@ -189,42 +176,20 @@ Writing <math><mi>a</mi></math> for the face normal (a body-fixed axis, in world
 the residual and its Jacobian are</p>
 
 <div class="eq">
-<math display="block"><mrow>
-  <mi>r</mi><mo>=</mo><mi>a</mi><mo>×</mo><mi>t</mi>
-  <mo>,</mo><mspace width="2em"/>
-  <mfrac><mrow><mo>∂</mo><mi>r</mi></mrow><mrow><mo>∂</mo><mi>ω</mi></mrow></mfrac>
-  <mo>=</mo>
-  <mrow><mo>[</mo><mi>a</mi><msup><mi>t</mi><mo>⊤</mo></msup>
-  <mo>−</mo><mo>(</mo><mi>a</mi><mo>·</mo><mi>t</mi><mo>)</mo><mi>I</mi><mo>]</mo></mrow>
-</mrow></math>
-<p class="where">from <math><mover><mi>a</mi><mo>˙</mo></mover><mo>=</mo><mi>ω</mi><mo>×</mo><mi>a</mi></math>.
+<math display="block"><mrow><mi>r</mi><mo>=</mo><mi>a</mi><mo>×</mo><mi>t</mi><mo>,</mo><mspace width="2em"/><mfrac><mrow><mo>∂</mo><mi>r</mi></mrow><mrow><mo>∂</mo><mi>ω</mi></mrow></mfrac><mo>=</mo><mrow><mo>[</mo><mi>a</mi><msup><mi>t</mi><mo lspace="0em" rspace="0em">⊤</mo></msup><mo>−</mo><mo>(</mo><mi>a</mi><mo>·</mo><mi>t</mi><mo>)</mo><mi>I</mi><mo>]</mo></mrow></mrow></math>
+<p class="where">from <math><mover accent="true"><mi>a</mi><mo stretchy="false" lspace="0em" rspace="0em">˙</mo></mover><mo>=</mo><mi>ω</mi><mo>×</mo><mi>a</mi></math>.
 Using the scalar cost <math><mn>1</mn><mo>−</mo><mi>a</mi><mo>·</mo><mi>t</mi></math> instead has zero
 gradient at <em>both</em> the aligned and the anti-aligned pose, so the solver can park the face pointing
 at the ceiling; the cross-product residual has no such stationary point on the wrong side.</p>
 </div>
 
 <h3>1.3 Force: static equilibrium at a fixed pose</h3>
-<p>With <math><mover><mi>q</mi><mo>˙</mo></mover><mo>=</mo><mover><mi>q</mi><mo>¨</mo></mover><mo>=</mo><mn>0</mn></math>,</p>
+<p>With <math><mover accent="true"><mi>q</mi><mo stretchy="false" lspace="0em" rspace="0em">˙</mo></mover><mo>=</mo><mover accent="true"><mi>q</mi><mo stretchy="false" lspace="0em" rspace="0em">¨</mo></mover><mo>=</mo><mn>0</mn></math>,</p>
 
 <div class="eq">
-<math display="block"><mrow>
-  <msup><mi>S</mi><mo>⊤</mo></msup><mi>τ</mi>
-  <mo>+</mo><munder><mo>∑</mo><mi>i</mi></munder>
-  <msubsup><mi>J</mi><mi>i</mi><mo>⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub>
-  <mo>=</mo><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo>
-</mrow></math>
+<math display="block"><mrow><msup><mi>S</mi><mo lspace="0em" rspace="0em">⊤</mo></msup><mi>τ</mi><mo>+</mo><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>J</mi><mi>i</mi><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub><mo>=</mo><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo></mrow></math>
 <p class="where">splitting the 6 unactuated floating-base rows from the 27 actuated ones:</p>
-<math display="block"><mrow>
-  <munder><mo>∑</mo><mi>i</mi></munder>
-  <msubsup><mi>J</mi><mrow><mi>i</mi><mo>,</mo><mn>1</mn><mo>:</mo><mn>6</mn></mrow><mo>⊤</mo></msubsup>
-  <msub><mi>λ</mi><mi>i</mi></msub>
-  <mo>=</mo><msub><mi>g</mi><mrow><mn>1</mn><mo>:</mo><mn>6</mn></mrow></msub>
-  <mspace width="2.2em"/>
-  <mi>τ</mi><mo>=</mo><msub><mi>g</mi><mrow><mn>7</mn><mo>:</mo><mn>33</mn></mrow></msub>
-  <mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder>
-  <msubsup><mi>J</mi><mrow><mi>i</mi><mo>,</mo><mn>7</mn><mo>:</mo><mn>33</mn></mrow><mo>⊤</mo></msubsup>
-  <msub><mi>λ</mi><mi>i</mi></msub>
-</mrow></math>
+<math display="block"><mrow><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>J</mi><mrow><mi>i</mi><mo>,</mo><mn>1</mn><mo>:</mo><mn>6</mn></mrow><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub><mo>=</mo><msub><mi>g</mi><mrow><mn>1</mn><mo>:</mo><mn>6</mn></mrow></msub><mspace width="2.2em"/><mi>τ</mi><mo>=</mo><msub><mi>g</mi><mrow><mn>7</mn><mo>:</mo><mn>33</mn></mrow></msub><mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>J</mi><mrow><mi>i</mi><mo>,</mo><mn>7</mn><mo>:</mo><mn>33</mn></mrow><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub></mrow></math>
 <p class="where"><math><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo></math> is <code>qfrc_bias</code> at rest
 (pure gravity), <b>not</b> <code>mj_inverse</code> — the latter folds in <code>qfrc_constraint</code>,
 i.e. whatever the pose happens to be penetrating, which at the seed keyframe is 20 kN against the
@@ -236,15 +201,9 @@ i.e. whatever the pose happens to be penetrating, which at the seed keyframe is 
 MuJoCo’s own resolved normal, not world <math><mi>z</mi></math>:</p>
 
 <div class="eq">
-<math display="block"><mrow>
-  <msub><mi>λ</mi><mi>n</mi></msub><mo>≥</mo><mn>0</mn>
-  <mo>,</mo><mspace width="2em"/>
-  <mo>|</mo><msub><mi>λ</mi><mrow><mi>t</mi><mo>,</mo><mi>k</mi></mrow></msub><mo>|</mo>
-  <mo>≤</mo><mfrac><mrow><mi>μ</mi><msub><mi>λ</mi><mi>n</mi></msub></mrow><msqrt><mn>2</mn></msqrt></mfrac>
-  <mo>,</mo><mspace width="1em"/><mi>k</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>2</mn>
-</mrow></math>
+<math display="block"><mrow><msub><mi>λ</mi><mi>n</mi></msub><mo>≥</mo><mn>0</mn><mo>,</mo><mspace width="2em"/><mo lspace="0em" rspace="0em" stretchy="false">|</mo><msub><mi>λ</mi><mrow><mi>t</mi><mo>,</mo><mi>k</mi></mrow></msub><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mo>≤</mo><mfrac><mrow><mi>μ</mi><msub><mi>λ</mi><mi>n</mi></msub></mrow><msqrt><mn>2</mn></msqrt></mfrac><mo>,</mo><mspace width="1em"/><mi>k</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>2</mn></mrow></math>
 <p class="where">Two rows per tangent, not one negated row. Negating the whole row pins
-<math><mo>|</mo><msub><mi>λ</mi><mi>t</mi></msub><mo>|</mo></math> <em>to</em> the boundary instead of
+<math><mo lspace="0em" rspace="0em" stretchy="false">|</mo><msub><mi>λ</mi><mi>t</mi></msub><mo lspace="0em" rspace="0em" stretchy="false">|</mo></math> <em>to</em> the boundary instead of
 bounding it, and every LP comes back infeasible — that bug cost a session (S10c.1).</p>
 </div>
 
@@ -254,27 +213,12 @@ For CoM <math><mi>c</mi></math>, robot mass <math><mi>M</mi></math>, and an opti
 disturbance <math><mi>f</mi></math> applied at the CoM:</p>
 
 <div class="eq">
-<math display="block"><mrow>
-  <munder><mo>∑</mo><mi>i</mi></munder>
-  <msubsup><mi>R</mi><mi>i</mi><mo>⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub>
-  <mo>=</mo>
-  <mo>(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mi>M</mi><mi>g</mi><mo>)</mo>
-  <mo>−</mo><mi>f</mi>
-</mrow></math>
-<math display="block"><mrow>
-  <munder><mo>∑</mo><mi>i</mi></munder>
-  <msub><mi>p</mi><mi>i</mi></msub><mo>×</mo>
-  <msubsup><mi>R</mi><mi>i</mi><mo>⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub>
-  <mo>=</mo>
-  <mo>(</mo><mo>−</mo><mi>M</mi><mi>g</mi><msub><mi>c</mi><mi>y</mi></msub>
-  <mo>,</mo><mspace width="0.3em"/><mi>M</mi><mi>g</mi><msub><mi>c</mi><mi>x</mi></msub>
-  <mo>,</mo><mspace width="0.3em"/><mn>0</mn><mo>)</mo>
-  <mo>−</mo><mi>c</mi><mo>×</mo><mi>f</mi>
-</mrow></math>
+<math display="block"><mrow><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>R</mi><mi>i</mi><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub><mo>=</mo><mo>(</mo><mn>0</mn><mo>,</mo><mn>0</mn><mo>,</mo><mi>M</mi><mi>g</mi><mo>)</mo><mo>−</mo><mi>f</mi></mrow></math>
+<math display="block"><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>p</mi><mi>i</mi></msub><mo>×</mo><msubsup><mi>R</mi><mi>i</mi><mo lspace="0em" rspace="0em">⊤</mo></msubsup><msub><mi>λ</mi><mi>i</mi></msub><mo>=</mo><mo>(</mo><mo>−</mo><mi>M</mi><mi>g</mi><msub><mi>c</mi><mi>y</mi></msub><mo>,</mo><mspace width="0.3em"/><mi>M</mi><mi>g</mi><msub><mi>c</mi><mi>x</mi></msub><mo>,</mo><mspace width="0.3em"/><mn>0</mn><mo>)</mo><mo>−</mo><mi>c</mi><mo>×</mo><mi>f</mi></mrow></math>
 <p class="where">The moment is independent of <math><msub><mi>c</mi><mi>z</mi></msub></math>, so this is
 genuinely a 2-D set and needs no height assumption. Solved twice: <b>contact-only</b> (these six rows
 plus the cones — exact) and <b>actuated</b> (also
-<math><mo>|</mo><mi>τ</mi><mo>|</mo><mo>≤</mo><msub><mi>τ</mi><mtext>max</mtext></msub></math>, which
+<math><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mi>τ</mi><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mo>≤</mo><msub><mi>τ</mi><mtext>max</mtext></msub></math>, which
 freezes <math><mi>g</mi><mo>(</mo><mi>q</mi><mo>)</mo></math> at the solved pose and is therefore a
 linearisation, reported separately for that reason). The boundary is ray-shot at 10° resolution with
 18 bisection steps; <b>margin</b> is the distance from the pose’s own CoM to that boundary.</p>
@@ -282,26 +226,10 @@ linearisation, reported separately for that reason). The boundary is ray-shot at
 
 <h3>1.6 The derived scalars</h3>
 <div class="eq">
-<math display="block"><mrow>
-  <msub><mi>u</mi><mi>i</mi></msub><mo>=</mo>
-  <mfrac>
-    <mrow><mo>‖</mo><msub><mi>λ</mi><mrow><mi>t</mi><mo>,</mo><mi>i</mi></mrow></msub><mo>‖</mo></mrow>
-    <mrow><mi>μ</mi><msub><mi>λ</mi><mrow><mi>n</mi><mo>,</mo><mi>i</mi></mrow></msub></mrow>
-  </mfrac>
-  <mspace width="2.5em"/>
-  <mi>ρ</mi><mo>(</mo><mi>μ</mi><mo>)</mo><mo>=</mo>
-  <munder><mo movablelimits="false">max</mo><mi>j</mi></munder>
-  <mfrac><mrow><mo>|</mo><msub><mi>τ</mi><mi>j</mi></msub><mo>|</mo></mrow>
-         <msubsup><mi>τ</mi><mi>j</mi><mtext>max</mtext></msubsup></mfrac>
-</mrow></math>
+<math display="block"><mrow><msub><mi>u</mi><mi>i</mi></msub><mo>=</mo><mfrac><mrow><mo lspace="0em" rspace="0em" stretchy="false">‖</mo><msub><mi>λ</mi><mrow><mi>t</mi><mo>,</mo><mi>i</mi></mrow></msub><mo lspace="0em" rspace="0em" stretchy="false">‖</mo></mrow><mrow><mi>μ</mi><msub><mi>λ</mi><mrow><mi>n</mi><mo>,</mo><mi>i</mi></mrow></msub></mrow></mfrac><mspace width="2.5em"/><mi>ρ</mi><mo>(</mo><mi>μ</mi><mo>)</mo><mo>=</mo><munder><mo movablelimits="false">max</mo><mi>j</mi></munder><mfrac><mrow><mo lspace="0em" rspace="0em" stretchy="false">|</mo><msub><mi>τ</mi><mi>j</mi></msub><mo lspace="0em" rspace="0em" stretchy="false">|</mo></mrow><msubsup><mi>τ</mi><mi>j</mi><mtext>max</mtext></msubsup></mfrac></mrow></math>
 <p class="where">slip utilisation (<math><mi>u</mi><mo>=</mo><mn>1</mn></math> is on the cone) and peak
 normalised actuator effort. The friction threshold this page reports is</p>
-<math display="block"><mrow>
-  <msubsup><mi>μ</mi><mi>τ</mi><mo>*</mo></msubsup><mo>=</mo>
-  <mo>min</mo><mo>{</mo><mi>μ</mi><mo>:</mo>
-  <mo>|</mo><mi>ρ</mi><mo>(</mo><mi>μ</mi><mo>)</mo><mo>−</mo>
-  <mi>ρ</mi><mo>(</mo><mi>∞</mi><mo>)</mo><mo>|</mo><mo>≤</mo><mi>δ</mi><mo>}</mo>
-</mrow></math>
+<math display="block"><mrow><msubsup><mi>μ</mi><mi>τ</mi><mo lspace="0em" rspace="0em">*</mo></msubsup><mo>=</mo><mo>min</mo><mo>{</mo><mi>μ</mi><mo>:</mo><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mi>ρ</mi><mo>(</mo><mi>μ</mi><mo>)</mo><mo>−</mo><mi>ρ</mi><mo>(</mo><mi>∞</mi><mo>)</mo><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mo>≤</mo><mi>δ</mi><mo>}</mo></mrow></math>
 <p class="where">with <math><mi>ρ</mi><mo>(</mo><mi>∞</mi><mo>)</mo></math> computed <em>directly</em>,
 by deleting the cone rows and leaving the normals unilateral — not extrapolated from the tail of a
 sweep.</p>
@@ -323,7 +251,7 @@ sweep.</p>
 </tbody></table></div>
 
 <div class="note ok">
-<b>The answer you wanted: <math><msubsup><mi>μ</mi><mi>τ</mi><mo>*</mo></msubsup><mo>≤</mo><mn>0.3</mn></math>.</b>
+<b>The answer you wanted: <math><msubsup><mi>μ</mi><mi>τ</mi><mo lspace="0em" rspace="0em">*</mo></msubsup><mo>≤</mo><mn>0.3</mn></math>.</b>
 Above <math><mi>μ</mi><mo>=</mo><mn>0.3</mn></math> the pose’s peak torque is within 1 % of its
 frictionless limit and does not move again out to <math><mi>μ</mi><mo>=</mo><mn>5</mn></math>. So at the
 study’s <math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math> the torque numbers <b>are</b> characterising the
@@ -336,7 +264,7 @@ sense.</b>
 <div class="note warn">
 <b>But this does not hold at the envelope edge, which is where it matters.</b> Re-running the same
 sweep at <math><mi>x</mi><mo>=</mo><mn>1.35</mn></math> m — the elbow+forearm strength limit rather
-than an interior pose — gives <math><msubsup><mi>μ</mi><mi>τ</mi><mo>*</mo></msubsup><mo>=</mo><mn>0.8</mn></math>
+than an interior pose — gives <math><msubsup><mi>μ</mi><mi>τ</mi><mo lspace="0em" rspace="0em">*</mo></msubsup><mo>=</mo><mn>0.8</mn></math>
 for elbow+forearm and <b>1.5</b> for elbow+forearm+palm. At the study's
 <math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math> the limiting pose is therefore <em>still</em>
 friction-affected, and the reach envelope in §3 would move with a grippier table. The interior result
@@ -348,7 +276,7 @@ credited</b>, and the §3 envelope numbers are conditional on
 
 <div class="note warn">
 <b>And the region metric never becomes friction-free at all.</b>
-<math><msubsup><mi>μ</mi><mtext>region</mtext><mo>*</mo></msubsup></math> is never reached — at
+<math><msubsup><mi>μ</mi><mtext>region</mtext><mo lspace="0em" rspace="0em">*</mo></msubsup></math> is never reached — at
 <math><mi>μ</mi><mo>=</mo><mn>5</mn></math> the actuated equilibrium region is still 6–10 cm short of its
 frictionless limit. The region’s <em>boundary</em> is exactly where shear demand peaks, so extra friction
 keeps buying region long after it has stopped changing what the pose costs. Concretely: the
@@ -604,25 +532,9 @@ in §1.2. Deliberately heading-only: constraining the forearm’s full 3-D direc
 pitch, which is the freedom the brace needs to get down onto the table at different distances.</p>
 
 <div class="eq">
-<math display="block"><mrow>
-  <mi>r</mi><mo>=</mo><mtext>wrap</mtext><mo>(</mo><msub><mi>ψ</mi><mtext>ref</mtext></msub>
-  <mo>−</mo><mi>θ</mi><mo>)</mo><mo>,</mo><mspace width="1em"/>
-  <mi>θ</mi><mo>=</mo><mtext>atan2</mtext><mo>(</mo><msub><mi>v</mi><mi>y</mi></msub><mo>,</mo>
-  <msub><mi>v</mi><mi>x</mi></msub><mo>)</mo>
-</mrow></math>
-<math display="block"><mrow>
-  <mfrac><mrow><mo>∂</mo><mi>θ</mi></mrow><mrow><mo>∂</mo><mi>ω</mi></mrow></mfrac>
-  <mo>=</mo>
-  <mfrac>
-   <mrow><mo>[</mo><mo>−</mo><msub><mi>v</mi><mi>x</mi></msub><msub><mi>v</mi><mi>z</mi></msub>
-   <mo>,</mo><mspace width="0.3em"/><mo>−</mo><msub><mi>v</mi><mi>y</mi></msub><msub><mi>v</mi><mi>z</mi></msub>
-   <mo>,</mo><mspace width="0.3em"/><msubsup><mi>v</mi><mi>x</mi><mn>2</mn></msubsup>
-   <mo>+</mo><msubsup><mi>v</mi><mi>y</mi><mn>2</mn></msubsup><mo>]</mo></mrow>
-   <mrow><msubsup><mi>v</mi><mi>x</mi><mn>2</mn></msubsup><mo>+</mo>
-         <msubsup><mi>v</mi><mi>y</mi><mn>2</mn></msubsup></mrow>
-  </mfrac>
-</mrow></math>
-<p class="where">from <math><mover><mi>v</mi><mo>˙</mo></mover><mo>=</mo><mi>ω</mi><mo>×</mo><mi>v</mi></math>.
+<math display="block"><mrow><mi>r</mi><mo>=</mo><mtext>wrap</mtext><mo>(</mo><msub><mi>ψ</mi><mtext>ref</mtext></msub><mo>−</mo><mi>θ</mi><mo>)</mo><mo>,</mo><mspace width="1em"/><mi>θ</mi><mo>=</mo><mtext>atan2</mtext><mo>(</mo><msub><mi>v</mi><mi>y</mi></msub><mo>,</mo><msub><mi>v</mi><mi>x</mi></msub><mo>)</mo></mrow></math>
+<math display="block"><mrow><mfrac><mrow><mo>∂</mo><mi>θ</mi></mrow><mrow><mo>∂</mo><mi>ω</mi></mrow></mfrac><mo>=</mo><mfrac><mrow><mo>[</mo><mo>−</mo><msub><mi>v</mi><mi>x</mi></msub><msub><mi>v</mi><mi>z</mi></msub><mo>,</mo><mspace width="0.3em"/><mo>−</mo><msub><mi>v</mi><mi>y</mi></msub><msub><mi>v</mi><mi>z</mi></msub><mo>,</mo><mspace width="0.3em"/><msubsup><mi>v</mi><mi>x</mi><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>v</mi><mi>y</mi><mn>2</mn></msubsup><mo>]</mo></mrow><mrow><msubsup><mi>v</mi><mi>x</mi><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>v</mi><mi>y</mi><mn>2</mn></msubsup></mrow></mfrac></mrow></math>
+<p class="where">from <math><mover accent="true"><mi>v</mi><mo stretchy="false" lspace="0em" rspace="0em">˙</mo></mover><mo>=</mo><mi>ω</mi><mo>×</mo><mi>v</mi></math>.
 One row, one scalar residual, weight <b>below</b> the site-placement weight so that where the two
 conflict the contact wins and the heading degrades gracefully.</p>
 </div>
