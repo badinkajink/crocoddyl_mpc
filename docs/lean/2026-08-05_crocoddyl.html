@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A crocoddyl MVP for the braced lean — 2026-08-05</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>A crocoddyl MVP for the braced lean</h1>
+<p class="sub">Session 12, third pass. The enumeration already produces exactly what a DDP wants — a
+contact schedule and a certified pose — so this wires that into crocoddyl and asks it to produce the
+trajectory that gets there. <b>It solves.</b> A 2 s plan from <code>stand</code> puts the reaching hand
+<b>1.1 mm</b> from the target, inside torque limits, and lands <b>0.69 rad</b> from the certified pose
+where the hand-authored keyframe ramp lands ~1.5 rad away. <b>It does not yet survive MuJoCo</b>: the
+plan drives the bracing gripper 68 mm through the tabletop, and neither replay mode establishes brace
+contact.</p>
+<p class="meta">2026-08-05 · <code>lean_analysis/croco_{bridge,modes,plan,run,replay}.py</code> ·
+run dir <code>lean_analysis/runs/2026-08-05_session12/croco/</code> ·
+model <code>Lean_H12_Magpie.xml</code>, brace arm left, sites v2, τ basis <code>clamp</code>,
+μ = 0.6, target <span class="m">[0.9047, −0.2348, 1.0982]</span></p>
+
+<div class="note warn">
+<b>Read this first.</b> The headline is a <em>solver</em> result, not a robot result. crocoddyl solved
+the optimal control problem it was given; the MuJoCo replay of that solution fails. Sections 5 and 6 are
+the honest part of this page and they are where the remaining work is. Nothing here has been near
+hardware.
+</div>
+
+<h2>1 · Why this is the right shape for the problem</h2>
+<p>The previous page established what the current stack actually does: <code>agent_planner=5</code> is
+Cross Entropy with <code>sampling_trajectories=10</code>, <code>n_elite=6</code>,
+<code>sampling_spline_points=3</code> and <code>agent_horizon=1.0</code> — a 10-sample search over 81
+dimensions looking 1 second ahead at a 14 second maneuver. The hand-authored keyframe ramp is the plan;
+CEM is a short-horizon stabilizer tracking a setpoint being dragged past it.</p>
+<p>The complaint I made against DDP earlier — that a prescribed contact schedule is a liability — was
+backwards. The enumeration <em>already</em> produces a prescribed schedule, exhaustively, with static
+feasibility certified per mode. That is precisely crocoddyl's required input. So the division is:
+enumeration chooses <em>where</em> to brace, crocoddyl produces <em>how to get there</em>, and
+MJPC/a WBC tracks the result.</p>
+
+<h2>2 · The model bridge, and 0.78 kg that was not there</h2>
+<p>Every number this study has produced came out of the MJCF; crocoddyl plans on a Pinocchio model built
+from <code>h1_2_magpie.urdf</code>. Two models of one robot from one source, and the plan is worthless if
+they disagree — so the bridge ships with a parity test rather than inline index arithmetic. Three things
+had to be reconciled: the URDF's 12 gripper linkage joints (frozen, since the MJCF fuses each gripper to
+one rigid body), the MJCF's free-floating table (<code>nq=41</code> is robot + table; the robot is
+<code>qpos[0:34]</code>), and the free-joint quaternion order (MuJoCo <span class="m">w,x,y,z</span> vs
+Pinocchio <span class="m">x,y,z,w</span>).</p>
+<p>Kinematics agreed immediately. <b>Mass did not.</b> The URDF is missing <code>back_equipment</code> —
+0.670 kg bolted to <code>torso_link</code> in the MJCF, with no URDF link at all — plus 0.056 kg per
+gripper. That is 0.78 kg, and it is on the <em>torso</em>, which pitches ~32° in the brace and therefore
+carries the longest moment arm of any payload on the robot. Left alone, every contact force crocoddyl
+predicted would have been quietly low against the numbers the static QP certified. The bridge now
+overwrites all Pinocchio link inertias with MuJoCo's composite inertias, so the dynamics match by
+construction.</p>
+<div class="scroll"><table>
+<tr><th>Parity check at the certified pose</th><th>Before</th><th>After</th></tr>
+<tr><td>robot mass</td><td class="bad">0.782 kg apart</td><td class="good">exact (68.666 kg)</td></tr>
+<tr><td>centre of mass</td><td class="bad">2.9 mm</td><td class="good">1.8 × 10⁻⁸ m</td></tr>
+<tr><td>link frames (28 bodies)</td><td class="good">8.1 × 10⁻⁷ m</td><td class="good">8.1 × 10⁻⁷ m</td></tr>
+<tr><td>brace / reach sites</td><td class="good">&lt; 1.1 × 10⁻⁶ m</td><td class="good">&lt; 1.1 × 10⁻⁶ m</td></tr>
+<tr><td>gravity torque, 27 joints</td><td class="bad">0.238 N·m</td><td class="good">1.6 × 10⁻⁵ N·m</td></tr>
+<tr><td>gravity wrench, floating base</td><td class="bad">7.67</td><td class="good">3.7 × 10⁻⁶</td></tr>
+</table></div>
+<p>The base row needed its own care: a MuJoCo free joint reports its <em>linear</em> dofs in world and
+its <em>angular</em> dofs in the body frame, while Pinocchio's free-flyer reports both in the body frame.
+Rotating both halves leaves ~2 N·m of residual that looks like a modelling error and is a convention
+error. Verified against <span class="m">r<sub>com</sub> × (0,0,−Mg)</span>, not assumed.</p>
+
+<h2>3 · The enumeration does not discriminate at this target</h2>
+<p>All <b>32 of 32</b> contact subsets over {elbow, forearm, palm, hip, torso} are statically admissible
+at the session-12 target. Bracing is not <em>required</em> here — legs-only already balances at
+max |τ|/limit = 0.46 — it buys effort:</p>
+<div class="scroll"><table>
+<tr><th>Mode</th><th>Normalized effort</th><th>max |τ|/limit</th><th>Brace force</th></tr>
+<tr><td>legs only (no brace)</td><td>0.898</td><td>0.46</td><td>0 N</td></tr>
+<tr><td>elbow + forearm <span class="m">← used below</span></td><td>0.768</td><td>0.47</td><td>52 N</td></tr>
+<tr><td>forearm + torso</td><td>0.476</td><td>0.30</td><td>98 N</td></tr>
+<tr><td>elbow + forearm + palm + torso <span class="m">← ranked best</span></td><td class="good">0.409</td><td>0.32</td><td>95 N</td></tr>
+</table></div>
+<p>Two consequences. First, this target is a weak discriminator for contact selection — if the point is
+to show bracing <em>matters</em>, the target needs to be further out, where legs-only stops being
+admissible. Second, the modes that win are the ones that recruit the <b>torso</b>, which is consistent
+with the S11 finding that torso is the joint with headroom. The MVP below deliberately uses
+<code>elbow+forearm</code> instead of the ranked winner, because that is the mode the existing MJPC
+strategy and the S11 stability result both use, so the comparison is like-for-like.</p>
+
+<h2>4 · The optimal control problem, and the five things that made it solve</h2>
+<p>Two phases over a prescribed schedule: an <b>approach</b> (feet only) that lowers the CoM and swings
+the bracing arm over the table, then a <b>braced</b> phase (feet + brace) that settles onto q*, reaches
+the target and comes to rest. Feet are 6D contacts at the sole frames with wrench cones; brace sites are
+3D contacts with friction cones; torque limits are hard box bounds on <code>SolverBoxFDDP</code>.</p>
+<p>Getting from "written" to "solves" took six distinct blockers, five of them real modelling errors
+rather than tuning. Recording them because every one cost more than it should have:</p>
+<div class="scroll"><table>
+<tr><th>Symptom</th><th>Actual cause</th><th>Fix</th></tr>
+<tr><td>SIGSEGV / MemoryError / <code>basic_string::_M_create</code>, varying between identical runs</td>
+    <td>The pip <code>crocoddyl</code> cmeel wheel. Contact-cone residuals identify their contact by
+        <code>dynamic_cast</code>; the wheel defines those symbols in two libraries and the typeinfo in
+        only one, so the cast returns garbage and the data constructor memmoves a bogus size.</td>
+    <td>A conda-forge env (<code>conda activate croco</code>). This is why every croco script must be
+        run with that interpreter.</td></tr>
+<tr><td>MemoryError building the problem</td>
+    <td><code>FrictionCone</code> handed to a <b>6D</b> foot contact. It is the 3D object; the 6D one is
+        <code>WrenchCone</code>. No type error — a mis-sized allocation.</td>
+    <td>Wrench cones on the feet, friction cones on the brace. Better anyway: the wrench cone's extra
+        rows are the centre-of-pressure staying inside the 0.20 × 0.08 m sole.</td></tr>
+<tr><td>Segfault assembling the ShootingProblem</td>
+    <td>The joint-limit cost used <code>0 * x_star</code> as its reference, which zeroes the floating
+        base <b>quaternion</b>; every <code>state.diff</code> then normalizes by zero.</td>
+    <td><code>state.zero()</code>.</td></tr>
+<tr><td>Solver stalls: 17 iterations, no step accepted, regularization walks 1e−8 → 1e9</td>
+    <td>Warm start interpolated the 27 joint angles while holding the base fixed, swinging the legs under
+        a pelvis that never descends — both feet end <b>0.39 m off the floor</b>, violating the contacts
+        the problem is built on.</td>
+    <td><code>pin.interpolate</code> over the whole configuration.</td></tr>
+<tr><td>Braced phase will not converge from any cone weight</td>
+    <td>Feet + brace is 18 constraint rows on 33 DOF and the contacts are <b>redundant</b>: the KKT system
+        is singular, so the force the cone cost differentiates is arbitrary.</td>
+    <td><code>inv_damping = 1e-4</code>. Measured: damping 0 or 1e−6 fails at every setting tried; 1e−4
+        converges at all of them. This is the same regularizer the static QP already needs — its
+        <code>w_lam</code> min-norm term.</td></tr>
+<tr><td>Cones still fail on the full problem</td>
+    <td>The interpolated guess has zero velocity, so its implied forces are nothing like the real ones and
+        the cone barriers evaluate at <b>~3150</b> against ~2.8 for everything else.</td>
+    <td>Two-stage continuation: solve with cones off, then re-solve with cones warm-started from that.
+        Stage 1 is not a throwaway — it is what makes stage 2 well-posed.</td></tr>
+</table></div>
+<p>Two further notes. The <b>impulse node</b> at touchdown is implemented but off by default: with
+<code>nu=0</code> it makes <code>SolverBoxFDDP</code> return after a few iterations with an uninitialised
+<code>stop</code> value. Physically it costs little here — a hand placed deliberately on a table lands at
+near-zero velocity. And the <b>terminal weight</b> must stay modest (1e0 converges; 1e1 and above return
+to the stalled signature), so q* enters as a bias, not a hard terminal constraint.</p>
+
+<h2>5 · What it produces</h2>
+<p>100 nodes, dt = 0.02, 2.0 s. Converged in <b>58 iterations / 2.4 s</b> to <code>stop = 1.4e−5</code>.</p>
+<div class="scroll"><table>
+<tr><th>Quantity</th><th>Result</th><th>Reading</th></tr>
+<tr><td>reaching hand vs target</td><td class="good">1.14 mm</td><td>the task objective is met</td></tr>
+<tr><td>max |τ| / limit</td><td class="good">0.994</td><td>inside the clamp basis, at its edge</td></tr>
+<tr><td>foot drift (both)</td><td class="good">2.7 mm</td><td>stance held</td></tr>
+<tr><td>terminal ‖v‖</td><td class="good">0.052</td><td>essentially at rest</td></tr>
+<tr><td>brace sites vs certified spots</td><td>35 mm / 35 mm</td><td>close, not on them</td></tr>
+<tr><td>‖q − q*‖ over 27 joints</td><td>0.692 rad (worst joint 0.425)</td>
+    <td>vs <b>~1.5 rad</b> for the hand-authored keyframe ramp</td></tr>
+</table></div>
+<figure>
+  <video src="media/replay_elbow_forearm_kinematic.mp4" controls muted loop playsinline></video>
+  <figcaption>The planned trajectory, driven kinematically into MuJoCo (no dynamics — this is what
+  crocoddyl believes it planned). Stand, lean, pelvis down, bracing arm onto the table, right hand to the
+  green target. The maneuver is the right maneuver.</figcaption>
+</figure>
+<p>That 0.692 vs ~1.5 rad is the one number worth carrying forward. A DDP given the enumeration's own
+output lands less than half as far from the certified pose as fourteen seconds of hand-authored keyframe
+ramp — in two seconds, with the torque limits enforced.</p>
+
+<h2>6 · Where it fails: MuJoCo</h2>
+<p>The plan does not survive contact with the simulator, in two independent ways.</p>
+
+<h3>6.1 The bracing gripper goes through the table</h3>
+<p>Driving the planned configurations into MuJoCo and reading the narrowphase: the deepest robot–table
+penetration over the plan is <b>−67.8 mm</b>, and it is the <code>left_magpie_gripper</code> — the
+gripper on the <em>bracing</em> arm, which is not in the <code>elbow+forearm</code> contact subset and
+was therefore unconstrained. The certified pose q* has no such penetration.</p>
+<p>Extending the half-space barrier from the selected sites to <em>every</em> arm site improved this from
+−84 mm to −67.8 mm and no further, and the reason it cannot go further is worth stating: at q* itself the
+gripper's lowest collision corner sits <b>7.4 mm below the tabletop plane</b>, hanging over the table
+<em>edge</em> where there is no table to hit. A z-barrier cannot express "below the top but outside the
+footprint", so tightening it enough to exclude the gripper would forbid the certified pose. <b>This needs
+real collision geometry</b> (<code>ResidualModelPairCollision</code> against a table box), not a smarter
+half-space. Reweighting the bracing arm 10× toward q* was tried as a shortcut and destroyed the solve
+outright — back to the stalled 17-iteration signature.</p>
+
+<h3>6.2 Neither replay establishes the brace</h3>
+<p>The actuators are position servos (<code>kp=150, kd=5</code>, read off the model), so a faithful replay
+inverts the servo law at the planned state, <span class="m">ctrl = q<sub>plan</sub> + (τ<sub>plan</sub> +
+kd·v<sub>plan</sub>)/kp</span>; the plan runs at dt = 0.02 against MuJoCo's 0.002, so each node is held for
+10 substeps. Both are done. Both replays still fail:</p>
+<div class="scroll"><table>
+<tr><th>Replay</th><th>Final pelvis z</th><th>Joint tracking error</th><th>Brace force</th><th>Feet</th></tr>
+<tr><td>torque inversion</td><td>0.754 m — upright</td><td class="bad">0.90 rad</td>
+    <td class="bad">0 N</td><td>441 N</td></tr>
+<tr><td>position tracking (WBC-like)</td><td class="bad">0.100 m — TOPPLED</td><td class="bad">1.10 rad</td>
+    <td class="bad">0 N</td><td>0 N</td></tr>
+</table></div>
+<div class="grid2">
+  <figure>
+    <video src="media/replay_elbow_forearm_torque.mp4" controls muted loop playsinline></video>
+    <figcaption>Torque inversion. Stays up, never reaches the table — it settles into a crouch about
+    0.13 m short and holds there.</figcaption>
+  </figure>
+  <figure>
+    <video src="media/replay_elbow_forearm_position.mp4" controls muted loop playsinline></video>
+    <figcaption>Pure position tracking. Falls.</figcaption>
+  </figure>
+</div>
+<p>A 0.9 rad open-loop tracking error over 2 s is not a small discrepancy to be tuned away. The plan is
+an <em>open-loop</em> torque trajectory computed against rigid prescribed contacts; MuJoCo has compliant
+contacts, and the brace contact that the plan is leaning on never forms — so the support the plan assumes
+is simply absent, and the robot goes wherever the residual torques take it. This is exactly the gap a
+tracking controller exists to close, and it says the missing piece is the <b>third</b> stage of the
+chain: enumeration → crocoddyl → <em>WBC/MJPC tracking</em>. Feeding the plan open-loop was never going
+to work, and the numbers above are what "never going to work" looks like.</p>
+
+<h2>7 · Can crocoddyl do the contact selection too?</h2>
+<p>Asked, and the answer is no, not natively — crocoddyl optimizes over a <em>given</em> contact schedule.
+There is no complementarity or integer machinery in it, so contact-implicit trajectory optimization is out
+of scope for the library as it stands.</p>
+<p>What <em>is</em> available, and cheap, is enumerate-and-rank at the trajectory level: the mode set is
+only 32 wide, a solve is 2.4 s, so re-ranking all admissible modes by <em>dynamic</em> cost rather than
+static effort is about two minutes of compute. That is a strictly better selector than the static QP,
+because it prices the cost of <em>getting into</em> the mode, which the static QP cannot see by
+construction. The harness supports it (<code>--mode</code> takes any admissible subset); it has not been
+run, because the single-mode result does not yet survive replay and ranking modes on a broken replay would
+be measuring noise.</p>
+
+<h2>8 · State, and what I would do next</h2>
+<div class="note ok">
+<b>Working and verified:</b> the Pinocchio/MuJoCo bridge with its parity test; the mode enumeration with
+per-mode poses saved; the two-phase OCP with staged continuation, which converges reliably; the MuJoCo
+replay harness with correct servo inversion and substepping; video rendering.
+</div>
+<div class="note warn">
+<b>Not working:</b> the plan penetrates the table with the bracing gripper (−68 mm); no replay establishes
+brace contact; open-loop tracking error 0.9 rad. <b>Untested:</b> every mode except
+<code>elbow+forearm</code>; every target except the session-12 one; the impulse-node path.
+</div>
+<p>In priority order:</p>
+<ol>
+<li><b>Collision geometry for the table</b> (<code>ResidualModelPairCollision</code> + a Pinocchio
+GeometryModel carrying the table box). This is the blocking defect and the half-space cannot substitute
+for it.</li>
+<li><b>Close the loop on the replay.</b> The plan is a reference trajectory, not a controller. Either hand
+it to MJPC as the setpoint sequence (replacing the hand-authored keyframe ramp — which is the actual
+proposal) or track it with a WBC. Comparing open-loop DDP against closed-loop MJPC, as section 6.2 does,
+flatters MJPC unfairly.</li>
+<li><b>Move the target outward</b> until legs-only stops being admissible, so contact selection has
+something to select and the reach result means something.</li>
+<li>Then, and only then, dynamic re-ranking of the 32 modes.</li>
+</ol>
+<p class="meta">Environment note: <code>pip install crocoddyl</code> upgraded the base env's pinocchio
+3.9.0 → 4.1.0 and required <code>cmeel-tinyxml2</code> to be bumped to match. Nothing in this repo
+imported pinocchio before today, so nothing should have regressed, but the base env is not what it was
+this morning. The crocoddyl work itself runs in the separate <code>croco</code> conda env and does not
+depend on the base one.</p>
+
+</div></body>
+</html>
