@@ -1,0 +1,1079 @@
+<h1>The lean survives MuJoCo, and the loop is what does it</h1>
+<p class="sub">Session 13. The S12 page ended with a crocoddyl plan that solved and did not survive
+MuJoCo, and blamed the open loop. Half of that was right. This page fixes three modelling defects the
+S12 diagnosis had not found — the braced phase was <em>leaning on thin air</em>, the table was a
+half-space instead of a box, and the Pinocchio model was missing 10&nbsp;N·m·s/rad of joint damping the
+MJCF has on every joint — and then runs the whole controller ladder instead of two rungs of it.
+<b>The result is a MuJoCo-feasible stand → lean &amp; reach → return.</b> Under a receding-horizon
+crocoddyl MPC the hand lands <b>2.5&nbsp;mm</b> from the target with the brace carrying 93&nbsp;N, the
+CoM never leaves the support polygon, and the robot stands back up. Open loop, on the same plan, it
+falls over — as does the robot doing <em>nothing at all</em>, in 1.3&nbsp;s.
+<b>It then asks how far that generalises</b>, over a grid of seven contact modes × four reach targets,
+and the answer is narrower than the headline: bracing becomes <em>necessary</em> somewhere between
+x = 1.05 and 1.15&nbsp;m, the plan holds the brace geometry to a millimetre in every cell — and the
+contact still fails to establish in most of them.</p>
+<p class="meta">2026-08-06 · <code>lean_analysis/croco_{bridge,geom,plan,run,replay,diag,forces,matrix,sweep,region,figs}.py</code>,
+<code>lean_analysis/croco_ext/</code> ·
+run dir <code>lean_analysis/runs/2026-08-06_session13/</code> ·
+model <code>Lean_H12_Magpie.xml</code>, brace arm left, sites v2, τ basis <code>clamp</code>,
+μ = 0.6, headline target <span class="m">[0.9047, −0.2348, 1.0982]</span> ·
+crocoddyl 3.2.1 / pinocchio 4.1.0 / mujoco 3.2.3</p>
+
+<div class="note warn">
+<b>Read this first.</b> This is a simulation result and nothing here has been near hardware. The
+headline maneuver in §1–§9 is a <em>single</em> target, contact mode and stance, and §11–§12 exist
+precisely to say how representative it is: across a 7 × 4 grid it is the <b>best</b> cell rather than a
+typical one. The MPC runs at 38&nbsp;ms per step against a 20&nbsp;ms control period, so "MPC works"
+here means "closing the loop is what makes the maneuver survive" and "this is a good offline trajectory
+generator", not "this ships".
+</div>
+
+<h2>1 · What S12 actually got wrong</h2>
+<p>S12 reported two failures — the plan drove the bracing gripper 68&nbsp;mm through the tabletop, and
+no replay established brace contact — and attributed both to the missing tracking controller. Walking
+the plan node by node through MuJoCo's narrowphase (<code>croco_diag.py</code>, new) says otherwise.
+Three separate defects, none of which a controller can fix:</p>
+
+<div class="scroll"><table>
+<tr><th>Defect</th><th>Evidence</th><th>Why it was invisible</th></tr>
+<tr><td><b>The braced phase was leaning on thin air.</b></td>
+<td class="bad">Over all 41 braced nodes the elbow site sits <b>+9.7&nbsp;mm above</b> its certified
+landing height and the forearm <b>−14.6&nbsp;mm below</b> it — one link hovering, the other buried.</td>
+<td>The report measured distance to the certified <em>spot</em> (35&nbsp;mm, in 3-D) and never resolved
+it into the one axis that decides whether a contact exists.</td></tr>
+<tr><td><b>The table was a half-space, and could not be one.</b></td>
+<td class="bad">At the S12 certified pose the gripper's lowest collision corner
+(<code>left_gripper_jaw_a</code>) sits <b>7.4&nbsp;mm below the tabletop plane</b>. Any
+<span class="m">z ≥ z<sub>table</sub></span> barrier tight enough to exclude the gripper forbids the pose
+the study certified.</td>
+<td>Identified in S12 §6.1 and recorded as future work rather than as the reason the penetration number
+could not improve. <b>Its explanation does not reproduce</b>: that corner is at x = 0.851 m, well inside
+the table's 0.50–1.68 m footprint, so it is not "hanging over the edge where there is no table" — it is
+7.4&nbsp;mm <em>inside the slab</em>. The certified pose rests the gripper on the table and always did.</td></tr>
+<tr><td><b>A body that was in contact was not a contact.</b></td>
+<td class="bad">At q*, MuJoCo reports the bracing <em>gripper</em> on the table — three contacts, 0.9 to
+3.7&nbsp;mm deep — alongside the elbow and forearm links. The mode being planned was
+<code>elbow+forearm</code>.</td>
+<td>The mode was chosen to match the MJPC strategy for a like-for-like comparison. That made the
+comparison fair and the plan wrong: the gripper was unconstrained and went through the slab.</td></tr>
+</table></div>
+
+<p>The repairs are, respectively: a z-weighted landing cost at 100× the old weight plus an explicit
+<code>hold</code> term through the braced phase (<code>ContactModel3D</code> with Baumgarte
+<span class="m">K<sub>p</sub> = 0</span> constrains velocity, not position — once the phase starts the
+site keeps whatever height it arrived at); a <b>box signed-distance keep-out</b> built from
+<code>table_top_collision</code> itself, with each point's threshold taken at q* so the certified pose
+costs exactly zero; and planning the mode the pose actually uses, <code>elbow+forearm+palm</code>.</p>
+
+<div class="grid2">
+<figure><div class="plot"><!--FIG:bh_s12--></div>
+<figcaption><b>S12.</b> Height of each bracing site relative to the height the static QP certified.
+Through the entire braced phase the elbow hovers ~10&nbsp;mm high and the forearm sits ~15&nbsp;mm inside
+the table. crocoddyl draws contact force from both.</figcaption></figure>
+<figure><div class="plot"><!--FIG:bh_s13--></div>
+<figcaption><b>S13.</b> Same measurement, same units. All three sites hold within
+<b>+0.6 / −0.6&nbsp;mm</b> of certified for the whole braced phase. This is the change that makes a
+brace exist in MuJoCo at all.</figcaption></figure>
+</div>
+
+<div class="note">
+<b>A fourth thing, found while fixing the third.</b> Excluding contact bodies from the keep-out —
+"their contact model already places them on the table" — is wrong, because the contact only exists
+during the <em>braced</em> phase. With the gripper excluded on those grounds the approach drove it
+44&nbsp;mm through the slab in the first 0.1&nbsp;s. Because every keep-out threshold is taken at q*, a
+contact body's own keep-out reads "do not go deeper than the certified pose does", which the braced
+phase satisfies by construction. Deepest robot–table penetration over the plan, both measured here:
+<b class="m">−38.7 mm (S12) → −13.1 mm (S13)</b>.
+</div>
+
+<div class="note">
+<b>One S12 number does not reproduce.</b> S12 reported the deepest penetration as −67.8&nbsp;mm on the
+<code>left_magpie_gripper</code>; re-measuring the bit-identical S12 trajectory here gives
+<b>−38.7&nbsp;mm on <code>left_wrist_roll_link</code></b>, and it is the same under a 0 mm and a 25 mm
+collision margin. The likely cause is the MuJoCo version — S12 ran 3.10.0, this runs the 3.2.3 the
+whole HAMS stack pins to match the MJPC ABI, and the mesh collision routines changed in between. Every
+before/after number on this page is measured on <em>this</em> machine with the same binary on both sides,
+which is why the comparison survives the discrepancy.
+</div>
+
+<h2>2 · The number that reframes the whole S12 conclusion</h2>
+<p>Before asking whether a plan survives MuJoCo, it is worth asking what survives MuJoCo. Put the robot
+at the <code>stand</code> keyframe, command that pose, and let go:</p>
+
+<div class="scroll"><table>
+<tr><th>Constant joint-level command from <code>stand</code></th><th>Falls at</th></tr>
+<tr><td><span class="m">ctrl = q<sub>stand</sub></span></td><td class="bad">1.35 s</td></tr>
+<tr><td><span class="m">ctrl = q<sub>stand</sub> + τ<sub>gravity</sub>/k<sub>p</sub></span>, the exact
+static-equilibrium torque from the study's own QP</td><td class="bad">2.75 s</td></tr>
+</table></div>
+
+<p>The robot is an inverted pendulum and the actuators are joint-level position servos. No joint-space
+command holds it, because none of them can see the base. <b>Every open-loop replay in S12 was racing a
+2.7&nbsp;second clock</b>, and the 2&nbsp;s plan that "stayed upright" in the torque mode stayed upright
+because it ran out of trajectory first. That is not a property of the plan.</p>
+<p>It also sets the bar for everything below: a controller that keeps the robot up for 4&nbsp;s has
+already done something that the plant does not do on its own, and any comparison that omits the
+do-nothing row is flattering somebody.</p>
+
+<h2>3 · The two models: what the MJCF has that a URDF cannot hold</h2>
+<p>crocoddyl plans on a <b>Pinocchio</b> model built from <code>h1_2_magpie.urdf</code>. Every other
+number this study has produced came out of a <b>MuJoCo</b> model built from
+<code>Lean_H12_Magpie.xml</code>. Those are two importers' readings of the same CL&nbsp;Assets source,
+and a plan computed on one and executed on the other is worth exactly as much as the agreement between
+them. So the bridge (<code>croco_bridge.py</code>) is a module with a parity test attached rather than
+index arithmetic inline in the planner, and this section is the list of everything it has to reconcile —
+because two of the entries were the difference between "the open loop cannot work" and a maneuver that
+survives.</p>
+
+<h3>3.1 · Structural differences — the ones that are obvious once found</h3>
+<div class="scroll"><table>
+<tr><th>What differs</th><th>MuJoCo</th><th>Pinocchio / URDF</th><th>What the bridge does</th></tr>
+<tr><td><b>The gripper</b></td>
+<td>each magpie fused into ONE rigid body with box collision proxies; the <code>palm</code> site lives
+on it. <code>jntnum = 0</code>.</td>
+<td>a 6-joint linkage per side (<code>lg_/rg_hinge_1..3</code>, two of them unbounded)</td>
+<td>build a <b>reduced</b> model with all 12 hinges frozen at 0, giving
+<span class="m">n<sub>q</sub> = 7 + 27</span>, <span class="m">n<sub>v</sub> = 6 + 27</span> — the MJCF
+robot exactly. <em>This is also the answer to "can the gripper be drawn without costing DOFs": it
+already costs none, in either model.</em></td></tr>
+<tr><td><b>The table</b></td>
+<td>a FREE joint (<code>object_anchor_joint</code>) carrying the table, so
+<span class="m">n<sub>q</sub> = 41</span>, <span class="m">n<sub>v</sub> = 39</span></td>
+<td>no table at all</td>
+<td>slice the robot out (<span class="m">qpos[0:34]</span>, <span class="m">dof[0:33]</span>) and record
+the tabletop box separately — it re-enters as contact references and a keep-out, not as a body</td></tr>
+<tr><td><b>Free-joint quaternion order</b></td>
+<td><span class="m">[xyz, w, x, y, z]</span></td><td><span class="m">[xyz, x, y, z, w]</span></td>
+<td>reorder. Silent and catastrophic if missed: it reads as a plausible rotated base, not as an error.</td></tr>
+<tr><td><b>Free-joint velocity frame</b></td>
+<td>base linear velocity in WORLD axes</td><td>free-flyer linear velocity in the BODY frame</td>
+<td><code>mj_to_pin_v</code> rotates the linear half by <span class="m">R<sub>base</sub></span><sup>T</sup>
+and leaves the angular half alone. Only the closed-loop rungs touch this — which is why an error here
+looks like "feedback does not help".</td></tr>
+<tr><td><b>Joint order</b></td><td colspan="2">identical for all 27 actuated joints (left leg 6, right
+leg 6, torso, left arm 7, right arm 7)</td><td>verified, not assumed</td></tr>
+</table></div>
+
+<h3>3.2 · The difference that actually decided the result</h3>
+<p>S12's bridge reconciled <em>mass</em> — 0.78&nbsp;kg of <code>back_equipment</code> and gripper the
+URDF had no link for. It did not reconcile anything the MJCF puts on a <em>joint</em>, and the reason
+is structural rather than an oversight: <b>a URDF has nowhere to write these</b>. They are simulator
+parameters, not kinematics, so the format that crocoddyl's model comes from cannot carry them and
+nothing warns you that they are missing.</p>
+
+<div class="scroll"><table>
+<tr><th>MJCF joint property</th><th>Value (all 27 joints)</th><th>What it is worth at the plan's velocities</th>
+<th>Where it can live in Pinocchio</th></tr>
+<tr><td><code>damping</code></td><td>10 N·m·s/rad</td>
+<td class="bad">up to <b>26 N·m</b> per joint at 2.6 rad/s — more than a wrist's entire clamp budget,
+54% of an ankle's</td>
+<td class="bad">nowhere. <code>model.damping</code> exists and <em>no forward-dynamics algorithm reads
+it</em> — <code>aba</code>/<code>rnea</code> ignore it entirely.</td></tr>
+<tr><td><code>armature</code></td><td>0.1 kg·m²</td>
+<td class="bad">against arm-link inertias of order 0.01–0.05 kg·m²: not a rounding correction to the
+mass matrix</td>
+<td class="good"><code>model.armature</code>, which <code>crba</code> adds to the diagonal. Set it and
+the mass matrices agree.</td></tr>
+<tr><td><code>frictionloss</code></td><td>0.2 N·m</td>
+<td>small, but systematic and on every moving joint</td>
+<td class="bad">nowhere, and it is a non-smooth constraint in MuJoCo besides</td></tr>
+</table></div>
+
+<p>Armature therefore goes into the model. Damping and friction go into the <b>actuation model</b>
+instead — a Python <code>ActuationModelAbstract</code> whose <code>calc</code> is</p>
+<pre>τ = [ 0<sub>6</sub> ; u − b·v<sub>j</sub> − f·tanh(v<sub>j</sub>/ε) ] ,    ε = 0.05 rad/s</pre>
+<p>with the matching <code>dτ/dx = −diag(b + f·sech²(v/ε)/ε)</code> on the joint-velocity block. Two
+consequences worth stating plainly. First, <span class="m">u</span> now means <em>the torque the
+actuator has to produce</em>, not the net joint torque, which is the quantity the torque limits are
+about and the quantity the replay feeds forward. Second, the <code>tanh</code> is a stand-in:
+MuJoCo's frictionloss is a hard constraint and a DDP needs a differentiable model, so ε = 0.05 buys
+Lipschitz continuity through zero at the price of being ~1% low above 0.15 rad/s. It is 0.2 N·m of
+modelling error; leaving it out instead was a <em>systematically</em> low torque on every moving joint,
+and systematic error is what a feedforward term cannot absorb.</p>
+
+<div class="scroll"><table>
+<tr><th>Parity at the certified pose (<code>python croco_bridge.py</code>)</th><th>S12</th><th>S13</th></tr>
+<tr><td>total robot mass</td><td class="good">exact (68.666 kg)</td><td class="good">exact</td></tr>
+<tr><td>CoM</td><td class="good">5.6 × 10⁻¹⁷ m</td><td class="good">5.6 × 10⁻¹⁷ m</td></tr>
+<tr><td>28 link frames, worst</td><td class="good">6.9 × 10⁻⁷ m</td><td class="good">6.9 × 10⁻⁷ m</td></tr>
+<tr><td>brace + reach sites, worst</td><td class="good">8.7 × 10⁻⁷ m</td><td class="good">8.7 × 10⁻⁷ m</td></tr>
+<tr><td>gravity torque, 27 joints</td><td class="good">1.4 × 10⁻⁵ N·m</td><td class="good">1.4 × 10⁻⁵ N·m</td></tr>
+<tr><td><b>mass matrix, 27×27 actuated block</b></td>
+<td class="bad">not checked — armature absent, so it could not have matched</td>
+<td class="good">8.2 × 10⁻⁷ kg·m²</td></tr>
+<tr><td><b>damping / armature / frictionloss</b></td>
+<td class="bad">absent from the model</td><td class="good">0.0</td></tr>
+</table></div>
+
+<div class="note ok">
+<b>This is the single highest-leverage fix on the page.</b> With the damping absent, the Riccati
+controller loses the robot at 1.4&nbsp;s and every conclusion reads "open loop cannot work". With it
+present, the same controller, the same gains and the same maneuver stay up for the full 4&nbsp;s. The
+plan was being computed for a robot that does not exist — one whose joints spin freely — and the
+missing term is larger than most of the torques the plan is choosing between.
+</div>
+
+<h3>3.3 · What the bridge does <em>not</em> reconcile, on purpose</h3>
+<p>Three differences are left standing because they are the point of the experiment rather than bugs in
+it, and the whole replay pipeline exists to measure what they cost:</p>
+<ul>
+<li><b>Contacts are rigid and prescribed in crocoddyl, soft and discovered in MuJoCo.</b> crocoddyl's
+<code>DifferentialActionModelContactFwdDynamics</code> solves a KKT system with the contact as an
+equality; MuJoCo integrates a compliant contact with <code>solref</code>/<code>solimp</code> and finds
+its own contact set every step. Planned forces will not equal measured forces — §5 measures the gap
+rather than assuming it away.</li>
+<li><b>The actuators are position servos in MuJoCo and torque sources in crocoddyl.</b> Every rung of
+the ladder converts, exactly, via
+<span class="m">ctrl = q<sub>des</sub> + (τ<sub>ff</sub> + k<sub>d</sub>v<sub>des</sub>)/k<sub>p</sub></span>.</li>
+<li><b>The table's legs are not modelled</b> in the OCP at all — only the top box. Nothing in this
+maneuver goes near them, and <code>croco_diag.py</code> checks that rather than asserting it.</li>
+</ul>
+
+<h2>4 · The plan</h2>
+<p>Same shape as S12 — a prescribed schedule from the enumeration, solved by <code>SolverBoxFDDP</code>
+with the study's <code>clamp</code> torque basis as hard box bounds — with four terms added and one
+horizon change. The CoM barrier is the one worth naming: the approach leans out over the table on
+feet-only support for 2.4&nbsp;s, and to a DDP whose feet are rigid 6-D pins <em>the robot cannot fall
+over</em>, so nothing in the objective objected. It now carries a quadratic barrier holding the
+horizontal CoM inside the foot polygon, shrunk 30&nbsp;mm, on every feet-only phase.</p>
+
+<div class="scroll"><table>
+<tr><th>Plan</th><th>S12</th><th>S13</th></tr>
+<tr><td>contact mode</td><td>elbow + forearm</td><td>elbow + forearm + palm</td></tr>
+<tr><td>horizon</td><td>2.0 s (60 + 40 nodes)</td><td>4.0 s (120 + 80 nodes)</td></tr>
+<tr><td>solve</td><td>58 iters, 2.3 s</td><td>38 iters, 50 s</td></tr>
+<tr><td>reaching hand vs target</td><td class="good">1.14 mm</td><td class="good">1.65 mm</td></tr>
+<tr><td>brace sites vs certified spots</td><td class="bad">35.3 / 34.9 mm</td><td class="good">1.31 / 1.36 / 0.37 mm</td></tr>
+<tr><td>brace height error, braced phase</td><td class="bad">+10.0 / −14.6 mm</td><td class="good">+0.6 / −0.6 / −0.1 mm</td></tr>
+<tr><td>deepest table penetration (measured here, see the note in §1)</td><td class="bad">−38.7 mm (wrist roll)</td><td>−13.1 mm (gripper, at t = 0.22 s)</td></tr>
+<tr><td>foot drift</td><td class="good">2.7 mm</td><td class="good">3.5 / 4.7 mm</td></tr>
+<tr><td>max |τ| / limit</td><td>0.994</td><td>1.000 (left shoulder pitch)</td></tr>
+<tr><td>‖q − q*‖ over 27 joints</td><td>0.692 rad</td><td>0.649 rad</td></tr>
+</table></div>
+
+<p>The planned foot wrenches stay inside the wrench cone: normal force never negative, centre of
+pressure inside the 0.20 × 0.08 m sole on every node of both plans, though it rides the heel edge
+(<span class="m">x = −0.100 m</span>) through the early approach. The bracing contacts are the loose
+end — the elbow's friction utilisation runs at <b>0.98 of the cone at the 95th percentile</b>, which is
+inside and not comfortably inside.</p>
+
+<div class="note warn">
+<b>Two solver findings, both of which cost more than they should have.</b>
+<b>(a)</b> Adding the third brace contact made the problem stall in the S12 signature — 17 iterations,
+no step accepted, an uninitialised <code>stop</code> of 9e−310. That signature has been blamed on the
+cones, on the impulse node and on the terminal weight in this study. Here it was none of them:
+<code>quasiStatic()</code> returns a warm-start control 2.9× the torque box, <code>SolverBoxFDDP</code>
+projects it before use, and the projected rollout costs 4686 against 132 for the guess itself. Clamping
+the warm start into the box is the whole fix.
+<b>(b)</b> The keep-out is 86 Python activation callbacks per node. Building a fresh
+<code>ShootingProblem</code> per MPC step therefore costs 336&nbsp;ms of <em>allocation</em>; rotating a
+single problem with <code>circularAppend</code> brings it to 133&nbsp;ms.
+</div>
+
+<h3>4.1 · The optimal control problem, in full</h3>
+<p>Everything below is in <code>croco_plan.py</code>; this is the same thing written out so the page can
+be read without it. The problem is a fixed-duration, prescribed-contact multiple-shooting problem —
+<b>200 nodes at dt = 0.02&nbsp;s</b> (120 approach + 80 braced; the return variant adds 80) — solved by
+<code>SolverBoxFDDP</code>.</p>
+
+<div class="scroll"><table>
+<tr><th>Ingredient</th><th>crocoddyl object</th><th>What it is here</th></tr>
+<tr><td>state</td><td><code>StateMultibody</code></td>
+<td>the reduced Pinocchio model: <span class="m">x = (q, v)</span>,
+<span class="m">n<sub>q</sub> = 34</span>, <span class="m">n<sub>v</sub> = 33</span>, so
+<span class="m">x ∈ ℝ<sup>67</sup></span> on a 66-dimensional tangent (the base is a free-flyer, so
+<code>diff</code>/<code>integrate</code> are not subtraction)</td></tr>
+<tr><td>actuation</td><td>custom <code>ActuationModelAbstract</code></td>
+<td><span class="m">τ = [0<sub>6</sub>; u − b·v<sub>j</sub> − f·tanh(v<sub>j</sub>/ε)]</span>,
+<span class="m">n<sub>u</sub> = 27</span> — see §3.2. crocoddyl's stock
+<code>ActuationModelFloatingBase</code> is <span class="m">τ = [0; u]</span> and is the wrong model for
+this plant.</td></tr>
+<tr><td>dynamics</td><td><code>DifferentialActionModelContactFwdDynamics</code><br>
++ <code>IntegratedActionModelEuler</code></td>
+<td>contact-constrained forward dynamics as a KKT solve, with <code>enable_force = True</code> so the
+contact wrenches are available to the cone costs, and <b>KKT inverse damping 10⁻⁴</b></td></tr>
+<tr><td>feet</td><td><code>ContactModel6D</code> ×2</td>
+<td>at the <code>sole_left</code>/<code>sole_right</code> frames, <code>LOCAL_WORLD_ALIGNED</code>,
+Baumgarte <span class="m">(K<sub>p</sub>, K<sub>d</sub>) = (0, 50)</span>, referenced to the
+<em>start</em> pose's foot placement</td></tr>
+<tr><td>brace</td><td><code>ContactModel3D</code> ×|subset|</td>
+<td>at the selected site frames, referenced to their positions at q*, present on the braced phase only.
+A release needs no impulse and no complementarity — it is the one mode transition a prescribed-schedule
+DDP handles for free.</td></tr>
+<tr><td>torque limits</td><td><code>u_lb</code> / <code>u_ub</code> + <code>SolverBoxFDDP</code></td>
+<td>the study's <code>clamp</code> basis, as HARD box bounds. <code>SolverBoxFDDP</code> only enforces
+limits the action models carry; without setting them it degrades silently to plain FDDP.</td></tr>
+</table></div>
+
+<p>The KKT damping is not a nuisance parameter. Two 6-D feet plus three 3-D brace contacts is 21
+constraint rows on 33 DOFs, and the contacts are <b>redundant</b>: many force splits between feet and
+brace produce the same motion, so the KKT system is singular and the force the cone costs differentiate
+is arbitrary. Measured: at damping 0 or 10⁻⁶ the braced problem fails from every cone weight and
+minimum normal force tried (<code>stop</code> stalls at 0.1–2.5 after 80 iterations); at 10⁻⁴ all six
+of those configurations converge to <span class="m">stop &lt; 4×10⁻⁵</span>. It is the same regularizer
+the study's static QP already needs, for the same reason.</p>
+
+<h4>The cost function</h4>
+<p>Weights are absolute, not normalised, and the ratios between them are the design. Phases:
+<b>A</b>&nbsp;= approach (feet only), <b>B</b>&nbsp;= braced, <b>R</b>&nbsp;= return (feet only),
+<b>T</b>&nbsp;= terminal.</p>
+
+<div class="scroll"><table>
+<tr><th>Cost</th><th>Residual</th><th>Activation</th><th>Weight</th><th>Phases</th><th>Why</th></tr>
+<tr><td><code>stateReg</code></td><td><code>ResidualModelState</code> vs
+<span class="m">x* = (q*, 0)</span></td><td>weighted quadratic</td>
+<td>1e−1 (A) / 1e0 (B, R, T)</td><td>A B R T</td>
+<td>weights are <b>flat across the 27 joints and zero on the floating base</b> — the base pose is an
+outcome of the lean, not a target. Weighting the bracing arm 10× to pull it onto the collision-free
+certified pose destroys the solve outright (the staged continuation returns to the stalled signature),
+which is why the residual gripper penetration in §13 is not fixed this way.</td></tr>
+<tr><td><code>ctrlReg</code></td><td><code>ResidualModelControl</code></td><td>quadratic</td>
+<td>1e−3</td><td>A B R</td><td>keeps the control from ringing between nodes; removed at T, which has
+no control</td></tr>
+<tr><td><code>jointLim</code></td><td><code>ResidualModelState</code> vs
+<code>state.zero()</code></td><td>quadratic barrier on <code>[state.lb, state.ub]</code></td>
+<td>1e1</td><td>A B R T</td>
+<td>the reference must be <code>state.zero()</code> and not a zeroed copy of x*: zeroing x* zeroes the
+base <em>quaternion</em> too, and every <code>state.diff</code> against (0,0,0,0) normalises by zero.
+crocoddyl does not check — the process segfaults while the problem is being assembled.</td></tr>
+<tr><td><code>cone_sole_*</code></td><td><code>ResidualModelContactWrenchCone</code></td>
+<td>quadratic barrier on the cone's own bounds</td><td>1e1</td><td>A B R T</td>
+<td><code>WrenchCone(μ = 0.6, 0.20 × 0.08 m sole, 4 facets, f<sub>n</sub> ∈ [1, 10⁴] N)</code>. The
+minimum normal force is what makes the contact <b>unilateral</b>; without it a "contact" is free to pull
+the robot down. The CoP rows are why the feet need a wrench cone and not a friction cone.</td></tr>
+<tr><td><code>cone_&lt;site&gt;</code></td><td><code>ResidualModelContactFrictionCone</code></td>
+<td>quadratic barrier</td><td>1e1</td><td>B T</td>
+<td><code>FrictionCone(μ = 0.6, 4 facets, [1, 10⁴] N)</code>. Handing a 5-row friction cone to a 6-D
+contact does not raise a type error — crocoddyl mis-sizes an allocation and dies with a bare
+<code>MemoryError</code>.</td></tr>
+<tr><td><code>ko_*</code> (86 of them)</td><td><code>ResidualModelFrameTranslation</code> to the
+tabletop box centre</td><td><b>box keep-out</b> (below)</td><td>1e3</td><td>A B R T</td>
+<td>the table as a box SDF instead of a half-space — §1, and §7 for what it costs</td></tr>
+<tr><td><code>comSupport</code></td><td><code>ResidualModelCoMPosition</code></td>
+<td>quadratic barrier on the foot polygon shrunk 30&nbsp;mm</td><td>1e3</td>
+<td>A R <span class="m">(+B if the subset is empty)</span></td>
+<td>to a DDP whose feet are rigid 6-D pins <em>the robot cannot fall over</em>, so nothing else in the
+objective objects to leaning the CoM out over the table before there is anything under it. Deliberately
+NOT applied on the braced phase: extending the support region forward is the entire point of a brace.</td></tr>
+<tr><td><code>land_&lt;site&gt;</code></td><td><code>ResidualModelFrameTranslation</code> to the
+certified spot, lifted by <span class="m">clearance·(1−frac)</span> in z</td>
+<td>weighted quadratic, <span class="m">w = (1, 1, 3)²</span></td>
+<td><span class="m">5×10³·frac²</span></td><td>A</td>
+<td>ramped in over the approach so the pull is weak while the robot is still upright. The z weighting
+is the S12 fix: a 20&nbsp;mm lateral miss still lands on a 0.6 × 1.2&nbsp;m table, a 20&nbsp;mm vertical
+miss is the difference between a contact and thin air.</td></tr>
+<tr><td><code>hold_&lt;site&gt;</code></td><td>same, to the certified spot</td>
+<td>same z weighting</td><td>1e3</td><td>B</td>
+<td>the position half that <code>ContactModel3D</code> does not do: with Baumgarte
+<span class="m">K<sub>p</sub> = 0</span> the contact constrains the site's <em>velocity</em>, so
+whatever height it arrived at is the height it keeps for the whole phase</td></tr>
+<tr><td><code>reach</code></td><td><code>ResidualModelFrameTranslation</code> to the target</td>
+<td>quadratic</td><td>1e2 (B) / 1e3 (dwell, T)</td><td>B T</td><td>the task</td></tr>
+<tr><td><code>restReg</code></td><td><code>ResidualModelState</code>, velocity block only</td>
+<td>weighted quadratic</td><td>1e2</td><td>last <code>dwell</code> nodes of B</td>
+<td>without it, a plan that has somewhere to go next starts leaving before it has arrived: 81&nbsp;mm of
+reach error at the end of the braced phase against 1.7&nbsp;mm for the same plan with no return phase</td></tr>
+</table></div>
+
+<h4>The keep-out activation</h4>
+<p>The table term is one <code>CostModelResidual</code> per sampled point, whose residual is the point's
+position <em>relative to the tabletop box centre</em> and whose activation is</p>
+<pre>a(r) = ½ · max(0, r<sub>min</sub> − sdf<sub>box</sub>(r))²</pre>
+<p>with <span class="m">sdf<sub>box</sub></span> the exact signed distance to an axis-aligned box. It is
+identically zero — value <em>and</em> gradient — outside the inflated box, so it costs nothing at the
+certified pose and does not bias the solution the way an always-on half-space penalty does. The point
+set is one sample per extreme feature of each collision geom of the 8 bodies that can reach the slab
+(box/mesh corners, capsule endpoints, sphere centres), and every point's threshold is
+<span class="m">min(r<sub>geom</sub>, sdf(q*))</span> — "do not get closer to the slab than the certified
+pose already is" — so the constraint is honest about the bounding-box approximation instead of
+forbidding the pose the study certified. <b>Every point is audited at q* before it is used.</b></p>
+
+<div class="note">
+<b>A detail that changes what is being optimised.</b> crocoddyl stores an activation's Hessian
+<code>Arr</code> as an Eigen <em>diagonal</em> matrix, and the Python binding's setter keeps only the
+diagonal. So the natural Gauss-Newton term <span class="m">∇s ∇sᵀ</span> written as
+<code>np.outer(g, g)</code> was only ever contributing <span class="m">diag(g<sub>i</sub>²)</span> — the
+off-diagonal half was discarded silently, by the binding, with no warning. The C++ implementation in
+§7 writes <span class="m">diag(g<sub>i</sub>²)</span> explicitly so that it reproduces the existing
+behaviour exactly rather than quietly solving a different problem.
+</div>
+
+<h4>Getting it to converge</h4>
+<p>Three things, each of which was a failed solve first:</p>
+<ol>
+<li><b>Warm-start the state by interpolating the whole configuration.</b> Not a constant at x₀ (the
+line search then spends its iterations at step 2×10⁻³ without leaving the initial point) and not a
+joint-only interpolation (that swings the legs under a pelvis that never descends and lifts both feet
+0.39&nbsp;m off the floor, violating the very contacts the problem is built on).
+<code>pin.interpolate</code> over the full <span class="m">q</span>, which also does the right thing on
+the base quaternion. With a return phase the guess has to come <em>back</em>.</li>
+<li><b>Clamp the warm-start control into the torque box.</b> <code>quasiStatic()</code> on the
+interpolated guess — a deep lean with the brace not yet down — returns 2.9× the clamp basis for the
+three-contact mode. <code>SolverBoxFDDP</code> projects the control onto its box before using it, so
+those entries become a rollout the guess was never evaluated at: cost 4686 against 132 for the guess
+itself, no trial step accepted, and the run ends after 17 iterations with an <em>uninitialised</em>
+<code>stop</code> of 9e−310. That signature has been blamed on the cones, on the impulse node and on
+the terminal weight in this study. It is an initial control outside the bounds the solver enforces.</li>
+<li><b>Two-stage continuation on the cones.</b> On the interpolated guess the cone barriers evaluate at
+~3150 against ~2.8 for everything else — three orders of magnitude of the objective is a constraint the
+guess was never going to satisfy, and FDDP's regularization walks 10⁻⁸ → 10⁹ and gives up. Solving
+with the cones OFF converges in a handful of iterations and produces a trajectory with plausible contact
+forces; the cones then enter as a correction. Stage 1 is not a throwaway — it is the only thing that
+makes stage 2 well-posed.</li>
+</ol>
+
+<h2>5 · The ladder: does closing the loop help?</h2>
+<p>S12 compared "position tracking" against "torque inversion" and concluded that a tracking controller
+was missing. Neither of those closes a loop around the base, so the comparison could not answer the
+question. Every rung below sends the command the real robot takes —
+<span class="m">(q<sub>des</sub>, k<sub>p</sub>, k<sub>d</sub>, τ<sub>ff</sub>)</span>, which a MuJoCo
+position actuator reproduces exactly under
+<span class="m">ctrl = q<sub>des</sub> + (τ<sub>ff</sub> + k<sub>d</sub> v<sub>des</sub>)/k<sub>p</sub></span>
+— and they differ only in what goes into <span class="m">τ<sub>ff</sub></span> and
+<span class="m">q<sub>des</sub></span>.</p>
+
+<div class="scroll"><table>
+<tr><th>Controller</th><th>Outcome</th><th>Reach at brace end</th><th>Brace force</th>
+<th>min CoM margin</th><th>max track err</th></tr>
+<tr><td><b>kinematic</b> — the plan itself, no dynamics</td><td class="good">reference</td>
+<td class="good">2.0 mm</td><td>—</td><td class="good">+39.9 mm</td><td>0</td></tr>
+<tr><td><b>hold</b> — command the start pose, forever</td><td class="bad">TOPPLED @ 1.34 s</td>
+<td class="bad">1989 mm</td><td class="bad">0 N</td><td class="bad">−919 mm</td><td class="bad">2.58 rad</td></tr>
+<tr><td><b>position</b> — <span class="m">q<sub>des</sub> = q<sub>plan</sub></span>, no feedforward</td>
+<td class="bad">TOPPLED @ 1.04 s</td><td class="bad">2003 mm</td><td class="bad">0 N</td><td class="bad">−852 mm</td><td class="bad">0.78 rad</td></tr>
+<tr><td><b>feedforward</b> — plus <span class="m">τ<sub>plan</sub></span> (S12's "torque inversion")</td>
+<td class="bad">TOPPLED @ 1.72 s</td><td class="bad">2249 mm</td><td class="bad">0 N</td><td class="bad">−903 mm</td><td class="bad">0.84 rad</td></tr>
+<tr><td><b>torque_meas</b> — servo cancelled, pure open-loop torque</td>
+<td class="bad">TOPPLED @ 1.28 s</td><td class="bad">1664 mm</td><td class="bad">0 N</td><td class="bad">−320 mm</td><td class="bad">5.19 rad</td></tr>
+<tr><td><b>riccati</b> — plus the DDP's own gains, <span class="m">−K<sub>k</sub>(x ⊖ x*)</span></td>
+<td class="good">upright</td><td>126 mm</td><td class="good">30 N</td><td class="good">+31 mm</td><td>0.40 rad</td></tr>
+<tr><td><b>MPC</b> — re-solve from the measured state every 20 ms</td>
+<td class="good">upright</td><td class="good">2.5 mm</td><td class="good">93 N</td><td class="good">+23 mm</td><td>0.99 rad</td></tr>
+</table></div>
+
+<!--FIG:key-->
+<figure><div class="plot"><!--FIG:ladder--></div>
+<figcaption>Pelvis height. The four open-loop rungs are indistinguishable from each other and from doing
+nothing: they all reach the floor between 1.0 and 1.7 s, which is the plant's own open-loop survival
+time (§2), not a tracking failure. The two rungs that feed back the base are the two that finish the
+maneuver.</figcaption></figure>
+
+<div class="grid2">
+<figure><div class="plot"><!--FIG:margin--></div>
+<figcaption>Signed distance from the CoM to the edge of the foot support polygon. The plan is built to
+keep this positive on the feet-only phase and does; the open-loop replays leave the polygon within
+1.5&nbsp;s and never come back.</figcaption></figure>
+<figure><div class="plot"><!--FIG:reach--></div>
+<figcaption>Reaching-hand error. Riccati holds the maneuver but converges to 126&nbsp;mm; the MPC, which
+re-plans the reference as well as the control, closes to 2.5&nbsp;mm — the difference between "stayed
+up" and "did the task".</figcaption></figure>
+</div>
+
+<p>The distinction between those last two rows is worth stating plainly, because it is the answer to
+"does MPC-based refinement do anything beyond stabilisation". <b>The Riccati gains stabilise; they do not
+refine.</b> They are computed about a trajectory whose contacts are rigid and prescribed, so where the
+real robot ends up 30&nbsp;mm from the planned configuration the LQR simply holds it there. The MPC
+re-solves from where the robot actually is, and recovers the task. Splitting the reach error into a bias
+and a spread over the braced phase says it in one line:</p>
+
+<div class="scroll"><table>
+<tr><th>Reaching hand over the braced phase</th><th>mean ± sd</th><th>best</th><th>at brace end</th></tr>
+<tr><td>riccati</td><td class="bad">103.6 ± 19.1 mm</td><td>53.5 mm</td><td>125.8 mm</td></tr>
+<tr><td>MPC</td><td>17.7 ± 17.2 mm</td><td class="good">2.5 mm</td><td class="good">2.5 mm</td></tr>
+<tr><td>MPC, with the return plan's dwell (§7)</td><td class="good">7.2 ± 10.6 mm</td>
+<td class="good">1.0 mm</td><td class="good">2.2 mm</td></tr>
+</table></div>
+<p>Riccati's error is a <em>bias</em> — a steady 100&nbsp;mm offset it holds tightly. The MPC's is a
+<em>transient</em>: it starts the braced phase off-target and converges, and adding the dwell term (which
+tells the plan to arrive, stop and hold rather than pass through) cuts both the mean and the spread by
+more than half.</p>
+
+<div class="grid2">
+<figure><video controls muted playsinline preload="metadata" src="media/replay_s13_ff.mp4"></video>
+<figcaption><b>Feedforward, open loop.</b> The plan is right and the robot topples backwards through it
+at 1.7 s.</figcaption></figure>
+<figure><video controls muted playsinline preload="metadata" src="media/replay_s13_mpc.mp4"></video>
+<figcaption><b>MPC.</b> Same plan, same 4 s, loop closed: the brace goes down, the hand lands on the
+target, the pose holds.</figcaption></figure>
+</div>
+
+<figure><div class="plot"><!--FIG:brace--></div>
+<figcaption>Measured contact force per bracing body under the MPC. The brace is real — 93&nbsp;N mean
+through the braced phase, 155&nbsp;N peak — but it lands on the <em>forearm</em>, where the plan expected
+the elbow to carry 137&nbsp;N. Three coplanar contacts on one arm are a redundant set and the split
+between them is a min-norm choice, not a prediction; MuJoCo's soft contacts make a different one.</figcaption></figure>
+
+<h3>5.1 · Which half mattered — the plan fix or the loop?</h3>
+<p>Both, and neither substitutes for the other. Running the same three controllers on the S12 plan and
+on the S13 plan separates them cleanly:</p>
+
+<div class="scroll"><table>
+<tr><th>Plan</th><th>Controller</th><th>Outcome</th><th>Reach at brace end</th><th>Brace force</th></tr>
+<tr><td rowspan="3">S12 (2 s, elbow+forearm, brace in the air)</td><td>feedforward</td>
+<td>upright*</td><td class="bad">1160 mm</td><td class="bad">0 N</td></tr>
+<tr><td>riccati</td><td class="good">upright</td><td class="bad">264 mm</td><td class="bad">0 N</td></tr>
+<tr><td>MPC</td><td class="good">upright</td><td>25 mm</td><td class="bad">0 N</td></tr>
+<tr><td rowspan="3">S13 (4 s, elbow+forearm+palm, brace on the table)</td><td>feedforward</td>
+<td class="bad">TOPPLED</td><td class="bad">2249 mm</td><td class="bad">0 N</td></tr>
+<tr><td>riccati</td><td class="good">upright</td><td>126 mm</td><td class="good">30 N</td></tr>
+<tr><td>MPC</td><td class="good">upright</td><td class="good">2.5 mm</td><td class="good">93 N</td></tr>
+</table></div>
+<p class="meta">* the S12 plan is 2 s long and the plant's open-loop survival time is 2.7 s (§2); "upright"
+here means the trajectory ended before the fall did.</p>
+
+<p><b>No controller establishes a brace that the plan puts in the air.</b> The MPC on the S12 plan
+recovers the reach to 25&nbsp;mm — it is a good controller — and still measures <b>0&nbsp;N</b> on every
+bracing body, on every node, because the trajectory it is tracking holds the elbow 10&nbsp;mm
+above the table. Conversely the S13 plan open-loop is worse than the S12 plan open-loop, purely because
+it is twice as long and therefore has time to fall. The plan fix buys the contact; the loop buys the
+survival; the reach precision needs both.</p>
+
+<h2>6 · The receding-horizon MPC, in full</h2>
+<p>The MPC rung is the one that does the work, so it is worth being precise about what it is — and
+about what it deliberately is not.</p>
+
+<h3>6.1 · Construction</h3>
+<p>It is a receding horizon <b>over the plan's own action models</b>. Nothing is re-authored for the
+online problem: the models the window slides across are the same objects <code>ocp.build()</code>
+produced for the offline solve, with the same landing costs, the same reach target, the same cones and
+the same keep-out. That is the whole point — this measures what <em>re-solving from the measured
+state</em> buys, not what a different cost function buys.</p>
+
+<div class="scroll"><table>
+<tr><th>Step (every 20 ms, i.e. every plan node)</th><th>What happens</th></tr>
+<tr><td>1 · read the plant</td>
+<td><span class="m">x<sub>meas</sub> = (mj_to_pin(qpos), mj_to_pin_v(qvel, R<sub>base</sub>))</span> —
+the full state including the floating base, which is the loop no rung below this one closes</td></tr>
+<tr><td>2 · slide the window</td>
+<td><code>problem.circularAppend(models[head], datas[head])</code> until the window covers
+<span class="m">[k, k+H)</span>. Near the end the window would run past the last model and
+<code>circularAppend</code> can only rotate, never shrink, so the tail <b>rebuilds</b> a shrinking
+<code>ShootingProblem</code> instead (see the box below).</td></tr>
+<tr><td>3 · set the initial state</td><td><code>problem.x0 = x<sub>meas</sub></code></td></tr>
+<tr><td>4 · warm start</td>
+<td>first call: the OFFLINE PLAN's own <span class="m">(x<sub>s</sub>, u<sub>s</sub>)</span> over this
+window — one DDP iteration from a constant guess is not an MPC, it is noise. Afterwards: the previous
+solution shifted by one node, with the last entry repeated.</td></tr>
+<tr><td>5 · solve</td>
+<td><code>SolverBoxFDDP</code>, <b>1 iteration</b>. Small on purpose: a warm-started DDP taking one or
+two iterations per control step is the standard construction, and it is what makes the per-step time
+reportable rather than embarrassing.</td></tr>
+<tr><td>6 · command</td>
+<td><span class="m">τ<sub>ff</sub> = u<sub>0</sub></span>, clipped to the torque box, AND
+<span class="m">(q<sub>des</sub>, v<sub>des</sub>) = x<sub>1</sub></span> — the MPC re-plans the
+<em>reference</em> as well as the feedforward, and its own next predicted state is a better setpoint for
+the servo than the offline plan's. That is what "refinement" means here.</td></tr>
+</table></div>
+
+<p>What reaches the robot is still <span class="m">(q<sub>des</sub>, k<sub>p</sub>, k<sub>d</sub>,
+τ<sub>ff</sub>)</span>, identical in form to every other rung. The MPC is not a different interface —
+it is a different way of filling in two of the four fields, at 50&nbsp;Hz, from the measured state.</p>
+
+<div class="note warn">
+<b>The bug that made "long horizon" mean the opposite of what it says.</b>
+<code>circularAppend</code> rotates a problem's model list; it cannot make it shorter. Left alone, a
+window that reaches the end of the plan simply <em>stops sliding</em> — the MPC keeps re-solving a stale
+set of models while the robot advances past them, and for H equal to the full horizon it never slides
+at all, which is not "MPC with a long horizon" but "restart the entire maneuver every 20&nbsp;ms".
+Measured, that configuration stands still and misses the target by 856&nbsp;mm, which reads exactly like
+a horizon-too-long result and is not one. Rebuilding a shrinking problem for the last H steps costs one
+<code>allocateData</code> per step over that tail only, and took H = 100 from 51&nbsp;mm to
+<b>1.4&nbsp;mm</b>.
+</div>
+
+<h3>6.2 · What it is not</h3>
+<ul>
+<li><b>Not real-time.</b> 38&nbsp;ms per step against a 20&nbsp;ms control period, after the speed-up in
+§7 (119&nbsp;ms before it). Everything on this page is an offline trajectory-generation result; §7 says
+where the remaining factor of two lives.</li>
+<li><b>Not a controller with its own model.</b> It inherits the plan's contact <em>schedule</em>, so it
+cannot decide to establish a contact the plan does not have, or to let one go. §5.1 is the ablation
+that shows what that costs: on the S12 plan, whose brace hovers in the air, the MPC reaches 25&nbsp;mm
+and still measures <b>0 N</b> of brace force on every node. It re-plans the motion, not the mode.</li>
+<li><b>Not warm-started from nothing.</b> The first call uses the offline plan. An MPC that had to
+find this maneuver from a cold start in one iteration would not.</li>
+</ul>
+
+<h3>6.3 · How much horizon does it need?</h3>
+<figure><div class="plot"><!--FIG:mpc_sweep--></div>
+<figcaption>Reach error at the end of the braced phase against horizon length, at one and two DDP
+iterations per control step. Both ends fail and for opposite reasons.</figcaption></figure>
+
+<div class="scroll"><table>
+<tr><th>Horizon</th><th>1 iteration</th><th>2 iterations</th><th>solve time / step (mean)</th></tr>
+<tr><td>H = 25 (0.5 s)</td><td class="bad">TOPPLED</td><td class="bad">TOPPLED</td><td>89 / 186 ms</td></tr>
+<tr><td>H = 50 (1.0 s)</td><td class="good">2.5 mm</td><td class="good">2.9 mm</td><td>119 / 241 ms</td></tr>
+<tr><td>H = 100 (2.0 s)</td><td class="good">1.4 mm</td><td class="good">1.1 mm</td><td>261 / 614 ms</td></tr>
+<tr><td>H = 200 (4.0 s, the whole plan)</td><td class="bad">TOPPLED</td><td class="bad">TOPPLED</td><td>637 / 1098 ms</td></tr>
+</table></div>
+
+<p>Half a second of lookahead is myopic on a 4-second maneuver: the window's terminal model is just the
+plan's running model at <span class="m">k+H</span>, so the MPC has no value function beyond it and walks
+the robot into a state the remaining trajectory cannot recover. The full-horizon end fails the other way
+— one DDP iteration per step is not enough to keep a 200-node problem converged as the state drifts. One
+to two seconds is where both pressures are satisfied.</p>
+
+<div class="note warn">
+<b>The honest timing row.</b> 119&nbsp;ms per step against a 20&nbsp;ms control period is
+6× too slow. It is also a Python-in-the-loop number: 86 box-SDF keep-out activations are evaluated per
+node per iteration through the pybind boundary, which is most of it, and the keep-out is a
+<em>planning</em> term the online problem does not need — the reference it is tracking already avoids the
+table. Dropping it, and running the C++ solver directly, is the obvious path and is not attempted here.
+This page claims that closing the loop is what makes the maneuver survive, not that this implementation
+is deployable.
+</div>
+
+<h2>7 · Making it faster: the keep-out in C++</h2>
+<p>The keep-out is the OCP's only geometric constraint on the table, and it is 86 activations evaluated
+per node — 17&nbsp;200 evaluations per sweep of the 200-node problem, each one an interpreter round-trip
+into a Python subclass of <code>crocoddyl.ActivationModelAbstract</code>. That is the term that made
+both the offline solve and the MPC step slow, and none of it is doing anything a compiled function
+cannot.</p>
+
+<p><code>lean_analysis/croco_ext/</code> is a Boost.Python module holding a C++ transcription. It is
+one translation unit; <code>build.sh</code> compiles it against the same <code>libcrocoddyl</code> and
+<code>libboost_python</code> the crocoddyl bindings loaded, which is what makes
+<code>bp::bases&lt;ActivationModelAbstract&gt;</code> resolve at import. <code>croco_geom.activation()</code>
+returns the C++ object when it is built and the Python one otherwise, and
+<code>CROCO_KEEPOUT=python</code> forces the interpreter path — which is how the speed-up below is
+<em>measured</em> rather than asserted.</p>
+
+<figure><div class="plot"><!--FIG:keepout_bench--></div>
+<figcaption>Same problem, same warm start, same solver, two implementations of one activation.
+A full <code>calcDiff</code> sweep over the 200-node plan and one warm-started MPC step at H = 50.</figcaption></figure>
+
+<div class="scroll"><table>
+<tr><th>Operation</th><th>Python activation</th><th>C++ activation</th><th>Speed-up</th></tr>
+<tr><td><code>problem.calcDiff</code>, 200 nodes</td><td>181.4 ms</td><td class="good">109.2 ms</td><td>1.7×</td></tr>
+<tr><td>MPC step, H = 50, 1 iteration</td><td class="bad">118.8 ms</td><td class="good">40.3 ms</td><td><b>2.9×</b></td></tr>
+<tr><td>offline solve, <code>elbow+forearm+palm</code>, both continuation stages</td>
+<td>36.5 s</td><td class="good">12.6 s</td><td><b>2.9×</b></td></tr>
+<tr><td>problem construction</td><td>0.48 s</td><td>0.47 s</td><td>1.0×</td></tr>
+</table></div>
+
+<p>The two solves are the <em>same</em> solve, which is the point: 38 iterations,
+<span class="m">cost = 31.5</span>, <span class="m">stop = 2.07×10⁻⁵</span> from both, to every digit
+printed. Construction does not move, which is the tell that the cost is in <em>evaluation</em> and not in
+allocation — the opposite of the earlier <code>circularAppend</code> finding, where allocation was the
+whole problem. The two fixes compose: fresh problem per step with Python activations was 336&nbsp;ms,
+rotated problem with Python activations 119&nbsp;ms, rotated problem with C++ activations
+<b>38&nbsp;ms</b>.</p>
+
+<div class="note ok">
+<b>The transcription is checked, not trusted.</b> <code>croco_ext/test_keepout.py</code> drives both
+implementations over 2&nbsp;000 random residuals plus every face, edge and corner of the box and points
+1&nbsp;nm either side of each — the branches of the SDF a random sample never hits — and compares
+<code>a_value</code>, <code>Ar</code> and <code>diag(Arr)</code>. Worst disagreement across all of them:
+<b>0.0</b>, bit-for-bit. A speed-up that quietly changes the optimisation problem would invalidate every
+number this study has already published against the Python activation, so agreement is a test and not a
+remark.
+</div>
+
+<p>The remaining 38&nbsp;ms is still 2× the control period, and the honest reading is that it is not
+where the effort should go next: this is an <em>offline</em> trajectory generator, and the plans it
+produces are inputs to MJPC or to an RL policy rather than something that has to close a 50&nbsp;Hz loop
+itself. If it did have to, the obvious move is that the online problem does not need 86 keep-out points
+— the diagnostic says fewer than a dozen are ever active — and pruning to the active set is a much
+larger factor than any further micro-optimisation of the activation.</p>
+
+<div class="note">
+<b>Two things worth knowing if you build a crocoddyl extension this way.</b>
+<b>(a)</b> <code>calc</code>/<code>calcDiff</code> take <code>Eigen::Ref&lt;const VectorXd&gt;</code>
+because that is the base class's signature, and binding those <em>directly</em> does not work: eigenpy's
+converter for a const <code>Ref</code> hands Boost.Python a temporary whose storage is gone by the time
+the call is made, and the symptom is a stack-smash abort with no traceback, not a type error. Thin
+<code>const VectorXd&amp;</code> thunks fix it, and the solver's own calls never go through them.
+<b>(b)</b> A C++ derivative inherits the abstract base in the Boost.Python registry but <em>none of its
+methods</em>, because crocoddyl registers those on its Python <em>wrapper</em> subclass — so
+<code>createData()</code> on your object raises an <code>ArgumentError</code> naming a class you have
+never heard of. It only matters for direct Python calls, which is to say it only matters for the test.
+</div>
+
+<h2>8 · Stand → lean &amp; reach → return</h2>
+<p>A release is a contact <em>removal</em>, which is the one mode transition a prescribed-schedule DDP
+handles for free: the brace contacts leave the problem, the state regulariser flips from q* back to the
+start pose, and the CoM barrier comes back because the robot is on its feet alone again. One extra
+detail was needed — without it the DDP smooths across the phase boundary and starts leaving before it
+has arrived, missing the target by 81&nbsp;mm — so the last 35 braced nodes carry the terminal reach
+weight and a velocity regulariser: arrive, stop, hold, then leave.</p>
+
+<figure><video controls muted playsinline preload="metadata" src="media/replay_s13ret_mpc.mp4"></video>
+<figcaption>5.8 s, 290 nodes, under MPC in MuJoCo: stand, lean, brace on the table, reach the target,
+release, stand back up.</figcaption></figure>
+
+<div class="scroll"><table>
+<tr><th>Full cycle under MPC (H = 50)</th><th>Result</th></tr>
+<tr><td>reach error at the end of the braced phase</td><td class="good">2.2 mm (best over the phase: 1.0 mm)</td></tr>
+<tr><td>brace force, braced-phase mean</td><td class="good">elbow 107 N, forearm 57 N</td></tr>
+<tr><td>final pelvis height (start: 1.000 m)</td><td class="good">0.994 m — standing</td></tr>
+<tr><td>minimum CoM support margin over 5.8 s</td><td class="good">+17.5 mm</td></tr>
+<tr><td>worst robot–table penetration</td><td class="good">−3.0 mm (contact depth, not a collision)</td></tr>
+<tr><td>joint tracking error, max</td><td>0.54 rad</td></tr>
+</table></div>
+
+<h2>9 · How much disturbance does it absorb?</h2>
+<p>Two disturbances, both applied to the S13 plan. A horizontal force on the pelvis held for 0.2 s at
+t = 1.4 s — mid-approach, leaning, feet-only support — and Gaussian noise on the 27 initial joint
+angles. The push is <em>backwards</em>, away from the table, because that is the direction the plant is
+already weakest: the planned centre of pressure rides the heel edge of the sole
+(<span class="m">x = −0.100 m</span> on a ±0.10 m sole) through the early approach.</p>
+
+<div class="note">
+<b>Why a force and not a velocity kick.</b> The first version of this experiment added a velocity
+impulse to the floating base. It measures almost nothing: both feet are on the ground, the impulse is
+absorbed within a step, and 0.5 m/s changed the reach error by 1 mm. A force in newtons is also directly
+comparable to <code>stability.max_push</code>, the study's existing "how hard can something shove this
+pose" metric.
+</div>
+
+<figure><div class="plot"><!--FIG:robust--></div>
+<figcaption>Reach error against push magnitude. Filled points are runs that stayed up; red points
+toppled. Feedforward is on the floor at every level including zero, so its line is the control.</figcaption></figure>
+
+<div class="scroll"><table>
+<tr><th>Backward push at the pelvis, 0.2 s</th><th>feedforward</th><th>riccati</th><th>MPC</th></tr>
+<tr><td>0 N</td><td class="bad">TOPPLED</td><td class="good">126 mm</td><td class="good">2.5 mm</td></tr>
+<tr><td>40 N</td><td class="bad">TOPPLED</td><td class="good">122 mm</td><td class="good">4.0 mm</td></tr>
+<tr><td>80 N</td><td class="bad">TOPPLED</td><td class="good">107 mm</td><td>249 mm (CoM left the polygon and came back)</td></tr>
+<tr><td>120 N</td><td class="bad">TOPPLED</td><td class="bad">TOPPLED</td><td class="bad">TOPPLED</td></tr>
+<tr><td>160 N</td><td class="bad">TOPPLED</td><td class="bad">TOPPLED</td><td class="bad">TOPPLED</td></tr>
+<tr><td>joint noise σ = 0.02 rad</td><td class="bad">TOPPLED</td><td class="good">76 mm</td><td class="good">3.5 mm</td></tr>
+<tr><td>joint noise σ = 0.05 rad</td><td class="bad">TOPPLED</td><td class="good">111 mm</td><td class="good">2.3 mm</td></tr>
+</table></div>
+
+<p>Both closed-loop controllers hold to <b>80 N</b> — 0.12 g on a 68.7 kg robot, sustained for a fifth of
+a second at the least stable instant of the maneuver — and both fail at 120 N. They fail
+differently, and the difference is the same one as in §5. Riccati never leaves the support polygon at
+all (margin +31 mm at every push it survives) and pays for that in reach error it does not recover.
+The MPC at 80 N lets the CoM go <b>121 mm outside</b> the foot polygon and walks it back — it survives
+by re-planning through a state the offline trajectory never contained — but arrives 249 mm from the
+target instead of 4. Initial-state noise, which is what a real state estimator hands you, barely
+registers for either: at σ = 0.05 rad the MPC still lands 2.3 mm from the target.</p>
+
+<h2>10 · Seeing the contacts</h2>
+<p>Every failure this session diagnosed is a statement about <em>which link is touching the table and
+how hard</em>, and none of it was visible in the videos. Four render-only changes, all of them in
+<code>croco_replay.py</code> and none of them touching a mass, a <code>contype</code> or anything the
+integrator reads:</p>
+
+<div class="scroll"><table>
+<tr><th>What</th><th>How</th><th>Why it was missing</th></tr>
+<tr><td><b>Contact markers, coloured by identity</b></td>
+<td>a sphere at every live table or floor contact, in the site's own colour — elbow, forearm,
+palm, feet — plus an arrow along the contact normal whose length is the normal force
+(1.5&nbsp;mm per newton). Drawn for <em>every</em> arm site, not just the ones in the plan's contact
+schedule.</td>
+<td>MuJoCo's own <code>mjVIS_CONTACTPOINT</code>/<code>CONTACTFORCE</code> flags draw every contact in
+one colour, which here is eight foot corners plus whatever the arm is doing. The question the videos are
+being asked is <em>which</em> of the three is carrying load. And marking only the planned contacts
+cannot show the failure S12 spent a session chasing — a link that is touching while the plan says it is
+not.</td></tr>
+<tr><td><b>The bracing arm is translucent</b></td>
+<td><code>geom_rgba[3] = 0.45</code> on the bracing arm's visual geoms</td>
+<td>the contacts are on the <em>underside</em> of the elbow, forearm and gripper, i.e. between the link
+and the tabletop, so a marker drawn where the contact actually is gets hidden by the link making it</td></tr>
+<tr><td><b>The gripper's jaws are drawn</b></td>
+<td><code>geom_group</code> 3 → 2 on <code>*_gripper_collision</code>, <code>*_gripper_jaw_a/b</code>
+and <code>*_wrist_pad</code></td>
+<td>the gripper's only <em>rendered</em> geom is the <code>h12_mount</code> mesh. The 171&nbsp;mm jaw
+boxes and the wrist brace pad — the parts that actually reach the wood — are
+<code>class="collision"</code>, i.e. group 3, which the renderer hides. Every replay video showed the
+arm ending in a stub roughly 100&nbsp;mm short of the hardware doing the bracing.</td></tr>
+<tr><td><b>References as ghosts</b></td>
+<td>a pink marker at the reach target and a translucent one at each certified brace landing spot</td>
+<td>without them a viewer sees the hand move but not whether it arrived, and "the brace is 10&nbsp;mm
+above where it was certified" — the defect this whole session turns on — is invisible in a render that
+draws only what the robot is doing and not what it was aiming at</td></tr>
+</table></div>
+
+<div class="note ok">
+<b>On drawing the magpie without paying for it.</b> There is nothing to trade: in <em>both</em> models
+the gripper is already free. In the MJCF <code>left_magpie_gripper</code> is a rigidly welded body with
+<code>jntnum = 0</code> — the mount mesh carries its 0.506&nbsp;kg and MuJoCo derives the inertia, so it
+costs mass and geometry but no DOF (<span class="m">n<sub>u</sub> = 27</span>,
+<span class="m">n<sub>q</sub> = 41</span> with or without it). On the Pinocchio side the URDF <em>does</em>
+model each gripper as a 6-joint linkage, and the bridge freezes all 12 hinges when it builds the reduced
+model (§3.1). So the gripper is a rigid body with rendered geometry in both, and the only thing it costs
+the planner is the keep-out points that hang off its collision boxes.
+</div>
+
+<div class="grid2">
+<figure><video controls muted playsinline preload="metadata" src="media/replay_s13_mpc_brace.mp4"></video>
+<figcaption><b>MPC, close on the brace.</b> The arm is translucent so the contacts under it read.
+Watch the palm land first and the elbow take over as the lean deepens — the force arrows are the
+measured normal forces, not the planned ones.</figcaption></figure>
+<figure><video controls muted playsinline preload="metadata" src="media/replay_far_elbow_mpc.mp4"></video>
+<figcaption><b>The far target</b> (x = 1.25&nbsp;m, single elbow contact) — a target the robot cannot
+balance at without a brace at all (§11).</figcaption></figure>
+</div>
+
+<h2>11 · (contact mode) × (reach target)</h2>
+<p>Everything above is one target — <span class="m">x = 0.905&nbsp;m</span>, which the S11 static
+envelope says the robot reaches <em>on its legs alone</em>. So "the brace carries 107&nbsp;N and the hand
+lands 2.2&nbsp;mm from the target" is a true statement about a task that did not need a brace, and it
+cannot distinguish a controller that works from one that is along for the ride. This section runs the
+grid: four targets along the axis that makes the task hard, seven contact modes, and all three stages —
+static certification, crocoddyl plan, closed-loop MuJoCo — scored the same way in every cell.</p>
+
+<h3>9.1 · Choosing the modes: physics, not enumeration</h3>
+<p>There are 2<sup>5</sup> subsets over {elbow, forearm, palm, hip, torso} and
+<code>croco_modes.py</code> will enumerate all of them. Most are not things a robot would ever do, and
+a matrix padded with them measures the enumerator. The ladder here is chosen from how a brace is
+actually <em>established</em> — progressively, one contact at a time, and never in an order that
+requires a link to pass through the table on the way:</p>
+
+<div class="scroll"><table>
+<tr><th>Mode</th><th>Why it is in the ladder</th><th>Where it should run out, and why</th></tr>
+<tr><td><b>legs only</b></td><td>the control. If the legs alone hold the pose, the brace is decoration
+and every metric that improves with one is measuring something else.</td>
+<td>when the CoM leaves what the feet can balance — a <b>balance</b> limit</td></tr>
+<tr><td><b>palm</b></td><td>the near-reach brace: a hand planted on the table, the only single contact a
+person makes without leaning. Cheapest to establish and to release.</td>
+<td>early, and on <b>strength</b> rather than geometry: the load path runs through the wrist, whose
+pitch/yaw motors are the weakest in the arm (clamp basis 5 N·m against the elbow's 18)</td></tr>
+<tr><td><b>elbow</b></td><td>the far-reach brace, and the one that puts load into the strong part of the
+arm. On its own because it is the first contact of any progressive brace — you do not arrive at forearm
+contact except through it.</td><td>latest of all, if at all</td></tr>
+<tr><td><b>elbow + forearm</b></td><td>elbow first, then roll the forearm down: one joint moving the way
+gravity is already pulling. Should be nearly free once the elbow is down, and spreads the same load over
+a longer lever.</td><td><em>this is the intuition the matrix tests</em></td></tr>
+<tr><td><b>elbow + palm</b> (the arch)</td><td>upper arm and hand down, forearm bridging clear of the
+table. Not a hypothesis: it is what the IK's own answer for the far targets looks like.</td>
+<td>—</td></tr>
+<tr><td><b>forearm + palm</b></td><td>forearm and hand down, elbow raised. Included as the
+counterpart to the arch.</td><td>—</td></tr>
+<tr><td><b>elbow + forearm + palm</b></td><td>the whole arm laid down. The S13 mode.</td>
+<td>on <b>geometry</b>: getting all three down at once over-constrains the arm</td></tr>
+</table></div>
+
+<p><em>Not run:</em> <code>hip</code> and <code>torso</code>, which belong to a different maneuver
+(leaning the trunk on the table rather than the arm) and which the S11 envelope already covers; and any
+subset containing the forearm without a neighbouring contact, which has no progressive route into it.</p>
+
+<h3>9.2 · A defect the single-cell study could not see</h3>
+<p>Running the grid immediately produced nine cells whose closed-loop replay collapsed with <b>0&nbsp;N
+of brace force</b> — the S12 "leaning on thin air" failure again, but this time <em>upstream of the
+plan</em>. The cause is in the certification, and it had been there the whole time:</p>
+<ul>
+<li><code>contact_select.load()</code> inflates every geom's collision margin by <b>25&nbsp;mm</b> so
+the IK can see a collision before entering one. That is correct and necessary — without it the
+non-penetration constraint is infeasible in 245 of 250 iterations.</li>
+<li>But the IK's placement test — "is this site's body in the table's contact list?" — is then evaluated
+<em>at the inflated margin</em>. A brace up to 25&nbsp;mm clear of the wood passes it.</li>
+<li>And the static QP cannot notice: it places its force at the site regardless of whether MuJoCo would
+report a contact there.</li>
+</ul>
+<p>So a pose could be certified, planned against, and handed to a replay that finds nothing under the
+arm. Two fixes, both in <code>croco_modes.py</code>:</p>
+<ol>
+<li><b>The placement test is now the narrowphase's, at zero margin</b>, and it is a <em>proximity</em>
+test rather than a body-identity one. Body identity is wrong for two of the three arm sites: the
+<code>palm</code> site hangs off <code>left_magpie_gripper</code>, but the part of the hand assembly that
+reaches the wood first is the wrist housing and its brace pad on <code>left_wrist_yaw_link</code> —
+measured over this sweep, a palm brace lands 31–44&nbsp;mm from the palm site, on the parent link, every
+single time. A body test calls that "palm: not touching" for a hand that is visibly flat on the table.
+So a site counts as placed when a real table contact lies within 100&nbsp;mm of it, with each contact
+assigned to its nearest site first (the elbow and forearm sites are only 57&nbsp;mm apart).</li>
+<li><b>A press step.</b> The pose is re-solved against a zero-margin model, warm-started from the pose
+the first pass found, in 2-iteration chunks, stopping at the first pose that both touches everywhere and
+penetrates nowhere by more than 10&nbsp;mm. It has to be stopped early rather than run to convergence:
+the site sits on the link <em>axis</em>, so "site z = table z" asks for the link half a diameter inside
+the slab, and pressed to convergence the three-contact mode buries the forearm 17&nbsp;mm in the wood and
+the single-elbow mode buries the upper arm 47&nbsp;mm. A pose that already touches is left untouched —
+which is why the S13 reference pose this page's headline result uses is <em>unchanged</em> by any of
+this, and passes the stricter test as it stands (elbow −7.8, forearm −2.0, palm −2.0&nbsp;mm).</li>
+</ol>
+
+<h3>9.3 · The matrix</h3>
+<figure><div class="plot"><!--FIG:sweep_grid--></div>
+<figcaption>Every cell of the grid. A filled cell was certified, planned, and replayed in MuJoCo under
+the receding-horizon MPC; the number is the reaching hand's distance from the target at the end of the
+braced phase. Empty cells have no admissible static pose and never reach a planner.</figcaption></figure>
+
+<div class="grid2">
+<figure><div class="plot"><!--FIG:sweep_effort--></div>
+<figcaption>Why a mode runs out. Peak <span class="m">|τ|/τ<sub>max</sub></span> for the certified pose,
+against target distance. A curve that crosses the limit failed on <b>strength</b>; a curve that simply
+ends failed on <b>geometry</b> — and the two are different claims about the robot.</figcaption></figure>
+<figure><div class="plot"><!--FIG:sweep_reach--></div>
+<figcaption>Closed-loop reach error in MuJoCo against target distance, per mode. Orange dots toppled.</figcaption></figure>
+</div>
+
+<h3>9.4 · What the grid says</h3>
+<ul>
+<li><b>The brace becomes necessary between x = 1.05 and x = 1.15.</b> Legs-only is admissible at 1.05
+and fails at 1.15 — not kinematically (the IK still reaches the target to 2.0&nbsp;mm) but by
+<b>balance</b>: the static QP's base residual is 6.7&nbsp;N at 1.15 and 31&nbsp;N at 1.25. This is the
+first result in the crocoddyl track that says bracing buys something, rather than that a brace can be
+made real.</li>
+<li><b>The palm-only band is real and it is narrow, and it closes on torque.</b> Palm is admissible
+through 1.15 and fails at 1.25 with peak <span class="m">|τ|/τ<sub>max</sub> = 1.15</span> — the wrist
+saturates while the pose is still perfectly reachable. Its static effort climbs 0.77 → 2.34 → 3.77 over
+the last three targets, an order of magnitude faster than the elbow's 0.70 → 0.74 → 0.81. The intuition
+that "the band where palm support is what gets you there must be pretty small" is right, and the reason
+is the weak wrist rather than the geometry.</li>
+<li><b>The forearm is NOT free once you have the elbow.</b> This is the ladder's one clear surprise.
+<code>elbow+forearm</code> is admissible only at the nearest target; at 1.05 and 1.15 the press has to
+drive the forearm 18&nbsp;mm into the slab to make both touch, and at 1.25 the forearm simply does not
+reach the table at all while the elbow is on it. As the reach extends, the arm straightens and the
+forearm <em>lifts</em>. What the geometry offers instead is the <b>arch</b> —
+<code>elbow+palm</code>, admissible at every target — which is what the IK's own answer for
+<code>elbow+forearm</code> was converging toward all along.</li>
+<li><b>The cheapest admissible mode is a single elbow contact, everywhere.</b> Static effort 0.70–0.91
+across the whole range, against 0.72–2.10 for the arch and 0.77–3.77 for the palm. Adding contacts
+costs effort here rather than saving it, because each one is another place the arm has to be
+simultaneously.</li>
+<li><b>The three-contact mode is the fragile one.</b> Admissible at exactly one target of the four. It
+is the mode this page's headline result uses, and the grid is the thing that says that result is not
+representative — it is the best case.</li>
+</ul>
+
+<h2>12 · What the brace buys, in the S11 picture</h2>
+<p>The clearest single figure this study has produced is the 2026-08-04 handoff page's CoM region plot:
+a top view of the static-equilibrium region a contact set buys, with the pose's centre of mass inside
+it. Every version of it has been drawn for a <em>kinematic</em> pose — the IK's q*, scored by a static
+QP. This session's claim is that crocoddyl is a better way to produce those trajectories, so the claim
+should be made in that picture: does the pose the <em>closed-loop MuJoCo run actually ends at</em> have
+the region the offline plan promised?</p>
+
+<figure><div class="plot"><!--FIG:regions--></div>
+<figcaption>Top view, world <span class="m">x</span> to the right (toward the table),
+<span class="m">y</span> up the page, shared scale. <b>Grey dashed</b>: the legs-only region at the same
+pose, for scale. <b>Filled</b>: the region the offline plan certified, with its CoM as an open ring and
+the contacts as dots — coloured by identity, sized by the normal force the static QP puts through them.
+<b>Black dashed</b>: the region of the pose MuJoCo ends the braced phase in, under MPC, computed with
+the contact set MuJoCo's <em>narrowphase</em> reports there rather than the one the plan assumed.</figcaption></figure>
+
+<h3>10.1 · The offline half of the comparison works, and it is the strongest result here</h3>
+<div class="scroll"><table>
+<tr><th>target x</th><th>legs-only CoM margin</th><th>best braced margin (mode)</th><th>what the brace buys</th></tr>
+<tr><td>0.905</td><td class="good">+69.5 mm</td><td>+105.4 mm (elbow+forearm)</td><td>+36 mm — decoration</td></tr>
+<tr><td>1.050</td><td class="good">+44.0 mm</td><td>+176.3 mm (forearm+palm)</td><td>+132 mm</td></tr>
+<tr><td>1.150</td><td class="bad">−16.6 mm</td><td>+196.0 mm (elbow+palm)</td><td class="good"><b>+213 mm, and the sign flips</b></td></tr>
+<tr><td>1.250</td><td class="bad">−57.3 mm</td><td>+156.6 mm (elbow+palm)</td><td class="good"><b>+214 mm, and the sign flips</b></td></tr>
+</table></div>
+<p>At the two far targets the legs-only margin is <em>negative</em> — the CoM the pose requires is
+outside what the feet alone can balance — and the same pose with a brace has 150 to 200&nbsp;mm of
+margin. That is the same statement the static QP's base residual makes in §11, arrived at independently
+and in metres rather than newtons, and it is the first quantitative answer this track has given to "what
+does a brace actually buy".</p>
+
+<h3>10.2 · The closed-loop half does not, and the reason is contact establishment</h3>
+<p>The black dashed regions are the honest ones, and most of them are not the coloured ones. At the end
+of the braced phase MuJoCo frequently has <em>no arm contact at all</em>, or a different one than the
+plan assumed — <code>elbow</code> at x = 1.15 ends up on the <b>forearm</b>, and the plan's own site is
+in the air. Broken out over the whole phase rather than at one instant:</p>
+
+<figure><div class="plot"><!--FIG:region_duty--></div>
+<figcaption>Contact duty: the fraction of braced nodes on which MuJoCo puts more than 5&nbsp;N through
+each planned site. 100% is a brace that is there for the whole phase; 0% is a plan drawing force
+through thin air for two seconds.</figcaption></figure>
+
+<p>The pattern is sharp and it is not about the target or the controller:</p>
+<ul>
+<li><b>Palm-rooted contacts establish and hold.</b> <code>palm</code> at x = 1.05 carries load on
+<b>98%</b> of braced nodes; <code>forearm+palm</code>'s palm on 95%. These are the cells whose achieved
+region matches the certified one (+141 vs +126&nbsp;mm, +142 vs +176&nbsp;mm).</li>
+<li><b>Elbow-rooted contacts mostly do not.</b> Elbow duty runs 0%, 4%, 5%, 6%, 15%, 31%, 36% across
+the grid. The plan puts the site where the certification said, holds it there to under a millimetre
+(§4 — <code>brace_dz</code> is 0.3–1.0&nbsp;mm on every cell), and MuJoCo still reports no load.</li>
+<li><b>And the difference is the contact surface, not the plan.</b> The palm's real contact patch is
+the wrist housing's brace pad — a flat 85&nbsp;mm capsule deliberately added to the MJCF to bound the
+underside. The elbow's is the upper-arm capsule's curved side. A flat pad on a flat table tolerates a
+millimetre of pose error; a cylinder tangent to a plane does not.</li>
+</ul>
+
+<div class="note warn">
+<b>So the honest summary of the grid is narrower than §5's.</b> The S13 headline result — a
+three-contact brace at 107/57&nbsp;N that survives — is real, reproduces, and is the <em>best</em> cell,
+not a typical one. Across the grid the plan reaches the target and holds the brace geometry to a
+millimetre, and the contact still fails to establish in most elbow-rooted cells. The remaining
+plan-to-plant gap in this pipeline is not the trajectory and it is not the controller: <b>it is contact
+establishment on curved geometry</b>, and neither the OCP (rigid prescribed contacts) nor the MPC
+(inherits the schedule) can see it. That is a concrete next thing to fix, and §13 says how.
+</div>
+
+<figure><div class="plot"><!--FIG:region_margin--></div>
+<figcaption>Every cell that ended the braced phase with an equilibrium region: achieved margin against
+certified margin, one dot per (mode, target), coloured by mode. On the diagonal means the closed-loop
+pose kept what the offline plan certified.</figcaption></figure>
+
+<h2>13 · What is still wrong</h2>
+<ul>
+<li><b>Contact establishment is the real remaining gap.</b> Over the grid, elbow-rooted braces carry
+load on 0–36% of braced nodes while the plan holds their geometry to under a millimetre (§12). The
+contact model cannot see this: crocoddyl's contacts are rigid and prescribed, so the OCP is free to draw
+force through a site that MuJoCo will not load, and the MPC inherits the schedule rather than choosing
+it. A complementarity or contact-implicit formulation is the structural fix; a cheaper one is to plan
+a deliberate <em>press</em> phase — a short normal-force target on each site before the braced phase
+begins — and to prefer sites whose contact surface is a flat pad over ones whose surface is a curved
+capsule.</li>
+<li><b>The certification's placement test was wrong until this session and may still be loose.</b> §11.2
+replaced a 25&nbsp;mm-margin body-identity test with a zero-margin proximity one plus a press step. The
+press is a chunked line search with an early stop, not a solve of the right problem: the right problem
+is an IK whose site objective is "this link's <em>surface</em> touches the plane", and this study's site
+objective is still "this point on the link's <em>axis</em> reaches the plane".</li>
+<li><b>The plan still dips the gripper 13&nbsp;mm into the slab</b> at t = 0.22 s. The keep-out is a
+quadratic penalty, not a constraint, and 13&nbsp;mm of violation costs 0.07 against a total cost of 31.
+A hard constraint (<code>SolverIntro</code> / <code>ConstraintModelManager</code>) is the right fix.</li>
+<li><b>The elbow brace runs at 0.98 of its friction cone</b> (95th percentile, over the braced phase) on
+a μ = 0.6 assumption nobody has measured. The cone is a soft penalty here too.</li>
+<li><b>q* is still stance-inconsistent.</b> The certified pose's feet are 19&nbsp;mm narrower than
+<code>stand</code>'s and 6&nbsp;mm lower; a rigid foot contact cannot be in two places, so 0.65&nbsp;rad
+of the ‖q − q*‖ residual is that mismatch rather than a planning failure. The certified pose should be
+re-solved with the feet where the start pose puts them.</li>
+<li><b>The MPC is 2× too slow</b>, down from 6× (§7), and the next factor is pruning the keep-out to its
+active set rather than any further work on the activation itself.</li>
+<li><b>The far targets do not converge.</b> At x = 1.15 and 1.25 the offline solve hits the
+200-iteration cap with <code>stop</code> at 6e−3 to 0.17. The reach errors are still sub-millimetre, so
+this reads as a tolerance rather than a failure — but it has not been chased.</li>
+<li><b>One stance, one arm, one table height.</b> The grid moved the target; it did not move the feet,
+swap the bracing arm, or change the table. All three are cheap to sweep and none has been.</li>
+<li><b>The MJPC comparison is still not in this page.</b> The 2026-08-04 handoff result was measured
+with the MJPC binary, which is not built on this machine; the honest comparison — MJPC's sampling
+planner against this pipeline on the same target — is the next thing to run.</li>
+</ul>
+
+<h2>14 · Reproducing this</h2>
+<p>The study's scripts had one developer's absolute paths baked into them and ran nowhere else. They now
+resolve their model out of this checkout (<code>LEAN_TASK_DIR</code>, <code>H12_URDF</code> override),
+and <code>lean_analysis/stage_assets.sh</code> reproduces the <code>h1_2</code> + lean subset of
+cmake's <code>copy_model_resources</code> — meshes and limits from CL&nbsp;Assets at the pinned SHA, the
+magpie patch applied — without compiling MJPC. The environment is a conda-forge <code>croco</code> env;
+the pip cmeel crocoddyl wheel still segfaults for the reason S12 documented.</p>
+<pre>bash lean_analysis/stage_assets.sh
+conda create -n croco -c conda-forge python=3.11 crocoddyl pinocchio numpy scipy matplotlib imageio imageio-ffmpeg
+pip install mujoco==3.2.3 quadprog       # mujoco pinned to match the MJPC ABI
+
+cd lean_analysis
+bash croco_ext/build.sh                                   # the C++ keep-out (optional)
+python croco_ext/test_keepout.py                          # ... and the proof it is the same function
+python croco_ext/bench.py                                 # section 7's table
+
+python croco_bridge.py                                    # parity, incl. mass matrix + passive
+python croco_plant.py                                     # section 2: the plant's survival time
+python croco_geom.py   elbow+forearm+palm                  # keep-out audit against q*
+
+# --- the headline maneuver (sections 4-10) ---
+python croco_run.py    --mode elbow+forearm+palm --dt 0.02 --n-approach 120 --n-braced 80 \
+                       --dir runs/2026-08-06_session13 --tag s13
+python croco_run.py    --mode elbow+forearm+palm --dt 0.02 --n-approach 120 --n-braced 90 \
+                       --n-return 80 --dwell 35 --dir runs/2026-08-06_session13 --tag s13ret
+python croco_diag.py   --tag s13 --dir runs/2026-08-06_session13     # geometry vs the narrowphase
+python croco_forces.py --tag s13 --dir runs/2026-08-06_session13     # planned wrenches, CoP, slip
+python croco_replay.py --tag s13 --ctrl mpc --mpc-horizon 50 --dir runs/2026-08-06_session13 \
+                       --video --cam brace                           # contact markers, ghosted arm
+python croco_matrix.py --dir runs/2026-08-06_session13                # the ladder / sweep / robustness
+
+# --- the (mode x target) grid (sections 11-12) ---
+python croco_sweep.py  --dir runs/2026-08-06_session13/sweep          # certify, plan, replay, collect
+python croco_region.py --dir runs/2026-08-06_session13/sweep          # CoM regions + contact duty
+
+python croco_figs.py   --dir runs/2026-08-06_session13 --sweep runs/2026-08-06_session13/sweep
+python croco_report.py --body _body_2026-08-06.html --out 2026-08-06_croco_loop.html \
+                       --title "..."                                  # this page</pre>
+<p><code>croco_run.py --legacy</code> restores the S12 formulation exactly and reproduces its numbers to
+seven significant figures on this machine — 58 iterations, <span class="m">stop = 1.39e−5</span>, reach
+1.14&nbsp;mm, ‖q − q*‖ = 0.692&nbsp;rad — which is what makes the before/after comparisons on this page
+comparisons rather than anecdotes. <code>CROCO_KEEPOUT=python</code> forces the interpreter keep-out and
+reproduces every number bit-for-bit, only slower; the C++ path is a speed-up and nothing else.</p>
