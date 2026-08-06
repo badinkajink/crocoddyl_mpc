@@ -1,0 +1,165 @@
+<mujoco model="Lean Simple H12 Magpie">
+  <!-- ======================================================================
+       LEAN SIMPLE -- lean onto the table in a SPECIFIED CONTACT MODE.
+
+       Same robot, same table, same reach target as `Lean H12 Magpie`, so every
+       number here is directly comparable with the S11/S12 pages. What is gone
+       is the machinery: no strategies/, no 8-keyframe phase schedule, no 14 s
+       open-loop target ramp, no per-phase weight blending. 11 cost terms and one
+       static weight vector.
+
+       THE CONTACT MODE IS THE FIRST THREE WEIGHTS. `Brace Elbow`,
+       `Brace Forearm`, `Brace Palm` -- nonzero means "put this link on the
+       slab"; zero means "keep it off", enforced by `Table Keepout`, which reads
+       those same three weights. The offline enumeration
+       (lean_analysis/contact_select.py) emits a subset of {elbow, forearm,
+       palm}; that subset IS this weight triple. The shipped default is
+       {elbow, forearm}, the subset the enumeration selects at this target.
+
+       See mjpc/tasks/humanoid_bench/lean/lean_simple.h for why each term is the
+       shape it is, and lean_analysis/seat_calib.py for the seat calibration.
+       ====================================================================== -->
+  <include file="../h1_2/h1_2_modified_magpie.xml"/>
+  <include file="lean.xml"/>
+  <include file="../../common.xml"/>
+  <include file="../assets/floor.xml"/>
+
+  <option integrator="implicitfast" cone="pyramidal" impratio="100"/>
+
+  <keyframe>
+    <!-- Key 0 is `home` and the Posture / Control terms read it directly
+         (model->key_qpos + 7). Do not reorder. -->
+    <key name="home"
+         qpos="0.19 0 1.028 1 0 0 0 0 0 0.12 0 0 0 0 0 -0.12 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+    <key name="stand_up"
+         qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+    <!-- The hand-authored braced pose from the old task, kept ONLY as a
+         reference start for "can it HOLD a brace" episodes and as the pose the
+         seat calibration was fitted at. Nothing in the cost points at it. -->
+    <key name="forearm_brace_reach"
+         qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.4625 -1.01229 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
+  </keyframe>
+
+  <custom>
+    <!-- Planner. IDENTICAL to Lean H12 Magpie's so a difference in outcome is a
+         difference in the COST, not in the search. testspeed --numeric sweeps
+         these without touching the file. -->
+    <numeric name="agent_planner" data="5"/>          <!-- 5 = Cross Entropy -->
+    <numeric name="agent_horizon" data="1.0"/>
+    <numeric name="agent_timestep" data="0.010"/>
+    <numeric name="sampling_spline_points" data="3"/>
+    <numeric name="sampling_trajectories" data="10"/>
+    <numeric name="sampling_exploration" data="0.05"/>
+    <numeric name="std_initial" data="0.1"/>
+    <numeric name="n_elite" data="6"/>
+
+    <!-- Task. `brace_arm` 0 = left arm braces / right arm reaches, which is the
+         handedness this target implies (its y is negative, i.e. the object is on
+         the robot's right). -->
+    <numeric name="brace_arm" data="0"/>
+    <numeric name="reach_target" data="0.9047 -0.2348 1.0982"/>
+    <!-- 1 = the support region extends forward to a SEATED brace contact (what
+         bracing is for). 0 = feet-only, the humanoid_bench region. Keep both
+         reachable from one binary: with 0 the balance term forbids exactly the
+         excursion the brace makes safe, and the robot seats its elbow and then
+         refuses to extend. -->
+    <numeric name="brace_support" data="1"/>
+    <!-- Metres to move the seat saturation point INTO the slab. 0 stops at the
+         calibrated surface; -0.005 is the calibration's own uncertainty and is
+         what closes the last few millimetres a 10-sample CEM cannot see. -->
+    <numeric name="seat_depth" data="0"/>
+
+    <!-- Task parameters (GUI sliders, in this order). -->
+    <numeric name="residual_Height Min" data="1.20 0.80 1.70"/>
+  </custom>
+
+  <sensor>
+    <!-- ================= cost terms (order == residual order) ============= -->
+    <!-- user = [norm, weight, weight_lower, weight_upper, norm params...]
+         norm 6 = smooth-abs (linear far from zero, quadratic within p);
+         norm 0 = quadratic. -->
+
+    <!-- THE CONTACT MODE. Default {elbow, forearm} = what the enumeration
+         selects at this target. Set any of the three to 0 to drop that link
+         from the mode (Table Keepout then holds it off the slab), or nonzero to
+         add it. -->
+    <user name="Brace Elbow"   dim="1" user="6 300.0 0.0 800.0 0.05"/>
+    <user name="Brace Forearm" dim="1" user="6 300.0 0.0 800.0 0.05"/>
+    <user name="Brace Palm"    dim="1" user="6   0.0 0.0 800.0 0.05"/>
+
+    <!-- elbow / forearm / palm, in that order. Entries for links that ARE in
+         the mode are identically zero. -->
+    <user name="Table Keepout" dim="3" user="6 200.0 0.0 3000.0 0.02"/>
+    <!-- The trunk is not a candidate contact and gets a near-hard weight of its
+         own: at 200, shared with the links above, the far-target rollout
+         finished resting its torso box and hip capsule on the slab. -->
+    <user name="Trunk Clear"   dim="1" user="6 1500.0 0.0 5000.0 0.02"/>
+
+    <!-- The objective, and deliberately the largest non-foot weight in the
+         stack: S12 §9 found the reach term 15th of 35 in the phase named
+         `brace_reach`, and measured -41 mm of reach for it. -->
+    <user name="Reach"         dim="3" user="6 400.0 0.0 1500.0 0.05"/>
+
+    <!-- Balance region, feet, and a height FLOOR. These three are the whole of
+         "stay standing"; there is no Symmetry / Base Height / Lateral Center /
+         Left Leg Anchor / Brace Arm Plane. -->
+    <user name="Balance"       dim="2" user="6 300.0 0.0 1000.0 0.02"/>
+    <user name="Feet Planted"  dim="4" user="6 500.0 0.0 3000.0 0.02"/>
+    <user name="Height"        dim="1" user="6 100.0 0.0 600.0 0.05"/>
+
+    <!-- Regularisers. Posture is the ONLY pose term and is weak on purpose. -->
+    <user name="Posture"       dim="27" user="0 1.0 0.0 50.0"/>
+    <user name="Joint Vel."    dim="27" user="0 0.01 0.0 1.0"/>
+    <user name="Control"       dim="27" user="0 0.1 0.0 10.0"/>
+
+    <!-- ================= observations used by the residual ================ -->
+    <framepos name="trace0" objtype="site" objname="right_hand"/>
+    <framepos name="head_position" objtype="site" objname="head"/>
+    <framepos name="right_hand_pos" objtype="site" objname="right_hand"/>
+    <framepos name="left_hand_pos" objtype="site" objname="left_hand"/>
+    <framepos name="torso_position" objtype="body" objname="torso_link"/>
+    <framepos name="pelvis_position" objtype="body" objname="pelvis"/>
+    <framepos name="foot_left_pos" objtype="body" objname="left_ankle_roll_link"/>
+    <framepos name="foot_right_pos" objtype="body" objname="right_ankle_roll_link"/>
+    <framezaxis name="foot_left_up" objtype="xbody" objname="left_ankle_roll_link"/>
+    <framezaxis name="foot_right_up" objtype="xbody" objname="right_ankle_roll_link"/>
+    <framexaxis name="foot_left_forward" objtype="xbody" objname="left_ankle_roll_link"/>
+    <framexaxis name="foot_right_forward" objtype="xbody" objname="right_ankle_roll_link"/>
+    <framezaxis name="torso_up" objtype="xbody" objname="torso_link"/>
+    <!-- WHOLE-ROBOT centre of mass: subtree of `pelvis`, the robot's root body.
+         humanoid_bench's balance uses torso_subcom, which excludes the legs --
+         fine for a stand, wrong for a lean, where the legs are half the mass
+         that has to stay over the feet. -->
+    <subtreecom name="robot_com" body="pelvis"/>
+    <subtreelinvel name="robot_com_vel" body="pelvis"/>
+  </sensor>
+
+  <!-- The forearm/wrist brace pads are cost-and-visualisation proxies
+       (contype=0) and reach the table only through these explicit pairs, which
+       carry the tuned contact parameters. Copied verbatim from Lean H12 Magpie:
+       the CONTACT PHYSICS is not what this task is changing. -->
+  <contact>
+    <pair name="left_forearm_brace_pair" geom1="left_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+    <pair name="right_forearm_brace_pair" geom1="right_forearm_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+    <pair name="left_wrist_brace_pair" geom1="left_wrist_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+    <pair name="right_wrist_brace_pair" geom1="right_wrist_pad" geom2="table_top_collision" condim="4" friction="1.0 1.0 0.02 0.0001 0.0001" solref="0.02 1" solimp="0.015 1 0.022" margin="0.002" gap="0"/>
+    <exclude body1="pelvis" body2="left_knee_link"/>
+    <exclude body1="pelvis" body2="right_knee_link"/>
+    <exclude body1="torso_link" body2="left_elbow_link"/>
+    <exclude body1="torso_link" body2="right_elbow_link"/>
+    <exclude body1="right_shoulder_pitch_link" body2="right_shoulder_roll_link"/>
+    <exclude body1="right_shoulder_roll_link" body2="right_shoulder_yaw_link"/>
+    <exclude body1="right_shoulder_yaw_link" body2="right_elbow_link"/>
+    <exclude body1="right_elbow_link" body2="right_wrist_roll_link"/>
+    <exclude body1="right_wrist_roll_link" body2="right_wrist_pitch_link"/>
+    <exclude body1="right_wrist_pitch_link" body2="right_wrist_yaw_link"/>
+    <exclude body1="left_shoulder_pitch_link" body2="left_shoulder_roll_link"/>
+    <exclude body1="left_shoulder_roll_link" body2="left_shoulder_yaw_link"/>
+    <exclude body1="left_shoulder_yaw_link" body2="left_elbow_link"/>
+    <exclude body1="left_elbow_link" body2="left_wrist_roll_link"/>
+    <exclude body1="left_wrist_roll_link" body2="left_wrist_pitch_link"/>
+    <exclude body1="left_wrist_pitch_link" body2="left_wrist_yaw_link"/>
+    <exclude body1="right_wrist_roll_link" body2="right_wrist_yaw_link"/>
+    <exclude body1="left_wrist_roll_link" body2="left_wrist_yaw_link"/>
+  </contact>
+</mujoco>

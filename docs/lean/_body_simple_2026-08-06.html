@@ -1,0 +1,408 @@
+<h1>An 11-term lean, and a contact mode you can ask for</h1>
+<p class="sub">Session 13. <code>lean.cc</code> is 3 657 lines and 35 cost terms, and on this robot,
+this table and this target it braces 8 times in 10 while leaving the reaching hand
+<b>41 mm further from the target than standing still would</b>. This is the replacement S12 §9
+scoped: eleven terms, no keyframes, no phases, no force feedback, and the contact mode as an
+<b>input</b> rather than a property of a hand-authored pose. It reaches every target it is given,
+26 rollouts without a fall — and the thing the brace actually buys turns out to be invisible to the
+reach metric, which is why this page ends with the support-region measurement rather than starting
+with it.</p>
+<p class="meta">2026-08-06 · branch <code>asset-unification</code> · task
+<code>Lean Simple H12 Magpie</code> · new
+<code>mjpc/tasks/humanoid_bench/lean/lean_simple.{h,cc}</code> +
+<code>Lean_Simple_H12_Magpie.xml</code> · runs and figures under
+<code>lean_analysis/runs/2026-08-06_simple/</code></p>
+
+<div class="note ok"><b>What this page claims.</b> (1) An 11-term static cost reaches where the
+35-term keyframe stack did not: <b>+0.31 m to +0.70 m</b> of reach gain against <b>−0.041 m</b>,
+same robot, same slab, same planner budget. (2) The contact mode is <b>steerable</b> — asking for
+the palm gets the palm, asking for the elbow gets the elbow — but not <b>fully</b>: the forearm
+parks 3–5 mm short unless the seat target is pushed 5 mm deeper, and "forearm alone" is never
+achieved. (3) The brace buys <b>no reach at all</b>, and buys <b>+190 mm of CoM margin and a third of
+the torque budget</b>. An unbraced rollout that looks identical on the reach metric finishes with its
+centre of mass <b>42 mm outside its own static-equilibrium region</b>.</div>
+
+<h2 id="s1">1. What this replaces</h2>
+
+<p>The braced lean has been carried by <code>lean.cc</code>: 3 657 lines, 35 active cost terms, eight
+hand-authored keyframes per strategy, and a 14-second open-loop ramp that interpolates toward them.
+S12 measured what that buys. It braces 8 times in 10. Its reaching hand finishes 41 mm further from
+the target than standing still would leave it. The term named after the objective sits 15th of 35 by
+weight, and the thing that actually sequences the motion is the keyframe ramp, with MJPC acting as a
+1-second-horizon stabiliser tracking it.</p>
+
+<p>§9 of that page proposed a replacement rather than a repair: per-link signed-distance contact
+costs, no force feedback, task-space invariants instead of pose targets, and an objective that
+dominates its own phase. <code>Lean Simple H12 Magpie</code> is that proposal, built on the shape of
+<code>lean_simple_gripper.cc</code> — the 385-line variant that was stashed rather than developed —
+and sharing <b>only the model</b> with <code>lean.cc</code>: same robot, same slab, same reach
+target, same CEM settings. Nothing else is shared, so a difference in outcome is a difference in the
+cost.</p>
+
+<div class="scroll"><table>
+<tr><th></th><th>lean.cc</th><th>Lean Simple</th></tr>
+<tr><td>Lines of task C++</td><td>4 005 (.cc + .h)</td><td class="good">667</td></tr>
+<tr><td>Active cost terms</td><td>35</td><td class="good">11</td></tr>
+<tr><td>Strategy / keyframe files</td><td>36 JSON, 8 phases each</td><td class="good">none</td></tr>
+<tr><td>Sequencing</td><td>14 s open-loop target ramp</td><td class="good">none — one static weight vector</td></tr>
+<tr><td>Contact demand</td><td><code>Brace Pos</code> to a keyframe point, plus <code>Brace Force</code></td><td class="good">3 seat costs on signed distance</td></tr>
+<tr><td>Which contacts</td><td>a property of the chosen keyframe</td><td class="good">an input: three weights</td></tr>
+<tr><td>Pose terms</td><td>Symmetry, Base Height, Lateral Center, Left Leg Anchor, Brace Arm Plane, Brace Wrist Cock, Pelvis Forward/Tilt, Posture…</td><td class="good">Posture, weight 1</td></tr>
+<tr><td>Reach weight, by rank</td><td>15th of 35</td><td class="good">largest non-foot term</td></tr>
+</table></div>
+
+<h2 id="s2">2. The cost</h2>
+
+<p>Eleven terms. The first three are the contact mode.</p>
+
+<div class="scroll"><table>
+<tr><th>#</th><th>Term</th><th>dim</th><th>weight</th><th>What it is</th></tr>
+<tr><td>0</td><td>Brace Elbow</td><td>1</td><td>300*</td><td rowspan="3">One-sided, saturating distance from the link's lowest brace surface to the usable slab face. Nonzero weight = "this link is in the mode".</td></tr>
+<tr><td>1</td><td>Brace Forearm</td><td>1</td><td>300*</td></tr>
+<tr><td>2</td><td>Brace Palm</td><td>1</td><td>0*</td></tr>
+<tr><td>3</td><td>Table Keepout</td><td>3</td><td>200</td><td>The same three links held 50 mm off the slab — <b>except</b> the ones whose seat weight is nonzero. The term reads the weights above, so the mode is stated once.</td></tr>
+<tr><td>4</td><td>Trunk Clear</td><td>1</td><td>1500</td><td>Torso and pelvis, never on the slab. Its own near-hard weight.</td></tr>
+<tr><td>5</td><td>Reach</td><td>3</td><td>400</td><td>The objective, and the largest non-foot weight in the stack.</td></tr>
+<tr><td>6</td><td>Balance</td><td>2</td><td>300</td><td>Capture point outside the support region — a rectangle on the feet, <b>extended forward to a seated brace</b>.</td></tr>
+<tr><td>7</td><td>Feet Planted</td><td>4</td><td>500</td><td>Both ankles at rest height, both soles flat.</td></tr>
+<tr><td>8</td><td>Height</td><td>1</td><td>100</td><td>Head-above-feet as a LOWER BOUND, not a target. A target fights the lean.</td></tr>
+<tr><td>9</td><td>Posture</td><td>27</td><td>1</td><td rowspan="3">Regularisers. Posture is the only pose term in the stack.</td></tr>
+<tr><td>10</td><td>Joint Vel.</td><td>27</td><td>0.01</td></tr>
+<tr><td>11</td><td>Control</td><td>27</td><td>0.1</td></tr>
+</table></div>
+<p class="meta">* the shipped default is <code>{elbow, forearm}</code>, the subset the offline
+enumeration selects at this target. Any of the three moves from the command line:
+<code>--weights "Brace Elbow=0,Brace Palm=300"</code>.</p>
+
+<h3>Distance, not force</h3>
+<p>Contact force is an output of the constraint solver: discontinuous across make and break, and
+differenced by a 10-sample CEM it is mostly noise. Signed distance is defined while the link is still
+in the air, has an unambiguous gradient the whole way in, and saturates once the link is down — an
+attractor with a floor, so it stops fighting the contact solver instead of pulling forever, which is
+what <code>Brace Pos</code> did by aiming 115 mm inside the wood. <code>Brace Force</code> has no
+counterpart here.</p>
+
+<h3>The mode is one input, in one place</h3>
+<p>The keepout term reads the seat weights rather than keeping its own list of links. A mode
+expressed in two places is a mode that can disagree with itself: asking for
+<code>{elbow, forearm}</code> automatically means "and keep the palm off", and asking for
+<code>{palm}</code> automatically means "and keep the elbow and forearm off", with no second edit.</p>
+
+<h2 id="s3">3. Three things that were measuring the wrong quantity</h2>
+
+<p>All three were found while building the task, and each had already produced, or was about to
+produce, a number worth publishing and then retracting.</p>
+
+<h3>3.1 <code>mj_geomDistance</code> is wrong on this robot's arm</h3>
+<p>The 2026-08-05 per-site experiment in <code>lean.cc</code> introduced
+<code>Brace Elbow/Forearm/Palm Seat</code>, each computed as <code>mj_geomDistance()</code>
+minimised over the link's collidable geoms — chosen explicitly because it "handles the mesh links
+correctly and needs no per-link calibration". It does not.
+<code>*_shoulder_yaw_link</code> and <code>*_elbow_link</code> carry <b>no primitive collision geom
+at all</b>; their only collidable geom is the visual mesh. Lifting the whole robot vertically from
+the shipped braced keyframe:</p>
+
+<div class="scroll"><table>
+<tr><th>lift [mm]</th><th>upper-arm mesh</th><th>forearm mesh</th><th>forearm pad (capsule)</th></tr>
+<tr><td>0 (in contact)</td><td class="bad">−333.4</td><td class="bad">−419.6</td><td>−35.0</td></tr>
+<tr><td>50</td><td class="bad">−290.9</td><td class="bad">−372.8</td><td>+14.7</td></tr>
+<tr><td>100</td><td class="bad">−233.0</td><td class="bad">−305.6</td><td>+64.7</td></tr>
+<tr><td>200</td><td class="bad">−107.8</td><td class="bad">−143.3</td><td>+164.7</td></tr>
+<tr><td>400</td><td class="bad">+170.2</td><td class="bad">+183.1</td><td>+364.7</td></tr>
+</table></div>
+
+<p>The capsule column tracks the lift 1:1. The mesh columns are a third of a metre out at the moment
+of contact and are <b>not even affine</b> in the lift: 400 mm of lift moves them 503 and 603 mm.
+MuJoCo's own narrowphase reports the arm meshes in contact at lift 0, so −333 mm is not a real
+penetration — the function is simply not usable on these geoms. Two of the three per-site seat terms
+in that experiment were therefore reading noise, which is enough on its own to explain why it
+produced nothing.</p>
+
+<p>Lean Simple measures the world z of the lowest point of an explicit shape instead: the body's
+collidable <b>primitives</b> where it has any (the gripper box and its two jaws, the torso box, the
+hip capsule, the pelvis sphere), and a declared capsule where it has none (the upper arm and the
+forearm). Exact for the shapes given, orientation-correct against a horizontal plane, one
+calibration, done once, in §4.</p>
+
+<h3>3.2 Height is not clearance, and clearance is not distance</h3>
+<p>Two versions of the keepout were wrong in opposite directions. The first charged a link for being
+below the slab's top plane — but at the home key the robot's torso box bottoms out <b>57 mm below the
+table top while standing 240 mm clear of the near edge</b>, so the term reported the trunk as buried
+in a table it was nowhere near, and was saturated before the robot moved. Adding the horizontal miss
+fixed that, and introduced the second error: a top-face measure cannot see an <b>edge</b> contact.
+The first far-target rollout duly rested its <code>torso</code> box on the slab's near edge — MuJoCo
+reporting contact at exactly 0.0 mm, at x = 0.500, which is the edge — while the top-face measure
+read <b>+50.4 mm of clearance</b>. The keepout now uses <code>mj_geomDistance</code> against the slab
+for the trunk and the gripper, which are all primitives and where the function is exact.</p>
+
+<h3>3.3 A rollout that does not carry its own target cannot be scored</h3>
+<p>The far-target cells override a model numeric on the command line
+(<code>--numeric "reach_target=1.15|-0.2348|1.0982"</code>). The scorer read the target from the
+<b>XML</b>. So the first far-target run was scored against a target 245 mm from the one it was given,
+and reported <b>+0.068 m of reach gain for a rollout whose hand finished 4 mm from its actual
+target</b>. This is S12 §2's error with the sign flipped — there a missing baseline turned no reach
+into a large one; here a wrong target turned a completed reach into a failed one.
+<code>testspeed</code> now writes the <code>--weights</code> and <code>--numeric</code> strings it
+was given into the CSV header, and every consumer reads the target from there. A trajectory that does
+not record what it was asked to do is not evidence.</p>
+
+<h2 id="s4">4. What "seated" means, calibrated once</h2>
+
+<p>A seat cost needs a distance that is zero where MuJoCo starts reporting contact — not before (the
+planner stops short of the table) and not after (it demands penetration it cannot get, which is the
+<code>Brace Pos</code> defect). <code>lean_analysis/seat_calib.py</code> fits that by translating a
+braced pose vertically in 5 mm steps and recording both the analytic measure and whether the
+narrowphase reports link-vs-slab contact:</p>
+
+<div class="scroll"><table>
+<tr><th>link</th><th>measure at the last frame WITH contact</th><th>at the first frame WITHOUT</th><th>so contact begins at</th></tr>
+<tr><td>elbow (upper arm)</td><td>+1.2 mm</td><td>+6.2 mm</td><td>0…6 mm</td></tr>
+<tr><td>forearm</td><td>−0.3 mm</td><td>+4.7 mm</td><td>0…5 mm</td></tr>
+<tr><td>palm (gripper)</td><td>−0.9 mm</td><td>+4.1 mm</td><td>0…4 mm</td></tr>
+</table></div>
+
+<p>One constant serves all three: the seat term saturates at <b>0</b>, which keeps a little tension
+on past first contact and never asks for penetration. Over the same sweep the measure tracks the lift
+1:1 for every link, which §3.1's table shows the alternative does not.</p>
+
+<div class="note"><b>The gripper needs its jaws.</b> A keepout written against
+<code>*_gripper_collision</code> alone reported 40 mm of clearance while
+<code>left_gripper_jaw_a</code> was already on the wood for 638 of 1000 sampled frames — the jaws
+hang 80 mm below the palm box and touch first. Measuring "every collidable primitive on the body"
+rather than one named geom fixes it without a special case.</div>
+
+<h2 id="s5">5. Does it reach, and does the mode get established?</h2>
+
+<p>Every cell is 18 s from the <code>home</code> stand, two independent repeats. Three targets, all
+on the same line: <b>NEAR</b> is the S11/S12 target at x = 0.905, which standing leaves 0.313 m away;
+<b>FAR</b> is x = 1.150, 0.557 m away; <b>VFAR</b> is x = 1.300, 0.707 m away — past the hand of the
+shipped braced keyframe itself. Reach is scored as a <b>gain against the same hand's distance at
+t = 0</b>, the baseline S12 §2 was missing.</p>
+
+<!--TABLE_RESULTS-->
+<p class="meta">Duty is the fraction of the settled window (the last quarter of the rollout) in which
+MuJoCo reports that link on the slab, averaged over the two seeds. Churn is the commanded pose's path
+length over its net displacement.</p>
+
+<div class="plot"><!--FIG_REACH--></div>
+<p class="meta">Distance from the reaching hand to the FAR target. Blue = <code>{elbow, forearm}</code>
+requested, amber = no mode requested; two seeds each. The dashed line is where the hand starts.
+All four curves land on the target inside 4 s and stay there — which is the whole difficulty with
+using reach to evaluate a brace here.</p>
+
+<h3>5.1 The reach is solved, at every target</h3>
+<p>+0.309 m at NEAR, +0.553 m at FAR, +0.692 m at VFAR, no falls in 26 rollouts, and the settled hand
+is within 1–14 mm of the target in every cell. Against S12's −0.041 m on the same robot and table
+this is not a marginal improvement, and it costs 11 terms and no keyframes. It is also, on its own,
+<b>uninformative about the brace</b>: every cell reaches, including the ones told to touch
+nothing.</p>
+
+<h3>5.2 The mode is steerable, and not fully achieved</h3>
+<div class="plot"><!--FIG_MODES--></div>
+<p class="meta">Contact duty per link over the settled window; solid = down more than half the time.</p>
+
+<ul>
+<li><b>Palm: asked for, achieved.</b> <code>far_palm</code> has palm duty 0.99 in both seeds and
+nothing else on the slab.</li>
+<li><b>Elbow: asked for, achieved.</b> <code>far_brace</code> and <code>near_brace</code> both seat
+the upper arm at duty 1.00, resting 0.9–1.5 mm off the measured surface.</li>
+<li><b>Forearm: 3–5 mm short.</b> Its seat gap settles at 2.9–5.4 mm — outside contact, inside the
+noise. At weight 300 a 3 mm gap is <b>0.9 cost units</b> against a 10-sample CEM, which is nothing.
+Pushing the saturation point 5 mm INTO the slab — inside §4's own calibration uncertainty, and
+physically stopped by the contact solver anyway — lifts forearm duty from 0.00 to <b>0.56</b>
+(<code>far_seatdepth</code>). So this is a resolution limit, not a modelling error.</li>
+<li><b>"Forearm alone" is never achieved</b> (<code>far_forearm</code>: none / palm). Asking a serial
+chain to put its middle link on a plane while holding the link beyond it off is a geometrically tight
+request, and one seed satisfied it by putting the palm down instead — a mode violation the keepout
+did not prevent.</li>
+<li><b>Asking for all three</b> gets palm, and elbow half the time; the forearm is squeezed out
+between them.</li>
+<li><b>More samples help the marginal case.</b> At 40 trajectories instead of 10,
+<code>far_brace</code> reaches forearm duty 0.50 rather than 0.00 — consistent with the resolution
+story, not with a cost error.</li>
+</ul>
+
+<div class="plot"><!--FIG_GAPS--></div>
+<p class="meta">One braced rollout at FAR. The three seat gaps and (dashed) the reach error. The reach
+is finished by t ≈ 4 s; the elbow comes down later and the forearm never quite does. Ordering
+matters — see §6.2.</p>
+
+<h2 id="s6">6. What the brace actually buys</h2>
+
+<p>Reach cannot see it, so this is the measurement that matters. These are the same static-equilibrium
+CoM regions as
+<a href="2026-08-04_mjpc_handoff.html">the S11 handoff page §5</a> — the multi-contact support region
+of Bretl &amp; Lall (2008) / Caron et al. (2015), ray-shot at 10° and bisected to ~6 µm, solved both
+contact-only and with the actuator torque envelope — with one change: <b>they are computed at the
+pose the rollout actually reached</b>, with the contact set MuJoCo's narrowphase actually reports,
+rather than at a pose the offline IK designed. Each panel also draws the <b>legs-only region at that
+same pose</b>: the region the robot would have if its arm contacts carried nothing.</p>
+
+<!--REGION_PANELS-->
+
+<div class="scroll"><table>
+<tr><th>rollout</th><th>contacts at t = 18 s</th><th>margin, actuated</th><th>contact-only</th><th>legs only, same pose</th><th>min-effort peak τ</th></tr>
+<tr><td>near_brace s0 / s1</td><td>elbow</td><td class="good">+145 / +144 mm</td><td>+145 / +144</td><td class="bad">−70 / −49</td><td>0.64 / 0.57</td></tr>
+<tr><td>near_none s0 / s1</td><td>none / palm</td><td>+0 / +48 mm</td><td>+0 / +126</td><td>+0 / −26</td><td>1.02 / 0.86</td></tr>
+<tr><td>far_brace s0 / s1</td><td>elbow</td><td class="good">+136 / +131 mm</td><td>+139 / +138</td><td class="bad">−56 / −50</td><td>0.76 / 0.68</td></tr>
+<tr><td>far_none s0 / s1</td><td>none</td><td class="bad">−42 / −23 mm</td><td>−37 / −23</td><td class="bad">−42 / −23</td><td>1.17 / 0.99</td></tr>
+<tr><td>far_forearm s0</td><td>none</td><td class="bad">−31 mm</td><td>−28</td><td class="bad">−31</td><td>1.12</td></tr>
+<tr><td>far_palm s0</td><td>palm</td><td>+5 mm</td><td>+128</td><td class="bad">−60</td><td>2.00</td></tr>
+<tr><td>far_all s0</td><td>palm</td><td class="bad">−40 mm</td><td>+182</td><td class="bad">−119</td><td>2.41</td></tr>
+<tr><td>vfar_brace s0 / s1</td><td>elbow</td><td class="good">+150 / +136 mm</td><td>+150 / +143</td><td class="bad">−48 / −46</td><td>0.56 / 0.55</td></tr>
+<tr><td>vfar_none s0 / s1</td><td>palm</td><td>+31 / +4 mm</td><td>+86 / +101</td><td class="bad">−35 / −58</td><td>2.78 / 5.66</td></tr>
+</table></div>
+
+<h3>6.1 The unbraced rollouts are not standing, they are hanging on their actuators</h3>
+<p>Every rollout that reaches FAR with nothing on the table finishes with its centre of mass
+<b>outside its own static-equilibrium region</b> — −42 and −23 mm, with the full torque envelope
+already granted. There is no admissible set of contact forces that holds those poses. MuJoCo runs
+them anyway, because the position servos are saturating: peak |τ|/τ<sub>max</sub> reaches 1.00 in the
+rollout telemetry, for 15% of frames in <code>far_brace_s0</code>. On hardware that is an e-stop, not
+a reach.</p>
+<p>Every rollout that seats its elbow finishes at <b>+131…+150 mm</b> of margin using
+<b>0.55–0.76</b> of the torque budget. The legs-only column says why: at those same poses, legs alone
+give <b>−46…−70 mm</b>. The pose is one the robot cannot hold, and the brace is what makes it
+holdable. That is the entire case for bracing, it is worth about <b>+190 mm of margin and a third of
+the actuator budget</b> — and it shows up as <b>zero</b> on the reach metric.</p>
+<p>The palm-braced cells make the same point from the other side. <code>far_palm</code> is inside its
+region by 5 mm and <code>vfar_none</code> by 4–31 mm, but their min-effort force distributions need
+2.0×, 2.8× and 5.7× the torque limit: a gripper 100 mm from the wrist is a long moment arm on a
+19 N·m joint. Contact-only margins of +86…+182 mm alongside actuated margins near zero is exactly the
+signature of a contact the <b>arm cannot afford to use</b>, and it is why the actuated region is worth
+computing separately.</p>
+<p class="meta">Read the τ column as the min-effort distribution's worst joint, not as a feasibility
+verdict: it minimises ‖τ/τ<sub>max</sub>‖₂, not the maximum, so it can exceed 1 at a pose whose
+actuated margin is still positive. The feasibility verdict is the sign of the actuated margin.</p>
+
+<h3>6.2 The margin over time says the ordering is wrong</h3>
+<div class="scroll"><table>
+<tr><th>t [s]</th><th>far_brace_s0 contacts</th><th>margin</th><th>far_none_s0 contacts</th><th>margin</th></tr>
+<tr><td>0</td><td>none</td><td>+83 mm</td><td>none</td><td>+83 mm</td></tr>
+<tr><td>3</td><td>none</td><td class="bad">−88 mm</td><td>hip</td><td>+257 mm</td></tr>
+<tr><td>6</td><td>elbow</td><td class="good">+94 mm</td><td>hip</td><td>+196 mm</td></tr>
+<tr><td>9</td><td>elbow+forearm</td><td class="good">+126 mm</td><td>hip</td><td>+193 mm</td></tr>
+<tr><td>12</td><td>elbow</td><td class="good">+149 mm</td><td>none</td><td class="bad">−50 mm</td></tr>
+<tr><td>15</td><td>elbow</td><td class="good">+131 mm</td><td>none</td><td class="bad">−49 mm</td></tr>
+<tr><td>18</td><td>elbow</td><td class="good">+136 mm</td><td>none</td><td class="bad">−42 mm</td></tr>
+</table></div>
+<p>The braced rollout <b>reaches first and braces second</b>: it is 88 mm outside its region at
+t = 3 s, holding the extended pose on saturated actuators, and the elbow does not arrive until
+t ≈ 6 s. Everything §5 reports about the reach is achieved during a window in which the robot is not
+in static equilibrium. A cost that made the seat term dominate <em>until</em> the contact is
+established, and only then released the reach, would produce the same endpoint through a feasible
+path; a single static weight vector cannot express that. This is the clearest argument found so far
+for phases — real ones, gated on a measured contact rather than on a 14 s clock.</p>
+<p>The unbraced rollout is not innocent either. From t = 3 to t = 9 s it is braced on its <b>hip</b> —
+resting the trunk on the table edge, which <code>Trunk Clear</code> exists to prevent — and its
+margin is +257 mm while it does. It then comes off the table and spends the rest of the rollout
+statically infeasible. So "no mode requested" did not mean "no contact"; it meant an unrequested,
+unmodelled, transient trunk contact, which the settled-window duty column reports as 0.00.</p>
+
+<h2 id="s7">7. The support region has to know about the brace</h2>
+<p>The balance term measures the capture point against a support region, and the first version used
+the feet alone. That is the humanoid_bench region, and it forbids exactly the excursion a brace makes
+safe: measured at FAR under a feet-only region, the robot seated its elbow and then refused to
+extend. The region now extends forward to a brace link whose <b>measured</b> seat gap is inside 10 mm
+— asking for a contact widens nothing until the link is actually down.</p>
+<p>The A/B is honest but weak: <code>far_brace_nosupport</code> reaches +0.551 m against
+<code>far_brace</code>'s +0.549 m and lands at +165 mm of margin against +136 mm. At these targets the
+extension is not what makes the reach happen. It matters in the transient — it is what stops the
+balance term from paying the robot to abandon a brace it has already established — and the case for it
+here is mechanical rather than empirical. <code>brace_support=0</code> restores the feet-only region
+from the command line so the comparison stays available.</p>
+
+<h2 id="s8">8. Watching it</h2>
+<figure><video src="media/far_brace_s0.mp4" controls muted playsinline preload="metadata"></video>
+<figcaption><b>FAR, <code>{elbow, forearm}</code> requested</b>, 3× speed, two views. The overlay
+carries the three seat gaps and a filled dot per link in contact. Note the order: the hand is on the
+target long before the arm comes down.</figcaption></figure>
+
+<figure><video src="media/far_none_s0.mp4" controls muted playsinline preload="metadata"></video>
+<figcaption><b>FAR, no mode requested</b> — the control. Visually almost the same manoeuvre and
+identical on the reach metric, and it finishes 42 mm outside its own equilibrium region, having
+leaned on its hip on the way there.</figcaption></figure>
+
+<figure><video src="media/far_palm_s0.mp4" controls muted playsinline preload="metadata"></video>
+<figcaption><b>FAR, <code>{palm}</code> requested.</b> A different mode, asked for with three numbers
+and no other edit: palm duty 0.99, elbow and forearm held off. It is also the mode whose min-effort
+force distribution needs twice the wrist's torque limit.</figcaption></figure>
+
+<figure><video src="media/near_brace_s0.mp4" controls muted playsinline preload="metadata"></video>
+<figcaption><b>NEAR, <code>{elbow, forearm}</code> requested</b> — the S12 comparison, same target and
+same robot as the −0.041 m result.</figcaption></figure>
+
+<h2 id="s9">9. What is still wrong</h2>
+
+<h3>9.1 The tremor is unchanged, because it is the algorithm</h3>
+<p>Command churn is 27–61×, the same band S12 measured on the old task. It should be: nothing here
+touches the planner. Re-estimating a distribution over 81 parameters (27 actuators × 3 spline knots)
+from 10 draws while keeping 6 as elite produces an update dominated by sampling noise. A cost rewrite
+cannot fix that and this one does not claim to.</p>
+
+<h3>9.2 Reach-then-brace is the wrong order, and the cost cannot say so</h3>
+<p>§6.2. A static weight vector has no way to express "establish the contact, then extend". This is
+the one place where the old task's phases were solving a real problem — and the fix is not the 14 s
+open-loop ramp but a gate on the measured seat gap, which this task already computes.</p>
+
+<h3>9.3 Mode exclusivity leaks</h3>
+<p>Three cells put a link on the slab that was not requested (<code>near_none</code> s1 and
+<code>far_forearm</code> s1 got the palm; <code>far_brace_horizon</code> s1 got the trunk at 0.47
+duty). The keepout is a soft 200-weight term against a 400-weight objective: it is a preference, not a
+constraint, and the numbers say so.</p>
+
+<h3>9.4 The forearm needs a steeper norm, not a bigger weight</h3>
+<p>The last 3 mm are worth 0.9 cost units. Raising the weight scales the whole basin; what is wanted
+is curvature near zero — a smaller smooth-abs parameter on the seat terms, or a rectified quadratic in
+the final centimetre. The <code>seat_depth</code> knob is the blunt version and it works (§5.2), but
+it works by moving the target rather than by sharpening the cost.</p>
+
+<h2 id="s10">10. Reproduction</h2>
+
+<pre>ninja -C build testspeed
+
+# one rollout, the shipped mode {elbow, forearm}
+./build/bin/testspeed --task="Lean Simple H12 Magpie" --total_time=18 \
+    --planner_thread=10 --dump_traj=run.csv --dump_stride=5
+
+# a different contact mode, and a different target, without touching a file
+./build/bin/testspeed --task="Lean Simple H12 Magpie" --total_time=18 \
+    --weights="Brace Elbow=0,Brace Forearm=0,Brace Palm=300" \
+    --numeric="reach_target=1.15|-0.2348|1.0982" --dump_traj=run.csv --dump_stride=5
+
+python3 lean_analysis/seat_calib.py                       # the seat calibration
+python3 lean_analysis/simple_matrix.py --out runs/&lt;dir&gt; --seeds 2 --seconds 18 \
+        --jobs 1 --resume                                 # the 13-cell matrix
+python3 lean_analysis/simple_metrics.py --run runs/&lt;dir&gt;  # tables + figures
+python3 lean_analysis/simple_region.py  --run runs/&lt;dir&gt; \
+        --cells far_brace_s0,far_none_s0 --times 0,3,6,9,12,15,18
+python3 lean_analysis/simple_region_svg.py runs/&lt;dir&gt;/regions_all.json panels.html
+python3 lean_analysis/simple_video.py runs/&lt;dir&gt;/far_brace_s0.csv --out docs/lean/media</pre>
+
+<div class="note warn"><b>Run the rollouts one at a time.</b> A single MJPC process on this model
+holds <b>~7–8 GB</b> resident — a fixed pool of <code>kMaxTrajectory = 128</code> trajectories,
+allocated regardless of <code>sampling_trajectories</code>, and the stock <code>Stand H12</code> task
+does the same. Four in parallel is ~32 GB and took this 31 GB machine down twice before the cause was
+found. <code>simple_matrix.py</code> defaults to <code>--jobs 1</code>, and <code>--resume</code>
+skips rollouts that already ran to completion.</div>
+
+<h2 id="s11">11. Caveats</h2>
+<ul>
+<li><b>Two seeds, unseeded.</b> The planner RNG is not seeded on this branch, so the repeats are
+independent draws, not a controlled comparison, and two of them bound very little. The margin result
+is the one that survives the small n: it has the same sign and the same order of magnitude in every
+braced and every unbraced rollout measured.</li>
+<li><b>The margins are static.</b> They ask whether a pose is holdable at rest, not whether the
+trajectory that reaches it is dynamically sound. A negative margin under a saturated position servo is
+a strong warning, not a proof of failure in simulation.</li>
+<li><b>Simulation only</b>, μ = 0.6 at the slab, one robot placement, one table height. S11 §2 showed
+the friction assumption is not de-risked at the envelope edge.</li>
+<li><b>The support-region extension is geometric.</b> It asks whether a seated link is forward of the
+toes, not whether its friction cone can carry the implied load. §6.1 shows why that gap matters: the
+palm modes are geometrically fine and actuator-infeasible.</li>
+<li><b>No completion condition.</b> The rollouts run for a fixed wall clock. A deployment needs "the
+hand is on the target and the brace is loaded" as an exit, not a timer.</li>
+<li><b>The reach point is the <code>*_hand</code> site</b> (wrist + 170 mm) where S11/S12 used
+wrist + 130 mm. Reach gain is a difference and is insensitive to the 40 mm; absolute residuals here are
+not directly comparable to those pages.</li>
+</ul>
