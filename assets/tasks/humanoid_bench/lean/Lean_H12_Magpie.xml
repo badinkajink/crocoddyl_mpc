@@ -147,7 +147,7 @@
              surface (+0.0 cm), forearm LEVEL (0.0 deg), gripper lowest +3.2 cm clear, pad
              x 0.535 = seated 0.24 m past the 0.2975 near edge (short-side approach depth).
              Previous (0.865-era) pose left the pad 8.5 cm UNDER the new surface. -->
-        <key name="forearm_brace_lean" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.471239 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_lean" qpos="0.212485 0 0.964242 0.974587 0 0.224009 0 0 -0.936662 0.12 0.665198 -0.181326 0 0 -0.936662 -0.12 0.665198 -0.181326 0 -0.0593057 -0.628189 -0.112756 0.444694 -0.0109609 0.225548 -0.461708 -0.740967 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
         <!-- forearm_brace_reach (2026-07-31): the braced pose with the RIGHT
              arm solved for MAXIMUM forward gripper extension, staying >=10 mm
              above the tabletop. Left arm / legs / base copied unchanged, so the
@@ -386,6 +386,17 @@
              (linear, pulls torso erect); 0 = legacy cos-flat behaviour for A/B.
              Lower toward 0.3-0.5 if the stand over-stiffens/oscillates. -->
         <numeric name="upright_gain" data="1.0"/>
+        <!-- 2026-08-05: >1.0 scales Pelvis Tilt when the pelvis pitches BACKWARD.
+             1.0 = symmetric legacy form (byte-identical). See lean.cc pelvis tilt. -->
+        <numeric name="backward_tilt_gain" data="1.0"/>
+        <!-- 2026-08-06: forward CoM ceiling rel midfoot, m. All 25 stand-backs
+             entered the ladder below 0.150; the map puts the feet-only limit at
+             0.152. Tune per gate without a recompile. -->
+        <numeric name="pelvis_cap_fwd" data="0.13"/>
+        <!-- 2026-08-06: forward CoM ceiling rel midfoot, m. 0 = OFF (byte-identical).
+             The CoM runs 45-88 mm AHEAD of the pelvis, so the pelvis cap cannot
+             bound it. All 25 stand-backs entered the ladder below 0.150. -->
+        <numeric name="com_cap_fwd" data="0.145"/>
         <!-- Targeted knee+hip-pitch extension anchor (2026-06-06): amplifies ONLY the
              leg entries of the free-standing Posture residual (lean.cc) so the legs hold
              their keyframe target (straight=stand, 0.7=crouch) and stop the slow knee-creep

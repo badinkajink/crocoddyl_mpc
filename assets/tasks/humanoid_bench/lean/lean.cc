@@ -1325,6 +1325,37 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       pelvis_tilt_residual = upright_gain * mju_max(0.0, sin_tilt);
     }
   }
+  // ★ 2026-08-05: DIRECTIONAL BACKWARD PENALTY (numeric-gated).
+  // Both branches above are SYMMETRIC in tilt DIRECTION -- they read
+  // `pelvis_up[2] = cos(tilt)`, which is 0.8996 at +25.9 deg and 0.9063 at
+  // -25 deg. So the residual's MINIMUM sits exactly at vertical, and the
+  // restoring gradient vanishes precisely where a robot un-bowing off a brace
+  // has to be caught. Momentum then carries it straight through into a
+  // backward fall, with nothing opposing it.
+  //   MEASURED, bench20_splayfix (n=20): 5 runs ran away through vertical to
+  //   -28..-90 deg at 62-352 deg/s peak pitch rate, while EVERY stand-back
+  //   stayed under 19 deg/s. 4 of the 5 began inside a 1.6 s window (t=64.8
+  //   -66.4), 2-4 s after the forearm left the slab.
+  // ⚠ THE HISTORY IS IN THIS FILE: a Round-8 fix made this residual directional
+  // (`pelvis_forward[2]`, backward = +) *specifically* because "the user saw the
+  // robot stand -> plant hand -> tip BACKWARD -> fall on its back". It was then
+  // reverted on 2026-05-17 as BISECTION TEST #2 and never restored.
+  // `pelvis_forward[2] = -sin(pitch)`: FORWARD lean is NEGATIVE (-0.437 at the
+  // brace keyframe), BACKWARD is POSITIVE (+0.423 at -25 deg) -- FK-verified.
+  // Gate: `backward_tilt_gain` numeric. 1.0 = the symmetric legacy form,
+  // BYTE-IDENTICAL, so the default changes nothing and the A/B is one numeric
+  // edit with no second recompile.
+  double backward_tilt_gain =
+      GetNumberOrDefault(1.0, model, "backward_tilt_gain");
+  if (backward_tilt_gain != 1.0) {
+    double *pelvis_forward_dir = SensorByName(model, data, "pelvis_forward");
+    // ★ Guard: a null sensor must leave the residual UNTOUCHED, not zero it.
+    // A missing <user> sensor silently misaligned every later residual once
+    // already (Lean_H12.xml, 2026-07-30).
+    if (pelvis_forward_dir && pelvis_forward_dir[2] > 0.0) {
+      pelvis_tilt_residual *= backward_tilt_gain;
+    }
+  }
   residual[counter++] = pelvis_tilt_residual;
 
   // ----- foot up-vectors: prevent ankle roll ----- //
@@ -1937,8 +1968,67 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
           brace_force_prox_gate * load_deficit *
               mju_max(0.0, loaded_target - (midfoot_x + 0.05));
     }
-    residual[counter++] =
-        mju_max(0.0, pelvis_forward_target - pelvis_pos_3d[0]);
+    // 2026-08-04 UPPER BOUND (bench20, n=20). This term was ONE-SIDED: it drove
+    // the pelvis forward to `pelvis_forward_target` and then charged NOTHING for
+    // going further. Combined with Balance reading ~0 during the brace (the
+    // load-gated brace vertex extends the support polygon past the CoM, so the
+    // capture point projects to itself), there was no sagittal cost opposing
+    // forward CoM travel AT ALL while braced. Measured: all 15 braced runs
+    // overshot the +0.050 target, max pelvis excursion 0.068..0.202, and that
+    // excursion correlates +0.785 with the CoM at release -- which classifies
+    // the stand-back almost perfectly (5/6 recover below CoM 0.165, 0/9 above).
+    // So: keep the forward drive, add the missing ceiling. `hi` is clamped to be
+    // >= `lo` so a far-forward forearm (loaded_target) can never make the band
+    // empty and turn this into a constant cost.
+    // ★ 2026-08-06: now a NUMERIC so the ceiling can be tuned per gate without a
+    // recompile. Default 0.13 = BYTE-IDENTICAL to the constexpr it replaces.
+    //   MEASURED (bench20_splayfix + stress sets, n=38): every one of the 25
+    //   runs that stood back entered the stand-back ladder with CoM < 150 mm,
+    //   while the stalls entered at 146-188. The offline feasible-region map puts
+    //   the feet-only limit at 152 mm INDEPENDENTLY. Three lines, one number.
+    //   The stalls are ankle-saturated at 98% BECAUSE they enter past it: knee
+    //   and hip un-bow identically in both groups, only the ankle stays stuck
+    //   (unwinds 1.3 deg vs 13.4), and straightening about a stuck ankle carries
+    //   the CoM FURTHER forward (146 -> 205 mm).
+    double kPelvisCapFwd = GetNumberOrDefault(0.13, model, "pelvis_cap_fwd");
+    // ⛔ 2026-08-06 THE CAP DID NOT BIND. The 08-04 form was
+    //     lo = pelvis_forward_target;  hi = mju_max(lo, midfoot + cap);
+    // written that way so a far-forward forearm could never make the band empty.
+    // But when the load-transfer pull drives `lo` PAST the cap, `hi` becomes `lo`,
+    // the band collapses to a point, and the residual degenerates to
+    // |pelvis - lo| -- it then ACTIVELY DRIVES the pelvis forward, past the very
+    // ceiling it was added to enforce. Raising the weight amplifies the wrong side:
+    // gateP at weight 600 entered the ladder at 174 mm (baseline mean 125).
+    // FIX: clamp `lo` to the cap so the ceiling always wins and the band can
+    // never invert. The forward drive is preserved up to the ceiling, which is
+    // all it was ever meant to do.
+    double cap_x = midfoot_x + kPelvisCapFwd;
+    double lo = mju_min(pelvis_forward_target, cap_x);
+    double hi = cap_x;
+    double pelvis_band = mju_max(0.0, lo - pelvis_pos_3d[0]) +
+                         mju_max(0.0, pelvis_pos_3d[0] - hi);
+
+    // ★★ 2026-08-06: CAP THE CoM, NOT JUST THE PELVIS.
+    // MEASURED (gateQ2 run00): with the pelvis correctly held at 114 mm under a
+    // 130 mm cap, the CoM still sat at 169 mm -- the CoM runs 45-88 mm AHEAD of
+    // the pelvis because the torso and the extended reaching arm are forward of
+    // it. So a pelvis ceiling cannot bound the CoM, and the CoM is the variable
+    // that decides recovery: all 25 stand-backs entered the ladder below 150 mm,
+    // the stalls entered at 146-188, and the offline feasible-region map puts the
+    // feet-only limit at 152 mm independently.
+    // (This restates a 2026-08-04 note -- "caps the PELVIS, not the CoM" -- that I
+    // then spent two gates re-learning. Cap the variable you actually measured.)
+    // `com_cap_fwd` numeric: 0 = OFF = BYTE-IDENTICAL default.
+    double com_cap = GetNumberOrDefault(0.0, model, "com_cap_fwd");
+    double com_over = 0.0;
+    if (com_cap > 0.0) {
+      int pid_com = mj_name2id(model, mjOBJ_BODY, "pelvis");
+      if (pid_com >= 0) {
+        double com_x_now = data->subtree_com[3 * pid_com + 0];
+        com_over = mju_max(0.0, com_x_now - (midfoot_x + com_cap));
+      }
+    }
+    residual[counter++] = pelvis_band + com_over;
   } else {
     residual[counter++] = 0.0;
   }
