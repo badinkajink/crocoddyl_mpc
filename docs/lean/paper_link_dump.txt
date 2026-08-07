@@ -17,3 +17,10 @@ manchester
 Whole-Body Model-Predictive Control of Legged Robots with MuJoCo (2025, icra) https://arxiv.org/abs/2503.04613
 
 review on multiple contact planning and control (2023, robotics and autonomous systems) https://www.sciencedirect.com/science/article/pii/S0921889023000878
+
+inria (contact solvers / Delassus):
+Matrix-Free Delassus Operations: Scalable and Memory-Efficient Algorithms
+  Sathya, Montaut, de Mont-Marin, Carpentier (2026, ral 11(8):9375-9382)
+  doi:10.1109/LRA.2026.3701549
+  -- ported into MuJoCo at ~/mujoco/mfdelassus; measured inside this study's
+     crocoddyl MPC in docs/lean/2026-08-06_delassus.html

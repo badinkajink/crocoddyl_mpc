@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The matrix-free Delassus, measured inside a crocoddyl MPC — S14</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>The matrix-free Delassus, measured inside a crocoddyl MPC</h1>
+<p class="sub">Session 14. The S13 controller works and is twice too slow: a 50-node warm-started
+BoxFDDP step costs 39.5 ms against a 20 ms control period. Sathya et al.'s matrix-free
+Delassus operator is the obvious thing to try, because unlike MuJoCo — where the default solver
+never forms a Delassus matrix at all — crocoddyl's contact forward dynamics builds one at every
+node of every iteration. This page reaches into Pinocchio's C++-only implementation, checks it,
+times it against the operator it would replace, and answers whether it belongs in this loop.</p>
+<p class="meta">crocoddyl 3.2.1, Pinocchio 4.1.0, conda-forge, one 28-core
+x86-64 box. Operator timings are best-of-300 in microseconds; MPC step times are means, because
+there the question is what a control period costs in practice. Everything below is regenerated
+from <code>runs/2026-08-06_session14/delassus.json</code> by
+<code>lean_analysis/croco_delassus_page.py</code>.</p>
+
+<div class="note"><b>The short version.</b> The operator is exact here —
+6.7e-16 relative error against an independently assembled J M⁻¹Jᵀ, holding to
+6.7e-16 out to 978 constraint rows. It is also genuinely cheaper to
+<i>set up</i> than the explicit build, by 1.7× at this robot's braced contact set. And it is
+still the wrong tool for this loop, for two independent reasons that both had to be measured:
+the Delassus is 2.3% of a node, and crocoddyl's access pattern —
+materialise the inverse once, then GEMM — is precisely the pattern a matrix-free operator
+loses. Dropped in at the only place it fits, it is 5.0× slower.</div>
+
+<h2>1. Why this is worth asking here and was not worth asking in MuJoCo</h2>
+
+<p>The companion study (<code>~/mujoco/mfdelassus</code>) ported the paper's operators into
+MuJoCo and found the headline result did not transfer, for a structural reason: MuJoCo's default
+Newton solver is <i>primal</i>. It works in the n<sub>v</sub>-dimensional acceleration space and
+never assembles <code>efc_AR = J M⁻¹Jᵀ + R</code> at all. The paper's object was absent from the
+hot path.</p>
+
+<p>crocoddyl is the opposite case. Every node of the S13 problem is a
+<code>DifferentialActionModelContactFwdDynamics</code>, and it builds the Delassus matrix twice
+per node per iteration:</p>
+
+<pre>calc      pinocchio::forwardDynamics(model, data, tau, J, a0, mu)
+              cholesky::decompose(M)                 -&gt; U, D
+              sDUiJt = D^-1/2 U^-1 Jᵀ
+              data.JMinvJt = sDUiJtᵀ sDUiJt + mu I   &lt;- THE DELASSUS MATRIX
+              data.llt_JMinvJt.compute(JMinvJt)      &lt;- and its Cholesky
+              lambda_c = llt.solve(-J M^-1 (tau-nle) - a0)
+
+calcDiff  pinocchio::getKKTContactDynamicMatrixInverse(model, data, J, Kinv)
+              bottomRight = -G^-1        (nc solves against the factor from calc)
+              topLeft     = M^-1         (nv sparse Cholesky solves)
+              three GEMMs assembling the Schur complement into Kinv</pre>
+
+<p>So the object exists, it is regularised exactly the way the paper's damped operator is
+(<code>INV_DAMPING = 1e-4</code>, which S13 needs anyway because two 6D feet plus three brace
+points on a 33-DOF robot is a redundant, singular constraint set), and it is rebuilt 50 times per
+control step. That is a real target.</p>
+
+<div class="note warn"><b>The caveat that made this page necessary.</b> Pinocchio 4.1.0 ships the
+matrix-free operator as <code>DelassusOperatorRigidBodySystemsTpl</code> in
+<code>src/algorithm/delassus-operator-rigid-body.hxx</code> and does <b>not</b> expose it to
+Python — only the Dense, Sparse and CholeskyExpression variants are wrapped. The MuJoCo study
+therefore had to quote the paper's own timings for it. Everything below is measured.</div>
+
+<h2>2. Getting at the operator</h2>
+
+<p>No submodule and no rebuild of Pinocchio was needed. The operator is header-only, so a single
+translation unit compiled against the conda prefix reaches it, and linking
+<code>-lpinocchio_default -leigenpy</code> puts it in the same typeinfo registry as the Pinocchio
+pywrap — which is what lets <code>bp::extract&lt;pin::Model&amp;&gt;</code> succeed on a Python
+<code>pin.Model</code>. Two things had to be right or nothing compiles:</p>
+
+<ul>
+<li><code>#include &lt;pinocchio/fwd.hpp&gt;</code> <b>before</b> <code>boost/python.hpp</code>,
+and the four definitions from <code>pinocchioTargets.cmake</code> verbatim
+(<code>BOOST_MPL_LIMIT_LIST_SIZE=30</code>, <code>BOOST_MPL_LIMIT_VECTOR_SIZE=30</code>,
+<code>BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS</code>, <code>BOOST_FUSION_INVOKE_MAX_ARITY=12</code>).
+The constraint collection is a <code>boost::variant</code> over 25 types dispatched through
+8-argument <code>boost::fusion::invoke</code>; at boost's defaults of 20 and 6 the header stack
+does not instantiate.</li>
+<li><code>applyOnTheRight</code> is declared for a general matrix argument but only instantiates
+for a vector — the matrix path calls a vector-only Eigen method inside
+<code>mapConstraintForcesToJointSpace</code>. G has to be materialised column by column.</li>
+</ul>
+
+<p>The result is <code>lean_analysis/croco_ext/mfdelassus.cpp</code>, which also exposes the
+operator as a reusable Python class, closing the caveat above for anything downstream:</p>
+
+<pre>import croco_mfd
+pin.computeJointJacobians(model, data, q)          # the operator's precondition
+op = croco_mfd.DelassusMF(model, data, constraint_models, damping=1e-4)
+op.compute()                                       # or compute(False, True) for solves only
+y = op.apply(x)                                    # G x
+z = op.solve(x)                                    # (G + mu I)^-1 x</pre>
+
+<h2>3. It is exact</h2>
+
+<p><code>croco_ext/test_mfd.py</code> checks the operator against a dense
+<code>J M⁻¹Jᵀ + mu I</code> assembled independently — <code>numpy.linalg.solve</code> on the CRBA
+mass matrix, sharing no code with the thing under test — at four configurations for each of two
+contact sets, plus a round-trip <code>solve(apply(x)) == x</code> and a check that the damping
+actually reaches the operator rather than being silently dropped.</p>
+
+<pre>feet only      nc=12 q0  |G-Gref|/|Gref|=2.31e-16  round-trip=1.77e-11  asym=4.24e-17  ok
+feet only      nc=12 q1  |G-Gref|/|Gref|=4.18e-16  round-trip=6.30e-11  asym=1.19e-16  ok
+feet only      nc=12 q2  |G-Gref|/|Gref|=3.46e-16  round-trip=2.60e-11  asym=1.13e-16  ok
+feet only      nc=12 q3  |G-Gref|/|Gref|=4.44e-16  round-trip=3.84e-11  asym=8.94e-17  ok
+feet + brace   nc=21 q0  |G-Gref|/|Gref|=2.34e-16  round-trip=1.13e-11  asym=4.76e-17  ok
+feet + brace   nc=21 q1  |G-Gref|/|Gref|=6.66e-16  round-trip=3.09e-10  asym=1.55e-16  ok
+feet + brace   nc=21 q2  |G-Gref|/|Gref|=4.75e-16  round-trip=9.81e-11  asym=1.02e-16  ok
+feet + brace   nc=21 q3  |G-Gref|/|Gref|=7.08e-16  round-trip=4.28e-11  asym=1.29e-16  ok
+damping        G(1e-1) - G(1e-4) = 0.0999 I   ok</pre>
+
+<p>At the plan's own states the same comparison gives 3.9e-16 for the approach
+contact set and 6.7e-16 for the braced one, and it stays at 6.7e-16 all the way
+out to 978 constraint rows in §7. This is the paper's Fig. 3 claim, reproduced on the
+H1-2 rather than cited: the forward operator agrees with the assembled matrix to machine
+precision. Nothing below is a question about correctness.</p>
+
+<h2>4. How much of the MPC step is Delassus at all?</h2>
+
+<p>Before optimising an operator it is worth knowing what fraction of the node it is. The
+S13 action models are ablated by rebuilding each <code>DifferentialActionModelContactFwdDynamics</code>
+with an empty <code>CostModelSum</code> and the same contacts, actuation and damping — so the
+difference is exactly what the cost stack adds on top of a shared kinematics pass.</p>
+
+<div class="scroll"><table><thead><tr><th>node</th><th>n<sub>c</sub></th><th>cost terms</th><th>calc full <span style="text-transform:none">µs</span></th><th>calc dynamics <span style="text-transform:none">µs</span></th><th>calcDiff full <span style="text-transform:none">µs</span></th><th>calcDiff dynamics <span style="text-transform:none">µs</span></th><th>calcDiff cost stack <span style="text-transform:none">µs</span></th><th>dynamics share</th></tr></thead><tbody><tr><td>approach</td><td>12</td><td>92</td><td>19.7</td><td>17.4</td><td>273.7</td><td>57.3</td><td class="bad">216.3</td><td>25%</td></tr><tr><td>braced</td><td>21</td><td>98</td><td>25.4</td><td>23.1</td><td>315.8</td><td>73.4</td><td class="bad">242.4</td><td>28%</td></tr></tbody></table></div>
+
+<p>The contact dynamics are 26–29% of a node. The other three-quarters is the cost stack —
+242 µs per braced <code>calcDiff</code>, overwhelmingly the 86 box keep-out residuals
+that S13 added. Within the dynamics quarter, the two pinocchio calls above split like this:</p>
+
+<div class="scroll"><table><thead><tr><th>stage, <span style="text-transform:none">µs</span></th><th>approach (n<sub>c</sub>=12)</th><th>braced (n<sub>c</sub>=21)</th><th>Delassus?</th></tr></thead><tbody><tr><td><b>calc</b> — pinocchio::forwardDynamics</td><td>4.10</td><td>7.18</td><td></td></tr><tr><td>&nbsp;&nbsp;LTDL factor of M</td><td>0.65</td><td>0.64</td><td>no</td></tr><tr><td>&nbsp;&nbsp;build J M⁻¹Jᵀ</td><td>2.49</td><td>4.97</td><td><b>yes</b></td></tr><tr><td>&nbsp;&nbsp;dense LLT of it</td><td>0.20</td><td>0.53</td><td><b>yes</b></td></tr><tr><td>&nbsp;&nbsp;one G⁻¹ solve (the forces)</td><td>0.23</td><td>0.41</td><td><b>yes</b></td></tr><tr><td>&nbsp;&nbsp;one M⁻¹ solve</td><td>0.24</td><td>0.24</td><td>no</td></tr><tr><td><b>calcDiff</b> — getKKTContactDynamicMatrixInverse</td><td>11.62</td><td>16.38</td><td></td></tr><tr><td>&nbsp;&nbsp;G⁻¹ on n<sub>c</sub> columns</td><td>0.52</td><td>2.05</td><td><b>yes</b></td></tr><tr><td>&nbsp;&nbsp;M⁻¹ as a dense n<sub>v</sub>×n<sub>v</sub> block</td><td>8.62</td><td>8.64</td><td>no</td></tr><tr><td>&nbsp;&nbsp;three Schur GEMMs</td><td>3.30</td><td>6.22</td><td>no</td></tr><tr><td><b>Delassus-attributable</b></td><td class="good"><b>3.44</b></td><td class="good"><b>7.96</b></td><td></td></tr></tbody></table></div>
+
+<p>Two things in that table decide the rest of the page.</p>
+
+<p><b>The Delassus is 8.0 µs, which is 34% of the two calls and
+2.3% of the node.</b> Not nothing — it is the largest single item inside
+<code>calc</code> — but the node is dominated by things a Delassus operator cannot touch.</p>
+
+<p><b>Almost all of <code>calcDiff</code>'s KKT cost is not Delassus.</b> This is the part that
+is easy to get wrong from reading the call graph. <code>getKKTContactDynamicMatrixInverse</code>
+looks like a Delassus operation and costs 16.5 µs, the biggest item in the dynamics; but it does
+<i>not</i> refactorise anything. It reuses <code>data.llt_JMinvJt</code> computed back in
+<code>calc</code>, and spends its time on M⁻¹ as a dense n<sub>v</sub>×n<sub>v</sub> block
+(8.6 µs, 33 sparse Cholesky solves) and three Schur GEMMs (6.2 µs). The only Delassus work left
+in <code>calcDiff</code> is one n<sub>c</sub>-column triangular solve, 2.0 µs.</p>
+
+<figure><svg viewBox="0 0 760 128" role="img" aria-label="one braced node, 341 microseconds, by stage">
+<rect x="8.0" y="30" width="533.7" height="46" fill="var(--s2)" fill-opacity="0.85"/>
+<text x="274.9" y="57" font-size="11" text-anchor="middle" fill="var(--bg)" font-weight="600">72%</text>
+<rect x="541.7" y="30" width="158.6" height="46" fill="var(--s4)" fill-opacity="0.85"/>
+<text x="621.0" y="57" font-size="11" text-anchor="middle" fill="var(--bg)" font-weight="600">21%</text>
+<rect x="700.3" y="30" width="34.3" height="46" fill="var(--s1)" fill-opacity="0.85"/>
+<rect x="734.6" y="30" width="17.4" height="46" fill="var(--s3)" fill-opacity="0.85"/>
+<text x="8" y="14" font-size="11" fill="var(--ink3)">one braced node, calc + calcDiff = 341 µs</text>
+<line x1="743.3" y1="30" x2="743.3" y2="21" stroke="var(--s3)" stroke-width="1.2"/>
+<text x="738.3" y="18" font-size="12" text-anchor="end" fill="var(--s3)" font-weight="600">Delassus: 8.0 µs (2.3%)</text>
+<rect x="8.0" y="90" width="9" height="9" fill="var(--s2)" fill-opacity="0.85"/>
+<text x="22.0" y="98" font-size="10.5" fill="var(--ink3)">cost stack (86 keep-out points, cones, limits) — 245 µs</text>
+<rect x="380.0" y="90" width="9" height="9" fill="var(--s4)" fill-opacity="0.85"/>
+<text x="394.0" y="98" font-size="10.5" fill="var(--ink3)">kinematics, RNEA derivatives, actuation, contacts — 73 µs</text>
+<rect x="8.0" y="107" width="9" height="9" fill="var(--s1)" fill-opacity="0.85"/>
+<text x="22.0" y="115" font-size="10.5" fill="var(--ink3)">M⁻¹ block + Schur GEMMs — 16 µs</text>
+<rect x="380.0" y="107" width="9" height="9" fill="var(--s3)" fill-opacity="0.85"/>
+<text x="394.0" y="115" font-size="10.5" fill="var(--ink3)">Delassus — 8 µs</text>
+</svg><figcaption>One braced node (n<sub>v</sub>=33, n<sub>c</sub>=21), one
+<code>calc</code> plus one <code>calcDiff</code>. The green sliver is everything a matrix-free
+Delassus operator could displace, in the best case where it displaced all of
+it.</figcaption></figure>
+
+<h2>5. The operator against the build it would replace</h2>
+
+<p>Both sides run on the same Pinocchio constraint models (crocoddyl's <code>ContactModel6D</code>
+at a sole is a <code>FrameAnchorConstraintModel</code>; its <code>ContactModel3D</code> at a brace
+site is a <code>PointContactConstraintModel</code>), at the same configuration, with the same
+1e-4 damping, in the same process. The explicit side is not Pinocchio's fastest — it is
+crocoddyl's own <code>sDUiJt</code>/<code>JMinvJt</code> algorithm, because the question is what
+the operator would <i>displace</i>. Both exclude the shared
+<code>computeJointJacobians</code>.</p>
+
+<div class="scroll"><table><thead><tr><th><span style="text-transform:none">µs</span></th><th>approach matrix-free</th><th>approach explicit</th><th>braced matrix-free</th><th>braced explicit</th></tr></thead><tbody><tr><td>setup, per configuration</td><td>3.85</td><td>3.68</td><td>4.01</td><td>7.09</td></tr><tr><td>one G x</td><td>0.98</td><td>0.03</td><td>1.03</td><td>0.06</td></tr><tr><td>one G⁻¹ x</td><td>0.70</td><td>0.18</td><td>0.74</td><td>0.32</td></tr><tr><td><b>setup + the solves crocoddyl asks for</b></td><td class="bad"><b>12.9</b></td><td class="good"><b>6.0</b></td><td class="bad"><b>20.4</b></td><td class="good"><b>14.1</b></td></tr><tr><td>break-even, in G⁻¹ solves</td><td colspan="2">never (crocoddyl asks for 13)</td><td colspan="2">7 (crocoddyl asks for 22)</td></tr></tbody></table></div>
+
+<p>This is the paper's result, holding: <b>setup is 1.7× cheaper matrix-free</b> at n<sub>c</sub>=21
+(4.01 µs against 7.09 µs), because the explicit route pays O(n<sub>c</sub>²n<sub>v</sub>)
+to form G and O(n<sub>c</sub>³) to factorise it while the operator pays one O(n<sub>v</sub>) pass
+over the augmented articulated inertias. Our numbers also sit alongside the paper's Table I for
+the G1 at comparable size (n<sub>v</sub>=35, m=24: explicit 9.37/13.94 µs, matrix-free 3.66/3.96 µs),
+which is a useful cross-check that the harness is measuring the right thing.</p>
+
+<p>And this is why it does not help here: <b>each application is 2.4× more expensive</b>
+(0.74 µs against 0.32 µs), because the explicit route amortises — once
+you have paid for a Cholesky factor, every further right-hand side is a pair of triangular
+solves. Break-even is 7 applications. crocoddyl asks for 22
+per node: one in <code>calc</code> for the contact forces, and n<sub>c</sub> more in
+<code>calcDiff</code> for the −G⁻¹ block. Past break-even, the factorisation wins.</p>
+
+<h2>6. The drop-in, done and measured</h2>
+
+<p>The above is an argument from operation counts, and arguments from operation counts are worth
+exactly as much as the measurement that follows them. So the replacement was built at the only
+place it fits. What crocoddyl's <code>calcDiff</code> needs from the contact dynamics is one
+object applied to a set of right-hand sides:</p>
+
+<pre>a_partial_dtau = M⁻¹ − M⁻¹Jᵀ G⁻¹ J M⁻¹,     G = J M⁻¹Jᵀ + mu I
+
+Fx = a_partial_dtau (dtau_dx − [dtau_dq | dtau_dv]) − a_partial_da · da0_dx     2·nv = 66 columns
+Fu = a_partial_dtau · dtau_du                                                        nu = 27 columns</pre>
+
+<p><b>Route A</b> is crocoddyl's: materialise <code>a_partial_dtau</code> densely, then one GEMM.
+<b>Route B</b> is the matrix-free replacement, which cannot materialise anything — its premise is
+that you apply G⁻¹ to vectors — so it has to invert the order and run one KKT solve per
+right-hand-side column. Route B is given every advantage available: it reuses the same stacked
+Jacobian (an explicit object it arguably should not be allowed) and the same sparse LTDL factor of
+M, so the <i>only</i> difference between the routes is how G⁻¹ is obtained.</p>
+
+<div class="scroll"><table><thead><tr><th>node</th><th>block</th><th>right-hand sides</th><th>crocoddyl <span style="text-transform:none">µs</span></th><th>matrix-free <span style="text-transform:none">µs</span></th><th>ratio</th><th>agreement</th></tr></thead><tbody><tr><td>approach</td><td>Fu only</td><td>27</td><td>18.8</td><td>39.9</td><td class="bad">2.12×</td><td>1e-11</td></tr><tr><td>approach</td><td>Fx only</td><td>66</td><td>23.0</td><td>91.0</td><td class="bad">3.96×</td><td>2e-11</td></tr><tr><td>approach</td><td>Fx and Fu</td><td>93</td><td>25.6</td><td>126.8</td><td class="bad">4.95×</td><td>2e-11</td></tr><tr><td>braced</td><td>Fu only</td><td>27</td><td>24.8</td><td>43.4</td><td class="bad">1.75×</td><td>4e-11</td></tr><tr><td>braced</td><td>Fx only</td><td>66</td><td>29.0</td><td>99.2</td><td class="bad">3.42×</td><td>4e-11</td></tr><tr><td>braced</td><td>Fx and Fu</td><td>93</td><td>31.6</td><td>137.6</td><td class="bad">4.35×</td><td>5e-11</td></tr></tbody></table></div>
+
+<p>The two routes agree to 5e-11, so this is the same computation, and the
+matrix-free one is 1.8× to 5.0× slower. The ratio grows with the column count,
+which is the signature of the problem: crocoddyl amortises one factorisation over 93 right-hand
+sides, and an operator that refuses to factorise pays for all 93 separately.</p>
+
+<div class="note"><b>This is not a defect in the operator.</b> It is a mismatch between an
+operator designed for solvers that touch G a handful of times per configuration (ADMM, PGS,
+proximal contact solvers) and a DDP, which touches it 93 times per node because it wants
+derivatives, not forces. The same operator in an ADMM contact solve at the same n<sub>c</sub>
+would be ahead after 7 applications.</div>
+
+<h2>7. Where the verdict flips</h2>
+
+<p>Both routes were swept over constraint count by stacking extra point contacts on the brace
+frames, at the braced configuration. Past n<sub>c</sub>=21 this is synthetic — the H1-2 does not
+have 300 contact points — but the scaling is a property of n<sub>v</sub> and n<sub>c</sub>, not of
+where the contacts physically are. "Per node" is setup plus the 1+n<sub>c</sub> solves crocoddyl
+asks for.</p>
+
+<figure><svg viewBox="0 0 760 330" role="img" aria-label="matrix-free vs explicit Delassus per node against constraint count">
+<line x1="58" y1="283.5" x2="510" y2="283.5" stroke="var(--line)" stroke-width="1"/>
+<text x="52" y="287.0" font-size="10" text-anchor="end" fill="var(--ink3)">10 µs</text>
+<line x1="58" y1="222.3" x2="510" y2="222.3" stroke="var(--line)" stroke-width="1"/>
+<text x="52" y="225.8" font-size="10" text-anchor="end" fill="var(--ink3)">100 µs</text>
+<line x1="58" y1="161.0" x2="510" y2="161.0" stroke="var(--line)" stroke-width="1"/>
+<text x="52" y="164.5" font-size="10" text-anchor="end" fill="var(--ink3)">1 ms</text>
+<line x1="58" y1="99.8" x2="510" y2="99.8" stroke="var(--line)" stroke-width="1"/>
+<text x="52" y="103.3" font-size="10" text-anchor="end" fill="var(--ink3)">10 ms</text>
+<line x1="58" y1="38.5" x2="510" y2="38.5" stroke="var(--line)" stroke-width="1"/>
+<text x="52" y="42.0" font-size="10" text-anchor="end" fill="var(--ink3)">100 ms</text>
+<text x="75.7" y="303" font-size="10" text-anchor="middle" fill="var(--ink3)">21</text>
+<text x="170.4" y="303" font-size="10" text-anchor="middle" fill="var(--ink3)">50</text>
+<text x="246.0" y="303" font-size="10" text-anchor="middle" fill="var(--ink3)">100</text>
+<text x="345.9" y="303" font-size="10" text-anchor="middle" fill="var(--ink3)">250</text>
+<text x="421.6" y="303" font-size="10" text-anchor="middle" fill="var(--ink3)">500</text>
+<text x="497.2" y="303" font-size="10" text-anchor="middle" fill="var(--ink3)">1000</text>
+<text x="284" y="322" font-size="10.5" text-anchor="middle" fill="var(--ink3)">constraint rows n<tspan baseline-shift="sub" font-size="8">c</tspan></text>
+<polyline fill="none" stroke="var(--s1)" stroke-width="2.2" points="75.7,274.4 114.6,258.6 165.9,234.9 218.9,208.3 281.1,174.3 349.4,132.9 421.1,85.9 494.8,34.5"/>
+<circle cx="75.7" cy="274.4" r="2.6" fill="var(--s1)"/>
+<circle cx="114.6" cy="258.6" r="2.6" fill="var(--s1)"/>
+<circle cx="165.9" cy="234.9" r="2.6" fill="var(--s1)"/>
+<circle cx="218.9" cy="208.3" r="2.6" fill="var(--s1)"/>
+<circle cx="281.1" cy="174.3" r="2.6" fill="var(--s1)"/>
+<circle cx="349.4" cy="132.9" r="2.6" fill="var(--s1)"/>
+<circle cx="421.1" cy="85.9" r="2.6" fill="var(--s1)"/>
+<circle cx="494.8" cy="34.5" r="2.6" fill="var(--s1)"/>
+<text x="502.8" y="38.5" font-size="11.5" fill="var(--s1)" font-weight="600">explicit (crocoddyl's)</text>
+<polyline fill="none" stroke="var(--s3)" stroke-width="2.2" points="75.7,264.4 114.6,255.1 165.9,241.8 218.9,225.0 281.1,202.3 349.4,175.3 421.1,142.9 494.8,109.3"/>
+<circle cx="75.7" cy="264.4" r="2.6" fill="var(--s3)"/>
+<circle cx="114.6" cy="255.1" r="2.6" fill="var(--s3)"/>
+<circle cx="165.9" cy="241.8" r="2.6" fill="var(--s3)"/>
+<circle cx="218.9" cy="225.0" r="2.6" fill="var(--s3)"/>
+<circle cx="281.1" cy="202.3" r="2.6" fill="var(--s3)"/>
+<circle cx="349.4" cy="175.3" r="2.6" fill="var(--s3)"/>
+<circle cx="421.1" cy="142.9" r="2.6" fill="var(--s3)"/>
+<circle cx="494.8" cy="109.3" r="2.6" fill="var(--s3)"/>
+<text x="502.8" y="113.3" font-size="11.5" fill="var(--s3)" font-weight="600">matrix-free</text>
+<line x1="136.8" y1="22" x2="136.8" y2="288" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="141.8" y="34" font-size="10.5" fill="var(--ink3)">crossover, n<tspan baseline-shift="sub" font-size="8">c</tspan> ≈ 37</text>
+<line x1="75.7" y1="22" x2="75.7" y2="288" stroke="var(--s2)" stroke-width="1.4"/>
+<text x="80.7" y="274" font-size="10.5" fill="var(--s2)" font-weight="600">this robot, braced (n<tspan baseline-shift="sub" font-size="8">c</tspan> = 21)</text>
+</svg><figcaption>The explicit route's cost is superlinear in
+n<sub>c</sub> (O(n<sub>c</sub>²n<sub>v</sub>) to build, O(n<sub>c</sub>³) to factorise); the
+matrix-free operator's is close to linear. They cross at about n<sub>c</sub> = 37.
+This robot's braced contact set is at 21.</figcaption></figure>
+
+<div class="scroll"><table><thead><tr><th>n<sub>c</sub></th><th>setup mf <span style="text-transform:none">µs</span></th><th>setup explicit <span style="text-transform:none">µs</span></th><th>one solve mf <span style="text-transform:none">µs</span></th><th>one solve explicit <span style="text-transform:none">µs</span></th><th>per node mf <span style="text-transform:none">µs</span></th><th>per node explicit <span style="text-transform:none">µs</span></th><th>mf / explicit</th><th>memory mf</th><th>memory explicit</th><th>|G−G<sub>ref</sub>|</th></tr></thead><tbody><tr><td style="white-space:nowrap">21&nbsp;<span style="color:var(--s2)">← this robot</span></td><td>4.1</td><td>7.1</td><td>0.75</td><td>0.32</td><td>21</td><td>14</td><td class="bad">1.46×</td><td>6.7 KB</td><td>6.9 KB</td><td>7e-16</td></tr><tr><td style="white-space:nowrap">30</td><td>4.3</td><td>10.9</td><td>0.80</td><td>0.47</td><td>29</td><td>26</td><td class="bad">1.14×</td><td>6.9 KB</td><td>14.1 KB</td><td>6e-16</td></tr><tr><td style="white-space:nowrap">48</td><td>4.6</td><td>22.6</td><td>0.88</td><td>0.81</td><td>48</td><td>62</td><td class="good">0.77×</td><td>7.5 KB</td><td>36.0 KB</td><td>6e-16</td></tr><tr><td style="white-space:nowrap">78</td><td>5.0</td><td>51.5</td><td>1.08</td><td>1.49</td><td>90</td><td>169</td><td class="good">0.53×</td><td>8.4 KB</td><td>95.1 KB</td><td>6e-16</td></tr><tr><td style="white-space:nowrap">138</td><td>5.8</td><td>144.4</td><td>1.49</td><td>3.32</td><td>212</td><td>606</td><td class="good">0.35×</td><td>10.3 KB</td><td>297.6 KB</td><td>7e-16</td></tr><tr><td style="white-space:nowrap">258</td><td>7.7</td><td>546.7</td><td>2.23</td><td>8.98</td><td>584</td><td>2872</td><td class="good">0.20×</td><td>14.1 KB</td><td>1.0 MB</td><td>7e-16</td></tr><tr><td style="white-space:nowrap">498</td><td>11.5</td><td>2754.3</td><td>3.93</td><td>28.16</td><td>1972</td><td>16807</td><td class="good">0.12×</td><td>21.6 KB</td><td>3.8 MB</td><td>7e-16</td></tr><tr><td style="white-space:nowrap">978</td><td>18.9</td><td>16605.0</td><td>7.11</td><td>101.70</td><td>6980</td><td>116173</td><td class="good">0.06×</td><td>36.6 KB</td><td>14.6 MB</td><td>7e-16</td></tr></tbody></table></div>
+
+<p>The crossover sits at n<sub>c</sub> ≈ 37 — a factor of 37/21 away from
+the lean problem, or roughly six more three-dimensional contact points than the brace has. The
+memory story is far more lopsided than the time story and matches the MuJoCo finding exactly: at
+978 rows the operator needs 37 KB against 15 MB, 409× less, because its
+footprint is O(n<sub>v</sub>) and independent of the constraint count.</p>
+
+<p>So there is a version of this problem where the operator is the right answer, and it is worth
+naming it, because the lean study could plausibly walk into it. Reformulating the 86 box keep-out
+costs as hard <i>constraints</i> rather than penalties would put 86 rows into the constraint set
+on its own; a whole-body contact-rich formulation (both hands, forearms, a torso lean against the
+table, feet with per-corner point contacts instead of 6D wrenches) reaches the same place. At
+n<sub>c</sub> = 138 the matrix-free route is already 2.9× ahead.</p>
+
+<h2>8. What this means for the 20 ms budget</h2>
+
+<p>The S13 MPC step measures 39.5 ms for H=50 at one iteration. Counting generously —
+<code>calc</code> twice per node for the rollout plus a line-search trial, <code>calcDiff</code>
+once, which raises the Delassus share from 2.3% to 3.8% of a
+braced node. That node share is itself an upper bound on the step share, because the Riccati
+backward pass contains no Delassus at all.</p>
+
+<div class="note warn"><b>The Amdahl ceiling.</b> If the Delassus cost went to <i>zero</i> —
+faster than any operator can be — the step goes from 39.5 ms to
+38.1 ms. That is 1.5 ms against a 19.5 ms overrun. The measured
+matrix-free operator moves it the other way.</div>
+
+<p>The loop needs a factor of two, and it is not hiding in the contact dynamics. It is in the
+cost stack: 72% of a braced node, 242 µs of <code>calcDiff</code>
+alone, and the 86 keep-out residuals are most of it. S13 already took the first 2.9× there by
+moving the keep-out activation into C++ (118.8 → 40.3 ms). The remaining candidates are the same
+kind of thing and none of them are Delassus:</p>
+
+<ul>
+<li><b>Prune the keep-out set per node.</b> 86 points × 50 nodes is 4300 residuals evaluated
+every control step, and at any given node almost all of them are far outside the barrier and
+contribute exactly zero. A per-node active set recomputed on the plan is the obvious 5–10×.</li>
+<li><b>The actuation model is Python.</b> <code>ActuationModelJointPassive</code> is a
+Python subclass of <code>ActuationModelAbstract</code> allocating a 33×66 array per call; it costs
+5.7 µs in <code>calcDiff</code> and 2.3 µs in <code>calc</code>, ~8% of the dynamics, for
+arithmetic that is a diagonal.</li>
+<li><b>Shorten the horizon rather than the node.</b> The H=25 sweep in S13 measured 89 ms against
+119 ms for H=50 at the same iteration count, and it did not fall over.</li>
+</ul>
+
+<h2>9. Reproduce</h2>
+
+<pre>cd lean_analysis
+croco_ext/build.sh mfd                      # builds croco_mfd against the conda croco env
+~/miniforge3/envs/croco/bin/python croco_ext/test_mfd.py
+
+CROCO_KEEPOUT=cpp ~/miniforge3/envs/croco/bin/python croco_delassus.py all \
+    --reps 300 --out runs/2026-08-06_session14/delassus.json
+# or one section at a time: profile | stages | operator | dropin | sweep | budget
+
+python3 croco_delassus_page.py --json runs/2026-08-06_session14/delassus.json \
+    --body ../docs/lean/_body_delassus_2026-08-06.html \
+    --out 2026-08-06_delassus.html</pre>
+
+<h2>10. Bottom line</h2>
+
+<ul>
+<li><b>Pinocchio's matrix-free Delassus operator is now reachable from Python here</b>
+(<code>croco_ext/mfdelassus.cpp</code>, class <code>DelassusMF</code>), which the MuJoCo study
+could not do — its numbers for the operator were the paper's, and these are measured.</li>
+<li><b>It is exact</b> — 6.7e-16 relative error against an independently assembled
+Delassus, from n<sub>c</sub>=12 to n<sub>c</sub>=978.</li>
+<li><b>Its setup is 1.7× cheaper than crocoddyl's explicit build</b> at this robot's braced
+contact set, and its memory is 409× smaller at scale. The paper's claims hold.</li>
+<li><b>It still does not belong in this loop.</b> crocoddyl amortises one Cholesky factor over
+93 right-hand sides; break-even is 7 applications. Dropped in and verified to
+produce the same derivatives to 5e-11, it is 5.0× slower.</li>
+<li><b>And it could not have helped much even if it had won.</b> The Delassus is
+2.3% of a node, 3.8% counting a line-search rollout; a free
+one saves 1.5 ms of a 39.5 ms step.</li>
+<li><b>The crossover is n<sub>c</sub> ≈ 37.</b> If the keep-out box ever becomes a hard
+constraint set, or the brace becomes contact-rich, this conclusion inverts — the machinery to
+re-run the measurement is in the repo.</li>
+</ul>
+
+</div></body>
+</html>
