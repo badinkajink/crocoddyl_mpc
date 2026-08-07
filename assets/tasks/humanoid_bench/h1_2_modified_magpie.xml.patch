@@ -60,7 +60,7 @@
                    <!-- <geom class="visual" mesh="right_ankle_roll_link"/> -->
                    <!-- <geom class="foot1"/>
                    <geom class="foot2"/>
-@@ -252,6 +271,25 @@
+@@ -252,6 +271,29 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="left_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="left_elbow_link"/>
                  <!-- <geom class="visual" mesh="left_elbow_link"/> -->
@@ -68,7 +68,11 @@
 +                     activated ONLY by the explicit <pair> vs table_top_collision in Lean_H12_Magpie.xml,
 +                     which bypasses the raw-mesh table exclude. Raw mesh above stays live for floor/fall.
 +                     Capsule laid along the forearm ventral (table-facing) side; site = touch-sensor zone. -->
-+                <geom name="left_forearm_pad" type="capsule" size="0.035" fromto="0.02 -0.01 -0.015 0.11 -0.03 -0.015" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
++                <!-- ★ 2026-08-07 raised 6 mm (brace_surfaces.py): at z=-0.015 the r=35 capsule
++                     reached z=-0.050 where the elbow_link mesh it bounds reaches -0.044, so the
++                     forearm brace was made 6 mm early. -0.009 puts the pad's underside on the
++                     mesh's. -->
++                <geom name="left_forearm_pad" type="capsule" size="0.035" fromto="0.02 -0.01 -0.009 0.11 -0.03 -0.009" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
 +                <site name="left_forearm_brace" type="capsule" size="0.045" fromto="0.02 -0.01 -0.015 0.11 -0.03 -0.015" rgba="1 0.5 0 0.25" group="4"/>
 +                <!-- BRACE FORCE SENSOR ZONE (2026-07-13). A touch sensor sums only the contacts
 +                     whose contact POINT lies inside its site volume. The site above spans just the
@@ -85,8 +89,8 @@
 +                <site name="left_forearm_brace_zone" type="capsule" size="0.06" fromto="0.02 -0.015 -0.02 0.25 -0.033 -0.02" rgba="1 0.5 0 0.10" group="4"/>
                  <body name="left_wrist_roll_link" pos="0.121 -0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
-                   <joint name="left_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -271,7 +309,54 @@
+                   <joint name="left_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-3.01 2.75" actuatorfrcrange="-19 19" armature="0.1" frictionloss="0.2"/>
+@@ -271,7 +313,74 @@
                        <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
@@ -99,7 +103,17 @@
 +                           stand/trot/jump/floor contact and self-collision are byte-identical.
 +                           NOT done by fattening the capsule: that geom is live against the floor
 +                           and the body in every other task. -->
-+                      <geom name="left_wrist_pad" type="capsule" size="0.0425" fromto="-0.020 0 0 0.063 0 0" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
++                      <!-- ★ 2026-08-07 CAD-FAITHFUL (brace_surfaces.py). Was a capsule
++                           r=0.0425, chosen because the wrist_yaw mesh's underside is at
++                           local z=-0.0425 -- exact in z, and a capsule is ROUND, so it also
++                           claimed 42.5 mm in y. The housing is an OVAL: +-28.0 mm in y,
++                           +-42.5 mm in z. The palm brace ROLLS the wrist ~90 deg so the
++                           flat side faces the wood (contact_select SITES v2), i.e. it loads
++                           the pad in y -- the one direction the capsule was never checked
++                           in -- and MuJoCo reported a contact with 14.5 mm of hardware still
++                           in the air. A BOX is the right proxy: exact in both directions and
++                           flat-on-flat against the tabletop. -->
++                      <geom name="left_wrist_pad" type="box" size="0.0415 0.0280 0.0425" pos="0.0215 0 0" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
                        <site name="left_hand" pos="0.17 0 0.0" size="0.01" rgba="0 1 0 1"/>
 +                      <!-- Magpie gripper: FIXED, rigidly welded (NOT actuated). Visual = the real
 +                           combined h12_mount mesh; the geom carries the lumped mass (0.506 kg) and
@@ -121,8 +135,18 @@
 +                             0.506 kg still comes from the mount mesh geom, dynamics unchanged.
 +                             ★ wrist ROLL decides jaws LEFT/RIGHT (both clear) vs UP/DOWN (one finger
 +                             at the wood) -- audit with brace_jaw_audit.py. -->
-+                        <geom name="left_gripper_collision" class="collision" type="box" size="0.0425 0.0315 0.0667"
-+                              pos="0.0965 0 0" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <!-- ★ 2026-08-07 CAD-FAITHFUL (brace_surfaces.py). The 2026-07-24 box
++                             took its y half-extent from the H12 ADAPTER (+-31.5 mm) and applied
++                             it over the whole 85 mm of the gripper body. The body behind the
++                             adapter is base_bot (y 0..+15) + base_top (y -19..-6): 34 mm thick,
++                             not 63, and off-centre. So the box claimed 12.5 mm of hardware that
++                             is not there on the side the palm brace lands on. Split in two: the
++                             body as it really is, and the adapter as the CYLINDER it really is
++                             (r 31.5 mm over x 54..79) so the flange is still bounded. -->
++                        <geom name="left_gripper_collision" class="collision" type="box" size="0.0415 0.0170 0.0667"
++                              pos="0.0975 -0.0020 0" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <geom name="left_gripper_flange" class="collision" type="cylinder" size="0.0315 0.0125"
++                              pos="0.0665 0 0" quat="0.7071068 0 0.70710685 0" contype="1" conaffinity="1" mass="0" density="0"/>
 +                        <geom name="left_gripper_jaw_a" class="collision" type="box" size="0.0459 0.008 0.0261"
 +                              pos="0.1795 -0.0038 -0.0801" contype="1" conaffinity="1" mass="0" density="0"/>
 +                        <geom name="left_gripper_jaw_b" class="collision" type="box" size="0.0459 0.008 0.0261"
@@ -141,24 +165,27 @@
                      </body>
                    </body>
                  </body>
-@@ -303,6 +388,11 @@
+@@ -303,6 +412,12 @@
                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.1 0.1 0.1 1" mesh="right_elbow_link"/>
                  <geom type="mesh" rgba="0.1 0.1 0.1 1" group="3" mesh="right_elbow_link"/>
                  <!-- <geom class="visual" mesh="right_elbow_link"/> -->
 +                <!-- forearm brace pad (mirror of left); inert except via the explicit <pair>. -->
-+                <geom name="right_forearm_pad" type="capsule" size="0.035" fromto="0.02 0.01 -0.015 0.11 0.03 -0.015" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
++                <!-- raised 6 mm, mirror of left_forearm_pad. -->
++                <geom name="right_forearm_pad" type="capsule" size="0.035" fromto="0.02 0.01 -0.009 0.11 0.03 -0.009" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
 +                <site name="right_forearm_brace" type="capsule" size="0.045" fromto="0.02 0.01 -0.015 0.11 0.03 -0.015" rgba="1 0.5 0 0.25" group="4"/>
 +                <!-- brace force sensor zone (mirror of the left; see the note there) -->
 +                <site name="right_forearm_brace_zone" type="capsule" size="0.06" fromto="0.02 0.015 -0.02 0.25 0.033 -0.02" rgba="1 0.5 0 0.10" group="4"/>
                  <body name="right_wrist_roll_link" pos="0.121 0.0329 -0.011" gravcomp="0">
                    <inertial pos="0.035281 -0.00232 0.000337" quat="0.334998 0.622198 -0.240131 0.66557" mass="0.683" diaginertia="0.00034681 0.000328248 0.000294628"/>
-                   <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.967 2.967" actuatorfrcrange="-25 25" armature="0.1" frictionloss="0.2"/>
-@@ -322,7 +412,32 @@
+                   <joint name="right_wrist_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.75 3.01" actuatorfrcrange="-19 19" armature="0.1" frictionloss="0.2"/>
+@@ -322,7 +437,38 @@
                        <!-- <geom class="visual" mesh="wrist_yaw_link"/> -->
                        <geom class="collision" type="capsule" size="0.025" fromto="0 0 0 0.13 0 0"/>
                        <geom class="collision" type="sphere" size="0.033" pos="0.13 0 0"/>
 +                      <!-- wrist brace pad (mirror of the left; see the note there) -->
-+                      <geom name="right_wrist_pad" type="capsule" size="0.0425" fromto="-0.020 0 0 0.063 0 0" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
++                      <!-- CAD-faithful box, mirror of left_wrist_pad (the housing mesh is
++                           symmetric in y, so the same half-extents serve both sides). -->
++                      <geom name="right_wrist_pad" type="box" size="0.0415 0.0280 0.0425" pos="0.0215 0 0" contype="0" conaffinity="0" group="3" mass="0" density="0" rgba="0.2 0.7 0.2 0.55"/>
                        <site name="right_hand" pos="0.17 0 0" size="0.01" rgba="0 1 0 1"/>
 +                      <!-- Magpie gripper: FIXED, rigidly welded (NOT actuated). Visual = the real
 +                           combined h12_mount mesh; the geom carries the lumped mass (0.506 kg) and
@@ -169,8 +196,12 @@
 +                      <body name="right_magpie_gripper">
 +                        <geom type="mesh" mesh="h12_mount" pos="0.054 0 0" quat="0.7071068 0 0.70710685 0" mass="0.506" contype="0" conaffinity="0" group="1" rgba="0.1 0.1 0.1 1"/>
 +                                                <!-- real jaw geometry, mirror of the left side -->
-+                        <geom name="right_gripper_collision" class="collision" type="box" size="0.0425 0.0315 0.0667"
-+                              pos="0.0965 0 0" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <!-- CAD-faithful body + flange, mirror of the left side (the magpie
++                             assembly is not mirrored between arms: same offsets both sides). -->
++                        <geom name="right_gripper_collision" class="collision" type="box" size="0.0415 0.0170 0.0667"
++                              pos="0.0975 -0.0020 0" contype="1" conaffinity="1" mass="0" density="0"/>
++                        <geom name="right_gripper_flange" class="collision" type="cylinder" size="0.0315 0.0125"
++                              pos="0.0665 0 0" quat="0.7071068 0 0.70710685 0" contype="1" conaffinity="1" mass="0" density="0"/>
 +                        <geom name="right_gripper_jaw_a" class="collision" type="box" size="0.0459 0.008 0.0261"
 +                              pos="0.1795 -0.0038 -0.0801" contype="1" conaffinity="1" mass="0" density="0"/>
 +                        <geom name="right_gripper_jaw_b" class="collision" type="box" size="0.0459 0.008 0.0261"
