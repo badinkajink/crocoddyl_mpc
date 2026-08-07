@@ -1,0 +1,429 @@
+<h1>Why the closed loop fails</h1>
+<p class="sub">Session 14, a companion to <a href="2026-08-06_croco_loop.html">the S13 page</a>. That page
+ran a 7&nbsp;×&nbsp;4 grid of contact modes against reach targets, found that the plan holds the brace
+geometry to under a millimetre in every cell while the contact fails to establish in most of them, and
+concluded that the gap was <em>contact establishment on curved geometry</em>. That conclusion was built
+on three numbers — did it fall, how far did the hand miss, how much force went through the planned
+brace — and all three turn out to hide more than they show. Recomputing every cell from the trajectories
+that were saved gives a different and much less flattering account.
+<b>In 11 of 17 cells the largest force on the table does not come from the brace at all</b>; it comes
+from the torso, or from the <em>reaching</em> arm, or from a gripper nobody planned to put down. <b>In
+11 of 14 certified poses the brace sits 0–2&nbsp;mm in from the lateral edge</b> of a slab 595&nbsp;mm
+wide — hooked over the rail, not resting on the wood — and the certification stage is what put it there.
+Three of the five topples happen <em>before the contacts switch on</em>, so they are failures of the
+approach and not of the brace. And the palm brace, which had the best contact duty in the grid, is made
+against <b>11&nbsp;mm of collision proxy that the CAD does not support</b>.
+<b>Fixing the proxies against the CAD produces the study's first genuinely correct braced lean</b> — one
+cell, at a target legs-only cannot reach, with 92&nbsp;N through the planned site, 78% duty and the load
+92&nbsp;mm inboard — and collapses most of the rest.</p>
+<p class="meta">2026-08-07 · <code>lean_analysis/brace_surfaces.py</code>, <code>croco_why.py</code>,
+<code>croco_why_figs.py</code>, <code>croco_stance.py</code> ·
+run dirs <code>lean_analysis/runs/2026-08-06_session13/</code> (pre-fix) and
+<code>lean_analysis/runs/2026-08-07_session14/</code> (CAD-faithful) ·
+model <code>Lean_H12_Magpie.xml</code>, brace arm left, sites v2, μ = 0.6 ·
+CAD from <code>CL_Assets/meshes/magpie/</code> · crocoddyl 3.2.1 / pinocchio 4.1.0 / mujoco 3.2.3</p>
+
+<div class="note warn">
+<b>This page revises the S13 grid, it does not replace the S13 maneuver.</b> The headline result of
+§1–§9 there — a single target, single mode, stand → lean &amp; reach → return that survives MuJoCo
+under MPC — still stands and still reproduces. What is revised is §11–§12 of that page, the claim about
+how far it generalises and the reason it does not, and the collision model everything on both pages was
+measured against. Everything below is simulation and nothing here has been near hardware.
+</div>
+
+<h2>1 · The grid, scored on what the plant did</h2>
+<p>The S13 sweep reported a cell as <code>fell / reach_mm / brace_N</code>. Each of those is doing less
+work than it looks like:</p>
+
+<div class="scroll"><table>
+<tr><th>The number</th><th>What it actually measures</th><th>What it hides</th></tr>
+<tr><td><code>mpc_brace_N</code></td>
+<td>The sum of normal forces on contacts whose body <em>is the site's body</em>.</td>
+<td>Everything else touching the table. A cell holding itself up on its chest reports
+<b>0&nbsp;N of brace</b>, which is indistinguishable from a cell hanging in free space — and the two do
+not have the same fix.</td></tr>
+<tr><td><code>worst_penetration</code></td>
+<td><span class="m">min(contact.dist)</span> over table contacts.</td>
+<td>For the MESH links — which is exactly what the elbow and forearm braces are — MuJoCo's convex
+narrowphase does not return a usable depth. Against an exact vertex-vs-box SDF it under-reports by an
+order of magnitude, and at an inflated margin it returns numbers like <span class="m">−304&nbsp;mm</span>
+for an arm resting on the surface.</td></tr>
+<tr><td><code>fell</code></td>
+<td>Pelvis below 0.55&nbsp;m at any point.</td>
+<td><em>When.</em> Three of the five S13 topples are already down at node 90; the contacts do not switch
+on until node 120. Those are failures of the <b>approach</b> — of getting from a stand into the
+pre-brace pose on the legs alone — and no amount of contact modelling touches them.</td></tr>
+<tr><td><code>reach_mm</code> at one instant</td>
+<td>Hand-to-target error at the end.</td>
+<td>Whether the plant arrived and let go, never arrived, or was thrown across the room. Values of
+2.7–3.3&nbsp;m appear in this grid.</td></tr>
+</table></div>
+
+<p><code>croco_why.py</code> recomputes each cell from the two trajectories that were saved — the OCP's
+own <code>xs</code> and the replay's <code>qpos</code> trace — and measures, per node, the exact signed
+distance from each brace <em>surface</em> to the table box, every table contact with its force and its
+position on the slab, and the reach error for both the plan and the plant. Nothing is modelled; it is
+all measurement of trajectories that already exist.</p>
+
+<figure><div class="plot"><!--FIG:scoreboard--></div>
+<figcaption>The S13 grid re-scored. The four outcomes are distinguished because they have four different
+causes: reached, stalled short, toppled while braced, and toppled during the approach before any contact
+existed — a cell that is already on the floor at node 90 never got near a brace. Each cell also says what
+fraction of the table load went through the <em>planned</em> brace, and how far in from the nearest edge
+that load sat.</figcaption></figure>
+
+<div class="note warn">
+<b>The pattern in that figure is the whole page in one line: every cell that reaches accurately is at
+x&nbsp;≤&nbsp;1.05, which is exactly the range where legs-only also reaches.</b> At x = 1.15 and 1.25 —
+the targets that actually <em>need</em> a brace — the best result is 49&nbsp;mm short and the rest are
+120, 186, 256&nbsp;mm short or on the floor. The brace closes the loop only where it is not needed.
+</div>
+
+<h2>2 · Where the load actually goes</h2>
+<p>Bucketing every table contact by which part of the robot delivers it, over the braced phase:</p>
+
+<figure><div class="plot"><!--FIG:load_split--></div>
+<figcaption>Mean normal force on the table over the braced phase, by role. Only the first band of each
+bar is the planned brace; everything else is a contact the OCP does not model, the certification does not score and the S13
+numbers did not report.</figcaption></figure>
+
+<div class="scroll"><table>
+<tr><th>Cell</th><th>Largest single contributor</th><th>What the robot is actually doing</th></tr>
+<tr><td>1.150 <code>elbow+palm</code></td><td class="bad">torso, 481&nbsp;N of 483</td>
+<td>Resting its chest on the near edge of the table. Reported as
+<span class="m">brace = 2&nbsp;N</span>, "reached 49&nbsp;mm".</td></tr>
+<tr><td>1.150 <code>palm</code></td><td class="bad">torso 252&nbsp;N, legs 58&nbsp;N</td>
+<td>Slumped forward onto the edge with a foot against a table leg.</td></tr>
+<tr><td>0.905 <code>elbow</code></td><td class="bad">reaching arm, 41&nbsp;N of 43</td>
+<td>Dragging the <em>right</em> upper arm and its gripper across the wood while the left arm, the one
+that is supposed to be bracing, carries 2&nbsp;N. Falls at the end anyway.</td></tr>
+<tr><td>1.050 <code>elbow+palm</code></td><td class="bad">reaching arm 36&nbsp;N, torso 27&nbsp;N</td>
+<td>Same, plus the chest. Planned brace: 3%.</td></tr>
+<tr><td>1.050 <code>elbow</code></td><td class="good">bracing arm, 67&nbsp;N + 14&nbsp;N at the site</td>
+<td>An actual brace — and one of only two in the grid.</td></tr>
+</table></div>
+
+<figure><video controls muted playsinline preload="metadata" src="media/s14_pre_x1150_elbow_palm.mp4"></video>
+<figcaption><b>1.150 <code>elbow+palm</code>, the pre-fix model.</b> Scored by S13 as upright with a
+49&nbsp;mm reach error, which reads as a near-success. What it is: the robot puts its <b>chest</b> on
+the near rail of the table and hangs there. The magenta markers are table contacts belonging to no
+planned brace — added to the renderer for this page, because the previous version drew only contacts
+that mapped to a brace site and therefore drew nothing at all in cells like this one.</figcaption></figure>
+
+<h2>3 · The brace is on the rail — and the certification put it there</h2>
+<p>Plotting every carrying contact of every cell in a top view of the tabletop, at true aspect:</p>
+
+<figure><div class="plot"><!--FIG:table_map--></div>
+<figcaption>Every table contact above 5&nbsp;N, from every cell of the grid, over the braced phase.
+Dot area is force. The slab is 1180&nbsp;×&nbsp;595&nbsp;mm; the dashed lines are 8&nbsp;mm in from the
+lateral rails. The reach targets are the open diamonds at <span class="m">y = −0.235</span>.</figcaption></figure>
+
+<p>The bracing-arm load is not spread over the slab. It is stacked on the near-left corner and along the
+<span class="m">y = +0.29</span> rail. And this is not something the controller does — it is where the
+<em>certified pose</em> already is. Measuring the IK's own <span class="m">q*</span>, before any plan or
+any replay:</p>
+
+<div class="scroll"><table>
+<tr><th>Certified pose</th><th>brace contact y [mm]</th><th>inboard of the nearest edge [mm]</th></tr>
+<tr><td>x0905 <code>elbow</code></td><td>+297</td><td class="bad">0.3</td></tr>
+<tr><td>x0905 <code>elbow+forearm</code></td><td>+296</td><td class="bad">1.1</td></tr>
+<tr><td>x0905 <code>elbow+palm</code></td><td>+296</td><td class="bad">2.0</td></tr>
+<tr><td>x1050 <code>elbow</code></td><td>+229</td><td class="good">68.8</td></tr>
+<tr><td>x1050 <code>elbow+palm</code></td><td>+288</td><td class="bad">1.9</td></tr>
+<tr><td>x1050 <code>forearm+palm</code></td><td>+297</td><td class="bad">0.1</td></tr>
+<tr><td>x1050 <code>elbow+forearm+palm</code></td><td>+297</td><td class="bad">0.2</td></tr>
+<tr><td>x1150 <code>elbow</code></td><td>+219</td><td class="good">78.1</td></tr>
+<tr><td>x1150 <code>palm</code></td><td>+296</td><td class="bad">1.8</td></tr>
+<tr><td>x1150 <code>elbow+palm</code></td><td>+298</td><td class="bad">−0.0</td></tr>
+<tr><td>x1150 <code>forearm+palm</code></td><td>+249</td><td>48.7</td></tr>
+<tr><td>x1250 <code>elbow</code></td><td>−120</td><td class="bad">0.8 · <b>torso already on the table</b></td></tr>
+<tr><td>x1250 <code>elbow+palm</code></td><td>+298</td><td class="bad">−0.0</td></tr>
+<tr><td>x1250 <code>forearm+palm</code></td><td>−143</td><td class="bad">0.4 · <b>torso already on the table</b></td></tr>
+</table></div>
+
+<div class="note warn">
+<b>Nothing in the pipeline ever asks a brace to be inboard of anything.</b> The IK's non-penetration
+rows are written against the tabletop <em>box</em>, and a contact on the vertical side face satisfies
+them exactly as well as one on the top; the static equilibrium QP then scores a rail contact with a
+normal that still points mostly up, so it certifies with a healthy margin. The plan inherits the pose,
+the MPC tracks the plan, and the first thing that notices the wood has run out is MuJoCo.
+</div>
+
+<figure><video controls muted playsinline preload="metadata" src="media/s14_pre_x0905_palm.mp4"></video>
+<figcaption><b>0.905 <code>palm</code>, the pre-fix model.</b> The best-behaved palm cell in the S13
+grid: reach error 1.1&nbsp;mm, 100% of the table load through the planned brace, 87% contact duty. It is
+also 0&nbsp;mm inboard — the hand is hooked over the lateral rail, held on by 9&nbsp;N and a friction
+cone. Nothing about this transfers to a table edge that is not exactly here.</figcaption></figure>
+
+<h2>4 · The stall, and the topple that happens first</h2>
+<figure><div class="plot"><!--FIG:reach_trace--></div>
+<figcaption>Hand-to-target error against node, for the best surviving mode at each target. Dotted is the
+plan the MPC is tracking; solid is what MuJoCo does. The plan reaches every target to under 30&nbsp;mm
+in every cell of the grid.</figcaption></figure>
+
+<p>The far targets never converge. x = 1.25 gets to within 66&nbsp;mm at node 170 and then <em>backs
+away</em> to 186&nbsp;mm, and it does that while its plan sits at 17&nbsp;mm. That shape is not tracking
+error in the usual sense — it is the controller declining to commit the CoM to a lean it has no support
+for, which is the correct thing for it to do and the reason the maneuver is circular: the plant will not
+lean without the brace, and the brace does not arrive until it leans.</p>
+
+<figure><div class="plot"><!--FIG:gap_trace--></div>
+<figcaption>Clearance from the brace surface to the tabletop over the braced phase — signed distance
+to the table box, not the site height. Zero is the wood. The measure is vertex-referenced (min over the
+proxy's own vertices of the box SDF), which is exact for penetration and for face-on-face contact, and
+<em>over-reports</em> clearance when the touching feature is the table's edge against the middle of a
+proxy face. That is not a footnote here: it is the signature of the rail contacts.</figcaption></figure>
+
+<p>Three shapes, three stories. <code>1.05 elbow</code> is flat on zero: the brace is there, on the top
+face, and stays there. <code>1.05 palm</code> sits 3–6&nbsp;mm <em>clear of the slab</em> for the whole
+phase and still carries 7–8&nbsp;N — because what is touching is the gripper box hanging over the
+lateral edge, catching the rail on a face rather than resting on the surface, and the geom carrying that
+load is <code>*_gripper_collision</code>, the box §5 shows is 12.5&nbsp;mm bigger than the hardware.
+<code>1.15 elbow+palm</code> climbs away from the table for the whole phase and ends 70&nbsp;mm clear
+while the plan holds it at contact — the arm is being lifted <em>off</em>, because the chest has taken
+the load and the arm no longer has anywhere to be.</p>
+
+<p>And the failure that is not a brace failure at all: in <code>1.250 forearm+palm</code> the pelvis is
+at 0.375&nbsp;m by node 90 and 0.16&nbsp;m by node 110. The contacts switch on at 120. The robot never
+gets to the brace.</p>
+
+<figure><video controls muted playsinline preload="metadata" src="media/s14_cad_x1250_forearm_palm.mp4"></video>
+<figcaption><b>1.250 <code>forearm+palm</code>.</b> A topple during the <em>approach</em> phase, which
+the OCP runs on the legs alone with a CoM barrier and no contacts. The pre-brace pose for a 1.25&nbsp;m
+reach is far enough forward that getting into it unsupported is itself the hard part; nothing about the
+brace is ever tested.</figcaption></figure>
+
+<h2>5 · The collision proxies are not the hardware</h2>
+<p>Every contact in this study is between the tabletop and a collision <em>proxy</em> — a capsule or a
+box standing in for a link whose real shape MuJoCo would rather not collide against. Each was added for
+a reason and each was verified in <em>one</em> direction. The brace loads them in another.</p>
+
+<figure><div class="plot"><!--FIG:hand_section--></div>
+<figcaption>The hand seen along the brace direction: filled is CAD, dashed is the proxies as they were,
+solid is the proxies the CAD supports. An envelope rather than a section — the fingers sit ±54–106&nbsp;mm
+off the mid-plane and are projected in — because the question is how far down <em>anything</em> reaches,
+which is what decides when MuJoCo calls a palm brace a contact.</figcaption></figure>
+
+<div class="scroll"><table>
+<tr><th>Proxy</th><th>Why it exists</th><th>What the CAD says</th><th>Fabricated</th></tr>
+<tr><td><code>*_wrist_pad</code><br><span class="m">capsule r = 42.5&nbsp;mm</span></td>
+<td>2026-07-13: the wrist_yaw collision capsule under-bounded the housing's underside, which is at local
+<span class="m">z = −42.5&nbsp;mm</span>. A capsule of that radius fixes z exactly.</td>
+<td>The housing is an <b>oval</b>: ±28.0&nbsp;mm in y, ±42.5&nbsp;mm in z. A capsule is round, so it
+claims 42.5&nbsp;mm in y too. The palm brace <em>rolls the wrist ~90°</em> so the flat side faces the
+wood — it loads the pad in y, the one direction never checked.</td>
+<td class="bad">14.5&nbsp;mm</td></tr>
+<tr><td><code>*_gripper_collision</code><br><span class="m">box ±31.5&nbsp;mm in y</span></td>
+<td>2026-07-24: widened from a small box to the real magpie's footprint, using the H12 adapter's
+cross-section.</td>
+<td>The adapter is a <b>flange</b>, ⌀63&nbsp;mm and 25&nbsp;mm long. The gripper body behind it is
+base_bot (y 0…+15) + base_top (y −19…−6): <b>34&nbsp;mm thick, not 63</b>, and off-centre. The flange's
+half-thickness was applied over all 85&nbsp;mm of the body.</td>
+<td class="bad">12.5&nbsp;mm</td></tr>
+<tr><td><code>*_forearm_pad</code><br><span class="m">capsule r = 35&nbsp;mm at z = −15</span></td>
+<td>The forearm's brace surface.</td>
+<td>Reaches <span class="m">z = −50&nbsp;mm</span> where the elbow_link mesh it bounds reaches
+<span class="m">−44</span>.</td>
+<td class="bad">6.0&nbsp;mm</td></tr>
+<tr><td><code>*_gripper_jaw_a/b</code></td><td>2026-07-24, from the finger STLs.</td>
+<td>Exact bounding boxes of <code>*_finger_combined</code>, to a tenth of a millimetre in all three
+axes.</td><td class="good">0.0&nbsp;mm — the jaws were done right</td></tr>
+<tr><td>elbow — <em>no proxy</em></td><td>—</td>
+<td>MuJoCo collides the upper-arm mesh's convex hull directly, so the elbow brace surface is faithful.
+This turns out to matter: the elbow is the only brace in the study that behaves.</td>
+<td class="good">none</td></tr>
+</table></div>
+
+<p>Netted out: <b>the modelled hand reaches 42.5&nbsp;mm below the wrist axis where the real hand reaches
+31.5&nbsp;mm</b>, so every palm brace in this study is made 11&nbsp;mm before the hardware would touch.
+That is the same order as the entire inboard margin of most of the certified poses, and it is why the
+palm modes had the best contact duty in the grid.</p>
+
+<div class="note">
+<b>The gripper has no collision mesh at all, and that is worth saying out loud.</b> The MJCF's
+<code>h12_mount</code> mesh is <em>only</em> the 63&nbsp;×&nbsp;63&nbsp;×&nbsp;25&nbsp;mm H12 adapter —
+the gripper body and fingers have no mesh in this model. The boxes are not a convex simplification of
+geometry that is present; they are the only geometry there is, hand-transcribed from CL_Assets' part
+STLs. <code>brace_surfaces.py</code> re-derives them from those STLs and prints the primitives the CAD
+supports, so the transcription is checked rather than trusted.
+</div>
+
+<h2>6 · The CAD-faithful model, and what it changes</h2>
+<p>Four edits to <code>h1_2_modified_magpie.xml.patch</code>, all confined to the brace surfaces, none
+touching mass, inertia, <span class="m">nq</span>, <span class="m">nv</span> or the gripper-vs-gripper
+keep-away channel:</p>
+
+<div class="scroll"><table>
+<tr><th>Geom</th><th>Was</th><th>Is</th></tr>
+<tr><td><code>*_wrist_pad</code></td><td>capsule, r 0.0425, x −0.020…0.063</td>
+<td>box, half <span class="m">0.0415 × 0.0280 × 0.0425</span> at x = 0.0215 — exact in both directions,
+and flat-on-flat against a flat table</td></tr>
+<tr><td><code>*_gripper_collision</code></td><td>box, half <span class="m">0.0425 × 0.0315 × 0.0667</span> at x = 0.0965</td>
+<td>box, half <span class="m">0.0415 × 0.0170 × 0.0667</span> at <span class="m">(0.0975, −0.0020, 0)</span></td></tr>
+<tr><td><code>*_gripper_flange</code> <b>(new)</b></td><td>—</td>
+<td>cylinder r 0.0315, half-length 0.0125, on the body x axis at x = 0.0665 — so the adapter is still
+bounded, as the cylinder it actually is</td></tr>
+<tr><td><code>*_forearm_pad</code></td><td>z = −0.015</td><td>z = −0.009 (raised 6&nbsp;mm)</td></tr>
+</table></div>
+
+<p>Re-certifying, re-planning and re-replaying the whole grid on that model:</p>
+
+<figure><div class="plot"><!--FIG:cad_effect--></div>
+<figcaption>Closed-loop reach error per cell, before and after, clipped at 400&nbsp;mm; ▲ marks a
+topple. The set of <em>certified</em> cells changes too — the stricter geometry admits five modes that
+were previously rejected and rejects one that was previously admitted — so some rows have only one
+bar.</figcaption></figure>
+
+<figure><div class="plot"><!--FIG:scoreboard_cad--></div>
+<figcaption>The grid on the CAD-faithful model, same scoring.</figcaption></figure>
+
+<p>It is not a uniform improvement and it was never going to be. What it does is separate the braces
+that were real from the braces that were made of proxy:</p>
+
+<div class="scroll"><table>
+<tr><th>Cell</th><th>Pre-fix</th><th>CAD-faithful</th><th></th></tr>
+<tr><td>1.150 <code>elbow</code></td><td>stalled 120&nbsp;mm short, brace carries 35%</td>
+<td class="good"><b>reached 1.2&nbsp;mm, brace carries 78%, 92&nbsp;mm inboard</b></td><td>the one that works</td></tr>
+<tr><td>1.250 <code>elbow</code></td><td>stalled 186&nbsp;mm short</td>
+<td class="good">reached 18.8&nbsp;mm</td><td>but 61% of its load is on the rail and 147&nbsp;N of it is torso</td></tr>
+<tr><td>0.905 <code>elbow+forearm</code></td><td class="bad">toppled</td>
+<td class="good">reached 1.0&nbsp;mm, brace carries 100%</td><td>of 3&nbsp;N, 2&nbsp;mm inboard</td></tr>
+<tr><td>1.050 <code>elbow+forearm</code></td><td>not certified</td>
+<td class="good">reached 0.5&nbsp;mm</td><td>with no brace load at all</td></tr>
+<tr><td>0.905 <code>palm</code></td><td>reached 1.1&nbsp;mm, 87% duty</td>
+<td class="bad">toppled during the approach</td><td>the fabricated 11&nbsp;mm was load-bearing</td></tr>
+<tr><td>1.050 <code>elbow</code></td><td>reached 4.3&nbsp;mm, brace 17%</td>
+<td class="bad">toppled while braced</td><td>the pose the stricter IK finds is a worse one</td></tr>
+</table></div>
+
+<p>Counted over all cells: 6 reached / 6 stalled / 5 toppled before, 8 reached / 3 stalled / 11 toppled
+after, on 22 certified cells instead of 17. <b>The honest reading is that the S13 grid was standing on
+its proxies</b>, and that removing them makes the pipeline's real reliability visible rather than
+changing it.</p>
+
+<h2>7 · The one cell that is a brace</h2>
+<p>Applying all three tests at once — did it reach, did the <em>planned</em> brace carry the load, was
+the load on the slab rather than the rail — exactly one of the 22 CAD-faithful cells passes.</p>
+
+<figure><video controls muted playsinline preload="metadata" src="media/s14_cad_x1150_elbow.mp4"></video>
+<figcaption><b>x = 1.150, <code>elbow</code>, CAD-faithful model, crocoddyl MPC at H = 50.</b>
+Reach error <b>1.2&nbsp;mm</b>. The brace establishes and holds for <b>78%</b> of the braced phase, with
+<b>92&nbsp;N</b> through the planned site and 20&nbsp;N through the rest of the bracing arm.
+<b>100%</b> of the table load is on the top face, <b>92&nbsp;mm</b> in from the nearest edge. Legs-only
+is inadmissible at this target — the CoM margin is −16.6&nbsp;mm — so this is a reach the brace makes
+possible rather than one it decorates.</figcaption></figure>
+
+<div class="note ok">
+<b>What the good cell is doing that the others are not.</b> Its brace surface is the raw upper-arm mesh
+hull, so there is no proxy to be wrong about. In the plant the load actually lands on the
+<em>forearm</em> link, 83&nbsp;mm inboard, at 89&nbsp;N — the "elbow" mode is in practice an
+elbow-and-forearm contact, which is the S11 observation that the elbow site sits ~47&nbsp;mm from where
+the arm really touches, showing up again in closed loop. And it is one of only two certified poses in
+the entire grid whose brace was on the slab to begin with.
+</div>
+
+<h2>8 · The stance was never a variable</h2>
+<p>The rail contact raises an obvious question the study has never asked: the robot's stance is pinned
+at <span class="m">y = 0</span> in every run on both pages. The reach target is at
+<span class="m">y = −0.235</span>, 60&nbsp;mm from the far rail, so reaching it twists the torso and
+swings the bracing arm out to the near one. Is the rail brace kinematically forced, or is it an artifact
+of where we chose to stand? <code>contact_select.STANCE_DY</code> translates the whole robot, feet
+included, before the IK runs, so the question is one sweep:</p>
+
+<div class="scroll"><table>
+<tr><th>stance Δy</th><th>target</th><th>mode</th><th>reach</th><th>brace |y|</th><th>inboard</th><th>effort</th><th>max |τ|/lim</th><th>admissible</th></tr>
+<tr><td>0</td><td>1.050</td><td>elbow</td><td>3.4&nbsp;mm</td><td>296&nbsp;mm</td><td class="bad">1.3&nbsp;mm</td><td>1.99</td><td>0.79</td><td>yes</td></tr>
+<tr><td>−120&nbsp;mm</td><td>1.050</td><td>elbow</td><td>5.0&nbsp;mm</td><td>112&nbsp;mm</td><td class="good">131.0&nbsp;mm</td><td class="good">0.69</td><td>0.49</td><td>yes</td></tr>
+<tr><td>0</td><td>1.150</td><td>elbow</td><td>3.1&nbsp;mm</td><td>219&nbsp;mm</td><td>78.1&nbsp;mm</td><td>0.74</td><td>0.48</td><td>yes</td></tr>
+<tr><td>−180&nbsp;mm</td><td>1.150</td><td>elbow</td><td>3.8&nbsp;mm</td><td>51&nbsp;mm</td><td class="good">212.6&nbsp;mm</td><td>0.73</td><td>0.50</td><td>yes</td></tr>
+<tr><td>0</td><td>1.150</td><td>palm</td><td>4.2&nbsp;mm</td><td>296&nbsp;mm</td><td class="bad">1.8&nbsp;mm</td><td class="bad">3.45</td><td class="bad">1.18</td><td class="bad">no — torque</td></tr>
+<tr><td>−120&nbsp;mm</td><td>1.150</td><td>palm</td><td>2.2&nbsp;mm</td><td>—</td><td>—</td><td class="good">1.63</td><td class="good">0.67</td><td class="good">yes</td></tr>
+</table></div>
+
+<p>So it is a stance artifact, and an expensive one. Moving the robot 120–180&nbsp;mm toward the target
+side takes the elbow brace from <b>1&nbsp;mm to 131&nbsp;mm inboard</b> at x = 1.05 and from 78 to
+<b>213&nbsp;mm</b> at x = 1.15, with the reach error unchanged at 4–5&nbsp;mm — and it cuts joint effort
+by up to <b>2.9×</b>, taking the x = 1.15 palm mode from torque-infeasible
+(<span class="m">|τ|/lim = 1.18</span>) to comfortable (0.67). Every grid number on both pages was
+measured at the one stance that puts the brace on the rail.</p>
+
+<h2>9 · What this says about the pipeline</h2>
+<div class="scroll"><table>
+<tr><th>Stage</th><th>What it is blind to</th><th>What would fix it</th></tr>
+<tr><td><b>Certification</b> (<code>contact_select.solve_ik</code> + the static QP)</td>
+<td>The table's edges. Non-penetration is written against the box, so a rail contact and a slab contact
+are the same constraint; nothing asks a brace to be inboard, and nothing notices when
+<span class="m">q*</span> already has the torso on the wood.</td>
+<td>A support-region term on the brace sites — the same LP the CoM region already uses, applied to the
+contacts instead of the CoM — plus an explicit inboard margin in the admissibility test. Cheap, and it
+invalidates 11 of 14 currently-certified poses, which is the point.</td></tr>
+<tr><td><b>Certification</b>, again</td>
+<td>Its own tolerances. <code>IK_MARGIN</code> = 25&nbsp;mm inflates every collision margin so the IK can
+see contacts early (necessary), and <code>PLACE_TOL</code> = 2&nbsp;mm then accepts a 2&nbsp;mm air gap
+as "placed". S13 fixed the 25&nbsp;mm version of this; the 2&nbsp;mm version is still there.</td>
+<td>Score placement at zero margin, as the press step already does, and require penetration rather than
+proximity.</td></tr>
+<tr><td><b>The OCP</b></td>
+<td>Everything that is not a prescribed contact. The approach phase has to reach the pre-brace pose on
+its legs with a CoM barrier and no support — which is where 3 of 5 pre-fix and 7 of 11 CAD-faithful
+topples happen — and the braced phase's contacts are bilateral, so the plan may lean on a contact that
+can pull.</td>
+<td>Contacts the plan can <em>acquire</em> rather than assume: a deliberate press phase, or
+complementarity. And a keep-out on the reaching arm, which in this grid is repeatedly the largest
+contributor of table force.</td></tr>
+<tr><td><b>The plant model</b></td>
+<td>Nothing, now — but it was wrong by 11&nbsp;mm in the direction the palm brace loads, 6&nbsp;mm in the
+direction the forearm brace loads, and by 0&nbsp;mm at the elbow, which is the only brace that
+worked.</td>
+<td>Done (§6). The general lesson is that a proxy is only verified in the direction it was checked, and
+a brace loads links in directions nobody was thinking about when the proxy was added.</td></tr>
+<tr><td><b>The experiment design</b></td>
+<td>The stance. One value, never varied, and it is the one that puts the brace on the rail and costs 3×
+the joint effort.</td>
+<td>Add <span class="m">Δy</span> to the grid. §8 says the payoff is large and the cost is a
+sweep.</td></tr>
+</table></div>
+
+<p>None of this touches the S13 conclusion that closing the loop is what makes the maneuver survive, or
+the C++ keep-out, or the crocoddyl formulation. It is all upstream of them: the pipeline was producing
+poses that certify, plan and track beautifully, and that a real table would not support.</p>
+
+<h2>10 · Reproducing this</h2>
+<pre>cd lean_analysis
+export PYTHONPATH=.
+
+# --- the proxy audit and the model fix (section 5, 6) ---
+python brace_surfaces.py --json runs/2026-08-06_session13/brace_surfaces.json
+#   reads CL_Assets/meshes/magpie/*.stl + the staged MJCF; prints the primitives
+#   the CAD supports.  The fix itself is in
+#   mjpc/tasks/humanoid_bench/h1_2_modified_magpie.xml.patch; re-stage with
+#   CL_ASSETS_DIR=build/_deps/cl_assets-src lean_analysis/stage_assets.sh
+
+# --- the closed-loop analysis (sections 1-4) ---
+python croco_why.py --sweep runs/2026-08-06_session13/sweep \
+                    --out   runs/2026-08-06_session13/why_prefix.json
+
+# --- the CAD-faithful grid (section 6, 7) ---
+python croco_sweep.py --dir runs/2026-08-07_session14/sweep_cad
+python croco_why.py   --sweep runs/2026-08-07_session14/sweep_cad \
+                      --out   runs/2026-08-07_session14/why_cad.json
+
+# --- the stance sweep (section 8) ---
+python croco_stance.py --out runs/2026-08-07_session14/stance.json
+
+# --- videos: contact markers now include UNPLANNED table contacts (magenta) ---
+python croco_replay.py --dir runs/2026-08-07_session14/sweep_cad/x1150 \
+                       --mode elbow --tag elbow --ctrl mpc --mpc-horizon 50 \
+                       --mpc-iters 1 --video --cam brace --suffix _vid
+
+python croco_why_figs.py --why     runs/2026-08-06_session13/why_prefix.json \
+                         --why-cad runs/2026-08-07_session14/why_cad.json \
+                         --out ../docs/lean/media/figs_2026-08-07.json
+python croco_report.py --body _body_why_2026-08-07.html \
+                       --out 2026-08-07_croco_why.html --figs media/figs_2026-08-07.json \
+                       --title "..."                                   # this page</pre>
+
+<p>The pre-fix analysis has to be run against the pre-fix model: <code>git stash</code> the patch,
+re-run <code>stage_assets.sh</code>, run <code>croco_why.py</code>, restore. The trajectories are the
+ones already on disk in <code>runs/2026-08-06_session13/sweep/</code> and are not re-simulated, but the
+geometry they are measured against has to match the geometry they were produced in.</p>

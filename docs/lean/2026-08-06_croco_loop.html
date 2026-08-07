@@ -79,6 +79,18 @@ model <code>Lean_H12_Magpie.xml</code>, brace arm left, sites v2, τ basis <code
 crocoddyl 3.2.1 / pinocchio 4.1.0 / mujoco 3.2.3</p>
 
 <div class="note warn">
+<b>Superseded in part — 2026-08-07.</b> A follow-up page,
+<a href="2026-08-07_croco_why.html"><b>Why the closed loop fails</b></a>, re-measures the
+(mode&nbsp;×&nbsp;target) grid of §11–§12 from the saved trajectories and reaches a different
+conclusion. In most cells the largest force on the table comes from the <em>torso</em> or the
+<em>reaching</em> arm rather than the brace; in 11 of 14 certified poses the brace sits 0–2&nbsp;mm in
+from the table's lateral edge; three of the five topples happen before the contacts switch on; and the
+palm brace is made against 11&nbsp;mm of collision proxy the CAD does not support. §11–§12 below should
+be read with that page. §1–§10 — the headline maneuver, the two models, the OCP, the MPC, the C++
+keep-out — are unaffected and still reproduce.
+</div>
+
+<div class="note warn">
 <b>Read this first.</b> This is a simulation result and nothing here has been near hardware. The
 headline maneuver in §1–§9 is a <em>single</em> target, contact mode and stance, and §11–§12 exist
 precisely to say how representative it is: across a 7 × 4 grid it is the <b>best</b> cell rather than a
