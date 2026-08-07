@@ -3253,7 +3253,24 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     } else if (total_distance <= current_kf.target_distance_tolerance &&
                data->time -
                        motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
-                   current_kf.success_sustain_time) {
+                   current_kf.success_sustain_time &&
+               [&] {
+                 // ★ 2026-08-06 `phase_advance_quiet_vel` numeric: 0 = OFF =
+                 // BYTE-IDENTICAL. >0 = do not advance while the base sways
+                 // faster than this (m/s, horizontal): the dwell clock can
+                 // expire mid-sway and the next phase then inherits that
+                 // velocity — on the twin bench ~half the lean commits
+                 // entered on an adverse sway sample and toppled (stall→
+                 // backward overshoot / asymmetric bow). Holding for a calm
+                 // sample costs at most a sway half-period (~0.5 s).
+                 int qv = mj_name2id(model, mjOBJ_NUMERIC,
+                                     "phase_advance_quiet_vel");
+                 if (qv < 0) return true;
+                 double lim = model->numeric_data[model->numeric_adr[qv]];
+                 if (lim <= 0.0) return true;
+                 return mju_sqrt(data->qvel[0] * data->qvel[0] +
+                                 data->qvel[1] * data->qvel[1]) <= lim;
+               }()) {
       // Normal phase advance — this is the path that fires after stand_up
       // succeeds. Snapshot first so the new ramp starts from the old scales.
       SnapshotEffectiveScales();

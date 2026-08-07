@@ -155,6 +155,7 @@
              keyframe: with the reach phase pointed at forearm_brace_lean, whose
              right arm is NEUTRAL, Posture pulled the reaching arm back while
              Reaching Hand Dist pushed it out. -->
+        <key name="forearm_brace_mid" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.471239 -1.01229 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
         <key name="forearm_brace_reach" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.471239 -1.01229 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
         <key name="forearm_brace_release" qpos="0.300182 0 0.915396 0.974693 0 0.223547 0 0 -0.983672 0.12 0.989648 -0.456879 0 0 -0.983672 -0.12 0.989648 -0.456879 0 0 -0.907571 -0.139626 0.767945 0.10472 0.261799 -0.471239 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="standback_r1" qpos="0.256109 0.000000 0.968080 0.990865 0.000000 0.134859 0.000000 0.000000 -0.734203 0.120000 0.813789 -0.350127 0.000000 0.000000 -0.734203 -0.120000 0.813789 -0.350127 0.000000 0.000000 -0.544543 -0.083776 0.460767 0.062832 0.157079 -0.282743 -0.607374 0.210000 -0.090000 0.000000 0.180000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
@@ -809,6 +810,12 @@
              no knob at all: the JSONs' own `target_ramp_sec` is gated on a brace
              transition, so 16's and 21's values were silently ignored. Try 4-6 s. -->
         <numeric name="phase_ramp_sec" data="0.0"/>
+        <!-- phase_advance_quiet_vel (2026-08-06): 0 = OFF = BYTE-IDENTICAL. >0 =
+             hold a served dwell until horizontal base speed <= this (m/s), so a
+             phase commit never launches off an adverse sway sample. Free-stand
+             sway on the twin: median 0.007, p90 0.013, max 0.026 m/s -> 0.015
+             delays the advance by at most ~a sway half-period. -->
+        <numeric name="phase_advance_quiet_vel" data="0.015"/>
         <!-- table_clear_margin (2026-07-27): metres of clearance above the slab FACE that
              guarded parts (pelvis, torso, hips, elbows, wrists, grippers) must keep when
              table_contact_exclusive >= 2. Default 0.08. The barrier charges
