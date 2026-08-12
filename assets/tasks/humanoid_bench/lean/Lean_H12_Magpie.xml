@@ -373,6 +373,30 @@
              horizon knots noisier (action-level annealing). -->
         <numeric name="sampling_trajectories" data="20"/>
         <numeric name="std_initial" data="0.1"/>
+        <!-- ★★★ 2026-08-09 std_min: THE CEM VARIANCE FLOOR, and it was ABSENT from
+             this file, so every run of this campaign planned at the planner's
+             built-in default of 0.01 (cross_entropy/planner.cc:59). That is the
+             floor, NOT `sampling_exploration` above -- exploration is only the
+             INITIAL std, so within a few iterations CEM collapses onto its own
+             elites and stops searching. Falls are spread uniformly across all six
+             ladder phases (lean 3 / mid 3 / reach 3 / release 2 / standback 1 /
+             post 3 of 20), which is the signature of a planner that is not
+             searching widely enough rather than one bad rung -- and search width,
+             not physics or costs, was the wall the last time survival was the
+             blocker (ownsim 5/20 -> 12/20, falls 45% -> 5%).
+             FREE: same trajectory count, same plan rate, only a wider noise floor
+             -- which matters because the twin is already rate-limited at ~45
+             plans/s and cannot afford more samples. -->
+        <numeric name="std_min" data="0.01"/>
+        <!-- ★ 2026-08-10 phase-scheduled floor (lean.cc TransitionLocked ->
+             Task::LiveStdMinOverride -> CEM Rollouts). 0 = OFF = the global
+             std_min above rules. 1 = wide floor in free/transition phases
+             (survival: 0.05 gave 15/20 never-fell), tight floor in the seated
+             mid/reach/release phases (precision: noise breaks pad contact). -->
+        <numeric name="std_min_state_gated" data="0.0"/>
+        <numeric name="std_min_wide" data="0.05"/>
+        <numeric name="std_min_tight" data="0.01"/>
+        <numeric name="std_min_ramp_sec" data="2.5"/>
         <numeric name="explore_fraction" data="0.0"/>
         <numeric name="sampling_knot_var_growth" data="0.0"/>
         <numeric name="gradient_spline_points" data="5"/>
@@ -816,6 +840,38 @@
              sway on the twin: median 0.007, p90 0.013, max 0.026 m/s -> 0.015
              delays the advance by at most ~a sway half-period. -->
         <numeric name="phase_advance_quiet_vel" data="0.015"/>
+        <!-- phase_advance_upright_deg (2026-08-10): 0 = OFF = byte-identical. >0 =
+             also hold the advance while |torso pitch| exceeds this (deg), capped at
+             phase_advance_upright_wait seconds past the dwell. The restored-0.985
+             bench's only 3 seat failures all launched tilted back +3..+16 deg. -->
+        <numeric name="phase_advance_upright_deg" data="0.0"/>
+        <numeric name="phase_advance_upright_wait" data="12.0"/>
+        <!-- reach_side_swing (2026-08-10): 0 = OFF = byte-identical. 1 = while the
+             reaching hand is below the surface and inboard of the slab's side edge,
+             the reach target becomes a via-point OUT past the side and UP over the
+             surface (ownsim's around-the-side swing) instead of a straight pull
+             through the slab. -->
+        <numeric name="reach_side_swing" data="1.0"/>
+        <!-- foot_anchor_measured (2026-08-09): 1 = anchor Foot Stability to the
+             MEASURED released stance instead of the hardcoded x=0.30 (which sits
+             ~29 cm ahead of where the twin's feet actually are, and drags them). -->
+        <numeric name="foot_anchor_measured" data="0.0"/>
+        <!-- lateral_center_braced (2026-08-09): 0 = OFF = BYTE-IDENTICAL. 1 = keep
+             the `Lateral Center` residual LIVE while an arm is braced, instead of
+             zeroing it on any_arm_contact. WHY: measured on the twin, the
+             brace-side (left) foot unloads 56% median across the brace and then
+             slides 189 mm laterally (vs 61 mm for the right); unload predicts
+             slide (rho +0.31, p=0.041). That is the strut/buckle feedback this
+             residual exists to kill, and the arm-contact gate disabled it exactly
+             when the brace creates the asymmetry. y axis only -- the forward lean
+             is untouched. Phases that legitimately stand off-centre carry weight 0. -->
+        <numeric name="lateral_center_braced" data="0.0"/>
+        <!-- lean_commit_retry (2026-08-07): 0 = OFF = BYTE-IDENTICAL. >0 = seconds a
+             detected commit STALL (lean/mid phase, tilt 12-28 deg, pad NOT on table,
+             >=6 s in phase) must persist before the strategy regresses to stand and
+             re-attempts (max 3 retries). The stall hangs ~10-15 s before the topple;
+             4.0 fires the retry well inside that window. -->
+        <numeric name="lean_commit_retry" data="4.0"/>
         <!-- table_clear_margin (2026-07-27): metres of clearance above the slab FACE that
              guarded parts (pelvis, torso, hips, elbows, wrists, grippers) must keep when
              table_contact_exclusive >= 2. Default 0.08. The barrier charges

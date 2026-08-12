@@ -1764,6 +1764,40 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   int rdb_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_deadband");
   double kReachDeadband = (rdb_id >= 0)
       ? model->numeric_data[model->numeric_adr[rdb_id]] : 0.0;
+  // ★ 2026-08-10 `reach_side_swing` numeric (0 = OFF = byte-identical): route the
+  // reaching hand AROUND THE SIDE of the slab instead of straight at the target.
+  // WHY: the straight-line pull drags the hand into the slab front/underside --
+  // measured on the restored-0.985 bench, the STRONGEST braces had the LEAST
+  // over-slab time (75 s brace, 2 s reach) because the arm fights the table
+  // (user-observed; ownsim's arm swung around the side). While the hand is BELOW
+  // the surface and INBOARD of the slab's reach-side edge, the target becomes a
+  // via-point: no forward pull (via x = hand x), swing OUT past the side edge and
+  // UP over the surface; once clear, the true target engages from above the side.
+  // Pure function of hand position -> stateless, rollout-thread safe.
+  double via_storage[3];
+  {
+    int ss = mj_name2id(model, mjOBJ_NUMERIC, "reach_side_swing");
+    if (ss >= 0 && model->numeric_data[model->numeric_adr[ss]] > 0.0 &&
+        is_forearm_brace) {
+      int tg = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+      if (tg < 0) tg = mj_name2id(model, mjOBJ_GEOM, "table_top");
+      if (tg >= 0 && std::isfinite(table_near_edge_x)) {
+        double surf_z = data->geom_xpos[3 * tg + 2] + model->geom_size[3 * tg + 2];
+        double half_y = model->geom_size[3 * tg + 1];
+        double side = reach_right ? -1.0 : 1.0;   // right arm goes around -y
+        const double* h = reaching_hand;
+        bool below = h[2] < surf_z + 0.03;
+        bool inboard = side * h[1] < half_y + 0.06;  // not yet past the side edge
+        bool near_slab = h[0] > table_near_edge_x - 0.10;
+        if (below && inboard && near_slab) {
+          via_storage[0] = h[0];                   // no forward pull while blocked
+          via_storage[1] = side * (half_y + 0.18); // OUT past the side edge...
+          via_storage[2] = surf_z + 0.12;          // ...and UP over the surface
+          reach_target = via_storage;
+        }
+      }
+    }
+  }
   double reach_err[3];
   mju_sub3(reach_err, reaching_hand, reach_target);
   if (kReachDeadband > 0.0) {
@@ -1809,6 +1843,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ~0.41, letting it commit the last cm of bow to press the forearm onto the
   // 0.87 m table. Other strategies keep the 0.22 home (is_forearm_brace-gated).
   double brace_foot_x = is_forearm_brace ? 0.30 : kRightFootHomeXY[0];
+  // ★★★ 2026-08-09 MEASURED-STANCE PIN (READ ONLY -- this residual runs in
+  // parallel rollout threads; the value is captured in TransitionLocked from the
+  // real state). NaN => not pinned => hardcoded home => byte-identical.
+  if (!std::isnan(foot_pin_x_)) brace_foot_x = foot_pin_x_;
 
 
   // Left foot is the primary ground anchor during all lean stages.
@@ -2571,9 +2609,66 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // free-standing (leg-lift / lean / retrieve legitimately stand off-centre);
   // XML default weight 0 -> OFF unless a strategy opts in via JSON "Lateral
   // Center", so every other task stays byte-identical.
-  if (!any_arm_contact) {
+  // ★★★ 2026-08-09 LATERAL CENTERING DURING THE BRACE (`lateral_center_braced`
+  // numeric; 0 = OFF = byte-identical). MEASURED on the twin (bench20 v5+v6,
+  // n=32-40): the BRACE-SIDE (left) foot moves 189 mm median laterally vs 61 mm
+  // for the right, and it UNLOADS 56% median across the brace while the right
+  // foot picks the load up. Unload predicts slide (Spearman rho +0.31, p=0.041;
+  // the high-unload half slides 112 mm further, p=0.029). That is EXACTLY the
+  // strut/buckle feedback this term was written to kill -- but the
+  // `!any_arm_contact` gate switches it OFF the instant the forearm seats, i.e.
+  // precisely when the brace starts pulling load off the ipsilateral leg. The
+  // gate's original rationale (leg-lift / lean / retrieve legitimately stand
+  // off-centre) still holds for those keyframes, which simply carry weight 0.
+  // Fore-aft lean is untouched: this residual is the y axis only.
+  // MODES (`lateral_center_braced`): 0 = OFF = byte-identical (residual zeroed on
+  // arm contact, the shipped behaviour). 1 = live during the brace, target = foot
+  // midpoint. 2 = live during the brace, target = the ROLL-EQUILIBRIUM point.
+  //
+  // ★★★ WHY 2 EXISTS -- mode 1 was benched (n=5) and made the slide WORSE
+  // (|dy_left| 275 mm vs 189 mm baseline), because the midpoint target is simply
+  // WRONG while a brace carries load. Measured on 20 braced frames: CoM y - mid
+  // sat at -2 mm, i.e. the CoM was ALREADY centred, so mode 1 had nothing to
+  // correct. Roll equilibrium about the foot midpoint with three contacts,
+  //     F_b*y_b + F_L*y_L + F_R*y_R = W*y_c,
+  // set F_L = F_R over a symmetric stance (y_L = -y_R) and the equal-load CoM is
+  //     y_c* = F_b * (y_b - y_mid) / W                     [+19 mm, measured]
+  // NOT the midpoint. Driving y_c to 0 therefore commands a 25 mm roll error that
+  // pushes ~52 N off the brace-side foot -- most of the measured +-81 N split
+  // (left 187 N vs right 350 N) -- and an unloaded foot has no friction budget,
+  // so it slides. Model sanity on the same frames: contacts sum 670 N vs W 674 N,
+  // 3-point moment residual 8 N.m (ankle roll torque / finite sole width).
+  double lat_mode = 0.0;
+  {
+    int lcb = mj_name2id(model, mjOBJ_NUMERIC, "lateral_center_braced");
+    if (lcb >= 0) lat_mode = model->numeric_data[model->numeric_adr[lcb]];
+  }
+  // ★ 2026-08-09 MODE 2 REFINEMENT: only steer laterally while the brace is
+  // GENUINELY LOADED. Without this, mode 2 degenerates into mode 1 exactly where
+  // mode 1 hurts: through `forearm_brace_release` and the `standback_r*` rungs the
+  // arm may still graze the slab while carrying ~0 N, so the equilibrium shift
+  // collapses to 0 and the residual reverts to the midpoint target -- steering the
+  // CoM at the moment the stand-back needs it left alone. n=20 vs the
+  // estimator-in-loop control, mode 2 traded falls for feet (never-fell 2/20 vs
+  // 5/20) and the stand-back is this pipeline's known-marginal phase.
+  bool brace_loaded = any_arm_contact && brace_contact_force > 5.0;
+  if (!any_arm_contact || (lat_mode >= 2.0 ? brace_loaded : lat_mode > 0.0)) {
     double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
     double lat_tgt = midfoot_y;
+    if (lat_mode >= 2.0 && brace_loaded) {
+      int pid = mj_name2id(model, mjOBJ_BODY, "pelvis");
+      double Wn = (pid >= 0 ? model->body_subtreemass[pid] : 0.0) *
+                  mju_abs(model->opt.gravity[2]);
+      // pelvis subtree = ROBOT ONLY; mj_getTotalmass would also count the TABLE
+      // (2308 N vs the robot's 674 N) and shrink the correction by 3.4x.
+      if (Wn > 1.0) {
+        double shift = brace_contact_force * (bracing_hand[1] - midfoot_y) / Wn;
+        // clamp to half the stance half-width: past that the "equal load" target
+        // would sit outside the feet and stop being a balance point at all.
+        double lim = 0.5 * mju_abs(foot_left_pos[1] - foot_right_pos[1]) * 0.5;
+        lat_tgt += mju_max(-lim, mju_min(lim, shift));
+      }
+    }
     residual[counter++] = 10.0 * (subcom[1] - lat_tgt);
   } else {
     residual[counter++] = 0.0;
@@ -3235,6 +3330,94 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
         motion_strategy_.CalculateTotalKeyframeDistance(
             data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
 
+    // ★ 2026-08-07 COMMIT ABORT-AND-RETRY. `lean_commit_retry` numeric:
+    // 0 = OFF = BYTE-IDENTICAL. >0 = seconds of detected STALL before the
+    // strategy regresses to keyframe 0 (stand) and re-attempts, capped at 3
+    // retries. WHY: the lean commit fails ~25% on the twin bench in a
+    // RECOVERABLE way — the bow hangs quasi-statically at tilt 12-28° with
+    // the forearm pad NOT on the table (toe-margin stall), then topples
+    // seconds later. While stalled the CoM is still over the feet, so
+    // commanding the stand keyframe recovers it; riding the stall ends in a
+    // fall. The built-in time-limit reset cannot catch this because
+    // total_distance is identically 0 (all contact pairs -1). Detector is
+    // physical: in the lean/mid phases, >=6 s in phase AND torso tilt in
+    // the stall band AND no pad↔table contact, sustained `retry` seconds.
+    // Static-local state: the deploy node owns exactly one lean task
+    // instance and calls Transition serially; bench-scoped pragmatism.
+    {
+      static double stall_since = -1.0;
+      static int retries_used = 0;
+      static double last_time = -1.0;
+      static double tilt_prev = -1.0, tilt_rate_ema = 10.0;
+      if (data->time < last_time - 1.0) {  // sim restarted → clear state
+        stall_since = -1.0; retries_used = 0;
+        tilt_prev = -1.0; tilt_rate_ema = 10.0;
+      }
+      double dt_step = data->time - last_time;
+      last_time = data->time;
+      int rt_id = mj_name2id(model, mjOBJ_NUMERIC, "lean_commit_retry");
+      double retry_sec =
+          rt_id >= 0 ? model->numeric_data[model->numeric_adr[rt_id]] : 0.0;
+      const std::string& kf_name = current_kf.name;
+      bool commit_phase = (kf_name == "forearm_brace_lean" ||
+                           kf_name == "forearm_brace_mid");
+      if (retry_sec > 0.0 && commit_phase && retries_used < 3) {
+        // torso tilt from the base quaternion
+        const double* q = data->qpos + 3;
+        double tilt = 2.0 * mju_acos(mju_min(mju_abs(q[0]), 1.0));
+        // pad↔table contact scan
+        int pad_gid = mj_name2id(model, mjOBJ_GEOM, "left_forearm_pad");
+        bool pad_on = false;
+        for (int ci = 0; ci < data->ncon; ci++) {
+          const mjContact& con = data->contact[ci];
+          if (con.geom1 == pad_gid || con.geom2 == pad_gid) {
+            pad_on = true;
+            break;
+          }
+        }
+        // tilt RATE (EMA over ~1 s): a HEALTHY approach descends at 2-4
+        // deg/s through the same band with the pad still off — first gate
+        // build aborted good commits mid-approach (4/5 false positives,
+        // seats 2/5). The stall is quasi-static: |rate| < 0.8 deg/s.
+        if (tilt_prev >= 0.0 && dt_step > 1e-6 && dt_step < 1.0) {
+          double r = (tilt - tilt_prev) / dt_step;
+          double a = mju_min(1.0, dt_step / 1.0);
+          tilt_rate_ema = (1.0 - a) * tilt_rate_ema + a * r;
+        }
+        tilt_prev = tilt;
+        double in_phase =
+            data->time - motion_strategy_.GetCurrentKeyframeStartTime();
+        bool stalled = in_phase > 6.0 && !pad_on &&
+                       tilt > 12.0 * mjPI / 180.0 &&
+                       tilt < 28.0 * mjPI / 180.0 &&
+                       mju_abs(tilt_rate_ema) < 0.8 * mjPI / 180.0;
+        if (!stalled) {
+          stall_since = -1.0;
+        } else if (stall_since < 0.0) {
+          stall_since = data->time;
+        } else if (data->time - stall_since > retry_sec) {
+          retries_used++;
+          stall_since = -1.0;
+          std::printf(
+              "[lean-retry] COMMIT STALL in '%s' (tilt %.1f deg, pad off, "
+              "%.1fs) — regressing to stand, attempt %d/3\n",
+              kf_name.c_str(), tilt * 180.0 / mjPI, retry_sec, retries_used);
+          SnapshotEffectiveScales();
+          SnapshotCurrentWeightsAsPrev();
+          motion_strategy_.Reset();
+          MarkNewlyAppearedContacts(residual_.residual_keyframe_,
+                                    motion_strategy_.GetCurrentKeyframe());
+          residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+          motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+          motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+          residual_.keyframe_start_time_ = data->time;
+          PrepareNextPhaseWeights(residual_.residual_keyframe_);
+          ApplyRampedWeights(model, data);
+          return;
+        }
+      }
+    }
+
     if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
             current_kf.time_limit &&
         total_distance > current_kf.target_distance_tolerance) {
@@ -3268,8 +3451,51 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                  if (qv < 0) return true;
                  double lim = model->numeric_data[model->numeric_adr[qv]];
                  if (lim <= 0.0) return true;
-                 return mju_sqrt(data->qvel[0] * data->qvel[0] +
-                                 data->qvel[1] * data->qvel[1]) <= lim;
+                 bool quiet = mju_sqrt(data->qvel[0] * data->qvel[0] +
+                                       data->qvel[1] * data->qvel[1]) <= lim;
+                 // ★ 2026-08-11 `phase_advance_quiet_wvel`: 0 = OFF =
+                 // byte-identical. >0 = ALSO hold while the base ANGULAR
+                 // rate (roll/pitch, rad/s) exceeds this. WHY: 80-run
+                 // forensics — pre-release base roll RATE was the earliest
+                 // failure predictor (AUC 0.71); the linear gate above is
+                 // blind to it. Sway is periodic (~1 s) so waiting for a
+                 // rate zero-crossing costs at most half a period.
+                 int qw = mj_name2id(model, mjOBJ_NUMERIC,
+                                     "phase_advance_quiet_wvel");
+                 double wlim = qw >= 0
+                     ? model->numeric_data[model->numeric_adr[qw]] : 0.0;
+                 if (wlim > 0.0) {
+                   quiet = quiet &&
+                       mju_sqrt(data->qvel[3] * data->qvel[3] +
+                                data->qvel[4] * data->qvel[4]) <= wlim;
+                 }
+                 // ★ 2026-08-10 `phase_advance_upright_deg`: 0 = OFF =
+                 // byte-identical. >0 = ALSO hold the advance while the torso
+                 // is pitched more than this (deg). WHY: at seat 17/20 (the
+                 // restored-0.985 bench) all THREE failed commits launched
+                 // TILTED BACK (+3..+16 deg, base drifted -0.04..-0.16 m) --
+                 // calm but mis-postured, which the quiet gate cannot see; the
+                 // fixed-length lean then undershoots (face-plant) or recoils
+                 // (backward fall). All 17 good runs launched upright.
+                 // ESCAPE HATCH: only holds for `phase_advance_upright_wait`
+                 // seconds (default 12) past the dwell, then advances anyway --
+                 // nothing recenters a parked robot, so an unconditional gate
+                 // could hang the ladder forever.
+                 int ud = mj_name2id(model, mjOBJ_NUMERIC,
+                                     "phase_advance_upright_deg");
+                 double udeg = ud >= 0
+                     ? model->numeric_data[model->numeric_adr[ud]] : 0.0;
+                 if (udeg <= 0.0) return quiet;
+                 double over = data->time -
+                     motion_strategy_.GetCurrentKeyframeSuccessStartTime() -
+                     current_kf.success_sustain_time;
+                 double cap = GetNumberOrDefault(
+                     12.0, model, "phase_advance_upright_wait");
+                 if (over > cap) return quiet;   // escape hatch
+                 const double* q = data->qpos;
+                 double pitch_deg = 57.29578 * mju_asin(mju_max(-1.0,
+                     mju_min(1.0, 2.0 * (q[3] * q[5] - q[6] * q[4]))));
+                 return quiet && mju_abs(pitch_deg) <= udeg;
                }()) {
       // Normal phase advance — this is the path that fires after stand_up
       // succeeds. Snapshot first so the new ramp starts from the old scales.
@@ -3287,6 +3513,94 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       // Re-arm the success clock: outside tolerance -- sustain must be
       // CONSECUTIVE.
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    }
+  }
+
+  // ★★★ 2026-08-09 CAPTURE THE MEASURED STANCE for the Foot Stability anchor.
+  // `foot_anchor_measured` numeric: 0 = OFF = byte-identical (hardcoded x=0.30).
+  // WHY: on the twin the feet sit at x ~= 0.005 at harness release, so the 0.30
+  // home is a standing 29 cm error the cost drags the feet toward all ladder --
+  // 200-250 mm of measured drift in benches v5/v6, and raising the weight made
+  // it WORSE, exactly as a drag would.
+  {
+    int fam = mj_name2id(model, mjOBJ_NUMERIC, "foot_anchor_measured");
+    double on = fam >= 0 ? model->numeric_data[model->numeric_adr[fam]] : 0.0;
+    const std::string& kfn = motion_strategy_.GetCurrentKeyframe().name;
+    if (on <= 0.0) {
+      residual_.foot_pin_x_ = std::numeric_limits<mjtNum>::quiet_NaN();
+    } else if (std::isnan(residual_.foot_pin_x_) && kfn == "forearm_brace_lean") {
+      double const *lp = SensorByName(model, data, "foot_left_pos");
+      double const *rp = SensorByName(model, data, "foot_right_pos");
+      if (lp && rp && lp[2] < 0.08 && rp[2] < 0.08) {
+        residual_.foot_pin_x_ = 0.5 * (lp[0] + rp[0]);
+        std::fprintf(stderr, "[lean-foot] stance PINNED at x=%.3f "
+                     "(hardcoded home was 0.30)\n", residual_.foot_pin_x_);
+      }
+    }
+  }
+
+  // ★★★ 2026-08-10 PHASE-SCHEDULED CEM VARIANCE FLOOR (`std_min_state_gated`
+  // numeric: 0 = OFF = byte-identical -> LiveStdMinOverride stays -1). WHY: the
+  // global floor trades SURVIVAL against PRECISION with opposite slopes (n=20
+  // arms, estimator-in-loop: floor 0.01 -> 5/20 never-fell but a crisp ladder;
+  // 0.05 -> 15/20 never-fell, p~=0.001, but the robot survives by DANCING --
+  // seat 15->7, up to 1.3 m of foot travel, LOW hover endings; 0.02 -> 1/20,
+  // no survival at all). So: WIDE floor (`std_min_wide`) in the fall-prone
+  // free/transition phases, TIGHT floor (`std_min_tight`) in the seated phases
+  // (mid/reach/release) where sustained pad contact is what the noise breaks.
+  {
+    int sg = mj_name2id(model, mjOBJ_NUMERIC, "std_min_state_gated");
+    if (sg >= 0 && model->numeric_data[model->numeric_adr[sg]] > 0.0) {
+      double wide = 0.05, tight = 0.01;
+      int wi = mj_name2id(model, mjOBJ_NUMERIC, "std_min_wide");
+      int ti = mj_name2id(model, mjOBJ_NUMERIC, "std_min_tight");
+      if (wi >= 0) wide = model->numeric_data[model->numeric_adr[wi]];
+      if (ti >= 0) tight = model->numeric_data[model->numeric_adr[ti]];
+      const std::string& kf = motion_strategy_.GetCurrentKeyframe().name;
+      // ★ v2 (2026-08-10): release REMOVED from the tight set. With v1 (tight =
+      // mid/reach/release) the 8 remaining falls all clustered at t=117-145 =
+      // exactly the release->standback segment: release is a PUSH-OFF transition,
+      // not a hold, and starving it of search width is what dropped it. Survival
+      // 12/20 + seat 12/20 in v1 -- first arm to recover both sides of the trade.
+      // ★ v3 (2026-08-10): stand_up ADDED to the tight set. v2 (wide everywhere
+      // but mid/reach) fixed survival (15/20, release cluster gone) but feet
+      // stayed 0/20 with 0.4-1.5 m of drift -- the scoring window is dominated
+      // by the FINAL stand phase (t~139-240 s), which sat at the wide floor, so
+      // the robot spent ~100 s wandering. Standing needs no width: strat-6
+      // free-stands to the episode cap at the default 0.01 floor. Wide is now
+      // ONLY the dynamic transitions (lean / release / standback rungs).
+      bool seated_phase = (kf == "forearm_brace_mid" ||
+                           kf == "forearm_brace_reach" ||
+                           kf == "stand_up");
+      double target = seated_phase ? tight : wide;
+      // ★ v4 (2026-08-10): SMOOTHSTEP the floor between phase targets instead of
+      // stepping. v3's step 0.01->0.05 at lean entry killed 20/20 runs at
+      // t=70-90: 5x noise injected at the exact commit moment. (v1/v2 never saw
+      // this because their stand phase was already wide -- no step -- but their
+      // "survival" was partly survival-by-never-committing: dancing robots
+      // missing the lean.) The ramp keeps the first seconds of each transition
+      // at the previous phase's crispness and grows width for the descent.
+      double ramp = 2.5;
+      int ri = mj_name2id(model, mjOBJ_NUMERIC, "std_min_ramp_sec");
+      if (ri >= 0) ramp = model->numeric_data[model->numeric_adr[ri]];
+      if (std_min_target_ < 0.0) {          // first tick after gate-on
+        std_min_target_ = target;
+        std_min_ramp_from_ = target;
+        std_min_ramp_t0_ = data->time;
+      } else if (target != std_min_target_) {
+        std_min_ramp_from_ = std_min_live_.load();
+        std_min_target_ = target;
+        std_min_ramp_t0_ = data->time;
+      }
+      double a = ramp > 0.0
+                     ? mju_min(1.0, (data->time - std_min_ramp_t0_) / ramp)
+                     : 1.0;
+      a = a * a * (3.0 - 2.0 * a);
+      std_min_live_.store(std_min_ramp_from_ +
+                          a * (std_min_target_ - std_min_ramp_from_));
+    } else {
+      std_min_live_.store(-1.0);
+      std_min_target_ = -1.0;
     }
   }
 
