@@ -3019,7 +3019,10 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
 
   // ---- DEBUG: print leg stability diagnostics every ~0.5 s ---- //
   static int debug_tick = 0;
-  static const bool lean_dbg = (std::getenv("LEAN_DEBUG") != nullptr);
+  static const bool lean_dbg = [] {
+    const char* e = std::getenv("LEAN_DEBUG");
+    return e != nullptr && e[0] != '0';   // set but "0" = explicitly off
+  }();
   if (lean_dbg && ++debug_tick % 33 == 0) {  // ~0.5 s; set LEAN_DEBUG=1 to enable
     double *foot_right_up = SensorByName(model, data, "foot_right_up");
     double *foot_left_up  = SensorByName(model, data, "foot_left_up");
