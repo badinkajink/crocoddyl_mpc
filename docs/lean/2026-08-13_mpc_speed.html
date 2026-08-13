@@ -423,15 +423,30 @@ horizon. It is still the number to watch if the horizon goes shorter, but it is 
 to prefer H = 50 — and with both cells upright and inside their reach tolerance, <b>the choice
 between them is now headroom against preview, nothing else</b>.</p>
 
+<h2>10b. The controller</h2>
+
+<p>The S15 endpoint — 50-node horizon, one DDP iteration, fused keep-out, native passive actuation
+— running the braced lean in MuJoCo. Contact markers are drawn where the narrowphase actually
+reports contact: blue elbow, orange forearm, grey feet, magenta for anything touching the table
+that nobody planned to put there.</p>
+
+<figure>
+<video controls muted playsinline preload="metadata" src="media/s15_mpc_brace.mp4"></video>
+<figcaption>Close on the tabletop, bracing arm drawn translucent so the markers under it read.
+This is the 16.8 ms / p95 24.3 ms configuration.</figcaption>
+</figure>
+
 <h2>11. What would come next, and what would not</h2>
 
 <ul>
 <li><b>Not the Delassus</b>, still. It was 2.3% of the S13 node and the node has since lost 60% of
 its cost elsewhere; it is a larger fraction of a smaller number and the same conclusion.</li>
 <li><b>Threading.</b> <code>ShootingProblem.nthreads</code> exists and is inert: this conda-forge
-crocoddyl reports <code>multithreading support is not enabled</code>. A build with OpenMP would
-parallelise the calcDiff sweep and the rollouts across nodes, which is 70% of the step, on a
-20-thread machine. §5 removed the blocker on the crocoddyl side.</li>
+crocoddyl reports <code>multithreading support is not enabled</code>. §5 removed the blocker on the
+crocoddyl side. <b>Done in <a href="2026-08-13_mpc_threads.html">S16</a></b>, which rebuilds
+crocoddyl with OpenMP and measures it — worth 1.5×, not the 3× guessed here, because only the
+derivative sweep is parallel: the line-search rollouts and the backward pass are both sequential by
+construction. It is what finally puts the p95 inside the control period.</li>
 <li><b>A non-uniform horizon.</b> The cheapest remaining structural change: a fine head at
 20 ms and a coarse tail at twice that keeps a 1 s preview in ~30 nodes instead of 50.
 <code>ShootingProblem.updateModel</code> makes it implementable without rebuilding the problem,

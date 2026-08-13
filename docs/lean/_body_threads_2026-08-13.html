@@ -1,0 +1,215 @@
+<h1>Multithreading the crocoddyl MPC: one of three stages is parallel</h1>
+
+<p class="sub">Session 16, a companion to <a href="2026-08-13_mpc_speed.html">S15</a>. That page left
+the controller real-time on the mean and not on the tail, and named threading as the obvious next
+lever: <code>ShootingProblem.nthreads</code> exists, the conda-forge crocoddyl is built without
+OpenMP, and a <!--NCPU-->-thread machine was sitting idle. This page rebuilds crocoddyl with
+OpenMP, checks the parallel path gives bit-identical behaviour, and measures what it is worth. The
+answer is <b><!--BEST_SPEEDUP-->×</b>, not the 3× the node-level split suggests — because a DDP
+step has three stages and crocoddyl's OpenMP reaches exactly one of them.</p>
+
+<p class="meta">crocoddyl <!--CRO_VERSION--> rebuilt from source with
+<code>-DBUILD_WITH_MULTITHREADS=ON</code>, Pinocchio <!--PIN_VERSION-->, one <!--CPU-->
+(<!--NCPU--> threads), commit <code><!--COMMIT--></code>. Multithreading reported as
+<b><!--MT--></b>; library actually mapped: <code><!--LIBPATH--></code>. Step times are means over
+the 200 control steps of a full 4 s MuJoCo replay. Regenerated from
+<code>runs/2026-08-13_session16/</code> by <code>lean_analysis/croco_threads_page.py</code>.</p>
+
+<div class="note"><b>The short version.</b> A step is a derivative sweep, a backward pass and a
+handful of line-search rollouts. Only the <i>derivative sweep</i> is parallel in crocoddyl, and it
+parallelises well — <!--CD_1--> → <!--CD_N--> ms, <!--CD_SPEEDUP-->× on <!--STAGE_N--> threads. The
+other two are sequential by construction and no thread count touches them, which caps the whole
+step at <b><!--BEST_SPEEDUP-->×</b> however many cores are thrown at it (<!--BEST_EFF-->%
+efficiency at <!--BEST_N--> threads). That is still the change that finally puts the tail inside
+the deadline: at the 35-node horizon the controller runs at <b><!--H35_HZ--> Hz with a p95 of
+<!--H35_P95--> ms</b> against a <!--PERIOD--> ms period, where S15 ended at 19.8 ms — i.e. on the
+deadline rather than under it.</div>
+
+<h2>1. Rebuilding without breaking the thing that works</h2>
+
+<p>The conda-forge crocoddyl is compiled without <code>CROCODDYL_WITH_MULTITHREADING</code>, so
+<code>set_nthreads</code> prints a warning and pins the count to 1. There is no conda-forge variant
+with OpenMP, so the library has to be rebuilt — and the working environment is the one thing that
+must not be disturbed, because every number in S12–S15 was measured against it.</p>
+
+<p>Three properties of the problem make a safe swap possible, and all three had to be checked
+rather than hoped:</p>
+
+<ul>
+<li><b>The define does not change the ABI.</b> <code>nthreads_</code> is an unconditional member of
+<code>ShootingProblemTpl</code>; <code>CROCODDYL_WITH_MULTITHREADING</code> only gates
+<code>#pragma omp</code> lines and two assignments. So a rebuilt <code>libcrocoddyl.so</code> is
+drop-in compatible with the <i>existing</i> Python bindings, and only the library needs building
+— <code>-DBUILD_PYTHON_INTERFACE=OFF</code>, which is most of the build time.</li>
+<li><b>The bindings use RPATH, not RUNPATH.</b> <code>readelf -d</code> on the pywrap shows
+<code>RPATH $ORIGIN/../../..</code>, and RPATH takes precedence over
+<code>LD_LIBRARY_PATH</code> — so the obvious selection mechanism silently does nothing.
+<code>LD_PRELOAD</code> does work, because a preloaded object with the matching
+<code>SONAME</code> satisfies the <code>NEEDED</code> entry. That makes the choice per-process,
+explicit on the command line, and reversible by deleting a word.</li>
+<li><b>The pinocchio header shim from S15 is needed again.</b> Building crocoddyl 3.2.1 against
+Pinocchio 4.1.0 hits the same <code>pch.hpp</code> problem as any downstream translation unit, so
+<code>croco_ext/pinocchio_compat</code> goes on the build's include path too.</li>
+</ul>
+
+<div class="note warn"><b>One upstream patch was needed, and it is unrelated to threading.</b>
+<code>core/actions/{lqr,diff-lqr}.hxx</code> initialise a member with
+<code>cond ? VectorXs::Zero(n) : VectorXs::Ones(n)</code>, whose two branches are different Eigen
+expression types. Newer Eigen rejects it and the build stops on a toy LQR action model this study
+never instantiates. Both are wrapped in <code>VectorXs(...)</code> to force a common type. It is
+recorded because a reader reproducing this will hit it and it has nothing to do with OpenMP.</div>
+
+<pre>git clone --recursive --depth 1 --branch v3.2.1 https://github.com/loco-3d/crocoddyl
+# patch the two LQR ternaries, then:
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DCMAKE_INSTALL_PREFIX=$HOME/opt/crocoddyl-omp \
+         -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
+         -DCMAKE_CXX_FLAGS="-I<repo>/lean_analysis/croco_ext/pinocchio_compat" \
+         -DBUILD_WITH_MULTITHREADS=ON -DBUILD_WITH_NTHREADS=4 \
+         -DBUILD_PYTHON_INTERFACE=OFF -DBUILD_TESTING=OFF \
+         -DBUILD_BENCHMARK=OFF -DBUILD_EXAMPLES=OFF -DBUILD_WITH_IPOPT=OFF
+make -j20 &amp;&amp; make install
+
+# and to USE it, per process, changing nothing on disk in the conda env:
+LD_PRELOAD=$HOME/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1 python croco_replay.py ...</pre>
+
+<p>The check that the swap took: <code>ShootingProblem.nthreads</code> reads back 1 with a warning
+under the stock library and accepts the value it is given under the preloaded one, and
+<code>/proc/self/maps</code> names which <code>libcrocoddyl.so</code> the process actually mapped.
+Every JSON in the run directory records that path, because "which build is this" is not otherwise
+recoverable from a table of milliseconds.</p>
+
+<h2>2. It is the same controller</h2>
+
+<p>Parallelising per-node work is only safe if nothing is shared across nodes that is written
+during <code>calc</code>. Two objects in this study are shared: the passive actuation model (one
+instance, handed to every node) and the pinocchio model behind the state. Both are read-only in
+their hot paths — the actuation writes only into its per-node data, and S15's C++ transcription is
+what makes that true, since a Python actuation in every node would have made the thread count a
+GIL contention problem instead.</p>
+
+<p>Asserted, then measured. The same replay at 1 and 8 threads:</p>
+
+<pre>                        1 thread    8 threads
+final pelvis z            0.908 m     0.908 m
+reach error at brace end    0.9 mm      0.9 mm
+brace force, braced mean    2.9 N       2.9 N        peak 90.3 N / 90.3 N
+feet normal force final   574.1 N     574.1 N
+worst table penetration    -1.0 mm     -1.0 mm</pre>
+
+<p>Identical, not merely close — the trajectory is the same trajectory. <code>test_keepout.py</code>
+and <code>test_passive.py</code> also pass unchanged under the preloaded library, so the fused
+keep-out cost and the native actuation are the same functions in the parallel build.</p>
+
+<h2>3. One of three stages is parallel</h2>
+
+<p>The reason to expect a big win was the S15 accounting: a step is ~45% derivative sweep, ~25%
+backward pass, ~25% line search, and if the first two thirds of that parallelised the step would
+fall by 3×. That estimate was wrong, and checking <code>src/core/solvers/ddp.cpp</code> rather than
+the call graph says why:</p>
+
+<pre>solver.calcDiff   -> problem_-&gt;calc() + problem_-&gt;calcDiff()
+                     BOTH carry  #pragma omp parallel for num_threads(nthreads_)
+
+forwardPass       -> for (t = 0; t &lt; T; ++t) m-&gt;calc(d, xs_try_[t], us_try_[t]);
+                     no pragma, and it CANNOT have one: x_try[t+1] comes from
+                     step t's xnext.  It never calls ShootingProblem::calc at all,
+                     so nthreads_ is not in its path.
+
+backwardPass      -> Riccati recursion, node t+1 feeds node t.  Sequential.</pre>
+
+<!--TABLE_STAGE-->
+
+<p>The derivative sweep does what it should — <!--CD_1--> → <!--CD_N--> ms, <!--CD_SPEEDUP-->× on
+<!--STAGE_N--> threads. The rollout does not move at all (<!--RO_1--> → <!--RO_N--> ms), and the
+backward pass does not either (<!--BW_1--> → <!--BW_N--> ms). So the sequential floor of a
+one-iteration step is <b><!--SEQ_MS--> ms</b> — and that counts <i>one</i> rollout, while FDDP's
+line search takes about four of them per iteration, all on the sequential side of the ledger.</p>
+
+<h2>4. What the threads are worth</h2>
+
+<!--FIG_THREADS-->
+
+<!--TABLE_THREADS-->
+
+<p>The curve leaves the ideal line immediately and is flat by four threads. That is Amdahl and not
+overhead: with the derivative sweep at ~41% of a one-thread step, the ceiling is 1/(1&nbsp;−&nbsp;0.41)
+= 1.7×, and the measurement lands at <!--BEST_SPEEDUP-->×. Efficiency falls to <!--BEST_EFF-->% at
+<!--BEST_N--> threads, which is the honest way to say that everything past about four cores is
+buying tenths of a millisecond.</p>
+
+<p>It is worth having anyway, and the reason is the tail rather than the mean. At the 50-node
+horizon above, the p95 falls from <!--T1_P95--> ms to <!--BEST_P95--> ms. Repeating the sweep at the
+35-node horizon — the configuration S15 settled on — gives <!--H35_T1_MS--> → <!--H35_MS--> ms mean
+(<!--H35_SPEEDUP-->×) and, the number that matters, <b>p95 <!--H35_T1_P95--> → <!--H35_P95--> ms</b>.
+That is the difference between a controller that misses roughly one deadline in twenty and one that
+does not miss any.</p>
+
+<h2>5. The controller</h2>
+
+<p>The final configuration — 35-node horizon, one DDP iteration, fused keep-out, native passive
+actuation, <!--H35_N--> threads — running the braced lean in MuJoCo. Contact markers are drawn
+where the narrowphase actually reports contact: blue elbow, orange forearm, grey feet, magenta for
+anything touching the table that nobody planned to put there.</p>
+
+<div class="grid2">
+<figure>
+<video controls muted playsinline preload="metadata" src="media/s16_mpc_brace.mp4"></video>
+<figcaption>Close on the tabletop. The bracing arm is drawn translucent so the contact markers
+under it are visible.</figcaption>
+</figure>
+<figure>
+<video controls muted playsinline preload="metadata" src="media/s16_mpc_wide.mp4"></video>
+<figcaption>Wide. Stand → lean and reach → hold, on feet plus elbow and forearm.</figcaption>
+</figure>
+</div>
+
+<h2>6. Where this leaves the loop, and what is left</h2>
+
+<p>Across S15 and S16 the step went from 236 ms to <!--H35_MS--> ms and the p95 from 358 ms to
+<!--H35_P95--> ms, against a <!--PERIOD--> ms control period. The loop is real-time on the mean
+and on the tail, on this machine, for this maneuver.</p>
+
+<ul>
+<li><b>More cores will not help.</b> The measured ceiling is <!--BEST_SPEEDUP-->× and it is reached
+by four threads. Anything further has to come from the sequential two thirds.</li>
+<li><b>The line search is the largest remaining sequential item</b> — about four full rollouts per
+iteration, each one a sequential sweep over the horizon. S15 measured and rejected the obvious fix
+(truncating the alpha ladder saves no time and destabilises the controller). A cheaper rollout, or
+a step-acceptance test that does not need one, is the next real lever.</li>
+<li><b>The backward pass is a Riccati recursion</b> and is sequential in any DDP. Reducing it means
+fewer nodes or a smaller state, not more threads.</li>
+<li><b>Not the Delassus</b>, still — S14 measured it at 2.3% of a node and it has only got
+smaller in relative terms since.</li>
+</ul>
+
+<h2>7. Reproducing this</h2>
+
+<pre>OMP=$HOME/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1
+R=runs/2026-08-13_session16
+C=runs/2026-08-13_session15/croco          # the S15 plan, unchanged
+
+LD_PRELOAD=$OMP python croco_ext/test_keepout.py     # same objective under OpenMP
+LD_PRELOAD=$OMP python croco_ext/test_passive.py     # same actuation
+
+LD_PRELOAD=$OMP python croco_speed.py manifest --dir $C --out $R/meta.json
+LD_PRELOAD=$OMP python croco_speed.py stage    --dir $C --horizon 50 --threads 8 \
+                                               --out $R/stage.json
+LD_PRELOAD=$OMP python croco_speed.py threads  --dir $C --horizon 50 --iters 1 \
+                                               --out $R/threads.json
+LD_PRELOAD=$OMP python croco_speed.py threads  --dir $C --horizon 35 --iters 1 \
+                                               --threads 1 2 4 8 12 20 \
+                                               --out $R/threads_h35.json
+
+# the videos (headless box: GLFW against the live X display)
+MUJOCO_GL=glfw DISPLAY=:1 LD_PRELOAD=$OMP python croco_replay.py --tag s13 --ctrl mpc \
+    --mpc-horizon 35 --mpc-iters 1 --mpc-threads 20 --dir $C --video --cam brace
+
+python croco_threads_page.py --dir $R --body ../docs/lean/_body_threads_2026-08-13.html \
+                             --out 2026-08-13_mpc_threads.html          # this page</pre>
+
+<p class="meta">Nothing above changes the default behaviour of the study: without
+<code>LD_PRELOAD</code> every script loads the conda-forge crocoddyl exactly as before,
+<code>--mpc-threads</code> defaults to 0 (leave crocoddyl's own default alone), and the S15 numbers
+reproduce unchanged. The rebuilt library lives outside the conda environment and can be deleted
+without consequence.</p>
