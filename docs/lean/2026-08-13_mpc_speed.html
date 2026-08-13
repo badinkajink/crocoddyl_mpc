@@ -377,14 +377,20 @@ solve considered.</p>
 <text x="353.4" y="196" font-size="11" fill="var(--ink2)">12.2 ms <tspan fill="var(--ink3)">(82 Hz)</tspan></text>
 </svg>
 
-<div class="scroll"><table><thead><tr><th>rung</th><th>keep-out</th><th>actuation</th><th>H</th><th>iters</th><th>step <span style="text-transform:none">ms</span></th><th>p95 <span style="text-transform:none">ms</span></th><th>Hz</th><th>reach err mm</th><th>survives</th></tr></thead><tbody><tr><td>S12: python activation, per-point</td><td>python</td><td>python</td><td>50</td><td>2</td><td class="bad">203.8</td><td>306.1</td><td class="bad">4.9</td><td>2.0</td><td>yes</td></tr><tr><td>S13: C++ activation, per-point</td><td>cpp</td><td>python</td><td>50</td><td>2</td><td class="bad">77.7</td><td>100.6</td><td class="bad">12.9</td><td>2.0</td><td>yes</td></tr><tr><td>S15a: + fused keep-out cost</td><td>fused</td><td>python</td><td>50</td><td>2</td><td class="bad">37.8</td><td>54.7</td><td class="bad">26.5</td><td>1.2</td><td>yes</td></tr><tr><td>S15b: + C++ passive actuation</td><td>fused</td><td>cpp</td><td>50</td><td>2</td><td class="bad">35.2</td><td>46.9</td><td class="bad">28.4</td><td>1.6</td><td>yes</td></tr><tr><td>S15c: + one DDP iteration</td><td>fused</td><td>cpp</td><td>50</td><td>1</td><td class="good">18.2</td><td>25.5</td><td class="good">55.1</td><td>0.7</td><td>yes</td></tr><tr><td>S15d: + horizon 50 -> 35 nodes</td><td>fused</td><td>cpp</td><td>35</td><td>1</td><td class="good">12.2</td><td>16.1</td><td class="good">82.0</td><td>3.6</td><td>yes</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>rung</th><th>keep-out</th><th>actuation</th><th>H</th><th>iters</th><th>step <span style="text-transform:none">ms</span></th><th>repeat <span style="text-transform:none">ms</span></th><th>p95 <span style="text-transform:none">ms</span></th><th>Hz</th><th>reach err mm</th><th>survives</th></tr></thead><tbody><tr><td>S12: python activation, per-point</td><td>python</td><td>python</td><td>50</td><td>2</td><td class="bad">203.8</td><td>217.2</td><td>306.1 / 345.1</td><td class="bad">4.9</td><td>2.0</td><td>yes</td></tr><tr><td>S13: C++ activation, per-point</td><td>cpp</td><td>python</td><td>50</td><td>2</td><td class="bad">77.7</td><td>85.6</td><td>100.6 / 118.9</td><td class="bad">12.9</td><td>2.0</td><td>yes</td></tr><tr><td>S15a: + fused keep-out cost</td><td>fused</td><td>python</td><td>50</td><td>2</td><td class="bad">37.8</td><td>38.0</td><td>54.7 / 52.3</td><td class="bad">26.5</td><td>1.2</td><td>yes</td></tr><tr><td>S15b: + C++ passive actuation</td><td>fused</td><td>cpp</td><td>50</td><td>2</td><td class="bad">35.2</td><td>37.2</td><td>46.9 / 49.9</td><td class="bad">28.4</td><td>1.6</td><td>yes</td></tr><tr><td>S15c: + one DDP iteration</td><td>fused</td><td>cpp</td><td>50</td><td>1</td><td class="good">18.2</td><td>18.4</td><td>25.5 / 25.1</td><td class="good">55.1</td><td>0.7</td><td>yes</td></tr><tr><td>S15d: + horizon 50 -> 35 nodes</td><td>fused</td><td>cpp</td><td>35</td><td>1</td><td class="good">12.2</td><td>13.0</td><td>16.1 / 18.4</td><td class="good">82.0</td><td>3.6</td><td>yes</td></tr></tbody></table></div>
+
+<p class="meta">Two runs of the whole ladder, an hour apart. The second came back 5–10% slower
+across <i>every</i> rung with the ratios intact — thermal and scheduling drift on a desktop, not a
+regression — so both are shown and neither should be read to a tenth of a millisecond. It matters
+most at the bottom rung, where the p95 clears the control period by ~15% rather than comfortably.</p>
 
 <p>Two cells are defensible endpoints. At H = 50 the controller runs at 55 Hz
 (18.2 ms, p95 25.5 ms) with a 1 s preview and the same behaviour as S13. At
 H = 35 it runs at 82 Hz (12.2 ms, p95 16.1 ms) with a 0.7 s
 preview, a 3.6 mm reach error, and — the number that decides whether this is a
-controller — <b>a p95 inside the 20 ms control period</b>, which no previous session's
-configuration achieved even on its mean.</p>
+controller — <b>a p95 inside the 20 ms control period</b> (16.1 and 18.4 ms over two
+runs), which no previous session's configuration achieved even on its mean. The margin is real but
+it is not large, and the note under the table says how large.</p>
 
 <p>The shorter horizon is not free, and the cost is not in the reach error. Worst table
 penetration goes from 2.6 mm at H = 50 to 9.8 mm at H = 35: with 0.7 s of

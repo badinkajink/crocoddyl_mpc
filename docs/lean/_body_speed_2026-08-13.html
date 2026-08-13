@@ -235,12 +235,18 @@ solve considered.</p>
 
 <!--TABLE_LADDER-->
 
+<p class="meta">Two runs of the whole ladder, an hour apart. The second came back 5–10% slower
+across <i>every</i> rung with the ratios intact — thermal and scheduling drift on a desktop, not a
+regression — so both are shown and neither should be read to a tenth of a millisecond. It matters
+most at the bottom rung, where the p95 clears the control period by ~15% rather than comfortably.</p>
+
 <p>Two cells are defensible endpoints. At H = 50 the controller runs at <!--HZ_H50--> Hz
 (<!--STEP_H50--> ms, p95 <!--P95_H50--> ms) with a 1 s preview and the same behaviour as S13. At
 H = 35 it runs at <!--HZ_FINAL--> Hz (<!--STEP_FINAL--> ms, p95 <!--P95_FINAL--> ms) with a 0.7 s
 preview, a <!--REACH_FINAL--> mm reach error, and — the number that decides whether this is a
-controller — <b>a p95 inside the <!--PERIOD--> ms control period</b>, which no previous session's
-configuration achieved even on its mean.</p>
+controller — <b>a p95 inside the <!--PERIOD--> ms control period</b> (16.1 and 18.4 ms over two
+runs), which no previous session's configuration achieved even on its mean. The margin is real but
+it is not large, and the note under the table says how large.</p>
 
 <p>The shorter horizon is not free, and the cost is not in the reach error. Worst table
 penetration goes from <!--PEN_H50--> mm at H = 50 to <!--PEN_FINAL--> mm at H = 35: with 0.7 s of
