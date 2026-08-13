@@ -1,0 +1,309 @@
+<h1>Making the crocoddyl MPC real-time: the cost stack was the wrong axis</h1>
+
+<p class="sub">Session 15. The S13 controller re-solves a 50-node BoxFDDP problem every control
+step and takes <!--STEP_S13--> ms doing it on this machine, against a <!--PERIOD--> ms control
+period — <!--HZ_S13--> Hz where the loop needs 50–100. S13 attacked it by making the box keep-out
+activation native, S14 by asking whether the Delassus matrix was the bottleneck (it is 2.3% of a
+node). Both were optimising the cost of individual operations. This page measures the axis neither
+of them looked at — the <i>number of cost terms</i> — and ends at <!--STEP_FINAL--> ms, p95
+<!--P95_FINAL--> ms, <!--HZ_FINAL--> Hz, inside the control period.</p>
+
+<p class="meta">crocoddyl <!--CRO_VERSION-->, Pinocchio <!--PIN_VERSION-->, conda-forge, one
+<!--CPU--> (<!--NCPU--> threads), commit <code><!--COMMIT--></code>. Node timings are best-of in
+microseconds; MPC step times are means over the 200 control steps of a full 4 s MuJoCo replay,
+because there the question is what a control period costs in practice. n<sub>v</sub> =
+<!--NV-->, n<sub>u</sub> = <!--NU-->, n<sub>x</sub> = <!--NDX-->. Everything below is regenerated
+from <code>runs/2026-08-13_session15/</code> by <code>lean_analysis/croco_speed_page.py</code>.</p>
+
+<div class="note"><b>The short version.</b> A crocoddyl cost term costs
+<!--PER_TERM_CTRL--> µs per node <i>before it computes anything</i>, because
+<code>CostModelSum</code> accumulates a private <!--ACC_BYTES-->-double L<sub>xx</sub>/L<sub>xu</sub>/L<sub>uu</sub>
+block for every term whether or not that term is active. The S13 node carried
+<!--TERMS_S13--> terms, <!--N_POINTS--> of them keep-out points that are inactive at almost every
+node — <!--KO_US_S13--> µs, <!--KO_SHARE_S13-->% of the node, to enforce a constraint that is
+satisfied. Fusing them into one term that skips its inactive points is the same optimisation
+problem (checked to 1e-12) and <b>halves the step</b>. With three further changes the controller
+runs at <!--HZ_FINAL--> Hz: <!--SPEEDUP_S13-->× over the published S13 controller and
+<!--SPEEDUP_S12-->× over S12. Two plausible optimisations were measured and rejected.</div>
+
+<h2>1. Where S13 and S14 left it</h2>
+
+<p>S14 profiled a braced node and found the contact dynamics were 26–29% of it, with the Delassus
+matrix — the object the matrix-free literature is about — at 2.3%. It attributed the other
+three-quarters to "the cost stack, overwhelmingly the <!--N_POINTS--> box keep-out residuals" and
+stopped, because the question it had set itself was about the Delassus.</p>
+
+<p>That attribution is right, and it is right for a reason S14 did not state and would not have
+predicted from the arithmetic. The keep-out is a box signed-distance function on a point: a
+handful of comparisons, a norm, and a 3 × n<sub>v</sub> Jacobian. The state regulariser next to it
+in the same cost sum is a <!--NDX-->-row residual over the whole state. If cost terms cost what
+they compute, the keep-out points should be the cheap ones.</p>
+
+<p>The first thing to establish, then, is what a cost term costs when it computes nothing.</p>
+
+<h2>2. What a cost term costs before it computes anything</h2>
+
+<p><code>CostModelSum::calcDiff</code> loops the terms and, for each active one:</p>
+
+<pre>data-&gt;Lx  += w * d_i-&gt;Lx        (n x   = <!--NDX-->)
+data-&gt;Lu  += w * d_i-&gt;Lu        (n u   = <!--NU-->)
+data-&gt;Lxx += w * d_i-&gt;Lxx       (<!--NDX--> x <!--NDX-->)
+data-&gt;Lxu += w * d_i-&gt;Lxu       (<!--NDX--> x <!--NU-->)
+data-&gt;Luu += w * d_i-&gt;Luu       (<!--NU--> x <!--NU-->)</pre>
+
+<p>That is <!--ACC_BYTES--> doubles of dense read-multiply-accumulate per term per node, over a
+<code>CostDataAbstract</code> that every term owns privately — and it happens whether the term's
+residual is zero, whether its activation is on its flat branch, and whether it depends on
+<code>u</code> at all. It is a property of the container, not of the cost.</p>
+
+<p>Measured directly: N identical copies of the same cost in one <code>CostModelSum</code> on the
+real state, timed against N, for two costs that share none of their arithmetic.</p>
+
+<!--FIG_SCALING-->
+
+<p>A 3-row box keep-out point costs <!--PER_TERM_KO--> µs and a 1-row control residual — which
+computes essentially nothing; its Jacobian is the identity — costs <!--PER_TERM_CTRL--> µs. The
+slopes differ by 0.6 µs. <b>About <!--CONTAINER_SHARE-->% of what a keep-out point costs is the
+container, not the constraint.</b></p>
+
+<div class="note"><b>And the memory half, which the timing table does not show.</b> Every term's
+private L<sub>xx</sub>/L<sub>xu</sub>/L<sub>uu</sub> is <!--ACC_BYTES--> doubles, so the S13 node
+carries <!--MB_S13--> MB of cost data over a 50-node horizon against <!--MB_S15--> MB after. That
+is why a node measured in isolation and a node measured inside a sweep disagree: isolated and
+cache-warm the S13 braced node is <!--NODE_S13--> µs, but the same node inside
+<code>problem.calcDiff</code> over 50 of them is <!--INSITU_S13--> µs. Allocating the datas for
+the 200-model problem takes <!--ALLOC_S13--> ms against <!--ALLOC_S15--> ms — the reason the MPC
+class was already careful never to rebuild its problem.</div>
+
+<h2>3. The cost stack, per group</h2>
+
+<p>Each group is switched off with <code>changeCostStatus</code> and the node re-timed, so what is
+reported for a group is what removing it saves — including its share of the accumulation above,
+which is the point of measuring it this way rather than instrumenting the residuals.</p>
+
+<!--TABLE_TERMS_S13-->
+
+<p>The keep-out is <!--KO_SHARE_S13-->% of the braced node across <!--N_POINTS--> terms at
+<!--KO_PER_TERM_S13--> µs each. The <!--NDX-->-row state regulariser and the <!--NDX-->-row joint-limit
+barrier — the terms that look expensive — are ~2.5 µs each, because crocoddyl specialises
+<code>ResidualModelState::calcCostDiff</code> for its block structure. Nothing here is slow. There
+are simply <!--TERMS_S13--> of them.</p>
+
+<h2>4. One cost term for the whole keep-out</h2>
+
+<p><code>croco_ext/keepout.cpp</code> gains <code>CostModelBoxKeepOut</code>, a
+<code>CostModelAbstract</code> that owns all <!--N_POINTS--> points. It is written against the cost
+base rather than as a residual + activation pair deliberately: a residual is the right abstraction
+when crocoddyl's Gauss-Newton assembly should do the work, and here the entire objective is to
+not do that work. The term writes L<sub>x</sub> and L<sub>xx</sub> itself, so:</p>
+
+<ul>
+<li>one accumulation into the shared L<sub>xx</sub> instead of <!--N_POINTS-->;</li>
+<li>one <code>CostDataAbstract</code> instead of <!--N_POINTS-->;</li>
+<li>and each point whose activation is zero costs one SDF evaluation — about 20 flops — instead of
+a frame Jacobian and an n<sub>v</sub> × n<sub>v</sub> Gauss-Newton block. Over the planned
+trajectory <b>at most 7 of the <!--N_POINTS--> points are ever active at once</b>, and the whole
+set is inactive at the certified pose by construction (the thresholds are taken there).</li>
+</ul>
+
+<div class="note warn"><b>The bug this formulation has and the per-point stack could not.</b>
+crocoddyl's contact forward dynamics calls <code>pinocchio::computeAllTerms</code>, which does
+<b>not</b> update frame placements — <code>ResidualModelFrameTranslation::calc</code> updates the
+one frame it owns, so 86 separate residuals each refreshed their own. A single term looping over
+<code>oMf</code> reads whatever the last residual to touch it wrote. The symptom is not a crash: the
+active set comes back empty at every state and the keep-out silently stops constraining anything,
+while the solve gets faster and still converges. It was caught by the equivalence test below,
+which is the only reason it is a footnote and not the result.</div>
+
+<p><code>croco_ext/test_keepout.py</code> builds the real action model both ways — <!--N_POINTS-->
+<code>CostModelResidual</code> terms against the one fused term, same contacts, same actuation,
+same damping — and compares <code>cost</code>, <code>Lx</code> and <code>Lxx</code> at 40 states
+drawn from the planned trajectory, 39 of which have a non-empty active set. They agree to 2e-18,
+1e-14 and 2e-12. This is the same objective, not a similar one.</p>
+
+<!--TABLE_TERMS_S15-->
+
+<!--FIG_BUDGET-->
+
+<p>The MPC is not the only consumer of this cost stack. <code>croco_run.py</code>'s staged
+continuation solves the same models to convergence offline, and it moves the same way — with the
+same plan coming out, which is the regression check that matters more than the seconds:</p>
+
+<!--TABLE_OFFLINE-->
+
+<p>The offline solve goes <!--OFF_PY--> s → <!--OFF_CPP--> s → <!--OFF_FUSED--> s across the three
+implementations, and the plan is the same plan: the brace lands within 0.04 mm of the same spots,
+the hand within 0.04 mm of the same target, and the pose within 0.011 rad of the same q*. The
+fused run takes 47 DDP iterations where the other two take 40, because accumulating one weighted
+sum instead of <!--N_POINTS--> reassociates the arithmetic and puts the solver on a marginally
+different iterate sequence. What has to match is the answer, and it does.</p>
+
+<p>The braced node goes from <!--NODE_S13--> µs to <!--NODE_S15--> µs, and in situ over a 50-node
+sweep from <!--INSITU_S13--> to <!--INSITU_S15--> µs per node — a bigger factor than the isolated
+measurement, because the working set collapsed too. The contact dynamics are now
+<!--DYN_SHARE_S15-->% of the node, which is where S14 said the floor was.</p>
+
+<h2>5. The last interpreted object in the loop</h2>
+
+<p>The plant's passive joint torques (MJCF damping and friction loss, without which the plan's
+torques are systematically low on every moving joint) were a Python subclass of
+<code>ActuationModelAbstract</code>. Its <code>calcDiff</code> allocated a fresh
+n<sub>v</sub> × n<sub>x</sub> zero matrix and a <code>np.diag</code> per node per sweep:</p>
+
+<pre>                              calc      calcDiff
+python passive             <!--ACT_PY_CALC--> µs      <!--ACT_PY_DIFF--> µs
+c++ passive                <!--ACT_CPP_CALC--> µs      <!--ACT_CPP_DIFF--> µs
+crocoddyl ActuationModelFloatingBase (no passive terms)   <!--ACT_STOCK--> µs</pre>
+
+<p><code>croco_ext/actuation.cpp</code> transcribes it, keeping the constant structure
+(<code>dtau_du</code>, the torque transform) written once in <code>createData</code> instead of
+rebuilt per call. It is worth 2–3 ms of the step and it matters more than that suggests for two
+reasons: <code>calc</code> is on the line-search path, where FDDP rolls the whole horizon out once
+per trial step; and it removes the last interpreter object from the node, which is the precondition
+for ever using <code>ShootingProblem.nthreads</code> — inert in this conda-forge build, which is
+compiled without OpenMP, but a Python model in every node would make that knob a GIL contention
+problem rather than a speed-up. <code>croco_ext/test_passive.py</code> checks the two agree on
+tau, dtau_dx, dtau_du and <code>commands</code> to 7e-15, at velocities spanning the tanh knee.</p>
+
+<h2>6. What is left in a step</h2>
+
+<p>With the node at <!--NODE_S15--> µs, a warm-started 50-node step at one iteration divides as:</p>
+
+<pre>solver.calcDiff  (one calc + one calcDiff sweep)   <!--SOLVER_CALCDIFF--> ms
+backwardPass     (Riccati + BoxQP, 50 nodes)       <!--SOLVER_BACKWARD--> ms
+one line-search rollout                            <!--SOLVER_ROLLOUT--> ms  x <!--TRIALS--> trials (median)</pre>
+
+<p>FDDP's forward pass is a full nonlinear rollout per trial step and the median accepted step is
+0.125–0.1875, i.e. about <!--TRIALS--> rollouts thrown away per iteration. So the step is roughly
+45% derivative sweep, 25% backward pass, 25% line search — and the second DDP iteration costs all
+of that again, which is what the <code>iters</code> knob buys and sells.</p>
+
+<h2>7. The (horizon × iterations × cones) grid</h2>
+
+<p>Every cell is a full 4 s MuJoCo replay scored the way <code>croco_replay</code> scores every
+controller, not a solver benchmark: the reach error, table penetration and CoM margin are what the
+robot did.</p>
+
+<!--TABLE_SWEEP-->
+
+<p>Two things come out of this. <b>One DDP iteration is both faster and no worse than two</b> —
+<!--STEP_H50--> ms against <!--STEP_2ITER--> ms at the same horizon, with a smaller reach error in
+the noiseless run. That is not the usual shape of an accuracy/speed trade and it is worth being
+careful about: §9 shows the survival difference is not resolvable, so the honest claim is that one
+iteration is twice as fast and not measurably worse, not that it is better.</p>
+
+<p><b>And the cones are load-bearing.</b> Dropping the five friction/wrench cone costs from the
+online problem takes the braced node from <!--NODE_S15--> to <!--NODE_NOCONE--> µs, and lets
+<code>enable_force</code> go off with them — they are the only costs that read the contact-force
+derivatives — for <!--NODE_NOFORCE--> µs, a 36% cheaper node. The controller then falls in most
+cells of the grid. The cones are <!--CONE_SHARE-->% of the node and they are the last thing to
+remove.</p>
+
+<h2>8. One optimisation that looked obvious and is not</h2>
+
+<p>The p95 step is consistently ~40% above the mean, and the reason is the line search: a rung of
+crocoddyl's alpha ladder is a full rollout, the ladder has ten rungs, and a step that walks to the
+bottom costs ten of them. Truncating the ladder bounds the rollouts per iteration, which is exactly
+the shape a real-time budget wants. It does not work:</p>
+
+<!--TABLE_ALPHAS-->
+
+<p>It saves no time — a rejected ladder still evaluates every rung it has, so the mean is flat or
+worse — and it destabilises the controller: with the ladder capped, a step that would have been
+taken at a small alpha is not taken at all, the regularisation rises, and the next period starts
+from a worse candidate. At H = 35 it falls at every cap tried. The real fix for the p95 is a
+cheaper rollout, which is what §4 and §5 are.</p>
+
+<h2>9. The robustness is not a speed problem</h2>
+
+<p>All of the above is measured on the deterministic replay. Repeating the promising cells with
+0.02 rad (1.1°) of Gaussian noise on the initial joint angles, five seeds each:</p>
+
+<!--TABLE_NOISE-->
+
+<p>Every configuration falls in two or three of five, and the differences between them are not
+resolvable at this sample size. That is a real limitation of this controller and it is worth
+stating plainly rather than burying: <b>the horizon and iteration knobs can be chosen on speed
+alone in this range because none of them is buying robustness</b>. Whatever fixes the 1.1° fall
+rate is a different piece of work — the plan is tracked from a single certified pose with no
+re-planning of the contact schedule, and a perturbed initial state is outside what the offline
+solve considered.</p>
+
+<h2>10. The ladder</h2>
+
+<!--FIG_LADDER-->
+
+<!--TABLE_LADDER-->
+
+<p>Two cells are defensible endpoints. At H = 50 the controller runs at <!--HZ_H50--> Hz
+(<!--STEP_H50--> ms, p95 <!--P95_H50--> ms) with a 1 s preview and the same behaviour as S13. At
+H = 35 it runs at <!--HZ_FINAL--> Hz (<!--STEP_FINAL--> ms, p95 <!--P95_FINAL--> ms) with a 0.7 s
+preview, a <!--REACH_FINAL--> mm reach error, and — the number that decides whether this is a
+controller — <b>a p95 inside the <!--PERIOD--> ms control period</b>, which no previous session's
+configuration achieved even on its mean.</p>
+
+<p>The shorter horizon is not free, and the cost is not in the reach error. Worst table
+penetration goes from <!--PEN_H50--> mm at H = 50 to <!--PEN_FINAL--> mm at H = 35: with 0.7 s of
+preview the arm arrives at the slab with less warning and the keep-out has to work harder against
+momentum it can no longer see coming. <!--PEN_FINAL--> mm is inside the soft-contact penetration
+MuJoCo already allows at these forces and well short of anything structural, but it is the number
+to watch if the horizon goes shorter still, and it is why <b>H = 50 at
+<!--HZ_H50--> Hz is the configuration to prefer unless the extra headroom is needed</b> — it is
+already real-time on the mean, and its p95 misses the period by <!--P95_H50_OVER--> ms.</p>
+
+<h2>11. What would come next, and what would not</h2>
+
+<ul>
+<li><b>Not the Delassus</b>, still. It was 2.3% of the S13 node and the node has since lost 60% of
+its cost elsewhere; it is a larger fraction of a smaller number and the same conclusion.</li>
+<li><b>Threading.</b> <code>ShootingProblem.nthreads</code> exists and is inert: this conda-forge
+crocoddyl reports <code>multithreading support is not enabled</code>. A build with OpenMP would
+parallelise the calcDiff sweep and the rollouts across nodes, which is 70% of the step, on a
+<!--NCPU-->-thread machine. §5 removed the blocker on the crocoddyl side.</li>
+<li><b>A non-uniform horizon.</b> The cheapest remaining structural change: a fine head at
+<!--PERIOD--> ms and a coarse tail at twice that keeps a 1 s preview in ~30 nodes instead of 50.
+<code>ShootingProblem.updateModel</code> makes it implementable without rebuilding the problem,
+but the coarse tail's models cannot be rotated with <code>circularAppend</code>, so the window
+management is real work rather than a flag.</li>
+<li><b>The contact-dynamics floor</b> is now <!--DYN_SHARE_S15-->% of a node
+(<!--DYN_S15--> µs) and is crocoddyl's own <code>DifferentialActionModelContactFwdDynamics</code>.
+Below it there is no more accounting to do; there is a different action model.</li>
+</ul>
+
+<h2>12. Reproducing this</h2>
+
+<pre>cd lean_analysis
+bash croco_ext/build.sh                    # keepout (activation + fused cost), passive, mfd
+python croco_ext/test_keepout.py           # the fused cost is the same objective
+python croco_ext/test_passive.py           # the C++ actuation is the same model
+
+python croco_modes.py  --out runs/2026-08-06_session13
+python croco_run.py    --mode elbow+forearm+palm --dt 0.02 --n-approach 120 \
+                       --n-braced 80 --dir runs/2026-08-06_session13 --tag s13
+
+R=runs/2026-08-13_session15
+python croco_speed.py manifest --out $R/meta.json
+python croco_speed.py terms  --out $R/terms_s15.json
+python croco_speed.py step   --out $R/step_s15.json
+python croco_speed.py scaling --out $R/scaling.json
+python croco_speed.py pieces --out $R/pieces.json
+python croco_speed.py solver --iters 1 --out $R/solver.json
+CROCO_KEEPOUT=cpp CROCO_PASSIVE=python python croco_speed.py terms --out $R/terms_s13.json
+CROCO_KEEPOUT=cpp CROCO_PASSIVE=python python croco_speed.py step  --out $R/step_s13.json
+CROCO_KEEPOUT=cpp CROCO_PASSIVE=python python croco_speed.py manifest --out $R/meta_s13.json
+
+python croco_speed.py ladder --out $R/ladder.json            # the headline table
+python croco_speed.py sweep  --out $R/sweep.json             # H x iters x cones
+python croco_speed.py sweep  --horizons 50 35 --iters-grid 1 --cones 1 \
+                             --alphas 0 5 4 3 --out $R/sweep_alphas.json
+for s in 1 2 3 4 5; do \
+  python croco_speed.py sweep --horizons 50 35 --iters-grid 2 1 --cones 1 \
+                              --q-noise 0.02 --seed $s --out $R/sweep_noise$s.json; done
+
+python croco_speed_page.py --dir $R --body ../docs/lean/_body_speed_2026-08-13.html \
+                           --out 2026-08-13_mpc_speed.html                   # this page</pre>
+
+<p class="meta">The controller itself needs no flags: <code>CROCO_KEEPOUT</code> defaults to
+<code>fused</code> and <code>CROCO_PASSIVE</code> to <code>cpp</code>, both falling back to the
+Python implementations with a note if <code>croco_ext</code> is not built, so a fresh checkout still
+runs — slowly, and correctly.</p>
