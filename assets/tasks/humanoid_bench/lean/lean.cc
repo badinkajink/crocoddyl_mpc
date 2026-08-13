@@ -1786,13 +1786,25 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         double half_y = model->geom_size[3 * tg + 1];
         double side = reach_right ? -1.0 : 1.0;   // right arm goes around -y
         const double* h = reaching_hand;
-        bool below = h[2] < surf_z + 0.03;
+        // 2026-08-12: constants promoted to LIVE numerics (real run 8: the arc
+        // engaged too late/low -- operator had to hand-assist past the front
+        // edge). Defaults = the retuned earlier/wider/higher arc; absent
+        // numerics fall back to these same values.
+        auto numor = [&](const char* nm, double dflt) {
+          int id = mj_name2id(model, mjOBJ_NUMERIC, nm);
+          return id >= 0 ? model->numeric_data[model->numeric_adr[id]] : dflt;
+        };
+        double eng_below = numor("swing_engage_below", 0.10);  // was 0.03
+        double eng_near  = numor("swing_engage_near", 0.25);   // was 0.10
+        double swing_out = numor("swing_out", 0.22);           // was 0.18
+        double swing_up  = numor("swing_up", 0.20);            // was 0.12
+        bool below = h[2] < surf_z + eng_below;
         bool inboard = side * h[1] < half_y + 0.06;  // not yet past the side edge
-        bool near_slab = h[0] > table_near_edge_x - 0.10;
+        bool near_slab = h[0] > table_near_edge_x - eng_near;
         if (below && inboard && near_slab) {
           via_storage[0] = h[0];                   // no forward pull while blocked
-          via_storage[1] = side * (half_y + 0.18); // OUT past the side edge...
-          via_storage[2] = surf_z + 0.12;          // ...and UP over the surface
+          via_storage[1] = side * (half_y + swing_out); // OUT past the side edge...
+          via_storage[2] = surf_z + swing_up;      // ...and UP over the surface
           reach_target = via_storage;
         }
       }
@@ -3440,6 +3452,62 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                data->time -
                        motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
                    current_kf.success_sustain_time &&
+               [&] {
+                 // ★ 2026-08-12 BRACE-CONTACT-GATED ADVANCE (user-approved
+                 // spec): brace-side rungs (lean/mid/reach) may only advance
+                 // after the forearm pad has been in believed table contact
+                 // for >= `brace_contact_verify` s continuously. 0/absent =
+                 // OFF = byte-identical. Loss >= `brace_contact_loss` s
+                 // resets the counter (freeze: the ladder holds while the
+                 // pad re-seats — Brace Pos stays active). Loss >=
+                 // `brace_contact_freeze_cap` s => give up: handled by the
+                 // retry machinery via the stall path (pad off + banded
+                 // tilt), which this freeze feeds by construction.
+                 int bcv = mj_name2id(model, mjOBJ_NUMERIC,
+                                      "brace_contact_verify");
+                 double vsec = bcv >= 0
+                     ? model->numeric_data[model->numeric_adr[bcv]] : 0.0;
+                 const std::string& kfn =
+                     motion_strategy_.GetCurrentKeyframe().name;
+                 bool brace_side = (kfn == "forearm_brace_lean" ||
+                                    kfn == "forearm_brace_mid" ||
+                                    kfn == "forearm_brace_reach");
+                 if (vsec > 0.0 && brace_side) {
+                   int pad_gid2 =
+                       mj_name2id(model, mjOBJ_GEOM, "left_forearm_pad");
+                   bool on = false;
+                   for (int ci = 0; ci < data->ncon; ci++) {
+                     const mjContact& con = data->contact[ci];
+                     if (con.geom1 == pad_gid2 || con.geom2 == pad_gid2) {
+                       on = true;
+                       break;
+                     }
+                   }
+                   static double bc_since = -1.0, bc_lost_since = -1.0;
+                   int bcl = mj_name2id(model, mjOBJ_NUMERIC,
+                                        "brace_contact_loss");
+                   double lsec = bcl >= 0
+                       ? model->numeric_data[model->numeric_adr[bcl]] : 1.0;
+                   if (on) {
+                     bc_lost_since = -1.0;
+                     if (bc_since < 0.0) bc_since = data->time;
+                   } else {
+                     if (bc_lost_since < 0.0) bc_lost_since = data->time;
+                     if (data->time - bc_lost_since > lsec) bc_since = -1.0;
+                   }
+                   if (bc_since < 0.0 ||
+                       data->time - bc_since < vsec) {
+                     static int bc_note = 0;
+                     if (++bc_note % 100 == 1)
+                       std::printf("[lean-gate] HOLD %s: pad contact %s "
+                                   "(need %.1fs verified)\n",
+                                   kfn.c_str(), on ? "verifying" : "LOST",
+                                   vsec);
+                     return false;
+                   }
+                 }
+                 return true;
+               }() &&
                [&] {
                  // ★ 2026-08-06 `phase_advance_quiet_vel` numeric: 0 = OFF =
                  // BYTE-IDENTICAL. >0 = do not advance while the base sways

@@ -404,6 +404,16 @@
         <numeric name="std_min_tight" data="0.01"/>
         <numeric name="std_min_ramp_sec" data="2.5"/>
         <numeric name="explore_fraction" data="0.0"/>
+        <!-- 2026-08-12 brace-contact-gated advance + live side-swing arc (user-approved):
+             verify = continuous believed pad-contact seconds required before a
+             brace-side rung may advance (0 = OFF); loss = dropout tolerated
+             before the verify clock resets. swing_* = reach via-arc geometry. -->
+        <numeric name="brace_contact_verify" data="2.0"/>
+        <numeric name="brace_contact_loss" data="1.0"/>
+        <numeric name="swing_engage_below" data="0.10"/>
+        <numeric name="swing_engage_near" data="0.25"/>
+        <numeric name="swing_out" data="0.22"/>
+        <numeric name="swing_up" data="0.20"/>
         <numeric name="sampling_knot_var_growth" data="0.0"/>
         <numeric name="gradient_spline_points" data="5"/>
         <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites
