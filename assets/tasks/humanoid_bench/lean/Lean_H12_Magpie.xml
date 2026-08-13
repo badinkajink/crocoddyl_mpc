@@ -306,6 +306,12 @@
         <key name="jump_crouch" qpos="0.19 0 0.780 1 0 0 0 0 -1.00 0.12 1.60 -0.72 0 0 -1.00 -0.12 1.60 -0.72 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="jump_launch" qpos="0.19 0 1.035 1 0 0 0 0 -0.05 0.12 0.10 -0.05 0 0 -0.05 -0.12 0.10 -0.05 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="jump_land"   qpos="0.19 0 0.956 1 0 0 0 0 -0.45 0.12 0.80 -0.45 0 0 -0.45 -0.12 0.80 -0.45 0 0 -0.30 0 0 0 0 0 0 -0.30 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <!-- bring-up waypoints (2026-08-12): HAMS-style staged ramp — arms
+             swing BACK-tucked then settle to stand, so the bring-up never sweeps
+             the hands forward through the table edge (real run 6 estop). Consumed
+             by deploy_common bring-up; absent keys = old single-lerp behavior. -->
+        <key name="bringup_wp1" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0.45 0.15 0 -0.9 0 0 0 0.45 -0.15 0 0.9 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="bringup_wp2" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0.2 0.1 0 -0.4 0 0 0 0.2 -0.1 0 0.4 0 0 0 1.5 0 1.035 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
