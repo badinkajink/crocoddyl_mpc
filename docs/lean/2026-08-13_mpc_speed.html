@@ -79,11 +79,17 @@ from <code>runs/2026-08-13_session15/</code> by <code>lean_analysis/croco_speed_
 S14's CAD-faithful brace surfaces landed while this session was running: the wrist pad became a
 box, the gripper collision box lost 14.5 mm of y it never had in the CAD, and a flange cylinder
 was added. That changes the keep-out point set this whole page is about — 90 points
-now — and it de-certifies <code>elbow+forearm+palm</code>, the S13 maneuver, because the palm no
-longer reaches the wood through a proxy that no longer over-claims. So the numbers below are
-measured on <code>elbow+forearm</code>, the mode the corrected geometry does certify at this target,
-re-derived end to end. The first pass of this page was measured on the pre-fix geometry and is
-kept at <code>runs/2026-08-13_session15/pre_s14geom/</code>; the ladder is the same shape either
+now — and it de-certifies <code>elbow+forearm+palm</code>, the S13 maneuver. Not because the palm
+stops working: <code>palm</code> alone still certifies on the corrected geometry. What the
+CAD-faithful gripper costs is having the palm AND the forearm down at once, and the mechanism is
+the wrist roll. The IK rolls the wrist to lay a gripper face on the wood
+(<code>palm_align_rows</code>), and measured at this target: with the shipped ±y aligner the
+forearm lands at &minus;1.8 mm and the palm never touches; re-aimed at the wide ±z face — 133 mm
+across against 34 — the palm lands at &minus;2.0 mm and the <i>forearm</i> never touches. The old
+proxy let both happen because it claimed 14.5 mm of y the hardware does not have. So the numbers
+below are measured on <code>elbow+forearm</code>, the mode the corrected geometry certifies at this
+target, re-derived end to end. The first pass of this page was measured on the pre-fix geometry and
+is kept at <code>runs/2026-08-13_session15/pre_s14geom/</code>; the ladder is the same shape either
 way, which is the point — none of what follows is about the brace.</div>
 
 <div class="note"><b>The short version.</b> A crocoddyl cost term costs
