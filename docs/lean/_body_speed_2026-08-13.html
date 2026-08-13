@@ -5,8 +5,9 @@ step and takes <!--STEP_S13--> ms doing it on this machine, against a <!--PERIOD
 period — <!--HZ_S13--> Hz where the loop needs 50–100. S13 attacked it by making the box keep-out
 activation native, S14 by asking whether the Delassus matrix was the bottleneck (it is 2.3% of a
 node). Both were optimising the cost of individual operations. This page measures the axis neither
-of them looked at — the <i>number of cost terms</i> — and ends at <!--STEP_FINAL--> ms, p95
-<!--P95_FINAL--> ms, <!--HZ_FINAL--> Hz, inside the control period.</p>
+of them looked at — the <i>number of cost terms</i> — and ends at <!--STEP_FINAL--> ms,
+<!--HZ_FINAL--> Hz, with the p95 landing ON the control period rather than comfortably inside
+it.</p>
 
 <p class="meta">crocoddyl <!--CRO_VERSION-->, Pinocchio <!--PIN_VERSION-->, conda-forge, one
 <!--CPU--> (<!--NCPU--> threads), commit <code><!--COMMIT--></code>. Node timings are best-of in
@@ -14,6 +15,17 @@ microseconds; MPC step times are means over the 200 control steps of a full 4 s 
 because there the question is what a control period costs in practice. n<sub>v</sub> =
 <!--NV-->, n<sub>u</sub> = <!--NU-->, n<sub>x</sub> = <!--NDX-->. Everything below is regenerated
 from <code>runs/2026-08-13_session15/</code> by <code>lean_analysis/croco_speed_page.py</code>.</p>
+
+<div class="note warn"><b>Which model and which maneuver, because both moved under this page.</b>
+S14's CAD-faithful brace surfaces landed while this session was running: the wrist pad became a
+box, the gripper collision box lost 14.5 mm of y it never had in the CAD, and a flange cylinder
+was added. That changes the keep-out point set this whole page is about — <!--N_POINTS--> points
+now — and it de-certifies <code>elbow+forearm+palm</code>, the S13 maneuver, because the palm no
+longer reaches the wood through a proxy that no longer over-claims. So the numbers below are
+measured on <code><!--MODE--></code>, the mode the corrected geometry does certify at this target,
+re-derived end to end. The first pass of this page was measured on the pre-fix geometry and is
+kept at <code>runs/2026-08-13_session15/pre_s14geom/</code>; the ladder is the same shape either
+way, which is the point — none of what follows is about the brace.</div>
 
 <div class="note"><b>The short version.</b> A crocoddyl cost term costs
 <!--PER_TERM_CTRL--> µs per node <i>before it computes anything</i>, because
@@ -109,7 +121,7 @@ set is inactive at the certified pose by construction (the thresholds are taken 
 <div class="note warn"><b>The bug this formulation has and the per-point stack could not.</b>
 crocoddyl's contact forward dynamics calls <code>pinocchio::computeAllTerms</code>, which does
 <b>not</b> update frame placements — <code>ResidualModelFrameTranslation::calc</code> updates the
-one frame it owns, so 86 separate residuals each refreshed their own. A single term looping over
+one frame it owns, so the <!--N_POINTS--> separate residuals each refreshed their own. A single term looping over
 <code>oMf</code> reads whatever the last residual to touch it wrote. The symptom is not a crash: the
 active set comes back empty at every state and the keep-out silently stops constraining anything,
 while the solve gets faster and still converges. It was caught by the equivalence test below,
@@ -244,18 +256,22 @@ most at the bottom rung, where the p95 clears the control period by ~15% rather 
 (<!--STEP_H50--> ms, p95 <!--P95_H50--> ms) with a 1 s preview and the same behaviour as S13. At
 H = 35 it runs at <!--HZ_FINAL--> Hz (<!--STEP_FINAL--> ms, p95 <!--P95_FINAL--> ms) with a 0.7 s
 preview, a <!--REACH_FINAL--> mm reach error, and — the number that decides whether this is a
-controller — <b>a p95 inside the <!--PERIOD--> ms control period</b> (16.1 and 18.4 ms over two
-runs), which no previous session's configuration achieved even on its mean. The margin is real but
-it is not large, and the note under the table says how large.</p>
+controller — a p95 of <!--P95_FINAL--> and <!--P95_FINAL_RERUN--> ms over two runs against a
+<!--PERIOD--> ms period. That is <b>at</b> the deadline, not inside it: one run has 1.6 ms of
+margin and the other 0.2 ms, so on the second run roughly one control period in twenty would have
+overrun. The honest statement is that the MEAN is comfortably real-time at both horizons and the
+TAIL is not yet — and the tail is set by how many line-search rollouts a step takes (§6, §8), so
+it is the next thing to attack, not something to average away. No previous session's configuration
+was real-time even on its mean.</p>
 
-<p>The shorter horizon is not free, and the cost is not in the reach error. Worst table
-penetration goes from <!--PEN_H50--> mm at H = 50 to <!--PEN_FINAL--> mm at H = 35: with 0.7 s of
-preview the arm arrives at the slab with less warning and the keep-out has to work harder against
-momentum it can no longer see coming. <!--PEN_FINAL--> mm is inside the soft-contact penetration
-MuJoCo already allows at these forces and well short of anything structural, but it is the number
-to watch if the horizon goes shorter still, and it is why <b>H = 50 at
-<!--HZ_H50--> Hz is the configuration to prefer unless the extra headroom is needed</b> — it is
-already real-time on the mean, and its p95 misses the period by <!--P95_H50_OVER--> ms.</p>
+<p>On the pre-fix geometry the shorter horizon cost something real — worst table penetration went
+from 2.6 mm at H = 50 to 9.8 mm at H = 35, the arm arriving at the slab with less warning than the
+keep-out could act on. On the corrected geometry that cost is gone: <!--PEN_H50--> mm against
+<!--PEN_FINAL--> mm. The proxy that was being driven 9.8 mm into the wood was the one S14 found
+over-claiming, so the penetration was largely an artifact of the collision model rather than of the
+horizon. It is still the number to watch if the horizon goes shorter, but it is no longer a reason
+to prefer H = 50 — and with both cells upright and inside their reach tolerance, <b>the choice
+between them is now headroom against preview, nothing else</b>.</p>
 
 <h2>11. What would come next, and what would not</h2>
 

@@ -60,36 +60,48 @@
 <h1>Making the crocoddyl MPC real-time: the cost stack was the wrong axis</h1>
 
 <p class="sub">Session 15. The S13 controller re-solves a 50-node BoxFDDP problem every control
-step and takes 77.7 ms doing it on this machine, against a 20 ms control
+step and takes 79.7 ms doing it on this machine, against a 20 ms control
 period — 13 Hz where the loop needs 50–100. S13 attacked it by making the box keep-out
 activation native, S14 by asking whether the Delassus matrix was the bottleneck (it is 2.3% of a
 node). Both were optimising the cost of individual operations. This page measures the axis neither
-of them looked at — the <i>number of cost terms</i> — and ends at 12.2 ms, p95
-16.1 ms, 82 Hz, inside the control period.</p>
+of them looked at — the <i>number of cost terms</i> — and ends at 12.4 ms,
+81 Hz, with the p95 landing ON the control period rather than comfortably inside
+it.</p>
 
 <p class="meta">crocoddyl 3.2.1, Pinocchio 4.1.0, conda-forge, one
-Intel(R) Core(TM) Ultra 7 265KF (20 threads), commit <code>121c97d2b</code>. Node timings are best-of in
+Intel(R) Core(TM) Ultra 7 265KF (20 threads), commit <code>d77b069fd</code>. Node timings are best-of in
 microseconds; MPC step times are means over the 200 control steps of a full 4 s MuJoCo replay,
 because there the question is what a control period costs in practice. n<sub>v</sub> =
 33, n<sub>u</sub> = 27, n<sub>x</sub> = 66. Everything below is regenerated
 from <code>runs/2026-08-13_session15/</code> by <code>lean_analysis/croco_speed_page.py</code>.</p>
 
+<div class="note warn"><b>Which model and which maneuver, because both moved under this page.</b>
+S14's CAD-faithful brace surfaces landed while this session was running: the wrist pad became a
+box, the gripper collision box lost 14.5 mm of y it never had in the CAD, and a flange cylinder
+was added. That changes the keep-out point set this whole page is about — 90 points
+now — and it de-certifies <code>elbow+forearm+palm</code>, the S13 maneuver, because the palm no
+longer reaches the wood through a proxy that no longer over-claims. So the numbers below are
+measured on <code>elbow+forearm</code>, the mode the corrected geometry does certify at this target,
+re-derived end to end. The first pass of this page was measured on the pre-fix geometry and is
+kept at <code>runs/2026-08-13_session15/pre_s14geom/</code>; the ladder is the same shape either
+way, which is the point — none of what follows is about the brace.</div>
+
 <div class="note"><b>The short version.</b> A crocoddyl cost term costs
-1.61 µs per node <i>before it computes anything</i>, because
+1.62 µs per node <i>before it computes anything</i>, because
 <code>CostModelSum</code> accumulates a private 6,960-double L<sub>xx</sub>/L<sub>xu</sub>/L<sub>uu</sub>
 block for every term whether or not that term is active. The S13 node carried
-98 terms, 86 of them keep-out points that are inactive at almost every
-node — 184 µs, 57% of the node, to enforce a constraint that is
+100 terms, 90 of them keep-out points that are inactive at almost every
+node — 203 µs, 62% of the node, to enforce a constraint that is
 satisfied. Fusing them into one term that skips its inactive points is the same optimisation
 problem (checked to 1e-12) and <b>halves the step</b>. With three further changes the controller
-runs at 82 Hz: 6.4× over the published S13 controller and
-16.7× over S12. Two plausible optimisations were measured and rejected.</div>
+runs at 81 Hz: 6.4× over the published S13 controller and
+19.0× over S12. Two plausible optimisations were measured and rejected.</div>
 
 <h2>1. Where S13 and S14 left it</h2>
 
 <p>S14 profiled a braced node and found the contact dynamics were 26–29% of it, with the Delassus
 matrix — the object the matrix-free literature is about — at 2.3%. It attributed the other
-three-quarters to "the cost stack, overwhelmingly the 86 box keep-out residuals" and
+three-quarters to "the cost stack, overwhelmingly the 90 box keep-out residuals" and
 stopped, because the question it had set itself was about the Delassus.</p>
 
 <p>That attribution is right, and it is right for a reason S14 did not state and would not have
@@ -121,16 +133,16 @@ real state, timed against N, for two costs that share none of their arithmetic.<
 <svg viewBox="0 0 760 300" role="img" aria-label="node cost against number of cost terms">
 <line x1="56" y1="260.0" x2="560" y2="260.0" stroke="var(--rule)" stroke-width="0.7"/>
 <text x="49" y="263.5" font-size="10" text-anchor="end" fill="var(--ink3)">0</text>
-<line x1="56" y1="216.6" x2="560" y2="216.6" stroke="var(--rule)" stroke-width="0.7"/>
-<text x="49" y="220.1" font-size="10" text-anchor="end" fill="var(--ink3)">50</text>
-<line x1="56" y1="173.2" x2="560" y2="173.2" stroke="var(--rule)" stroke-width="0.7"/>
-<text x="49" y="176.7" font-size="10" text-anchor="end" fill="var(--ink3)">100</text>
-<line x1="56" y1="129.8" x2="560" y2="129.8" stroke="var(--rule)" stroke-width="0.7"/>
-<text x="49" y="133.3" font-size="10" text-anchor="end" fill="var(--ink3)">150</text>
-<line x1="56" y1="86.4" x2="560" y2="86.4" stroke="var(--rule)" stroke-width="0.7"/>
-<text x="49" y="89.9" font-size="10" text-anchor="end" fill="var(--ink3)">200</text>
-<line x1="56" y1="43.1" x2="560" y2="43.1" stroke="var(--rule)" stroke-width="0.7"/>
-<text x="49" y="46.6" font-size="10" text-anchor="end" fill="var(--ink3)">250</text>
+<line x1="56" y1="216.8" x2="560" y2="216.8" stroke="var(--rule)" stroke-width="0.7"/>
+<text x="49" y="220.3" font-size="10" text-anchor="end" fill="var(--ink3)">50</text>
+<line x1="56" y1="173.5" x2="560" y2="173.5" stroke="var(--rule)" stroke-width="0.7"/>
+<text x="49" y="177.0" font-size="10" text-anchor="end" fill="var(--ink3)">100</text>
+<line x1="56" y1="130.3" x2="560" y2="130.3" stroke="var(--rule)" stroke-width="0.7"/>
+<text x="49" y="133.8" font-size="10" text-anchor="end" fill="var(--ink3)">150</text>
+<line x1="56" y1="87.1" x2="560" y2="87.1" stroke="var(--rule)" stroke-width="0.7"/>
+<text x="49" y="90.6" font-size="10" text-anchor="end" fill="var(--ink3)">200</text>
+<line x1="56" y1="43.8" x2="560" y2="43.8" stroke="var(--rule)" stroke-width="0.7"/>
+<text x="49" y="47.3" font-size="10" text-anchor="end" fill="var(--ink3)">250</text>
 <text x="56.0" y="275" font-size="10" text-anchor="middle" fill="var(--ink3)">0</text>
 <text x="173.2" y="275" font-size="10" text-anchor="middle" fill="var(--ink3)">20</text>
 <text x="290.4" y="275" font-size="10" text-anchor="middle" fill="var(--ink3)">40</text>
@@ -138,38 +150,38 @@ real state, timed against N, for two costs that share none of their arithmetic.<
 <text x="560.0" y="275" font-size="10" text-anchor="middle" fill="var(--ink3)">86</text>
 <text x="49" y="22" font-size="10" text-anchor="end" fill="var(--ink3)">µs</text>
 <text x="308" y="292" font-size="10.5" text-anchor="middle" fill="var(--ink3)">cost terms in one CostModelSum</text>
-<path d="M56.0,199.6 L173.2,168.5 L290.4,128.8 L407.6,87.0 L560.0,37.8" fill="none" stroke="var(--s2)" stroke-width="2"/>
-<circle cx="56.0" cy="199.6" r="3" fill="var(--s2)"/>
-<circle cx="173.2" cy="168.5" r="3" fill="var(--s2)"/>
-<circle cx="290.4" cy="128.8" r="3" fill="var(--s2)"/>
-<circle cx="407.6" cy="87.0" r="3" fill="var(--s2)"/>
+<path d="M56.0,199.7 L173.2,168.7 L290.4,131.6 L407.6,86.5 L560.0,37.8" fill="none" stroke="var(--s2)" stroke-width="2"/>
+<circle cx="56.0" cy="199.7" r="3" fill="var(--s2)"/>
+<circle cx="173.2" cy="168.7" r="3" fill="var(--s2)"/>
+<circle cx="290.4" cy="131.6" r="3" fill="var(--s2)"/>
+<circle cx="407.6" cy="86.5" r="3" fill="var(--s2)"/>
 <circle cx="560.0" cy="37.8" r="3" fill="var(--s2)"/>
 <text x="569.0" y="41.8" font-size="10.5" fill="var(--s2)">3-row box keep-out point</text>
-<text x="569.0" y="55.8" font-size="10.5" fill="var(--ink3)">2.20 µs per term</text>
-<path d="M56.0,199.6 L173.2,178.3 L290.4,151.1 L407.6,119.7 L560.0,80.9" fill="none" stroke="var(--s4)" stroke-width="2"/>
-<circle cx="56.0" cy="199.6" r="3" fill="var(--s4)"/>
-<circle cx="173.2" cy="178.3" r="3" fill="var(--s4)"/>
-<circle cx="290.4" cy="151.1" r="3" fill="var(--s4)"/>
-<circle cx="407.6" cy="119.7" r="3" fill="var(--s4)"/>
-<circle cx="560.0" cy="80.9" r="3" fill="var(--s4)"/>
-<text x="569.0" y="84.9" font-size="10.5" fill="var(--s4)">1-row control residual</text>
-<text x="569.0" y="98.9" font-size="10.5" fill="var(--ink3)">1.61 µs per term</text>
-<line x1="56" y1="203.6" x2="560" y2="203.6" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3"/>
-<text x="556" y="197.6" font-size="10" text-anchor="end" fill="var(--ink3)">contact dynamics alone, 65 µs</text>
+<text x="569.0" y="55.8" font-size="10.5" fill="var(--ink3)">2.22 µs per term</text>
+<path d="M56.0,199.9 L173.2,178.7 L290.4,151.9 L407.6,120.0 L560.0,81.5" fill="none" stroke="var(--s4)" stroke-width="2"/>
+<circle cx="56.0" cy="199.9" r="3" fill="var(--s4)"/>
+<circle cx="173.2" cy="178.7" r="3" fill="var(--s4)"/>
+<circle cx="290.4" cy="151.9" r="3" fill="var(--s4)"/>
+<circle cx="407.6" cy="120.0" r="3" fill="var(--s4)"/>
+<circle cx="560.0" cy="81.5" r="3" fill="var(--s4)"/>
+<text x="569.0" y="85.5" font-size="10.5" fill="var(--s4)">1-row control residual</text>
+<text x="569.0" y="99.5" font-size="10.5" fill="var(--ink3)">1.62 µs per term</text>
+<line x1="56" y1="204.0" x2="560" y2="204.0" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="556" y="198.0" font-size="10" text-anchor="end" fill="var(--ink3)">contact dynamics alone, 65 µs</text>
 </svg>
 
-<p>A 3-row box keep-out point costs 2.20 µs and a 1-row control residual — which
-computes essentially nothing; its Jacobian is the identity — costs 1.61 µs. The
+<p>A 3-row box keep-out point costs 2.22 µs and a 1-row control residual — which
+computes essentially nothing; its Jacobian is the identity — costs 1.62 µs. The
 slopes differ by 0.6 µs. <b>About 73% of what a keep-out point costs is the
 container, not the constraint.</b></p>
 
 <div class="note"><b>And the memory half, which the timing table does not show.</b> Every term's
 private L<sub>xx</sub>/L<sub>xu</sub>/L<sub>uu</sub> is 6,960 doubles, so the S13 node
-carries 268 MB of cost data over a 50-node horizon against 31 MB after. That
+carries 275 MB of cost data over a 50-node horizon against 27 MB after. That
 is why a node measured in isolation and a node measured inside a sweep disagree: isolated and
-cache-warm the S13 braced node is 323 µs, but the same node inside
-<code>problem.calcDiff</code> over 50 of them is 550 µs. Allocating the datas for
-the 200-model problem takes 565 ms against 201 ms — the reason the MPC
+cache-warm the S13 braced node is 328 µs, but the same node inside
+<code>problem.calcDiff</code> over 50 of them is 559 µs. Allocating the datas for
+the 200-model problem takes 825 ms against 197 ms — the reason the MPC
 class was already careful never to rebuild its problem.</div>
 
 <h2>3. The cost stack, per group</h2>
@@ -178,63 +190,63 @@ class was already careful never to rebuild its problem.</div>
 reported for a group is what removing it saves — including its share of the accumulation above,
 which is the point of measuring it this way rather than instrumenting the residuals.</p>
 
-<div class="scroll"><table><thead><tr><th>node</th><th>terms</th><th>group</th><th>terms in group</th><th><span style="text-transform:none">µs</span></th><th><span style="text-transform:none">µs</span> per term</th><th>share of node</th></tr></thead><tbody><tr><td>approach</td><td>92</td><td>keepout</td><td>86</td><td>184.0</td><td>2.14</td><td>65.1%</td></tr><tr><td></td><td></td><td>cones</td><td>2</td><td>23.0</td><td>11.48</td><td>8.1%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>3.1</td><td>3.06</td><td>1.1%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>3.0</td><td>2.97</td><td>1.1%</td></tr><tr><td></td><td></td><td>com</td><td>1</td><td>2.9</td><td>2.95</td><td>1.0%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>1.6</td><td>1.62</td><td>0.6%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>70.6</td><td>—</td><td>25.0%</td></tr><tr><td>braced</td><td>98</td><td>keepout</td><td>86</td><td>184.3</td><td>2.14</td><td>57.1%</td></tr><tr><td></td><td></td><td>cones</td><td>5</td><td>38.3</td><td>7.67</td><td>11.9%</td></tr><tr><td></td><td></td><td>hold</td><td>3</td><td>5.6</td><td>1.86</td><td>1.7%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>2.7</td><td>2.69</td><td>0.8%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>2.2</td><td>2.19</td><td>0.7%</td></tr><tr><td></td><td></td><td>reach</td><td>1</td><td>2.1</td><td>2.13</td><td>0.7%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>0.7</td><td>0.74</td><td>0.2%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>89.6</td><td>—</td><td>27.8%</td></tr></tbody></table></div><p class="meta">The S13 cost stack, per group, on the real action models. A group is switched off with changeCostStatus and the node re-timed, so its number includes its share of the CostModelSum accumulation.</p>
+<div class="scroll"><table><thead><tr><th>node</th><th>terms</th><th>group</th><th>terms in group</th><th><span style="text-transform:none">µs</span></th><th><span style="text-transform:none">µs</span> per term</th><th>share of node</th></tr></thead><tbody><tr><td>approach</td><td>96</td><td>keepout</td><td>90</td><td>202.4</td><td>2.25</td><td>67.2%</td></tr><tr><td></td><td></td><td>cones</td><td>2</td><td>23.5</td><td>11.76</td><td>7.8%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>3.9</td><td>3.94</td><td>1.3%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>3.9</td><td>3.94</td><td>1.3%</td></tr><tr><td></td><td></td><td>com</td><td>1</td><td>3.5</td><td>3.53</td><td>1.2%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>3.0</td><td>3.01</td><td>1.0%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>70.7</td><td>—</td><td>23.5%</td></tr><tr><td>braced</td><td>100</td><td>keepout</td><td>90</td><td>203.0</td><td>2.26</td><td>61.8%</td></tr><tr><td></td><td></td><td>cones</td><td>4</td><td>34.5</td><td>8.63</td><td>10.5%</td></tr><tr><td></td><td></td><td>hold</td><td>2</td><td>4.4</td><td>2.18</td><td>1.3%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>2.8</td><td>2.81</td><td>0.9%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>2.6</td><td>2.56</td><td>0.8%</td></tr><tr><td></td><td></td><td>reach</td><td>1</td><td>2.3</td><td>2.34</td><td>0.7%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>1.6</td><td>1.56</td><td>0.5%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>83.4</td><td>—</td><td>25.4%</td></tr></tbody></table></div><p class="meta">The S13 cost stack, per group, on the real action models. A group is switched off with changeCostStatus and the node re-timed, so its number includes its share of the CostModelSum accumulation.</p>
 
-<p>The keep-out is 57% of the braced node across 86 terms at
-2.14 µs each. The 66-row state regulariser and the 66-row joint-limit
+<p>The keep-out is 62% of the braced node across 90 terms at
+2.26 µs each. The 66-row state regulariser and the 66-row joint-limit
 barrier — the terms that look expensive — are ~2.5 µs each, because crocoddyl specialises
 <code>ResidualModelState::calcCostDiff</code> for its block structure. Nothing here is slow. There
-are simply 98 of them.</p>
+are simply 100 of them.</p>
 
 <h2>4. One cost term for the whole keep-out</h2>
 
 <p><code>croco_ext/keepout.cpp</code> gains <code>CostModelBoxKeepOut</code>, a
-<code>CostModelAbstract</code> that owns all 86 points. It is written against the cost
+<code>CostModelAbstract</code> that owns all 90 points. It is written against the cost
 base rather than as a residual + activation pair deliberately: a residual is the right abstraction
 when crocoddyl's Gauss-Newton assembly should do the work, and here the entire objective is to
 not do that work. The term writes L<sub>x</sub> and L<sub>xx</sub> itself, so:</p>
 
 <ul>
-<li>one accumulation into the shared L<sub>xx</sub> instead of 86;</li>
-<li>one <code>CostDataAbstract</code> instead of 86;</li>
+<li>one accumulation into the shared L<sub>xx</sub> instead of 90;</li>
+<li>one <code>CostDataAbstract</code> instead of 90;</li>
 <li>and each point whose activation is zero costs one SDF evaluation — about 20 flops — instead of
 a frame Jacobian and an n<sub>v</sub> × n<sub>v</sub> Gauss-Newton block. Over the planned
-trajectory <b>at most 7 of the 86 points are ever active at once</b>, and the whole
+trajectory <b>at most 7 of the 90 points are ever active at once</b>, and the whole
 set is inactive at the certified pose by construction (the thresholds are taken there).</li>
 </ul>
 
 <div class="note warn"><b>The bug this formulation has and the per-point stack could not.</b>
 crocoddyl's contact forward dynamics calls <code>pinocchio::computeAllTerms</code>, which does
 <b>not</b> update frame placements — <code>ResidualModelFrameTranslation::calc</code> updates the
-one frame it owns, so 86 separate residuals each refreshed their own. A single term looping over
+one frame it owns, so the 90 separate residuals each refreshed their own. A single term looping over
 <code>oMf</code> reads whatever the last residual to touch it wrote. The symptom is not a crash: the
 active set comes back empty at every state and the keep-out silently stops constraining anything,
 while the solve gets faster and still converges. It was caught by the equivalence test below,
 which is the only reason it is a footnote and not the result.</div>
 
-<p><code>croco_ext/test_keepout.py</code> builds the real action model both ways — 86
+<p><code>croco_ext/test_keepout.py</code> builds the real action model both ways — 90
 <code>CostModelResidual</code> terms against the one fused term, same contacts, same actuation,
 same damping — and compares <code>cost</code>, <code>Lx</code> and <code>Lxx</code> at 40 states
 drawn from the planned trajectory, 39 of which have a non-empty active set. They agree to 2e-18,
 1e-14 and 2e-12. This is the same objective, not a similar one.</p>
 
-<div class="scroll"><table><thead><tr><th>node</th><th>terms</th><th>group</th><th>terms in group</th><th><span style="text-transform:none">µs</span></th><th><span style="text-transform:none">µs</span> per term</th><th>share of node</th></tr></thead><tbody><tr><td>approach</td><td>7</td><td>cones</td><td>2</td><td>20.2</td><td>10.11</td><td>22.7%</td></tr><tr><td></td><td></td><td>keepout</td><td>1</td><td>2.1</td><td>2.13</td><td>2.4%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>2.1</td><td>2.07</td><td>2.3%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>1.9</td><td>1.85</td><td>2.1%</td></tr><tr><td></td><td></td><td>com</td><td>1</td><td>1.8</td><td>1.77</td><td>2.0%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>1.3</td><td>1.35</td><td>1.5%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>59.9</td><td>—</td><td>67.2%</td></tr><tr><td>braced</td><td>13</td><td>cones</td><td>5</td><td>35.5</td><td>7.09</td><td>27.1%</td></tr><tr><td></td><td></td><td>hold</td><td>3</td><td>5.7</td><td>1.89</td><td>4.3%</td></tr><tr><td></td><td></td><td>keepout</td><td>1</td><td>4.2</td><td>4.21</td><td>3.2%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>2.3</td><td>2.27</td><td>1.7%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>2.3</td><td>2.26</td><td>1.7%</td></tr><tr><td></td><td></td><td>reach</td><td>1</td><td>2.0</td><td>1.95</td><td>1.5%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>1.3</td><td>1.28</td><td>1.0%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>78.8</td><td>—</td><td>60.2%</td></tr></tbody></table></div><p class="meta">The same measurement after the keep-out is one term. Nothing about the objective changed; 85 cost terms did.</p>
+<div class="scroll"><table><thead><tr><th>node</th><th>terms</th><th>group</th><th>terms in group</th><th><span style="text-transform:none">µs</span></th><th><span style="text-transform:none">µs</span> per term</th><th>share of node</th></tr></thead><tbody><tr><td>approach</td><td>7</td><td>cones</td><td>2</td><td>20.1</td><td>10.05</td><td>22.5%</td></tr><tr><td></td><td></td><td>keepout</td><td>1</td><td>2.2</td><td>2.24</td><td>2.5%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>1.9</td><td>1.92</td><td>2.2%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>1.9</td><td>1.89</td><td>2.1%</td></tr><tr><td></td><td></td><td>com</td><td>1</td><td>1.8</td><td>1.84</td><td>2.1%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>1.1</td><td>1.09</td><td>1.2%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>60.1</td><td>—</td><td>67.3%</td></tr><tr><td>braced</td><td>11</td><td>cones</td><td>4</td><td>30.6</td><td>7.65</td><td>25.9%</td></tr><tr><td></td><td></td><td>keepout</td><td>1</td><td>4.4</td><td>4.43</td><td>3.7%</td></tr><tr><td></td><td></td><td>hold</td><td>2</td><td>3.6</td><td>1.82</td><td>3.1%</td></tr><tr><td></td><td></td><td>jointLim</td><td>1</td><td>2.2</td><td>2.16</td><td>1.8%</td></tr><tr><td></td><td></td><td>reach</td><td>1</td><td>2.1</td><td>2.12</td><td>1.8%</td></tr><tr><td></td><td></td><td>stateReg</td><td>1</td><td>2.1</td><td>2.12</td><td>1.8%</td></tr><tr><td></td><td></td><td>ctrlReg</td><td>1</td><td>1.4</td><td>1.41</td><td>1.2%</td></tr><tr><td></td><td></td><td><i>contact dynamics</i></td><td>—</td><td>72.4</td><td>—</td><td>61.3%</td></tr></tbody></table></div><p class="meta">The same measurement after the keep-out is one term. Nothing about the objective changed; 85 cost terms did.</p>
 
 <svg viewBox="0 0 760 150" role="img" aria-label="one braced node before and after, microseconds">
 <text x="86" y="40" font-size="11.5" text-anchor="end" fill="var(--ink2)" font-weight="600">S13</text>
-<text x="86" y="53" font-size="9.5" text-anchor="end" fill="var(--ink3)">98 terms</text>
-<rect x="96.0" y="20" width="324.5" height="30" fill="var(--s2)" fill-opacity="0.85"/>
-<rect x="420.5" y="20" width="67.5" height="30" fill="var(--s1)" fill-opacity="0.85"/>
-<rect x="488.1" y="20" width="18.1" height="30" fill="var(--s5)" fill-opacity="0.85"/>
-<rect x="506.2" y="20" width="157.8" height="30" fill="var(--s4)" fill-opacity="0.85"/>
-<text x="672.0" y="40" font-size="11.5" fill="var(--ink2)">323 µs</text>
+<text x="86" y="53" font-size="9.5" text-anchor="end" fill="var(--ink3)">100 terms</text>
+<rect x="96.0" y="20" width="351.2" height="30" fill="var(--s2)" fill-opacity="0.85"/>
+<rect x="447.2" y="20" width="59.7" height="30" fill="var(--s1)" fill-opacity="0.85"/>
+<rect x="506.9" y="20" width="12.7" height="30" fill="var(--s5)" fill-opacity="0.85"/>
+<rect x="519.7" y="20" width="144.3" height="30" fill="var(--s4)" fill-opacity="0.85"/>
+<text x="672.0" y="40" font-size="11.5" fill="var(--ink2)">328 µs</text>
 <text x="86" y="86" font-size="11.5" text-anchor="end" fill="var(--ink2)" font-weight="600">S15</text>
-<text x="86" y="99" font-size="9.5" text-anchor="end" fill="var(--ink3)">13 terms</text>
-<rect x="96.0" y="66" width="7.4" height="30" fill="var(--s2)" fill-opacity="0.85"/>
-<rect x="103.4" y="66" width="62.5" height="30" fill="var(--s1)" fill-opacity="0.85"/>
-<rect x="165.9" y="66" width="21.9" height="30" fill="var(--s5)" fill-opacity="0.85"/>
-<rect x="187.8" y="66" width="138.8" height="30" fill="var(--s4)" fill-opacity="0.85"/>
-<text x="334.6" y="86" font-size="11.5" fill="var(--ink2)">131 µs</text>
+<text x="86" y="99" font-size="9.5" text-anchor="end" fill="var(--ink3)">11 terms</text>
+<rect x="96.0" y="66" width="7.7" height="30" fill="var(--s2)" fill-opacity="0.85"/>
+<rect x="103.7" y="66" width="52.9" height="30" fill="var(--s1)" fill-opacity="0.85"/>
+<rect x="156.6" y="66" width="18.4" height="30" fill="var(--s5)" fill-opacity="0.85"/>
+<rect x="175.0" y="66" width="125.2" height="30" fill="var(--s4)" fill-opacity="0.85"/>
+<text x="308.2" y="86" font-size="11.5" fill="var(--ink2)">118 µs</text>
 <rect x="96.0" y="124" width="9" height="9" fill="var(--s2)" fill-opacity="0.85"/>
 <text x="109.0" y="132" font-size="10" fill="var(--ink3)">keep-out</text>
 <rect x="380.0" y="124" width="9" height="9" fill="var(--s1)" fill-opacity="0.85"/>
@@ -249,19 +261,19 @@ drawn from the planned trajectory, 39 of which have a non-empty active set. They
 continuation solves the same models to convergence offline, and it moves the same way — with the
 same plan coming out, which is the regression check that matters more than the seconds:</p>
 
-<div class="scroll"><table><thead><tr><th>keep-out</th><th>solve s</th><th>iters</th><th>cost</th><th>reach err mm</th><th>elbow / forearm / palm landing mm</th><th>|q − q*| rad</th></tr></thead><tbody><tr><td>python</td><td class="">30.9</td><td>40</td><td>31.49</td><td>1.70</td><td>1.33 / 1.38 / 0.36</td><td>0.657</td></tr><tr><td>cpp</td><td class="">13.4</td><td>40</td><td>31.49</td><td>1.70</td><td>1.33 / 1.38 / 0.36</td><td>0.657</td></tr><tr><td>fused</td><td class="good">6.6</td><td>47</td><td>31.5</td><td>1.66</td><td>1.30 / 1.35 / 0.36</td><td>0.646</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>keep-out</th><th>solve s</th><th>iters</th><th>cost</th><th>reach err mm</th><th>elbow / forearm / palm landing mm</th><th>|q − q*| rad</th></tr></thead><tbody><tr><td>python</td><td class="">14.5</td><td>19</td><td>25.93</td><td>1.86</td><td>0.50 / 1.12</td><td>0.638</td></tr><tr><td>cpp</td><td class="">5.6</td><td>19</td><td>25.93</td><td>1.86</td><td>0.50 / 1.12</td><td>0.638</td></tr><tr><td>fused</td><td class="good">2.6</td><td>19</td><td>25.93</td><td>1.86</td><td>0.50 / 1.12</td><td>0.638</td></tr></tbody></table></div>
 
-<p>The offline solve goes 31 s → 13.4 s → 6.6 s across the three
+<p>The offline solve goes 14 s → 5.6 s → 2.6 s across the three
 implementations, and the plan is the same plan: the brace lands within 0.04 mm of the same spots,
 the hand within 0.04 mm of the same target, and the pose within 0.011 rad of the same q*. The
 fused run takes 47 DDP iterations where the other two take 40, because accumulating one weighted
-sum instead of 86 reassociates the arithmetic and puts the solver on a marginally
+sum instead of 90 reassociates the arithmetic and puts the solver on a marginally
 different iterate sequence. What has to match is the answer, and it does.</p>
 
-<p>The braced node goes from 323 µs to 131 µs, and in situ over a 50-node
-sweep from 550 to 161 µs per node — a bigger factor than the isolated
+<p>The braced node goes from 328 µs to 118 µs, and in situ over a 50-node
+sweep from 559 to 147 µs per node — a bigger factor than the isolated
 measurement, because the working set collapsed too. The contact dynamics are now
-60% of the node, which is where S14 said the floor was.</p>
+61% of the node, which is where S14 said the floor was.</p>
 
 <h2>5. The last interpreted object in the loop</h2>
 
@@ -271,8 +283,8 @@ torques are systematically low on every moving joint) were a Python subclass of
 n<sub>v</sub> × n<sub>x</sub> zero matrix and a <code>np.diag</code> per node per sweep:</p>
 
 <pre>                              calc      calcDiff
-python passive             2.00 µs      4.68 µs
-c++ passive                0.24 µs      0.25 µs
+python passive             1.97 µs      4.56 µs
+c++ passive                0.26 µs      0.27 µs
 crocoddyl ActuationModelFloatingBase (no passive terms)   0.16 µs</pre>
 
 <p><code>croco_ext/actuation.cpp</code> transcribes it, keeping the constant structure
@@ -287,14 +299,14 @@ tau, dtau_dx, dtau_du and <code>commands</code> to 7e-15, at velocities spanning
 
 <h2>6. What is left in a step</h2>
 
-<p>With the node at 131 µs, a warm-started 50-node step at one iteration divides as:</p>
+<p>With the node at 118 µs, a warm-started 50-node step at one iteration divides as:</p>
 
-<pre>solver.calcDiff  (one calc + one calcDiff sweep)   7.7 ms
-backwardPass     (Riccati + BoxQP, 50 nodes)       4.6 ms
-one line-search rollout                            1.00 ms  x 4 trials (median)</pre>
+<pre>solver.calcDiff  (one calc + one calcDiff sweep)   7.1 ms
+backwardPass     (Riccati + BoxQP, 50 nodes)       5.1 ms
+one line-search rollout                            0.94 ms  x 3 trials (median)</pre>
 
 <p>FDDP's forward pass is a full nonlinear rollout per trial step and the median accepted step is
-0.125–0.1875, i.e. about 4 rollouts thrown away per iteration. So the step is roughly
+0.125–0.1875, i.e. about 3 rollouts thrown away per iteration. So the step is roughly
 45% derivative sweep, 25% backward pass, 25% line search — and the second DDP iteration costs all
 of that again, which is what the <code>iters</code> knob buys and sells.</p>
 
@@ -304,19 +316,19 @@ of that again, which is what the <code>iters</code> knob buys and sells.</p>
 controller, not a solver benchmark: the reach error, table penetration and CoM margin are what the
 robot did.</p>
 
-<div class="scroll"><table><thead><tr><th>H</th><th>iters</th><th>cones</th><th>step <span style="text-transform:none">ms</span></th><th>Hz</th><th>reach err mm</th><th>table pen. mm</th><th>min CoM margin mm</th><th>survives</th></tr></thead><tbody><tr><td>15</td><td>1</td><td>off</td><td>6.0</td><td>167.8</td><td>1643.8</td><td>-3.9</td><td>-498.1</td><td class="bad">FELL</td></tr><tr><td>15</td><td>1</td><td>on</td><td>7.1</td><td>140.9</td><td>2899.1</td><td>-7.3</td><td>-850.9</td><td class="bad">FELL</td></tr><tr><td>25</td><td>1</td><td>off</td><td>9.2</td><td>109.2</td><td>3072.5</td><td>-2.4</td><td>-558.1</td><td class="bad">FELL</td></tr><tr><td>25</td><td>1</td><td>on</td><td>10.4</td><td>95.8</td><td>2095.6</td><td>-0.4</td><td>-856.5</td><td class="bad">FELL</td></tr><tr><td>35</td><td>1</td><td>off</td><td>10.6</td><td>94.8</td><td>1017.2</td><td>-13.2</td><td>-167.4</td><td class="bad">FELL</td></tr><tr><td>15</td><td>2</td><td>off</td><td>11.5</td><td>87.1</td><td>1881.2</td><td>-4.1</td><td>-945.0</td><td class="bad">FELL</td></tr><tr><td>15</td><td>2</td><td>on</td><td>12.8</td><td>78.1</td><td>2526.7</td><td>-7.6</td><td>-826.1</td><td class="bad">FELL</td></tr><tr><td>35</td><td>1</td><td>on</td><td>12.8</td><td>77.8</td><td>3.6</td><td>-9.8</td><td>+18.5</td><td class="good">upright</td></tr><tr><td>50</td><td>1</td><td>off</td><td>13.2</td><td>76.0</td><td>699.3</td><td>-4.2</td><td>+16.2</td><td class="bad">FELL</td></tr><tr><td>50</td><td>1</td><td>on</td><td>17.4</td><td>57.6</td><td>0.7</td><td>-2.6</td><td>+21.6</td><td class="good">upright</td></tr><tr><td>25</td><td>2</td><td>off</td><td>19.2</td><td>52.2</td><td>3147.2</td><td>-1.4</td><td>-572.8</td><td class="bad">FELL</td></tr><tr><td>25</td><td>2</td><td>on</td><td>20.4</td><td>49.1</td><td>1712.2</td><td>-4.2</td><td>-879.0</td><td class="bad">FELL</td></tr><tr><td>35</td><td>2</td><td>off</td><td>21.7</td><td>46.1</td><td>90.7</td><td>-4.4</td><td>+18.0</td><td class="good">upright</td></tr><tr><td>50</td><td>2</td><td>off</td><td>26.7</td><td>37.5</td><td>844.0</td><td>-2.8</td><td>-292.9</td><td class="bad">FELL</td></tr><tr><td>35</td><td>2</td><td>on</td><td>27.2</td><td>36.8</td><td>2305.3</td><td>-8.1</td><td>-795.1</td><td class="bad">FELL</td></tr><tr><td>50</td><td>2</td><td>on</td><td>35.4</td><td>28.2</td><td>1.6</td><td>-2.6</td><td>+15.5</td><td class="good">upright</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>H</th><th>iters</th><th>cones</th><th>step <span style="text-transform:none">ms</span></th><th>Hz</th><th>reach err mm</th><th>table pen. mm</th><th>min CoM margin mm</th><th>survives</th></tr></thead><tbody><tr><td>15</td><td>1</td><td>off</td><td>5.2</td><td>191.1</td><td>2197.2</td><td>-4.2</td><td>-510.2</td><td class="bad">FELL</td></tr><tr><td>15</td><td>1</td><td>on</td><td>6.2</td><td>161.3</td><td>2083.4</td><td>-8.0</td><td>-842.2</td><td class="bad">FELL</td></tr><tr><td>25</td><td>1</td><td>off</td><td>9.0</td><td>111.7</td><td>2554.3</td><td>-1.6</td><td>-602.0</td><td class="bad">FELL</td></tr><tr><td>35</td><td>1</td><td>off</td><td>10.0</td><td>100.4</td><td>579.8</td><td>-2.2</td><td>-116.2</td><td class="bad">FELL</td></tr><tr><td>25</td><td>1</td><td>on</td><td>10.7</td><td>93.8</td><td>2190.1</td><td>-1.4</td><td>-865.7</td><td class="bad">FELL</td></tr><tr><td>15</td><td>2</td><td>off</td><td>10.7</td><td>93.7</td><td>1631.1</td><td>-6.9</td><td>-584.5</td><td class="bad">FELL</td></tr><tr><td>35</td><td>1</td><td>on</td><td>12.0</td><td>83.6</td><td>0.4</td><td>-0.8</td><td>+22.7</td><td class="good">upright</td></tr><tr><td>15</td><td>2</td><td>on</td><td>12.5</td><td>80.2</td><td>1955.7</td><td>-5.5</td><td>-873.9</td><td class="bad">FELL</td></tr><tr><td>50</td><td>1</td><td>off</td><td>15.4</td><td>65.1</td><td>980.5</td><td>-4.3</td><td>-135.2</td><td class="bad">FELL</td></tr><tr><td>50</td><td>1</td><td>on</td><td>18.0</td><td>55.4</td><td>0.9</td><td>-1.0</td><td>+28.1</td><td class="good">upright</td></tr><tr><td>25</td><td>2</td><td>off</td><td>18.8</td><td>53.3</td><td>2074.4</td><td>-1.4</td><td>-326.4</td><td class="bad">FELL</td></tr><tr><td>35</td><td>2</td><td>off</td><td>19.0</td><td>52.7</td><td>74.5</td><td>-11.6</td><td>+28.6</td><td class="good">upright</td></tr><tr><td>25</td><td>2</td><td>on</td><td>20.9</td><td>48.0</td><td>1930.5</td><td>-1.4</td><td>-820.9</td><td class="bad">FELL</td></tr><tr><td>35</td><td>2</td><td>on</td><td>25.0</td><td>40.0</td><td>1.3</td><td>-0.7</td><td>+22.3</td><td class="good">upright</td></tr><tr><td>50</td><td>2</td><td>off</td><td>26.4</td><td>37.9</td><td>1457.7</td><td>-12.6</td><td>-373.8</td><td class="bad">FELL</td></tr><tr><td>50</td><td>2</td><td>on</td><td>35.9</td><td>27.9</td><td>1.8</td><td>-0.7</td><td>+22.4</td><td class="good">upright</td></tr></tbody></table></div>
 
 <p>Two things come out of this. <b>One DDP iteration is both faster and no worse than two</b> —
-18.2 ms against 35.2 ms at the same horizon, with a smaller reach error in
+16.8 ms against 35.2 ms at the same horizon, with a smaller reach error in
 the noiseless run. That is not the usual shape of an accuracy/speed trade and it is worth being
 careful about: §9 shows the survival difference is not resolvable, so the honest claim is that one
 iteration is twice as fast and not measurably worse, not that it is better.</p>
 
 <p><b>And the cones are load-bearing.</b> Dropping the five friction/wrench cone costs from the
-online problem takes the braced node from 131 to 96 µs, and lets
+online problem takes the braced node from 118 to 88 µs, and lets
 <code>enable_force</code> go off with them — they are the only costs that read the contact-force
-derivatives — for 84 µs, a 36% cheaper node. The controller then falls in most
-cells of the grid. The cones are 27% of the node and they are the last thing to
+derivatives — for 77 µs, a 36% cheaper node. The controller then falls in most
+cells of the grid. The cones are 26% of the node and they are the last thing to
 remove.</p>
 
 <h2>8. One optimisation that looked obvious and is not</h2>
@@ -326,7 +338,7 @@ crocoddyl's alpha ladder is a full rollout, the ladder has ten rungs, and a step
 bottom costs ten of them. Truncating the ladder bounds the rollouts per iteration, which is exactly
 the shape a real-time budget wants. It does not work:</p>
 
-<div class="scroll"><table><thead><tr><th>H</th><th>ladder rungs</th><th>step <span style="text-transform:none">ms</span></th><th>p95 <span style="text-transform:none">ms</span></th><th>reach err mm</th><th>survives</th></tr></thead><tbody><tr><td>50</td><td>10</td><td>17.9</td><td>24.8</td><td>0.7</td><td class="good">upright</td></tr><tr><td>50</td><td>5</td><td>17.9</td><td>24.3</td><td>2.5</td><td class="good">upright</td></tr><tr><td>50</td><td>4</td><td>18.2</td><td>24.6</td><td>10.4</td><td class="good">upright</td></tr><tr><td>50</td><td>3</td><td>18.4</td><td>27.2</td><td>2168.9</td><td class="bad">FELL</td></tr><tr><td>35</td><td>10</td><td>12.5</td><td>16.6</td><td>3.6</td><td class="good">upright</td></tr><tr><td>35</td><td>5</td><td>14.0</td><td>18.1</td><td>1808.8</td><td class="bad">FELL</td></tr><tr><td>35</td><td>4</td><td>13.6</td><td>17.2</td><td>2221.6</td><td class="bad">FELL</td></tr><tr><td>35</td><td>3</td><td>15.7</td><td>31.1</td><td>2147.7</td><td class="bad">FELL</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>H</th><th>ladder rungs</th><th>step <span style="text-transform:none">ms</span></th><th>p95 <span style="text-transform:none">ms</span></th><th>reach err mm</th><th>survives</th></tr></thead><tbody><tr><td>50</td><td>10</td><td>16.7</td><td>24.4</td><td>0.9</td><td class="good">upright</td></tr><tr><td>50</td><td>5</td><td>16.9</td><td>21.6</td><td>5.3</td><td class="good">upright</td></tr><tr><td>50</td><td>4</td><td>18.6</td><td>23.4</td><td>50.1</td><td class="good">upright</td></tr><tr><td>50</td><td>3</td><td>16.9</td><td>21.9</td><td>2532.1</td><td class="bad">FELL</td></tr><tr><td>35</td><td>10</td><td>12.1</td><td>17.9</td><td>0.4</td><td class="good">upright</td></tr><tr><td>35</td><td>5</td><td>14.2</td><td>19.1</td><td>2007.9</td><td class="bad">FELL</td></tr><tr><td>35</td><td>4</td><td>12.9</td><td>16.0</td><td>2335.1</td><td class="bad">FELL</td></tr><tr><td>35</td><td>3</td><td>12.2</td><td>15.2</td><td>2023.4</td><td class="bad">FELL</td></tr></tbody></table></div>
 
 <p>It saves no time — a rejected ladder still evaluates every rung it has, so the mean is flat or
 worse — and it destabilises the controller: with the ladder capped, a step that would have been
@@ -339,7 +351,7 @@ cheaper rollout, which is what §4 and §5 are.</p>
 <p>All of the above is measured on the deterministic replay. Repeating the promising cells with
 0.02 rad (1.1°) of Gaussian noise on the initial joint angles, five seeds each:</p>
 
-<div class="scroll"><table><thead><tr><th>H</th><th>iters</th><th>seeds</th><th>fell</th><th>reach err mm, survivors</th></tr></thead><tbody><tr><td>50</td><td>2</td><td>5</td><td class="bad">3 / 5</td><td>1.4, 2.4</td></tr><tr><td>50</td><td>1</td><td>5</td><td class="bad">2 / 5</td><td>1.8, 2.5, 9.5</td></tr><tr><td>35</td><td>2</td><td>5</td><td class="bad">3 / 5</td><td>3.6, 4.5</td></tr><tr><td>35</td><td>1</td><td>5</td><td class="bad">3 / 5</td><td>3.7, 7.0</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>H</th><th>iters</th><th>seeds</th><th>fell</th><th>reach err mm, survivors</th></tr></thead><tbody><tr><td>50</td><td>2</td><td>5</td><td class="bad">1 / 5</td><td>0.3, 0.4, 0.7, 0.7</td></tr><tr><td>50</td><td>1</td><td>5</td><td class="bad">1 / 5</td><td>0.4, 0.6, 0.7, 86.7</td></tr><tr><td>35</td><td>2</td><td>5</td><td class="bad">3 / 5</td><td>0.4, 1.2</td></tr><tr><td>35</td><td>1</td><td>5</td><td class="bad">2 / 5</td><td>0.7, 1.3, 1.7</td></tr></tbody></table></div>
 
 <p>Every configuration falls in two or three of five, and the differences between them are not
 resolvable at this sample size. That is a real limitation of this controller and it is worth
@@ -358,48 +370,52 @@ solve considered.</p>
 <text x="224" y="46" font-size="11" text-anchor="end" fill="var(--ink2)">S12: python activation, per-point</text>
 <rect x="232" y="34" width="454.0" height="17" fill="var(--bad)" fill-opacity="0.8"/>
 <path d="M676.0 34 l8 8.5 l-8 8.5" fill="none" stroke="var(--bg)" stroke-width="2"/>
-<text x="692.0" y="46" font-size="11" fill="var(--ink2)">203.8 ms <tspan fill="var(--ink3)">(5 Hz)</tspan></text>
+<text x="692.0" y="46" font-size="11" fill="var(--ink2)">236.0 ms <tspan fill="var(--ink3)">(4 Hz)</tspan></text>
 <text x="224" y="76" font-size="11" text-anchor="end" fill="var(--ink2)">S13: C++ activation, per-point</text>
 <rect x="232" y="64" width="454.0" height="17" fill="var(--bad)" fill-opacity="0.8"/>
 <path d="M676.0 64 l8 8.5 l-8 8.5" fill="none" stroke="var(--bg)" stroke-width="2"/>
-<text x="692.0" y="76" font-size="11" fill="var(--ink2)">77.7 ms <tspan fill="var(--ink3)">(13 Hz)</tspan></text>
+<text x="692.0" y="76" font-size="11" fill="var(--ink2)">79.7 ms <tspan fill="var(--ink3)">(13 Hz)</tspan></text>
 <text x="224" y="106" font-size="11" text-anchor="end" fill="var(--ink2)">S15a: + fused keep-out cost</text>
-<rect x="232" y="94" width="357.1" height="17" fill="var(--bad)" fill-opacity="0.8"/>
-<text x="595.1" y="106" font-size="11" fill="var(--ink2)">37.8 ms <tspan fill="var(--ink3)">(26 Hz)</tspan></text>
+<rect x="232" y="94" width="375.2" height="17" fill="var(--bad)" fill-opacity="0.8"/>
+<text x="613.2" y="106" font-size="11" fill="var(--ink2)">39.7 ms <tspan fill="var(--ink3)">(25 Hz)</tspan></text>
 <text x="224" y="136" font-size="11" text-anchor="end" fill="var(--ink2)">S15b: + C++ passive actuation</text>
-<rect x="232" y="124" width="332.8" height="17" fill="var(--bad)" fill-opacity="0.8"/>
-<text x="570.8" y="136" font-size="11" fill="var(--ink2)">35.2 ms <tspan fill="var(--ink3)">(28 Hz)</tspan></text>
+<rect x="232" y="124" width="333.1" height="17" fill="var(--bad)" fill-opacity="0.8"/>
+<text x="571.1" y="136" font-size="11" fill="var(--ink2)">35.2 ms <tspan fill="var(--ink3)">(28 Hz)</tspan></text>
 <text x="224" y="166" font-size="11" text-anchor="end" fill="var(--ink2)">S15c: + one DDP iteration</text>
-<rect x="232" y="154" width="171.7" height="17" fill="var(--good)" fill-opacity="0.8"/>
-<text x="409.7" y="166" font-size="11" fill="var(--ink2)">18.2 ms <tspan fill="var(--ink3)">(55 Hz)</tspan></text>
+<rect x="232" y="154" width="158.5" height="17" fill="var(--good)" fill-opacity="0.8"/>
+<text x="396.5" y="166" font-size="11" fill="var(--ink2)">16.8 ms <tspan fill="var(--ink3)">(60 Hz)</tspan></text>
 <text x="224" y="196" font-size="11" text-anchor="end" fill="var(--ink2)">S15d: + horizon 50 -> 35 nodes</text>
-<rect x="232" y="184" width="115.4" height="17" fill="var(--good)" fill-opacity="0.8"/>
-<text x="353.4" y="196" font-size="11" fill="var(--ink2)">12.2 ms <tspan fill="var(--ink3)">(82 Hz)</tspan></text>
+<rect x="232" y="184" width="117.4" height="17" fill="var(--good)" fill-opacity="0.8"/>
+<text x="355.4" y="196" font-size="11" fill="var(--ink2)">12.4 ms <tspan fill="var(--ink3)">(81 Hz)</tspan></text>
 </svg>
 
-<div class="scroll"><table><thead><tr><th>rung</th><th>keep-out</th><th>actuation</th><th>H</th><th>iters</th><th>step <span style="text-transform:none">ms</span></th><th>repeat <span style="text-transform:none">ms</span></th><th>p95 <span style="text-transform:none">ms</span></th><th>Hz</th><th>reach err mm</th><th>survives</th></tr></thead><tbody><tr><td>S12: python activation, per-point</td><td>python</td><td>python</td><td>50</td><td>2</td><td class="bad">203.8</td><td>217.2</td><td>306.1 / 345.1</td><td class="bad">4.9</td><td>2.0</td><td>yes</td></tr><tr><td>S13: C++ activation, per-point</td><td>cpp</td><td>python</td><td>50</td><td>2</td><td class="bad">77.7</td><td>85.6</td><td>100.6 / 118.9</td><td class="bad">12.9</td><td>2.0</td><td>yes</td></tr><tr><td>S15a: + fused keep-out cost</td><td>fused</td><td>python</td><td>50</td><td>2</td><td class="bad">37.8</td><td>38.0</td><td>54.7 / 52.3</td><td class="bad">26.5</td><td>1.2</td><td>yes</td></tr><tr><td>S15b: + C++ passive actuation</td><td>fused</td><td>cpp</td><td>50</td><td>2</td><td class="bad">35.2</td><td>37.2</td><td>46.9 / 49.9</td><td class="bad">28.4</td><td>1.6</td><td>yes</td></tr><tr><td>S15c: + one DDP iteration</td><td>fused</td><td>cpp</td><td>50</td><td>1</td><td class="good">18.2</td><td>18.4</td><td>25.5 / 25.1</td><td class="good">55.1</td><td>0.7</td><td>yes</td></tr><tr><td>S15d: + horizon 50 -> 35 nodes</td><td>fused</td><td>cpp</td><td>35</td><td>1</td><td class="good">12.2</td><td>13.0</td><td>16.1 / 18.4</td><td class="good">82.0</td><td>3.6</td><td>yes</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>rung</th><th>keep-out</th><th>actuation</th><th>H</th><th>iters</th><th>step <span style="text-transform:none">ms</span></th><th>repeat <span style="text-transform:none">ms</span></th><th>p95 <span style="text-transform:none">ms</span></th><th>Hz</th><th>reach err mm</th><th>survives</th></tr></thead><tbody><tr><td>S12: python activation, per-point</td><td>python</td><td>python</td><td>50</td><td>2</td><td class="bad">236.0</td><td>230.3</td><td>358.1 / 352.2</td><td class="bad">4.2</td><td>1.8</td><td>yes</td></tr><tr><td>S13: C++ activation, per-point</td><td>cpp</td><td>python</td><td>50</td><td>2</td><td class="bad">79.7</td><td>79.1</td><td>103.5 / 106.3</td><td class="bad">12.5</td><td>1.8</td><td>yes</td></tr><tr><td>S15a: + fused keep-out cost</td><td>fused</td><td>python</td><td>50</td><td>2</td><td class="bad">39.7</td><td>39.8</td><td>52.6 / 51.3</td><td class="bad">25.2</td><td>1.8</td><td>yes</td></tr><tr><td>S15b: + C++ passive actuation</td><td>fused</td><td>cpp</td><td>50</td><td>2</td><td class="bad">35.2</td><td>35.7</td><td>47.7 / 47.7</td><td class="bad">28.4</td><td>1.8</td><td>yes</td></tr><tr><td>S15c: + one DDP iteration</td><td>fused</td><td>cpp</td><td>50</td><td>1</td><td class="good">16.8</td><td>17.7</td><td>24.3 / 24.6</td><td class="good">59.7</td><td>0.9</td><td>yes</td></tr><tr><td>S15d: + horizon 50 -> 35 nodes</td><td>fused</td><td>cpp</td><td>35</td><td>1</td><td class="good">12.4</td><td>13.6</td><td>18.4 / 19.8</td><td class="good">80.5</td><td>0.4</td><td>yes</td></tr></tbody></table></div>
 
 <p class="meta">Two runs of the whole ladder, an hour apart. The second came back 5–10% slower
 across <i>every</i> rung with the ratios intact — thermal and scheduling drift on a desktop, not a
 regression — so both are shown and neither should be read to a tenth of a millisecond. It matters
 most at the bottom rung, where the p95 clears the control period by ~15% rather than comfortably.</p>
 
-<p>Two cells are defensible endpoints. At H = 50 the controller runs at 55 Hz
-(18.2 ms, p95 25.5 ms) with a 1 s preview and the same behaviour as S13. At
-H = 35 it runs at 82 Hz (12.2 ms, p95 16.1 ms) with a 0.7 s
-preview, a 3.6 mm reach error, and — the number that decides whether this is a
-controller — <b>a p95 inside the 20 ms control period</b> (16.1 and 18.4 ms over two
-runs), which no previous session's configuration achieved even on its mean. The margin is real but
-it is not large, and the note under the table says how large.</p>
+<p>Two cells are defensible endpoints. At H = 50 the controller runs at 60 Hz
+(16.8 ms, p95 24.3 ms) with a 1 s preview and the same behaviour as S13. At
+H = 35 it runs at 81 Hz (12.4 ms, p95 18.4 ms) with a 0.7 s
+preview, a 0.4 mm reach error, and — the number that decides whether this is a
+controller — a p95 of 18.4 and 19.8 ms over two runs against a
+20 ms period. That is <b>at</b> the deadline, not inside it: one run has 1.6 ms of
+margin and the other 0.2 ms, so on the second run roughly one control period in twenty would have
+overrun. The honest statement is that the MEAN is comfortably real-time at both horizons and the
+TAIL is not yet — and the tail is set by how many line-search rollouts a step takes (§6, §8), so
+it is the next thing to attack, not something to average away. No previous session's configuration
+was real-time even on its mean.</p>
 
-<p>The shorter horizon is not free, and the cost is not in the reach error. Worst table
-penetration goes from 2.6 mm at H = 50 to 9.8 mm at H = 35: with 0.7 s of
-preview the arm arrives at the slab with less warning and the keep-out has to work harder against
-momentum it can no longer see coming. 9.8 mm is inside the soft-contact penetration
-MuJoCo already allows at these forces and well short of anything structural, but it is the number
-to watch if the horizon goes shorter still, and it is why <b>H = 50 at
-55 Hz is the configuration to prefer unless the extra headroom is needed</b> — it is
-already real-time on the mean, and its p95 misses the period by 5.5 ms.</p>
+<p>On the pre-fix geometry the shorter horizon cost something real — worst table penetration went
+from 2.6 mm at H = 50 to 9.8 mm at H = 35, the arm arriving at the slab with less warning than the
+keep-out could act on. On the corrected geometry that cost is gone: 1.0 mm against
+0.8 mm. The proxy that was being driven 9.8 mm into the wood was the one S14 found
+over-claiming, so the penetration was largely an artifact of the collision model rather than of the
+horizon. It is still the number to watch if the horizon goes shorter, but it is no longer a reason
+to prefer H = 50 — and with both cells upright and inside their reach tolerance, <b>the choice
+between them is now headroom against preview, nothing else</b>.</p>
 
 <h2>11. What would come next, and what would not</h2>
 
@@ -415,8 +431,8 @@ parallelise the calcDiff sweep and the rollouts across nodes, which is 70% of th
 <code>ShootingProblem.updateModel</code> makes it implementable without rebuilding the problem,
 but the coarse tail's models cannot be rotated with <code>circularAppend</code>, so the window
 management is real work rather than a flag.</li>
-<li><b>The contact-dynamics floor</b> is now 60% of a node
-(79 µs) and is crocoddyl's own <code>DifferentialActionModelContactFwdDynamics</code>.
+<li><b>The contact-dynamics floor</b> is now 61% of a node
+(72 µs) and is crocoddyl's own <code>DifferentialActionModelContactFwdDynamics</code>.
 Below it there is no more accounting to do; there is a different action model.</li>
 </ul>
 
