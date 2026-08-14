@@ -239,8 +239,9 @@ which is what a stand controller is doing anyway while the winch lets go.</p>
 
 <div class="scroll"><table><thead><tr><th>plan</th><th>settle</th><th>nominal</th><th>q0.02</th><th>winch1</th><th>step <span style="text-transform:none">ms</span></th></tr></thead><tbody><tr><td><code>L_hold50</code></td><td>25</td><td class="good">100% <span style="color:var(--ink3)">of 1</span></td><td class="good">92% <span style="color:var(--ink3)">of 12</span></td><td class="">75% <span style="color:var(--ink3)">of 12</span></td><td>&mdash;</td></tr><tr><td><code>L_h50_track</code></td><td>25</td><td class="good">100% <span style="color:var(--ink3)">of 1</span></td><td class="good">92% <span style="color:var(--ink3)">of 12</span></td><td class="">75% <span style="color:var(--ink3)">of 12</span></td><td>&mdash;</td></tr><tr><td><code>L_h50_track_damp</code></td><td>25</td><td class="good">100% <span style="color:var(--ink3)">of 1</span></td><td class="bad">33% <span style="color:var(--ink3)">of 12</span></td><td class="bad">17% <span style="color:var(--ink3)">of 12</span></td><td>&mdash;</td></tr><tr><td><code>L_h50_damp</code></td><td>25</td><td class="good">100% <span style="color:var(--ink3)">of 1</span></td><td class="bad">33% <span style="color:var(--ink3)">of 12</span></td><td class="bad">33% <span style="color:var(--ink3)">of 12</span></td><td>&mdash;</td></tr></tbody></table></div>
 
-<p>Neither half is sufficient. The settle alone, handed the original plan, is <em>worse</em> than no
-settle at all (it delivers the robot to the keyframe in equilibrium, which is precisely the state the
+<p>Under a doubled winch disturbance the same configuration holds 50% of twelve, which is the
+severity at which the launch fix stops being the binding term. Neither half is sufficient. The settle
+alone, handed the original plan, is <em>worse</em> than no settle at all (it delivers the robot to the keyframe in equilibrium, which is precisely the state the
 violent opening is worst from). The planned departure alone gets 62%. Together they get 92% and 75%,
 and adding the CoM tracking term to them changes nothing — 92% and 75% again, which is the honest way
 to say that both were fixing the same failure and the launch is the better explanation of it.</p>
@@ -519,14 +520,30 @@ touching the table that nobody planned to put there.</p>
 <h2>9 · What is left</h2>
 
 <ul>
-<li><b>Yaw.</b> If the split in §5 puts the failure in yaw rather than roll/pitch, this loop needs a
-heading source it does not have, and that is the first thing to fix — before any further tuning.</li>
-<li><b>μ upwards.</b> Higher friction than planned kills the controller and lower friction does not.
-That is backwards from the intuition and it is unexplained.</li>
-<li><b>The 25% that still fall under the winch.</b> They fall the same way — backwards, in the
-approach — so there is more of §3 left in them. The candidate is that the settle ends at a pose the
-plan's first node does not describe, and the plan should be re-solved from the settled state rather
-than assuming the keyframe.</li>
+<li><b>Base position, not yaw.</b> The split in §5 came back the other way round from the guess:
+yaw is fine to 10 mrad and only bites at 50, roll/pitch keeps 83% at 10 mrad, and it is base
+<em>position</em> that binds at 5–10 mm. So there is no missing heading sensor here — there is a
+requirement on translational odometry, which is what leg kinematics plus an IMU gives while the feet
+are planted, and the feet are planted for the whole maneuver. The next step is to run the loop against
+an actual estimator rather than against a noise model of one.</li>
+<li><b>μ upwards, localised but not explained.</b> Scaling the plant's friction to 1.5&times; kills
+the controller and 0.5&times; does not. Splitting it: the <em>floor</em> at 1.5&times; is harmless
+(4 of 4 upright), the <em>table</em> at 1.5&times; fails 4 of 4, and the table at 0.5&times; is fine.
+It is not the brace — the failing runs diverge at 1.2 s with the brace force still at zero and no
+robot body touching the table at all. Something about the table body's contact set is coupling into a
+maneuver that is not touching it yet, and that is as far as this got. (Worth noting while here: every
+geom in the model carries slide friction 1.0, while the plan and every static certification in this
+study assume μ = 0.6 — so the plan has been conservative by 1.67&times; the whole time, and the
+reassuring half of this row is that dropping the plant to μ = 0.3, <em>below</em> what the plan
+assumes, changes nothing.)</li>
+<li><b>The 25% that still fall under the winch — and a fix that is not one.</b> The candidate was
+that the settle ends 0.09 rad from the keyframe the plan starts at, so the plan should start from the
+settled pose instead. Built (<code>--start-settled</code>) and measured: it takes joint noise from
+92% to <b>100%</b> and takes the winch from 75% <em>down</em> to 58%, and a doubled winch from 50%
+down to 25%. Which is the right answer to the wrong question — the residual joint-space gap was real
+and this closes it, but what the winch perturbs is where the robot is relative to the TABLE, and no
+offline start pose can absorb that. The landing spots would have to be re-referenced to the measured
+table-relative pose, online.</li>
 <li><b>Not the Delassus, still</b>, and now not the horizon either.</li>
 </ul>
 
