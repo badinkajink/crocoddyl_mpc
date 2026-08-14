@@ -1,0 +1,354 @@
+<h1>The lean was never robust, and the noise was not why</h1>
+
+<p class="sub">Session 17. S15 ended with a real-time controller and one sentence it could not
+defend: under 1.1° of noise on the initial joint angles it fell in two or three runs of five, and the
+page attributed that to tracking a plan from a single certified pose. That is not what was happening.
+The failing runs topple <em>backwards</em>, in the feet-only approach, before the bracing arm is
+anywhere near the table — and the reason is that the maneuver cannot be launched from rest. Fixing the
+launch takes the survival rate from 38% to 92%, and from 25% to 75% under a disturbance model that
+matches how this robot is actually instantiated. Six other things that look like the fix are measured
+and are not.</p>
+
+<p class="meta">2026-08-14 · <code>lean_analysis/croco_{robust,grid,plan,run,replay}.py</code> ·
+run dir <code>lean_analysis/runs/2026-08-14_session17/</code> ·
+follows <a href="2026-08-13_mpc_threads.html">the OpenMP build</a> and
+<a href="2026-08-13_mpc_speed.html">the cost-stack page</a> ·
+crocoddyl 3.2.1 (OpenMP build), Pinocchio 4.1.0, 12 threads,
+H = 35, one DDP iteration, 20 ms control period</p>
+
+<div class="note">
+<b>What changed in the measurement, before any result is read.</b> Two things, and both make the
+numbers <em>harder</em> than S15's.
+<ul>
+<li><b>The plant now enforces the torque clamp.</b> The command the robot takes is
+<span class="m">ctrl = q<sub>des</sub> + (τ<sub>ff</sub> + k<sub>d</sub>v<sub>des</sub>)/k<sub>p</sub></span>,
+so the servo's own PD term is added downstream of the planner's feedforward and can push a joint past
+the limit the plan was solved against. Measured on the S15 replay: <b>1.111 × the clamp basis</b>, on
+the bracing arm (wrist yaw, shoulder yaw, elbow), in 4 of 200 control periods, all in the first 160 ms
+while the arm is being flung out. Every run below sets the actuator force range to the clamp basis, so
+the limit is enforced by the actuator instead of reported afterwards. It costs nothing nominally.</li>
+<li><b>The disturbance model includes the base.</b> S15 perturbed 27 joint angles and left the
+floating base exactly where the plan put it. That is not how this robot arrives — it is lowered on a
+winch, so where it lands, which way it faces and how level it is all vary. Joint-only noise moves the
+feet relative to the <em>floor</em> (12–25 mm of foot-corner spread at 0.02 rad, i.e. a drop test);
+base noise moves the whole robot relative to the <em>table</em>, which is where the certified landing
+spots are. The <code>winch1</code> profile is 20 mm of horizontal placement, 10 mm of height, 50 mrad
+of heading, 20 mrad of tilt and the same 0.02 rad of joint noise.</li>
+</ul>
+</div>
+
+<h2>1 · It fails backwards, and before the brace</h2>
+
+<p>The first thing to establish is <em>where</em> in the maneuver the failure is, because every fix
+S15 would have reached for is a fix to the braced phase. It is not there. Over the seeds that fall,
+the bracing arm never reaches the table: the elbow contact force stays at zero for the whole run while
+the CoM walks off the back of the foot polygon &mdash; at 0.98 s on the seed traced below &mdash;
+and the robot sits down. The support polygon at the <code>stand</code> keyframe runs from x = 0.185 to x = 0.388 and the
+CoM starts at x = 0.227, so the maneuver <b>begins 42 mm from its own rearward stability boundary</b>,
+before any noise at all.</p>
+
+<figure><!--FIG:fall-->
+<figcaption>Horizontal centre of mass against time. Same plan, same 0.02 rad disturbance, three
+runs: a seed that survives, a seed that does not, and that same failing seed once the launch is fixed.
+The band is the foot polygon; the brace force is drawn along the bottom on its own scale. The failing
+run crosses the heel edge at 0.98 s and never returns, and the contact it was going to lean on does
+not arrive until 1.96 s &mdash; a second of falling before there is anything to fall onto.</figcaption></figure>
+
+<p>Two controls narrow it further. The failure is <b>not myopia</b>: at H = 100 the MPC re-solves the
+entire remaining maneuver every 20 ms and the same seed still falls. It is <b>not solver budget</b>:
+at 2 and at 5 DDP iterations it falls too, and worse, with the line search collapsed to
+<span class="m">α = 0.002</span> and no step accepted — the signature of a problem whose descent
+direction is being spent on something the model cannot express. It is not the controller either: the
+offline Riccati gains and the pure feedforward fall on the same seeds.</p>
+
+<p>That last observation is the important one, and it has a clean explanation. <b>To a DDP whose feet
+are bilateral 6-D welds, the robot cannot fall over.</b> The feet may pull and their centre of
+pressure may leave the sole; a toppling state is not in the model's reachable set at all. When the
+plant does topple, the measured state is off the model's own constraint manifold, and what the MPC
+returns from there is not a recovery — it is the projection of a fall onto a robot that is bolted to
+the floor.</p>
+
+<h2>2 · Six ways to price the fall that do not work</h2>
+
+<p>If the model cannot see a topple, the objective has to. Two terms are supposed to be doing that
+job and the weight sweep says what each is worth. Every row is a re-solved plan and a fresh set of
+replays under the same verdict.</p>
+
+<!--TABLE:weights-->
+
+<p>The <b>CoM barrier is inert, provably</b>. It is a quadratic barrier on the foot polygon shrunk by
+30 mm, and the plan cost at w = 1e3 and at w = 1e6 is identical to fifteen significant figures —
+25.933907507070657 — because the nominal trajectory never leaves the box, so the term is on its flat
+branch at every node and its weight multiplies zero. The perturbed runs that do leave the box are
+already falling by the time it speaks. Its weight was never a robustness knob and neither is the
+margin: 30 mm and 50 mm give the same survival.</p>
+
+<p>The <b>cones are load-bearing and cannot be cranked</b>. They are the only term that says the feet
+are unilateral and that the CoP has to stay on the sole, so the obvious move is to raise their weight
+until the plan stops asking for wrenches MuJoCo will not supply. It goes the wrong way: at
+<span class="m">w<sub>cone</sub></span> = 1e2 the controller falls in every seed and at 1e3 it falls
+from the nominal state. The cone residual is a stiff, strongly nonlinear function of the state through
+the KKT solve, and weighting it heavily buys a worse-conditioned problem rather than a safer
+trajectory. Demanding CoP margin directly instead — shrinking the sole rectangle the cone is written
+against to 60% — helps a little on its own and is undone by combining it with a heavier cone. A
+minimum normal force of 20 N does nothing.</p>
+
+<p>Only one cost-side change works: an <b>always-on</b> CoM term. <code>w_com_track</code> is a plain
+quadratic pull of the horizontal CoM toward the middle of the feet on the feet-only phases, so there
+is a gradient <em>before</em> the excursion rather than a penalty after it, and at 1e4 it takes the
+five-seed screen to 100%. Its derivative counterpart does not: penalising horizontal centroidal
+momentum, which is where a topple shows up first and which ought to be the better signal, takes
+survival <em>down</em> to 33%. And §4 shows the CoM term is fixing a symptom.</p>
+
+<h2>3 · The maneuver cannot be launched from rest</h2>
+
+<p>The clue is in a control experiment that was supposed to be trivial. Command the
+<code>stand</code> keyframe and hold it:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>feedforward, joints commanded to the keyframe</th><th>what the plant does</th></tr></thead>
+<tbody>
+<tr><td><span class="m">τ<sub>ff</sub> = 0</span></td>
+<td class="bad">sags 0.09 rad in 0.2 s, topples backwards by 1.2 s</td></tr>
+<tr><td>integral action until the joint error vanishes</td>
+<td class="bad">joint error 0.005 rad and it topples anyway — the joints were never the problem</td></tr>
+<tr><td>the plan's own <span class="m">u[0]</span></td>
+<td>holds, but 74 N·m away from static: it settles 0.59 rad off the pose</td></tr>
+<tr><td>the static-equilibrium QP at the start pose</td>
+<td class="good">holds it: pelvis 0.995 m, CoM inside the polygon, for 3 s, at 0.34 of the clamp basis</td></tr>
+</tbody></table></div>
+
+<p>So the pose is holdable and the plan's opening control is not a hold. Against a static torque of
+53 N·m in norm, <span class="m">u[0]</span> sits 74 N·m away from it — knees at −67 N·m where +10 is
+wanted, torso at −31 where 0 is wanted. The maneuver opens with a lurch, and whether it survives that
+lurch is decided by wherever the initial-state noise happened to put the robot. That is the two-in-five.</p>
+
+<p>Two things about this are worth stating plainly. First, it explains why <em>more</em> optimisation
+made it worse and why a longer horizon did not help: neither changes the opening. Second, it explains
+the CoM term — pulling the CoM forward buys margin to absorb the lurch, which is why it works and why
+it is not the right fix.</p>
+
+<p>The right fix is on both sides of the handover. <b><code>n_hold</code></b> gives the OCP the first
+50 nodes (1 s) of the approach to sit still at <span class="m">x<sub>0</sub></span>, so the departure
+from rest is planned rather than assumed; it takes the opening mismatch from 74 N·m to 29 N·m and
+costs nothing in reach error (1.79 mm against 1.86 mm) or solve time. <b><code>settle</code></b> holds
+the start pose under the static-QP feedforward for 25 control periods before the schedule advances —
+which is what a stand controller is doing anyway while the winch lets go.</p>
+
+<!--TABLE:combo-->
+
+<p>Neither half is sufficient. The settle alone, handed the original plan, is <em>worse</em> than no
+settle at all (it delivers the robot to the keyframe in equilibrium, which is precisely the state the
+violent opening is worst from). The planned departure alone gets 62%. Together they get 92% and 75%,
+and adding the CoM tracking term to them changes nothing — 92% and 75% again, which is the honest way
+to say that both were fixing the same failure and the launch is the better explanation of it.</p>
+
+<div class="note">
+<b>A real defect found on the way, which is not the cause.</b> The shipped <code>stand</code> keyframe
+does not seat the feet: each sole is rolled 6.4° (9 mm of corner-height spread across an 80 mm sole),
+so the robot stands on its two inner foot edges with the outer edges 4.4 mm in the air.
+<code>seat_stance</code> levels them with a five-variable Gauss-Newton on base height and the ankle
+roll/pitch pairs. It was the leading hypothesis for the backward topple and it is not the answer: the
+static hold from the seated pose topples identically. Worth fixing, worth not crediting.</div>
+
+<h2>4 · A diverse target set, and the stance that pays for it</h2>
+
+<p>Everything above is one reach target. The grid below is thirteen, spanning the axis this study has
+swept since S11 (x, straight ahead, out past where a brace stops helping) and the one it never has
+(y, across the full 595 mm width of the table, in both directions), plus two low targets 35 mm off the
+wood. Each is certified, planned and stressed at two stance offsets: the study's square-on
+<span class="m">dy = 0</span>, and <span class="m">dy = −120</span> mm, the middle of the band
+<code>croco_stance.py</code> found useful in S14 and which no crocoddyl plan had ever used —
+<code>croco_run</code> read its start pose straight out of <code>m.key_qpos</code> and ignored the
+stance offset entirely, so the IK honoured it and the plan it fed did not. That is fixed.</p>
+
+<figure><!--FIG:grid-->
+<figcaption>Plan view. Table outline and both feet to scale, one marker per reach target, labelled
+with the percentage of winch-disturbed runs that satisfy the verdict. Left panel is the square-on
+stance, right is the robot moved 120 mm toward the far rail.</figcaption></figure>
+
+<!--TABLE:grid-->
+
+<h2>5 · What this loop would actually need from a robot</h2>
+
+<p>The cone costs look like the obstacle to deployment, because their residual is a force and this
+robot has no force sensing worth the name. They are not: their wrench is what the contact forward
+dynamics' own KKT solve produces for <span class="m">(x, u)</span>, not a measurement — the
+<a href="2026-08-06_croco_loop.html#cones">MPC page</a> now writes out all seventeen rows and where
+they come from. So the question is what <em>is</em> privileged here, and it is answerable one axis at
+a time: degrade one thing the controller is told, hold everything else, and score the same verdict.</p>
+
+<figure><!--FIG:sim2real-->
+<figcaption>Survival under 0.02 rad of initial joint noise, six seeds, with one thing degraded at a
+time. The dashed line is the same controller with nothing degraded.</figcaption></figure>
+
+<!--TABLE:sim2real-->
+
+<p>Three of the four candidates are non-issues, and that is the useful half of the result.
+<b>Joint sensing does not matter</b>: 0.5 mrad of encoder noise with 50 mrad/s on the differentiated
+velocities — a fair model of what a 20 ms period actually gives you — costs nothing, 83% against 83%.
+<b>Table pose does not matter</b> up to 40 mm in either axis, which is well inside what any perception
+stack would deliver; the keep-out box and the landing spots are far more forgiving than they look.
+<b>Touchdown timing is loose</b>: the prescribed contact schedule can be advanced or retarded by ±0.2 s
+with little effect (only the earliest, −10 periods, drops to 50%), so a noisy skin used purely as a
+binary touchdown detector is more than accurate enough — which is the specific thing the experimental
+skins can do. And <b>friction does not matter downwards</b>: the plan assumes μ = 0.6 and survives
+μ = 0.3 unchanged.</p>
+
+<p>Two things do. Friction matters <em>upwards</em> — at μ = 0.9 the controller falls in every seed,
+including from the nominal state, which is backwards from the intuition and is not yet understood.
+And the <b>floating-base state estimate</b> is the binding requirement of the whole loop:</p>
+
+<!--TABLE:attitude-->
+
+<p>Read as a specification, it is: <b>base position to about 5 mm, base linear velocity to a few tens
+of mm/s, attitude to about 10 mrad, yaw to a few tens of mrad.</b> Position is the tight one — 2 mm
+costs nothing but already moves the median reach error from 0.3 mm to 4.2 mm, 10 mm halves the
+survival, and 20 mm ends it. Attitude is looser than expected and degrades accuracy before it degrades
+survival: 10 mrad of roll/pitch keeps 83% and takes the reach error to 11.5 mm, and the split between
+roll/pitch and yaw matters less than the combined-estimator rows suggest. Angular rate at 10 mrad/s is
+free.</p>
+
+<p>That is a good problem to have, and not the one this loop looked like it had. Nothing here needs a
+force estimate. What it needs is base position and velocity — and the feet are planted on the ground
+for the entire maneuver, which is exactly the regime in which leg odometry fused with an IMU is at its
+best. The requirement is demanding but it is the ordinary humanoid state-estimation problem, not a new
+sensor.</p>
+
+<div class="note warn">
+<b>A correction, because it nearly became the headline.</b> The first run of this table reported that
+0.001° of attitude error toppled the robot, at <em>identical</em> reach error for every magnitude
+tried. A physical sensitivity has a slope; that one did not, which is what gave it away. The cause was
+<code>pin.exp3(dr) * q.matrix()</code> in the sensing model — numpy's <code>*</code> on two 3×3 arrays
+is element-wise, so it returned a non-orthonormal matrix that <code>pin.Quaternion</code> accepted
+without complaint, corrupting the attitude by an amount unrelated to <code>dr</code>. With
+<code>@</code> the slope appears and is the table above. The disturbance profiles are unaffected — they
+build their rotation through MuJoCo's <code>mju_mulQuat</code> — so every other number on this page
+stands.</div>
+
+<h2>6 · Which cost terms are necessary</h2>
+
+<p>The complement of the weight sweep: delete a whole cost group, re-solve, and run the same verdict.
+Two of the nine are load-bearing for the <em>solve</em> and never reach a replay.</p>
+
+<!--TABLE:ablate-->
+
+<div class="scroll"><table>
+<thead><tr><th>dropped</th><th>offline solve</th><th>what it says</th></tr></thead><tbody>
+<tr><td><code>stateReg</code></td><td class="bad">does not converge (200 iters, stop 2e−2)</td>
+<td>the posture target toward q* is what makes the problem well-posed, not a preference</td></tr>
+<tr><td><code>ctrlReg</code></td><td class="bad">does not converge (200 iters, stop 5e−1, cost 141)</td>
+<td>at 1e−3 it looks like a rounding term; with bilateral foot welds there is a whole subspace of
+internal preload that produces no motion and costs nothing, and this is the only thing that picks a
+point in it</td></tr>
+<tr><td><code>jointLim</code></td><td>converges to the same cost, 25.97, in the same 21 iterations</td>
+<td>never active on this maneuver — the box bounds on <span class="m">u</span> bind first</td></tr>
+<tr><td><code>comSupport</code></td><td>identical plan, to fifteen figures</td>
+<td>see §2; it is not doing anything</td></tr>
+</tbody></table></div>
+
+<h2>7 · The horizon, and the non-uniform version of it</h2>
+
+<p>The obvious remaining structural change is a fine head at the control period and a coarse tail at a
+multiple of it — a 1 s preview in 30 nodes instead of 50. It is not worth building here, and the
+reason is window management rather than models. crocoddyl offers exactly one cheap sliding operation,
+<code>circularAppend</code>, measured at <b>4.4 µs</b>; it rotates the whole model list, which is only
+correct when every node has the same duration. A mixed window has to be re-pointed with
+<code>updateModel</code>, measured at <b>263 µs per node</b> because it re-creates that node's data
+(<code>createData</code> alone is 98 µs). Re-pointing a fifteen-node coarse tail every control period
+is <b>3.9 ms against a ~10 ms step</b>: the bookkeeping costs more than the fifteen nodes it removes.</p>
+
+<p>What is cheap is the same idea on a uniform grid. Integrate the online problem at
+<span class="m">n</span> times the control period and the window advances one coarse node every
+<span class="m">n</span> periods instead of one fine node every period — rotation stays valid, the
+controller still re-solves from the measured state at 50 Hz, and the preview is
+<span class="m">n</span> times longer for the same node count.</p>
+
+<!--TABLE:horizon-->
+
+<p>Two things come out of it, and neither is the one the idea was proposed for.</p>
+
+<p><b>At equal preview the coarse grid is cheaper and does not work.</b> 0.70 s of preview costs
+11.1 ms at 35 nodes of 20 ms and 6.1 ms at 18 nodes of 40 ms — nearly half — and survival goes from
+83% to zero, from the nominal state included. At 1.00 s it is 15.2 ms against 7.9 ms and 83% against
+17%. So the saving is real and it is not a saving: what the controller needs is <em>nodes</em>, and
+below about 35 of them it does not matter how far ahead they see.</p>
+
+<p><b>The loss is discretisation, not preview.</b> The cleanest comparison in the table is 35 nodes
+against 35 nodes: at 20 ms each that is 0.70 s of preview and 83%, at 40 ms each it is 1.40 s of
+preview — twice as far ahead, same node count, same solver work — and survival <em>drops</em> to 67%.
+A 40 ms explicit Euler step through contact-constrained dynamics is simply a worse model of this
+plant, and more preview does not pay for it.</p>
+
+<p>There is one cell where it earns its place. At 50 nodes the coarse grid gives 2.0 s of preview for
+11.4 ms against 15.2 ms for 1.0 s at the fine grid, with survival equal at 83%. So if a future
+maneuver needs to see further than a second — a release-and-return phase, say — decimation buys that
+for 25% of the step rather than 100%. As a way to make the <em>current</em> controller cheaper it is
+a dead end, which is the honest answer to the question that started it.</p>
+
+<h2>8 · The controller, on the grid</h2>
+
+<p>The endpoint — 35 nodes, one DDP iteration, 12 threads, the planned departure from rest and the
+static settle — running the braced reach at the corners of the target set. Contact markers are drawn
+where the narrowphase reports contact: blue elbow, orange forearm, grey feet, magenta for anything
+touching the table that nobody planned to put there.</p>
+
+<!--VIDEOS-->
+
+<h2>9 · What is left</h2>
+
+<ul>
+<li><b>Yaw.</b> If the split in §5 puts the failure in yaw rather than roll/pitch, this loop needs a
+heading source it does not have, and that is the first thing to fix — before any further tuning.</li>
+<li><b>μ upwards.</b> Higher friction than planned kills the controller and lower friction does not.
+That is backwards from the intuition and it is unexplained.</li>
+<li><b>The 25% that still fall under the winch.</b> They fall the same way — backwards, in the
+approach — so there is more of §3 left in them. The candidate is that the settle ends at a pose the
+plan's first node does not describe, and the plan should be re-solved from the settled state rather
+than assuming the keyframe.</li>
+<li><b>Not the Delassus, still</b>, and now not the horizon either.</li>
+</ul>
+
+<h2>10 · Reproducing this</h2>
+
+<pre>cd lean_analysis
+OMP=$HOME/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1
+R=runs/2026-08-14_session17
+
+# the cost-weight sweep (its plans live in $R/w)
+LD_PRELOAD=$OMP python croco_robust.py weights   --dir $R/w --out $R/weights.json \
+    --tau-clamp --seeds 1 2 3 4 5 --noises 0.0 0.02
+
+# the launch fix: n_hold in the plan, settle in the controller
+for a in "hold50:--n-hold 50" "h50_track:--n-hold 50 --w-com-track 1e4"; do
+  LD_PRELOAD=$OMP python croco_run.py --mode elbow+forearm --tag L_${a%%:*} \
+      --dir $R/w --dt 0.02 --n-approach 120 --n-braced 80 ${a#*:}; done
+LD_PRELOAD=$OMP python croco_robust.py matrix    --dir $R/w --out $R/combo.json \
+    --tags L_hold50 L_h50_track --settles 25 --profiles nominal q0.02 winch1 \
+    --seeds 1 2 3 4 5 6 7 8 9 10 11 12
+
+# the diverse target grid, at both stances
+python croco_grid.py certify --dir $R/grid
+LD_PRELOAD=$OMP python croco_grid.py plan   --dir $R/grid --weights n_hold=50
+LD_PRELOAD=$OMP python croco_grid.py stress --dir $R/grid --settle 25 \
+    --profiles nominal winch1 --seeds 1 2 3 4 5 6 7 8
+python croco_grid.py collect --dir $R/grid --out $R/grid.json
+
+# what a deployment has to get right
+LD_PRELOAD=$OMP python croco_robust.py sim2real --dir $R/w --tag L_hold50 \
+    --out $R/sim2real.json --settle 25 --profiles nominal q0.02 --seeds 1 2 3 4 5 6
+
+# the cost-term ablation and the horizon table
+LD_PRELOAD=$OMP python croco_robust.py matrix --dir $R/w --out $R/ablate.json \
+    --tags AB_none AB_nocones AB_nokeepout AB_nocom AB_nohold AB_noland \
+    --settles 25 --profiles nominal q0.02 winch1 --seeds 1 2 3 4 5 6 7 8
+LD_PRELOAD=$OMP python croco_robust.py matrix --dir $R/w --out $R/horizon.json \
+    --tags L_hold50 --settles 25 --horizons 18 25 35 50 --dt-scales 1 2 \
+    --profiles nominal q0.02 --seeds 1 2 3 4 5 6
+
+python croco_robust_page.py --dir $R --body ../docs/lean/_body_robust_2026-08-14.html \
+    --out 2026-08-14_robustness.html            # this page</pre>
+
+<p class="meta">Defaults changed by this session: none. <code>--tau-clamp</code>,
+<code>--settle</code>, <code>--n-hold</code> and the stance offset are all opt-in, and a run with none
+of them reproduces S15 unchanged.</p>
