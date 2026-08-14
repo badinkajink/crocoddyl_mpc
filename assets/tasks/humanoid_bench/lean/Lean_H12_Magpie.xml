@@ -147,7 +147,7 @@
              surface (+0.0 cm), forearm LEVEL (0.0 deg), gripper lowest +3.2 cm clear, pad
              x 0.535 = seated 0.24 m past the 0.2975 near edge (short-side approach depth).
              Previous (0.865-era) pose left the pad 8.5 cm UNDER the new surface. -->
-        <key name="forearm_brace_lean" qpos="0.212485 0 0.964242 0.974587 0 0.224009 0 0 -0.936662 0.12 0.665198 -0.181326 0 0 -0.936662 -0.12 0.665198 -0.181326 0 -0.0593057 -0.628189 -0.112756 0.444694 -0.0109609 0.225548 -0.461708 -0.740967 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_lean" qpos="0.212485 0 0.964242 0.974587 0 0.224009 0 0 -0.936662 0.12 0.665198 -0.181326 0 0 -0.936662 -0.12 0.665198 -0.181326 0 -0.0593057 -0.7682 -0.112756 0.444694 0.2490 0.225548 -0.461708 -0.740967 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
         <!-- forearm_brace_reach (2026-07-31): the braced pose with the RIGHT
              arm solved for MAXIMUM forward gripper extension, staying >=10 mm
              above the tabletop. Left arm / legs / base copied unchanged, so the
@@ -155,8 +155,8 @@
              keyframe: with the reach phase pointed at forearm_brace_lean, whose
              right arm is NEUTRAL, Posture pulled the reaching arm back while
              Reaching Hand Dist pushed it out. -->
-        <key name="forearm_brace_mid" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.471239 -1.01229 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
-        <key name="forearm_brace_reach" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.471239 -1.01229 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_mid" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.4890 -0.122173 0.610865 0.8789 0.261799 -0.471239 -1.01229 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_reach" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.4890 -0.122173 0.610865 0.8789 0.261799 -0.471239 -1.01229 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
         <key name="forearm_brace_release" qpos="0.300182 0 0.915396 0.974693 0 0.223547 0 0 -0.983672 0.12 0.989648 -0.456879 0 0 -0.983672 -0.12 0.989648 -0.456879 0 0 -0.907571 -0.139626 0.767945 0.10472 0.261799 -0.471239 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="standback_r1" qpos="0.256109 0.000000 0.968080 0.990865 0.000000 0.134859 0.000000 0.000000 -0.734203 0.120000 0.813789 -0.350127 0.000000 0.000000 -0.734203 -0.120000 0.813789 -0.350127 0.000000 0.000000 -0.544543 -0.083776 0.460767 0.062832 0.157079 -0.282743 -0.607374 0.210000 -0.090000 0.000000 0.180000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
         <key name="standback_r2" qpos="0.231869 0.000000 0.985412 0.996332 0.000000 0.085567 0.000000 0.000000 -0.596995 0.120000 0.717066 -0.291414 0.000000 0.000000 -0.596995 -0.120000 0.717066 -0.291414 0.000000 0.000000 -0.344877 -0.053058 0.291819 0.039794 0.099484 -0.179071 -0.384670 0.133000 -0.057000 0.000000 0.114000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
@@ -179,11 +179,11 @@
                class, CoM 13 cm behind the heels. Full stand z 1.0: pad +7.4 cm high. -->
 
         <!-- crouch-base variant (0.955 arm solve on the old crouch legs) -- superseded:
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.974805 0.147421 -0.292228 0.788757 -2.35963 0.243461 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.7682 0.147421 -0.292228 0.2490 -2.35963 0.243461 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
         <!-- 0.865-era pose (pad 8.5 cm under the 0.955 surface) -- superseded 2026-07-31:
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.6671 0.1496 0.316 0.6473 -1.553 0.181 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.7682 0.1496 0.316 0.2490 -1.553 0.181 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
         <!-- PRE-JAW-FIX pose (jaws vertical, +15 mm finger clearance) -- do not reuse:
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.673 -0.064 -0.307 0.582 -0.083 -0.427 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.7682 -0.064 -0.307 0.2490 -0.083 -0.427 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
         <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
              name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
              residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
@@ -411,9 +411,25 @@
         <numeric name="brace_contact_verify" data="2.0"/>
         <numeric name="brace_contact_loss" data="1.0"/>
         <numeric name="swing_engage_below" data="0.10"/>
-        <numeric name="swing_engage_near" data="0.25"/>
+        <numeric name="swing_engage_near" data="0.30"/>
         <numeric name="swing_out" data="0.22"/>
-        <numeric name="swing_up" data="0.20"/>
+        <numeric name="swing_up" data="0.26"/>
+        <!-- 2026-08-13 BRACE FLAT (real 14/15: corner-of-pad edge contact,
+             24-33deg inclined, chattered and slipped). flat_tol = elevation
+             deadband (rad) for the Brace Arm Plane flatness term, active as
+             the pad nears slab height; flat_gate = max |elevation| (rad) for
+             contact to count in the verify gate (0 = off). -->
+        <!-- 2026-08-13 release pitch gate: hold release/standback rungs until
+             believed pitch is below these (rad); arm keeps pressing. 0=off. -->
+        <numeric name="standback_pitch_release" data="0.42"/>
+        <numeric name="standback_pitch_r1" data="0.30"/>
+        <numeric name="standback_pitch_r2" data="0.18"/>
+        <numeric name="brace_sink_slack" data="0.12"/>
+        <numeric name="brace_contact_zmargin" data="0.05"/>
+        <numeric name="brace_contact_xyslack" data="0.12"/>
+        <numeric name="brace_flat_tol" data="0.05"/>
+        <numeric name="brace_flat_gate" data="0.17"/>
+        <numeric name="brace_flat_gain" data="4.0"/>
         <numeric name="sampling_knot_var_growth" data="0.0"/>
         <numeric name="gradient_spline_points" data="5"/>
         <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites

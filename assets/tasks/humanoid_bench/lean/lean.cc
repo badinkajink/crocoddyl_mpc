@@ -2546,7 +2546,24 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double bh_err = posture_target[2] - data->qpos[2];
     residual[counter++] = 10.0 * (bh_err >= 0.0 ? bh_err : 0.0);
   } else {
-    residual[counter++] = 0.0;
+    // ★ 2026-08-13 DRAPE FIX: this anchor used to be HARD 0 while the pad
+    // touched -- w450 x 0.0 -- so the flat-brace press could fold the legs
+    // and sink the base to z 0.30-0.55 at zero cost ("drape", 5/10 in
+    // final10; braces at 400-860 N carrying the folded body). The brace
+    // keyframes carry real base-z targets (lean 0.964 / mid 0.885), so keep
+    // the SAME one-sided anchor alive during contact with a slack band
+    // (`brace_sink_slack`, m): normal brace depth (z 0.87-0.95) stays free,
+    // only the fold below target-slack is charged. slack <= 0/absent = OFF =
+    // the old hard-0 behavior.
+    double sink_res = 0.0;
+    int nsl = mj_name2id(model, mjOBJ_NUMERIC, "brace_sink_slack");
+    double slack = nsl >= 0
+        ? model->numeric_data[model->numeric_adr[nsl]] : 0.0;
+    if (slack > 0.0) {
+      double bh_err = (posture_target[2] - slack) - data->qpos[2];
+      if (bh_err > 0.0) sink_res = 10.0 * bh_err;
+    }
+    residual[counter++] = sink_res;
   }
 
   // ----- Centroidal angular momentum (hip / Horak-Nashner strategy) ----- //
@@ -2803,6 +2820,50 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         constexpr double kEdgeKeepout = 0.06;   // m of slab we refuse to use
         double dy = mju_abs(data->xpos[3 * b_el2 + 1] - ty);
         plane_err += mju_max(0.0, dy - (half_y - kEdgeKeepout));
+      }
+
+      // ★ BRACE FLAT (2026-08-13). Real runs 14/15: at contact the commanded
+      // forearm is inclined 24-33 deg wrist-end-up, so only the elbow-end
+      // CORNER of the pad meets the table -- right at the front edge -- and
+      // it chatters (23-25 contact-LOST resets/run) and slips. Nothing above
+      // constrains PITCH: splay/tuck live in the torso xy-plane, Brace Pos is
+      // a point target a corner can satisfy. Sim never punishes this (twin
+      // seats at +7..+21 deg and still pulls 100-160 N from a corner), so the
+      // term must be model-state, not contact-mediated: charge the WORLD
+      // elevation of elbow->wrist once the pad is near slab height. Deadband
+      // `brace_flat_tol` (rad, default 0.09 ~ 5 deg; keyframe design is +3).
+      // Activation ramps in over the last 15 cm of descent so the swing-down
+      // arc far above the table stays free.
+      if (g_tab >= 0) {
+        int g_pad2 = mj_name2id(model, mjOBJ_GEOM, "left_forearm_pad");
+        int b_wr2 = mj_name2id(model, mjOBJ_BODY, "left_wrist_roll_link");
+        if (g_pad2 >= 0 && b_el2 >= 0 && b_wr2 >= 0) {
+          int nflat = mj_name2id(model, mjOBJ_NUMERIC, "brace_flat_tol");
+          double flat_tol = nflat >= 0
+              ? model->numeric_data[model->numeric_adr[nflat]] : 0.09;
+          // ★ iter-2 (gate_braceflat 1-5): at gain 1 the press wins — seats
+          // start +6..+12 deg then the Brace Force gradient (|r| to 37 at
+          // w40) rolls them to +20..+23 deg; a 0.1-0.3 rad excess inside a
+          // shared-w300 term is ~78 cost units, not enough. `brace_flat_gain`
+          // scales the excess so flatness competes with the press.
+          int ngain = mj_name2id(model, mjOBJ_NUMERIC, "brace_flat_gain");
+          double flat_gain = ngain >= 0
+              ? model->numeric_data[model->numeric_adr[ngain]] : 1.0;
+          double surf_z2 = data->geom_xpos[3 * g_tab + 2] +
+                           model->geom_size[3 * g_tab + 2];
+          double pad_z2 = data->geom_xpos[3 * g_pad2 + 2];
+          constexpr double kFlatEngage = 0.25;  // m above slab: ramp start
+          double act = mju_clip(
+              1.0 - (pad_z2 - surf_z2) / kFlatEngage, 0.0, 1.0);
+          if (act > 0.0 && flat_tol > 0.0) {
+            double fx = data->xpos[3 * b_wr2 + 0] - data->xpos[3 * b_el2 + 0];
+            double fy = data->xpos[3 * b_wr2 + 1] - data->xpos[3 * b_el2 + 1];
+            double fz = data->xpos[3 * b_wr2 + 2] - data->xpos[3 * b_el2 + 2];
+            double elev = std::atan2(fz, mju_sqrt(fx * fx + fy * fy));
+            plane_err +=
+                flat_gain * act * mju_max(0.0, mju_abs(elev) - flat_tol);
+          }
+        }
       }
     }
     residual[counter++] = plane_err;
@@ -3483,6 +3544,85 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                        break;
                      }
                    }
+                   // ★ 2026-08-13 NEAR-CONTACT MARGIN (real flat_2): the
+                   // REAL pad sat planted for ~65 s (pitch 30 rock-steady)
+                   // while the BELIEVED pad hovered ~2 cm above the believed
+                   // surface (attitude error at 30 deg pitch + unmodeled
+                   // rubber), so believed contact flickered 134x and the
+                   // ladder never advanced on a solid real brace. If
+                   // `brace_contact_zmargin` (m) > 0, count the pad as ON
+                   // whenever its lowest point is within that margin of the
+                   // slab top while horizontally over the slab. Flat/INCLINED
+                   // still gates edge grazes. 0/absent = strict contact scan.
+                   if (!on) {
+                     int nzm = mj_name2id(model, mjOBJ_NUMERIC,
+                                          "brace_contact_zmargin");
+                     double zmar = nzm >= 0
+                         ? model->numeric_data[model->numeric_adr[nzm]] : 0.0;
+                     int g_tab3 = mj_name2id(model, mjOBJ_GEOM,
+                                             "table_top_collision");
+                     if (zmar > 0.0 && pad_gid2 >= 0 && g_tab3 >= 0) {
+                       const double* pp = data->geom_xpos + 3 * pad_gid2;
+                       double prad = model->geom_size[3 * pad_gid2];
+                       const double* tc = data->geom_xpos + 3 * g_tab3;
+                       double thx = model->geom_size[3 * g_tab3 + 0];
+                       double thy = model->geom_size[3 * g_tab3 + 1];
+                       double surf = tc[2] + model->geom_size[3 * g_tab3 + 2];
+                       // ★ flat_4 telemetry: gap was +11 mm but over=0 on
+                       // EVERY sample — the relative tag anchor preserves
+                       // the robot-vs-table offset latched at bring-up, so
+                       // believed x can sit ~5-10 cm behind truth and the
+                       // footprint test starves the gate. Believed z is the
+                       // trustworthy axis (~1 cm); slack the x/y footprint
+                       // by `brace_contact_xyslack` (m, default 0.10).
+                       int nxs = mj_name2id(model, mjOBJ_NUMERIC,
+                                            "brace_contact_xyslack");
+                       double xys = nxs >= 0
+                           ? model->numeric_data[model->numeric_adr[nxs]]
+                           : 0.10;
+                       bool over = mju_abs(pp[0] - tc[0]) < thx + xys &&
+                                   mju_abs(pp[1] - tc[1]) < thy + xys;
+                       double gap = (pp[2] - prad) - surf;
+                       if (over && gap < zmar) on = true;
+                       // ★ measure, don't guess: print the believed gap so
+                       // real runs tell us the actual belief offset.
+                       static int gap_note = 0;
+                       if (++gap_note % 100 == 1)
+                         std::printf("[lean-gate] believed pad gap %+.0f mm "
+                                     "(over=%d margin %.0f mm)\n",
+                                     gap * 1000.0, (int)over, zmar * 1000.0);
+                     }
+                   }
+                   // ★ 2026-08-13 FLAT-GATED VERIFY: a corner graze is not a
+                   // seat (real 14/15: 24-33 deg inclined edge contact
+                   // chattered 23-25x and never verified). Contact only
+                   // counts while forearm elevation < `brace_flat_gate`
+                   // (rad; 0/absent = off).
+                   bool inclined = false;
+                   int nfg = mj_name2id(model, mjOBJ_NUMERIC,
+                                        "brace_flat_gate");
+                   double fgate = nfg >= 0
+                       ? model->numeric_data[model->numeric_adr[nfg]] : 0.0;
+                   if (on && fgate > 0.0) {
+                     int b_el3 =
+                         mj_name2id(model, mjOBJ_BODY, "left_elbow_link");
+                     int b_wr3 = mj_name2id(model, mjOBJ_BODY,
+                                            "left_wrist_roll_link");
+                     if (b_el3 >= 0 && b_wr3 >= 0) {
+                       double fx = data->xpos[3 * b_wr3 + 0] -
+                                   data->xpos[3 * b_el3 + 0];
+                       double fy = data->xpos[3 * b_wr3 + 1] -
+                                   data->xpos[3 * b_el3 + 1];
+                       double fz = data->xpos[3 * b_wr3 + 2] -
+                                   data->xpos[3 * b_el3 + 2];
+                       double elev =
+                           std::atan2(fz, mju_sqrt(fx * fx + fy * fy));
+                       if (mju_abs(elev) > fgate) {
+                         inclined = true;
+                         on = false;
+                       }
+                     }
+                   }
                    static double bc_since = -1.0, bc_lost_since = -1.0;
                    int bcl = mj_name2id(model, mjOBJ_NUMERIC,
                                         "brace_contact_loss");
@@ -3501,9 +3641,51 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                      if (++bc_note % 100 == 1)
                        std::printf("[lean-gate] HOLD %s: pad contact %s "
                                    "(need %.1fs verified)\n",
-                                   kfn.c_str(), on ? "verifying" : "LOST",
+                                   kfn.c_str(),
+                                   on ? "verifying"
+                                      : (inclined ? "INCLINED" : "LOST"),
                                    vsec);
                      return false;
+                   }
+                 }
+                 // ★ 2026-08-13 RELEASE PITCH GATE (bench20_flatstack 1-10
+                 // forensics): with Balance 40 the un-bow now WORKS (38->26,
+                 // 34->20 deg) but the pad leaves the table at 25-38 deg and
+                 // the last stretch is ankle-only -- infeasible from that
+                 // depth (the #51 toe-line bound), so every run stalls at
+                 // 17-26 deg and topples forward 1-10 s later. Hold the
+                 // release-side rungs until believed base pitch is below a
+                 // per-rung bound, so the ARM keeps pressing and walks the
+                 // pitch down into ankle-recoverable range before letting
+                 // go (counter push-off). Numerics standback_pitch_release/
+                 // _r1/_r2 in rad; 0/absent = OFF = prior behavior.
+                 {
+                   const char* pnum = nullptr;
+                   if (kfn == "forearm_brace_release")
+                     pnum = "standback_pitch_release";
+                   else if (kfn == "standback_r1")
+                     pnum = "standback_pitch_r1";
+                   else if (kfn == "standback_r2")
+                     pnum = "standback_pitch_r2";
+                   if (pnum != nullptr) {
+                     int pid = mj_name2id(model, mjOBJ_NUMERIC, pnum);
+                     double plim = pid >= 0
+                         ? model->numeric_data[model->numeric_adr[pid]] : 0.0;
+                     if (plim > 0.0) {
+                       const double* q = data->qpos;  // free joint quat wxyz
+                       double sinp = 2.0 * (q[3] * q[5] - q[6] * q[4]);
+                       sinp = mju_clip(sinp, -1.0, 1.0);
+                       double bpitch = std::asin(sinp);
+                       if (bpitch > plim) {
+                         static int rp_note = 0;
+                         if (++rp_note % 100 == 1)
+                           std::printf(
+                               "[lean-gate] HOLD %s: pitch %.2f > %.2f rad "
+                               "— keep pressing\n",
+                               kfn.c_str(), bpitch, plim);
+                         return false;
+                       }
+                     }
                    }
                  }
                  return true;
