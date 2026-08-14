@@ -1879,10 +1879,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   const double rf_ay = kRightFootHomeXY[1];
   const double lf_ax = brace_foot_x;
   const double lf_ay = kLeftFootHomeXY[1];
+  // ★ 2026-08-13 STANCE-WIDTH FLOOR (real flat_9): despite the ±0.163
+  // y-anchors at 4x, the feet slid to 213 mm apart during the reach — the
+  // anchor is symmetric, so both feet drifting inward the same amount is
+  // half-price. One-sided width term: when |yL - yR| < `stance_width_min`,
+  // push the feet APART through the same y-residual components.
+  // `stance_width_gain` 0/absent = OFF = byte-identical.
+  double wpush = 0.0;
+  {
+    int nwm = mj_name2id(model, mjOBJ_NUMERIC, "stance_width_min");
+    int nwg = mj_name2id(model, mjOBJ_NUMERIC, "stance_width_gain");
+    double wmin = nwm >= 0
+        ? model->numeric_data[model->numeric_adr[nwm]] : 0.0;
+    double wgain = nwg >= 0
+        ? model->numeric_data[model->numeric_adr[nwg]] : 0.0;
+    if (wmin > 0.0 && wgain > 0.0) {
+      double width = mju_abs(foot_left_pos[1] - foot_right_pos[1]);
+      double deficit = wmin - width;
+      if (deficit > 0.0) wpush = wgain * deficit;
+    }
+  }
   residual[counter++] = right_foot_scale * (foot_right_pos[0] - rf_ax);
-  residual[counter++] = right_foot_scale * (foot_right_pos[1] - rf_ay);
+  residual[counter++] = right_foot_scale * (foot_right_pos[1] - rf_ay) + wpush;
   residual[counter++] = left_foot_scale * (foot_left_pos[0] - lf_ax);
-  residual[counter++] = left_foot_scale * (foot_left_pos[1] - lf_ay);
+  residual[counter++] = left_foot_scale * (foot_left_pos[1] - lf_ay) - wpush;
 
   // ----- hip clearance from table front face ----- //
   // penalise the pelvis entering within 0.08m of the slab's front face.
@@ -2519,9 +2539,35 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // strut's last escape. Quadratic => tiny asymmetries stay ~free.
     residual[counter++] = data->qpos[7 + 4] - data->qpos[7 + 10]; // anklePitch L-R
   } else {
-    residual[counter++] = 0.0;
-    residual[counter++] = 0.0;
-    residual[counter++] = 0.0;
+    // ★ 2026-08-13 LEFT-SINK FIX (real flat_9/10): with symmetry hard-zeroed
+    // during arm contact, the planner leans toward the brace by SINKING the
+    // left knee (kneeL-kneeR hit +0.45..+0.50: run 9 froze the un-bow on one
+    // buried leg; run 10 ran away into a leftward fall at dive commit).
+    // Keep DEADBANDED knee + hip-pitch (L-R) terms alive while braced:
+    // `brace_knee_sym` gain (0 = OFF = old hard-zero), `brace_knee_sym_db`
+    // deadband (rad, default 0.30) keeps transient leg-lift shuffles and
+    // small equilibrium asymmetry free while outlawing the sustained sink.
+    // Ankle pitch stays exempt during contact (feet do the balance work).
+    double ksym = 0.0, kdb = 0.30;
+    int nks = mj_name2id(model, mjOBJ_NUMERIC, "brace_knee_sym");
+    if (nks >= 0) ksym = model->numeric_data[model->numeric_adr[nks]];
+    int nkd = mj_name2id(model, mjOBJ_NUMERIC, "brace_knee_sym_db");
+    if (nkd >= 0) kdb = model->numeric_data[model->numeric_adr[nkd]];
+    auto shrink = [&](double v) {
+      double ex = mju_abs(v) - kdb;
+      return ex > 0.0 ? (v > 0.0 ? ex : -ex) : 0.0;
+    };
+    if (ksym > 0.0) {
+      residual[counter++] =
+          ksym * shrink(data->qpos[7 + 3] - data->qpos[7 + 9]);
+      residual[counter++] =
+          ksym * shrink(data->qpos[7 + 1] - data->qpos[7 + 7]);
+      residual[counter++] = 0.0;
+    } else {
+      residual[counter++] = 0.0;
+      residual[counter++] = 0.0;
+      residual[counter++] = 0.0;
+    }
   }
 
   // ----- Base-height anchor (free-standing anti-sink) ------------------- //

@@ -423,10 +423,14 @@
              believed pitch is below these (rad); arm keeps pressing. 0=off. -->
         <numeric name="standback_pitch_release" data="0.42"/>
         <numeric name="standback_pitch_r1" data="0.30"/>
-        <numeric name="standback_pitch_r2" data="0.18"/>
+        <numeric name="standback_pitch_r2" data="0.21"/>
         <numeric name="brace_sink_slack" data="0.12"/>
         <numeric name="brace_contact_zmargin" data="0.05"/>
         <numeric name="brace_contact_xyslack" data="0.12"/>
+        <numeric name="brace_knee_sym" data="1.5"/>
+        <numeric name="brace_knee_sym_db" data="0.30"/>
+        <numeric name="stance_width_min" data="0.30"/>
+        <numeric name="stance_width_gain" data="2.0"/>
         <numeric name="brace_flat_tol" data="0.05"/>
         <numeric name="brace_flat_gate" data="0.17"/>
         <numeric name="brace_flat_gain" data="4.0"/>
