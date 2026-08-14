@@ -53,6 +53,20 @@
   td.bad{color:var(--warn);font-weight:600}
   td.good{color:var(--good);font-weight:600}
   .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     Ported from the S11 handoff page so the whole series types maths the same
+     way.  A fenced block gets a rule on the left so a derivation reads as one
+     unit.  Anything written as hand-rolled <sub>/<sup> before this existed is
+     still fine for a lone symbol; it is equations that need the real thing. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+  .eq .lbl{color:var(--ink3);font-size:.8rem;text-transform:uppercase;
+           letter-spacing:.04em;margin:0 0 .45rem}
 </style>
 </head>
 <body><div class="wrap">

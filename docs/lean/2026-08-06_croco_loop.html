@@ -53,6 +53,20 @@
   td.bad{color:var(--warn);font-weight:600}
   td.good{color:var(--good);font-weight:600}
   .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     Ported from the S11 handoff page so the whole series types maths the same
+     way.  A fenced block gets a rule on the left so a derivation reads as one
+     unit.  Anything written as hand-rolled <sub>/<sup> before this existed is
+     still fine for a lone symbol; it is equations that need the real thing. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+  .eq .lbl{color:var(--ink3);font-size:.8rem;text-transform:uppercase;
+           letter-spacing:.04em;margin:0 0 .45rem}
 </style>
 </head>
 <body><div class="wrap">
@@ -445,6 +459,62 @@ whatever height it arrived at is the height it keeps for the whole phase</td></t
 <td>without it, a plan that has somewhere to go next starts leaving before it has arrived: 81&nbsp;mm of
 reach error at the end of the braced phase against 1.7&nbsp;mm for the same plan with no return phase</td></tr>
 </table></div>
+
+<h4>The cone costs, and what they read</h4>
+<p>These two rows carry more of the result than their weight of 1e1 suggests, and they are the only
+costs in the stack whose residual is a <em>force</em> — so it is worth being exact about what that
+force is and where it comes from. For a foot the residual is the 17 rows of the contact wrench cone
+evaluated on the 6-D wrench at the sole:</p>
+
+<div class="eq">
+<p class="lbl">wrench cone, per foot</p>
+<math display="block"><mrow><mi>r</mi><mo>=</mo><mi>A</mi><mspace width="0.15em"/><msub><mi>w</mi><mi>c</mi></msub><mo>,</mo><mspace width="0.9em"/><msub><mi>w</mi><mi>c</mi></msub><mo>=</mo><mo>(</mo><msub><mi>f</mi><mi>x</mi></msub><mo>,</mo><msub><mi>f</mi><mi>y</mi></msub><mo>,</mo><msub><mi>f</mi><mi>z</mi></msub><mo>,</mo><msub><mi>τ</mi><mi>x</mi></msub><mo>,</mo><msub><mi>τ</mi><mi>y</mi></msub><mo>,</mo><msub><mi>τ</mi><mi>z</mi></msub><mo>)</mo></mrow></math>
+<math display="block"><mtable columnalign="left"><mtr><mtd><mrow><mo>±</mo><msub><mi>f</mi><mi>x</mi></msub><mo>≤</mo><mi>μ</mi><msub><mi>f</mi><mi>z</mi></msub><mo>,</mo><mspace width="0.6em"/><mo>±</mo><msub><mi>f</mi><mi>y</mi></msub><mo>≤</mo><mi>μ</mi><msub><mi>f</mi><mi>z</mi></msub></mrow></mtd><mtd><mspace width="1.4em"/></mtd><mtd><mtext>4 rows — friction pyramid</mtext></mtd></mtr><mtr><mtd><mrow><msub><mi>f</mi><mi>min</mi></msub><mo>≤</mo><msub><mi>f</mi><mi>z</mi></msub><mo>≤</mo><msub><mi>f</mi><mi>max</mi></msub></mrow></mtd><mtd/><mtd><mtext>1 row — unilaterality</mtext></mtd></mtr><mtr><mtd><mrow><mo lspace="0em" rspace="0em" stretchy="false">|</mo><msub><mi>τ</mi><mi>x</mi></msub><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mo>≤</mo><mi>Y</mi><msub><mi>f</mi><mi>z</mi></msub><mo>,</mo><mspace width="0.6em"/><mo lspace="0em" rspace="0em" stretchy="false">|</mo><msub><mi>τ</mi><mi>y</mi></msub><mo lspace="0em" rspace="0em" stretchy="false">|</mo><mo>≤</mo><mi>X</mi><msub><mi>f</mi><mi>z</mi></msub></mrow></mtd><mtd/><mtd><mtext>4 rows — CoP inside the sole</mtext></mtd></mtr><mtr><mtd><mrow><mo>±</mo><mi>Y</mi><msub><mi>f</mi><mi>x</mi></msub><mo>±</mo><mi>X</mi><msub><mi>f</mi><mi>y</mi></msub><mo>∓</mo><mi>μ</mi><msub><mi>τ</mi><mi>x</mi></msub><mo>∓</mo><mi>μ</mi><msub><mi>τ</mi><mi>y</mi></msub><mo>∓</mo><msub><mi>τ</mi><mi>z</mi></msub><mo>≤</mo><mi>μ</mi><mo>(</mo><mi>X</mi><mo>+</mo><mi>Y</mi><mo>)</mo><msub><mi>f</mi><mi>z</mi></msub></mrow></mtd><mtd/><mtd><mtext>8 rows — yaw torque</mtext></mtd></mtr></mtable></math>
+<p class="where">with <math><mi>μ</mi><mo>=</mo><mn>0.6</mn></math>,
+<math><mi>X</mi><mo>=</mo><mn>0.10</mn></math> and <math><mi>Y</mi><mo>=</mo><mn>0.04</mn></math> m the
+sole half-length and half-width, <math><msub><mi>f</mi><mi>min</mi></msub><mo>=</mo><mn>1</mn></math> N,
+<math><msub><mi>f</mi><mi>max</mi></msub><mo>=</mo><msup><mn>10</mn><mn>4</mn></msup></math> N. The last
+group is Caron's closed form for the yaw moment a rectangular patch can carry; crocoddyl builds all
+seventeen from <code>WrenchCone(R, μ, (2X, 2Y), 4, false, f<sub>min</sub>, f<sub>max</sub>)</code>.</p>
+</div>
+
+<p>The bracing sites get the 3-D <code>FrictionCone</code> instead — the same first five rows and none
+of the others, because a point contact carries no moment to bound. That pairing is forced, not stylistic:
+handing a 5-row friction cone to a 6-D contact does not raise a type error, it mis-sizes an allocation
+and dies with a bare <code>MemoryError</code>.</p>
+
+<p>The activation is a one-sided quadratic barrier on the cone's own bounds, so the cost is
+<em>identically zero, value and gradient, anywhere strictly inside the cone</em>:</p>
+
+<div class="eq">
+<math display="block"><mrow><mi>a</mi><mo>(</mo><mi>r</mi><mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><munder><mo movablelimits="false">∑</mo><mi>i</mi></munder><mrow><mo>[</mo><msup><mrow><mo>max</mo><mo>(</mo><mn>0</mn><mo>,</mo><msub><mi>l</mi><mi>i</mi></msub><mo>−</mo><msub><mi>r</mi><mi>i</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mo>+</mo><msup><mrow><mo>max</mo><mo>(</mo><mn>0</mn><mo>,</mo><msub><mi>r</mi><mi>i</mi></msub><mo>−</mo><msub><mi>u</mi><mi>i</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mo>]</mo></mrow></mrow></math>
+</div>
+
+<p>Two consequences follow, and they pull in opposite directions. Inside the cone the weight is
+irrelevant — a plan that never approaches a facet is the same plan at 1e1 and at 1e4. On a facet the
+weight is the whole story, and it is the only thing standing between the optimiser and a foot wrench
+MuJoCo will not supply, because <strong>to a DDP whose feet are bilateral 6-D welds the robot cannot
+fall over</strong>: the feet can pull, and a centre of pressure outside the sole is free. Session 17
+measured what happens when the weight is raised to make that pricing honest, and it is not what one
+would guess — at 1e2 the controller falls in every seed and at 1e3 it falls from the nominal state.
+The cone is a stiff, strongly nonlinear function of the state through the KKT solve, and cranking it
+buys a worse-conditioned problem rather than a safer trajectory.</p>
+
+<div class="note">
+<b>These costs do not read a force sensor, and that matters for hardware.</b>
+<math><msub><mi>w</mi><mi>c</mi></msub></math> is not measured — it is the contact wrench
+<em>the OCP's own dynamics produce</em>. <code>DifferentialActionModelContactFwdDynamics</code> solves
+the KKT system
+<math><mo>(</mo><mi>M</mi><mo>,</mo><msup><mi>J</mi><mo lspace="0em" rspace="0em">⊤</mo></msup><mo>;</mo><mi>J</mi><mo>,</mo><mo>−</mo><mi>d</mi><mi>I</mi><mo>)</mo></math>
+for the acceleration and the contact forces together, so
+<math><msub><mi>w</mi><mi>c</mi></msub><mo>=</mo><msub><mi>w</mi><mi>c</mi></msub><mo>(</mo><mi>x</mi><mo>,</mo><mi>u</mi><mo>)</mo></math>
+is a function of the state and the control, and <code>enable_force = True</code> exists only so that
+<math><mi>∂</mi><msub><mi>w</mi><mi>c</mi></msub><mo>/</mo><mi>∂</mi><mo>(</mo><mi>x</mi><mo>,</mo><mi>u</mi><mo>)</mo></math>
+is available to differentiate it. Running this controller on the robot therefore needs <em>no</em>
+contact-force estimate for the cones to be computable. What it does need is the floating-base state and
+the knowledge that the prescribed contact is actually established — which is a different, and much
+cheaper, sensing problem. Session 17 measures how much of each.
+</div>
 
 <h4>The keep-out activation</h4>
 <p>The table term is one <code>CostModelResidual</code> per sampled point, whose residual is the point's
