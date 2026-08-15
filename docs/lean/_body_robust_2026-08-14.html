@@ -243,7 +243,8 @@ Two of the nine are load-bearing for the <em>solve</em> and never reach a replay
 internal preload that produces no motion and costs nothing, and this is the only thing that picks a
 point in it</td></tr>
 <tr><td><code>jointLim</code></td><td>converges to the same cost, 25.97, in the same 21 iterations</td>
-<td>never active on this maneuver — the box bounds on <span class="m">u</span> bind first</td></tr>
+<td>never active <em>at this target</em> — and that does not generalise. See §9: over the 25 grid
+cells every plan comes within 5% of a joint bound and seven cross one</td></tr>
 <tr><td><code>comSupport</code></td><td>identical plan, to fifteen figures</td>
 <td>see §2; it is not doing anything</td></tr>
 </tbody></table></div>
@@ -296,7 +297,114 @@ touching the table that nobody planned to put there.</p>
 
 <!--VIDEOS-->
 
-<h2>9 · What is left</h2>
+<h2>9 · Three things the videos showed</h2>
+
+<p>Watching the sweep raised three questions the tables had not. All three turn out to be the same
+question asked from different sides: <b>how much of this maneuver's freedom is joint range</b>.</p>
+
+<h3>9.1 · The joint-limit barrier is active, and it was losing</h3>
+
+<p>§6 called <code>jointLim</code> inert. That was measured at one target and it does not generalise.
+Over the 25 planned grid cells, <b>every</b> plan comes within 5% of a joint bound and <b>seven cross
+one</b> — the hip yaws, whose range is only ±0.43 rad, by up to 44.7 mrad (2.6°). The barrier is
+active exactly where the grid gets hard, and at weight 1e1 it is too weak to hold. Re-planning the
+four worst cells at 1e3:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>cell</th><th colspan="2">past the bound</th><th colspan="2">survives winch</th>
+<th colspan="2">median reach mm</th></tr>
+<tr><th></th><th>w = 1e1</th><th>w = 1e3</th><th>1e1</th><th>1e3</th><th>1e1</th><th>1e3</th></tr></thead>
+<tbody>
+<tr><td>x 1.05, y +0.12</td><td class="bad">44.7 mrad</td><td class="good">1.2</td>
+<td>50%</td><td>50%</td><td>15.4</td><td>12.0</td></tr>
+<tr><td>x 1.15, z 1.02, dy &minus;120</td><td class="bad">35.9 mrad</td><td class="good">0.8</td>
+<td>62%</td><td>62%</td><td>8.3</td><td>9.4</td></tr>
+<tr><td>x 1.05, y 0.00, dy &minus;120</td><td class="bad">25.7 mrad</td><td class="good">1.0</td>
+<td>50%</td><td>50%</td><td>13.2</td><td>27.2</td></tr>
+<tr><td>x 1.25, y &minus;0.235</td><td class="bad">25.2 mrad</td><td class="good">1.5</td>
+<td>12%</td><td class="good">38%</td><td>8.3</td><td>5.1</td></tr>
+</tbody></table></div>
+
+<p>Twenty to forty times less overshoot, survival unchanged or better, and on the hardest cell in the
+whole grid it triples. At the easy target the weight is free from 1e1 to 1e4 — same plan, same 75%.
+So <b>the default is now 1e3</b>; it is the one default this session changes, and <code>--w-jlim
+1e1</code> reproduces S13–S16 exactly.</p>
+
+<h3>9.2 · The move-to-brace is thrown, not placed</h3>
+
+<p>It looks fast because it is. Over the grid the planned approach peaks at a median 2.5 rad/s and
+68 rad/s², worst 3.17 rad/s and 104 rad/s², and the joint it peaks on is the bracing shoulder roll.
+Nothing priced that: the state regulariser's velocity block rides at <span class="m">w</span> = 1e-1
+through the approach. A velocity-only term with its own weight does:</p>
+
+<div class="scroll"><table>
+<thead><tr><th>configuration</th><th>peak speed rad/s</th><th>peak accel rad/s²</th>
+<th>survives winch</th></tr></thead><tbody>
+<tr><td>as shipped</td><td>1.68</td><td>63</td><td>75%</td></tr>
+<tr><td><code>w_vel</code> = 0.1</td><td>1.51</td><td>58</td><td>75%</td></tr>
+<tr><td><b><code>w_vel</code> = 1</b></td><td class="good">1.09</td><td class="good">46</td><td>75%</td></tr>
+<tr><td><code>w_vel</code> = 10</td><td>0.56</td><td>24</td><td class="bad">62%</td></tr>
+<tr><td>200-node approach instead (4 s)</td><td>1.53</td><td>53</td><td class="bad">62%</td></tr>
+<tr><td>200-node approach + <code>w_vel</code> = 1</td><td>0.86</td><td>32</td><td class="bad">62%</td></tr>
+</tbody></table></div>
+
+<p><code>w_vel</code> = 1 is 35% off the peak speed and 27% off the peak acceleration for nothing.
+Ten is three times calmer and costs survival. And simply giving the maneuver twice as long does
+<em>not</em> substitute — it barely moves the peak and it costs survival, because what makes the arm
+fast is the landing cost's pull, not the time available. On the worst cell in the grid the term is
+better than free: x = 1.25 goes from 3.17 rad/s and 104 rad/s² at 38% survival to <b>1.90 rad/s,
+77 rad/s² and 50%</b>.</p>
+
+<h3>9.3 · What a commanded gripper orientation costs</h3>
+
+<p>Unconstrained, the solve already keeps the reaching gripper's tool axis within 0.1° of horizontal —
+it is 16° from level in <em>roll</em> at the end of the braced phase, but it never points the hand
+anywhere strange. So the question is what it costs to <em>insist</em>. Three targets, held through the
+braced phase: <code>flat</code> (tool axis forward and horizontal, palm down, parallel to the
+tabletop), <code>down</code> (tool axis straight down, perpendicular — the orientation a pick off the
+table needs), and <code>side</code> (rolled 90°).</p>
+
+<div class="scroll"><table>
+<thead><tr><th>commanded</th><th>weight</th><th>achieved error</th><th>peak speed rad/s</th>
+<th>past a joint bound</th><th>solve s</th><th>survives winch</th></tr></thead><tbody>
+<tr><td>nothing</td><td>&mdash;</td><td>16.3° from <code>flat</code></td><td>1.68</td>
+<td>0.0 mrad</td><td>4</td><td>75%</td></tr>
+<tr><td><code>flat</code></td><td>1e1</td><td class="good">0.1°</td><td>1.69</td><td>0.0</td>
+<td>7</td><td>75%</td></tr>
+<tr><td><code>flat</code></td><td>1e2</td><td class="good">0.0°</td><td>1.69</td><td>0.0</td>
+<td>6</td><td>75%</td></tr>
+<tr><td><code>side</code></td><td>1e2</td><td class="good">0.1°</td><td>1.70</td><td>4.8</td>
+<td>5</td><td>75%</td></tr>
+<tr><td><code>down</code></td><td>1e1</td><td>2.6°</td><td class="bad">2.23</td>
+<td class="bad">251.8</td><td>18</td><td class="bad">62%</td></tr>
+<tr><td><code>down</code></td><td>1e2</td><td>0.2°</td><td class="bad">2.31</td>
+<td class="bad">237.4</td><td>8</td><td class="bad">62%</td></tr>
+<tr><td><code>down</code></td><td>1e3</td><td class="good">0.0°</td><td class="bad">2.19</td>
+<td class="bad">205.2</td><td>20</td><td>75%</td></tr>
+<tr><td><b><code>down</code>, <code>w_jlim</code> = 1e3</b></td><td>1e2</td><td class="good">0.2°</td>
+<td>2.28</td><td class="good">3.1</td><td>16</td><td>75%</td></tr>
+<tr><td><b><code>down</code>, <code>w_jlim</code> = 1e3</b></td><td>1e3</td><td class="good">0.0°</td>
+<td>2.27</td><td class="good">3.0</td><td>11</td><td>75%</td></tr>
+</tbody></table></div>
+
+<p><b>Parallel is free.</b> <code>flat</code> at a weight of 10 gets 0.1° for two or three extra
+seconds of offline solve and changes nothing else — no speed, no joint pressure, no survival, no
+reach. <code>side</code> is nearly free too.</p>
+
+<p><b>Perpendicular is not free, and the first measurement of what it costs was wrong.</b> At the
+shipped joint-limit weight, <code>down</code> "achieves" its orientation by driving a hip
+<b>205–250 mrad — up to 14° — past its range</b>, and pays 62% survival for it. That is not a cost of
+the orientation, it is the solver spending joint range it does not have. Re-run with §9.1's weight,
+the same orientation comes back at 0.2° with <b>3.1 mrad</b> of overshoot and 75% survival, i.e. full
+survival. The honest residual price of pointing the gripper at the table is then: <b>+36% peak speed
+(2.28 against 1.68 rad/s) and 3–4× the offline solve time</b>, with reach error, torque and survival
+all unchanged.</p>
+
+<p>Which closes the loop between the three. The reason perpendicular looked expensive is the reason
+the joint-limit term looked inert: a barrier that does not hold its bound is invisible in the cost and
+very visible in the answer.</p>
+
+<h2>10 · What is left</h2>
 
 <ul>
 <li><b>Base position, not yaw.</b> The split in §5 came back the other way round from the guess:
@@ -323,10 +431,14 @@ down to 25%. Which is the right answer to the wrong question — the residual jo
 and this closes it, but what the winch perturbs is where the robot is relative to the TABLE, and no
 offline start pose can absorb that. The landing spots would have to be re-referenced to the measured
 table-relative pose, online.</li>
+<li><b>Fold §9 into the grid.</b> The 25 cells were planned before the joint-limit weight, the
+velocity term and the orientation cost existed. Two of the three are free or better than free on the
+cells measured, so the grid should be re-planned with <code>--w-jlim 1e3 --w-vel 1</code> and
+re-scored; on the two cells checked so far that is worth +12 points of survival at x = 1.25.</li>
 <li><b>Not the Delassus, still</b>, and now not the horizon either.</li>
 </ul>
 
-<h2>10 · Reproducing this</h2>
+<h2>11 · Reproducing this</h2>
 
 <pre>cd lean_analysis
 OMP=$HOME/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1
@@ -363,9 +475,17 @@ LD_PRELOAD=$OMP python croco_robust.py matrix --dir $R/w --out $R/horizon.json \
     --tags L_hold50 --settles 25 --horizons 18 25 35 50 --dt-scales 1 2 \
     --profiles nominal q0.02 --seeds 1 2 3 4 5 6
 
+# what the videos raised: joint range, approach speed, gripper orientation
+for g in jlim vel rot; do
+  LD_PRELOAD=$OMP python croco_robust.py weights --group $g --dir $R/w \
+      --out $R/$g.json --settle 25 --profiles nominal q0.02 winch1 \
+      --seeds 1 2 3 4 5 6 7 8; done
+
 python croco_robust_page.py --dir $R --body ../docs/lean/_body_robust_2026-08-14.html \
     --out 2026-08-14_robustness.html            # this page</pre>
 
-<p class="meta">Defaults changed by this session: none. <code>--tau-clamp</code>,
-<code>--settle</code>, <code>--n-hold</code> and the stance offset are all opt-in, and a run with none
-of them reproduces S15 unchanged.</p>
+<p class="meta">Defaults changed by this session: one. <code>--w-jlim</code> goes from 1e1 to
+1e3, because §9.1 shows a barrier that does not hold its bound. Everything else —
+<code>--tau-clamp</code>, <code>--settle</code>, <code>--n-hold</code>, <code>--w-vel</code>,
+<code>--reach-rot</code> and the stance offset — is opt-in, and
+<code>--w-jlim 1e1</code> with none of the rest reproduces S15 unchanged.</p>
