@@ -430,6 +430,14 @@
         <numeric name="standback_pitch_release" data="0.42"/>
         <numeric name="standback_pitch_r1" data="0.30"/>
         <numeric name="standback_pitch_r2" data="0.21"/>
+        <!-- ★★ standback stall relaxation (2026-08-14). sec<=0 = OFF.
+             12 s of no pitch improvement (>0.01 rad) in a release-side rung
+             relaxes that rung's gate to just past the best pitch achieved,
+             capped at +0.05 rad (2.9 deg) so a deep plateau stays blocked.
+             Real run 13 lost a completed ladder by 0.1-0.4 deg this way. -->
+        <numeric name="standback_stall_sec" data="12.0"/>
+        <numeric name="standback_stall_eps" data="0.01"/>
+        <numeric name="standback_stall_max" data="0.05"/>
         <numeric name="brace_sink_slack" data="0.12"/>
         <numeric name="brace_contact_zmargin" data="0.05"/>
         <numeric name="brace_contact_xyslack" data="0.12"/>

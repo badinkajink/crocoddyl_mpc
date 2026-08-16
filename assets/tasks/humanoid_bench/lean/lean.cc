@@ -3770,7 +3770,55 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                        double sinp = 2.0 * (q[3] * q[5] - q[6] * q[4]);
                        sinp = mju_clip(sinp, -1.0, 1.0);
                        double bpitch = std::asin(sinp);
-                       if (bpitch > plim) {
+                       // ★★ 2026-08-14 STALL-AWARE RELAXATION.
+                       // The pitch gates exist to keep the ARM pressing while
+                       // pressing still buys pitch. Once the pitch PLATEAUS the
+                       // gate no longer buys anything -- it just holds the robot
+                       // in a braced stall until the operator estops. Real run
+                       // 13 ground r2 from 15.6 deg down to 10.4-10.7 deg and
+                       // then sat there ~25 s against a 10.31 deg gate: it lost
+                       // the ladder by 0.1-0.4 deg after doing all the work.
+                       // So: track the best pitch reached in THIS rung; if it
+                       // has not improved by `standback_stall_eps` within
+                       // `standback_stall_sec`, relax the gate to just past the
+                       // best achieved -- but never by more than
+                       // `standback_stall_max` (bounded so a run that plateaus
+                       // deep, e.g. 25 deg in r1, stays blocked: releasing from
+                       // depth is the #51 ankle-only failure this gate prevents).
+                       // stall_sec <= 0 (default) => OFF => byte-identical.
+                       auto snum = [&](const char* nm, double dflt) {
+                         int id = mj_name2id(model, mjOBJ_NUMERIC, nm);
+                         return id >= 0
+                             ? model->numeric_data[model->numeric_adr[id]] : dflt;
+                       };
+                       double stall_sec = snum("standback_stall_sec", 0.0);
+                       double stall_eps = snum("standback_stall_eps", 0.01);
+                       double stall_max = snum("standback_stall_max", 0.05);
+                       double eff_lim = plim;
+                       if (stall_sec > 0.0) {
+                         // single-threaded transition context (same pattern as
+                         // the bc_since / rp_note statics below).
+                         static std::string sp_rung;
+                         static double sp_best = 1e9, sp_since = -1.0;
+                         if (sp_rung != kfn) {
+                           sp_rung = kfn; sp_best = bpitch; sp_since = data->time;
+                         }
+                         if (bpitch < sp_best - stall_eps) {
+                           sp_best = bpitch; sp_since = data->time;
+                         }
+                         if (sp_since >= 0.0 &&
+                             data->time - sp_since > stall_sec) {
+                           eff_lim = mju_min(plim + stall_max,
+                                             mju_max(plim, sp_best + stall_eps));
+                           static int st_note = 0;
+                           if (++st_note % 200 == 1)
+                             std::printf("[lean-gate] %s STALLED %.0fs at "
+                                         "%.3f rad -> gate %.3f relaxed to %.3f\n",
+                                         kfn.c_str(), data->time - sp_since,
+                                         sp_best, plim, eff_lim);
+                         }
+                       }
+                       if (bpitch > eff_lim) {
                          static int rp_note = 0;
                          if (++rp_note % 100 == 1)
                            std::printf(
