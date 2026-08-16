@@ -27,7 +27,7 @@
 
     <keyframe>
         <key name="home"
-        qpos="0.19 0 1.028 1 0 0 0 0 0 0.12 0 0 0 0 0 -0.12 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        qpos="0.19 0 1.028 1 0 0 0 0 0 0.12 0 0 0 0 0 -0.12 0 0 0 0 -0.25 0 0 0 0 0 0 -0.25 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <!-- soft-knee stand (2026-06-09): stand (strategy 6, phase "stand_up") and the
              squat top (strategy 17, phase "stand") previously fell back to home with knee
              target 0.0 — sitting 0.12 rad from the knee lock-out floor (-0.12), so one knee
@@ -61,8 +61,14 @@
              'stand_up' is the residual's posture target; a split would ramp to one pose and
              then be pulled toward another. Lean_H12.xml carries the IDENTICAL defect and is
              deliberately left alone until this is validated on Magpie. -->
-        <key name="stand_up" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
-        <key name="stand"    qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <!-- ★ 2026-08-14 ARMS-UP READY STANCE: both shoulder_pitch -0.16 rad (-9.2 deg).
+             MEASURED: the previous stand pose put the gripper jaw at z=0.989 with the
+             tabletop at 0.985 -- ZERO clearance, hands already grazing the slab, so any
+             forward torso motion jammed them into the near edge (operator had to lift the
+             arms over the table by hand on real runs 12-14). -0.16 rad lifts the lowest
+             hand point to +60 mm over the tabletop; CoM moves 3 mm. -->
+        <key name="stand_up" qpos="0.19 0 1 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 -0.16 0 0 0 0 0 0 -0.16 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="stand"    qpos="0.19 0 1 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 -0.16 0 0 0 0 0 0 -0.16 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <!-- straighten (strategy 25, pre-stand bring-up): CoM-CENTERED stand pose (hip
              -0.15/knee 0.35/ankle -0.28) = the wide-basin handoff target. stand_up plants
              the feet ~68mm ahead of the CoM (backward-tippy => harness-release fall); this
@@ -317,7 +323,7 @@
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
     <!-- <keyframe>
         <key name="home"
-        qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0.03 0 0 0 0 0 0 0 0.03 0.03 1.2 0 0.95 1 0 0 0"/>
+        qpos="0.190000 0.000000 1.028000 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.250000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.250000 0.030000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.030000 0.030000 1.200000 0.000000 0.950000 1.000000 0.000000 0.000000 0.000000"/>
     </keyframe> -->
 
     <custom>
@@ -586,7 +592,13 @@
              1.4 (also preserves the braced pipeline 33/34 deep reach). Robust "stretched
              arm that holds" = strat 21 (upright, held 128 s); "stretched arm + LEAN that
              holds" = braced 33/34. [[project_counterbalance_strat16]] -->
-        <numeric name="reach_target" data="0.9047 -0.2348 1.0982"/>
+        <!-- ★ 2026-08-14 reach z 1.0982 -> 1.1430. The residual pulls the HAND SITE
+             here, but the Magpie gripper hangs 108 mm BELOW that site, so the old
+             target put the gripper bottom at 0.990 = +5 mm over the 0.985 slab:
+             a graze with zero margin (operator assisted the right arm on real runs
+             13/14). +44.8 mm gives the gripper a 50 mm clearance; x/y unchanged, so
+             the reach EXTENT is unchanged. -->
+        <numeric name="reach_target" data="0.9047 -0.2348 1.1430"/>
         <!-- reach_radius / reach_drop (strategy 21): the HOLDABLE-workspace knobs.
              reach_radius = the arm's commanded extension toward the target [m];
              reach_drop = how far BELOW the shoulder the hand is pulled [m].

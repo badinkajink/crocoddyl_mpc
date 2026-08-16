@@ -1777,8 +1777,19 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   double via_storage[3];
   {
     int ss = mj_name2id(model, mjOBJ_NUMERIC, "reach_side_swing");
+    // ★ 2026-08-14: the arc used to be LEAN-ONLY, so the moment the reach rung
+    // armed it switched off and the straight-line pull dragged the hand back
+    // down at the slab -- the right hand then grazed the tabletop during the
+    // extension (real runs 13/14, operator hand-assist). The pre-swing the
+    // operator sees during the lean IS this arc; keep it alive through the
+    // reach rung so the whole motion is one billiards-style outside-then-
+    // forward stroke that stays clear of the table.
+    const bool swing_phase =
+        is_forearm_brace ||
+        residual_keyframe_.name == "forearm_brace_mid" ||
+        residual_keyframe_.name == "forearm_brace_reach";
     if (ss >= 0 && model->numeric_data[model->numeric_adr[ss]] > 0.0 &&
-        is_forearm_brace) {
+        swing_phase) {
       int tg = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
       if (tg < 0) tg = mj_name2id(model, mjOBJ_GEOM, "table_top");
       if (tg >= 0 && std::isfinite(table_near_edge_x)) {
