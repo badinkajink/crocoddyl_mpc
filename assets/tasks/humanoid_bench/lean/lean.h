@@ -2,8 +2,10 @@
 #define MJPC_TASKS_HUMANOID_BENCH_LEAN_LEAN_H_
 
 #include <map>
+#include <atomic>
 #include <memory>
 #include <random>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -126,6 +128,11 @@ class lean : public Task {
     // new phase's scales, which is the WBC-style smooth handoff the robot
     // needs to avoid lurching when a contact cost switches on.
     mjtNum keyframe_start_time_ = 0.0;
+    // `foot_pin_x_`: the Foot Stability anchor's x, captured from the MEASURED
+    // released stance in TransitionLocked (single-threaded, real state) and only
+    // READ by the residual, which runs in parallel rollout threads. NaN = not yet
+    // pinned => the residual keeps the hardcoded home. See lean.cc.
+    mjtNum foot_pin_x_ = std::numeric_limits<mjtNum>::quiet_NaN();
     mjtNum prev_phase_reach_scale_ = 0.0;
     mjtNum prev_phase_brace_pos_scale_ = 0.0;
     // Posture scale starts at 1.0 (no boost) and ramps to 3.0 during stand_up.
@@ -199,6 +206,21 @@ class lean : public Task {
   // at the model's own planner bandwidth, so the base Task implementation
   // (returns {}) is exactly right. deploy_common.cc still calls it through the
   // base-class interface.
+
+  // ★ 2026-08-10 phase-scheduled CEM variance floor (see Task::LiveStdMinOverride
+  // and the std_min_state_gated numeric). Written in TransitionLocked
+  // (single-threaded), read by CrossEntropyPlanner::Rollouts on the plan thread
+  // -> atomic. -1 = no override (gate off / other strategies) = byte-identical.
+  double LiveStdMinOverride() const override { return std_min_live_.load(); }
+  mutable std::atomic<double> std_min_live_{-1.0};
+  // ★ v4 ramp state (TransitionLocked-only, single-threaded): the v3 STEP
+  // 0.01->0.05 at lean entry killed 20/20 runs at t=70-90 -- 5x noise injected
+  // at the exact commit moment. The floor now smoothsteps between phase targets
+  // over `std_min_ramp_sec` so the first seconds of each transition inherit the
+  // previous phase's crispness.
+  double std_min_target_ = -1.0;
+  double std_min_ramp_from_ = -1.0;
+  double std_min_ramp_t0_ = 0.0;
 
   // Slider layout (Lean H12). Live roster -- everything else is padding:
   //    6  h12_simple_stand          — stand_up (DEFAULT, and the deploy default)

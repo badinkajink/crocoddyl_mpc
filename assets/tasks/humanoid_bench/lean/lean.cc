@@ -1325,6 +1325,37 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
       pelvis_tilt_residual = upright_gain * mju_max(0.0, sin_tilt);
     }
   }
+  // ★ 2026-08-05: DIRECTIONAL BACKWARD PENALTY (numeric-gated).
+  // Both branches above are SYMMETRIC in tilt DIRECTION -- they read
+  // `pelvis_up[2] = cos(tilt)`, which is 0.8996 at +25.9 deg and 0.9063 at
+  // -25 deg. So the residual's MINIMUM sits exactly at vertical, and the
+  // restoring gradient vanishes precisely where a robot un-bowing off a brace
+  // has to be caught. Momentum then carries it straight through into a
+  // backward fall, with nothing opposing it.
+  //   MEASURED, bench20_splayfix (n=20): 5 runs ran away through vertical to
+  //   -28..-90 deg at 62-352 deg/s peak pitch rate, while EVERY stand-back
+  //   stayed under 19 deg/s. 4 of the 5 began inside a 1.6 s window (t=64.8
+  //   -66.4), 2-4 s after the forearm left the slab.
+  // ⚠ THE HISTORY IS IN THIS FILE: a Round-8 fix made this residual directional
+  // (`pelvis_forward[2]`, backward = +) *specifically* because "the user saw the
+  // robot stand -> plant hand -> tip BACKWARD -> fall on its back". It was then
+  // reverted on 2026-05-17 as BISECTION TEST #2 and never restored.
+  // `pelvis_forward[2] = -sin(pitch)`: FORWARD lean is NEGATIVE (-0.437 at the
+  // brace keyframe), BACKWARD is POSITIVE (+0.423 at -25 deg) -- FK-verified.
+  // Gate: `backward_tilt_gain` numeric. 1.0 = the symmetric legacy form,
+  // BYTE-IDENTICAL, so the default changes nothing and the A/B is one numeric
+  // edit with no second recompile.
+  double backward_tilt_gain =
+      GetNumberOrDefault(1.0, model, "backward_tilt_gain");
+  if (backward_tilt_gain != 1.0) {
+    double *pelvis_forward_dir = SensorByName(model, data, "pelvis_forward");
+    // ★ Guard: a null sensor must leave the residual UNTOUCHED, not zero it.
+    // A missing <user> sensor silently misaligned every later residual once
+    // already (Lean_H12.xml, 2026-07-30).
+    if (pelvis_forward_dir && pelvis_forward_dir[2] > 0.0) {
+      pelvis_tilt_residual *= backward_tilt_gain;
+    }
+  }
   residual[counter++] = pelvis_tilt_residual;
 
   // ----- foot up-vectors: prevent ankle roll ----- //
@@ -1733,6 +1764,63 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   int rdb_id = mj_name2id(model, mjOBJ_NUMERIC, "reach_deadband");
   double kReachDeadband = (rdb_id >= 0)
       ? model->numeric_data[model->numeric_adr[rdb_id]] : 0.0;
+  // ★ 2026-08-10 `reach_side_swing` numeric (0 = OFF = byte-identical): route the
+  // reaching hand AROUND THE SIDE of the slab instead of straight at the target.
+  // WHY: the straight-line pull drags the hand into the slab front/underside --
+  // measured on the restored-0.985 bench, the STRONGEST braces had the LEAST
+  // over-slab time (75 s brace, 2 s reach) because the arm fights the table
+  // (user-observed; ownsim's arm swung around the side). While the hand is BELOW
+  // the surface and INBOARD of the slab's reach-side edge, the target becomes a
+  // via-point: no forward pull (via x = hand x), swing OUT past the side edge and
+  // UP over the surface; once clear, the true target engages from above the side.
+  // Pure function of hand position -> stateless, rollout-thread safe.
+  double via_storage[3];
+  {
+    int ss = mj_name2id(model, mjOBJ_NUMERIC, "reach_side_swing");
+    // ★ 2026-08-14: the arc used to be LEAN-ONLY, so the moment the reach rung
+    // armed it switched off and the straight-line pull dragged the hand back
+    // down at the slab -- the right hand then grazed the tabletop during the
+    // extension (real runs 13/14, operator hand-assist). The pre-swing the
+    // operator sees during the lean IS this arc; keep it alive through the
+    // reach rung so the whole motion is one billiards-style outside-then-
+    // forward stroke that stays clear of the table.
+    const bool swing_phase =
+        is_forearm_brace ||
+        residual_keyframe_.name == "forearm_brace_mid" ||
+        residual_keyframe_.name == "forearm_brace_reach";
+    if (ss >= 0 && model->numeric_data[model->numeric_adr[ss]] > 0.0 &&
+        swing_phase) {
+      int tg = mj_name2id(model, mjOBJ_GEOM, "table_top_collision");
+      if (tg < 0) tg = mj_name2id(model, mjOBJ_GEOM, "table_top");
+      if (tg >= 0 && std::isfinite(table_near_edge_x)) {
+        double surf_z = data->geom_xpos[3 * tg + 2] + model->geom_size[3 * tg + 2];
+        double half_y = model->geom_size[3 * tg + 1];
+        double side = reach_right ? -1.0 : 1.0;   // right arm goes around -y
+        const double* h = reaching_hand;
+        // 2026-08-12: constants promoted to LIVE numerics (real run 8: the arc
+        // engaged too late/low -- operator had to hand-assist past the front
+        // edge). Defaults = the retuned earlier/wider/higher arc; absent
+        // numerics fall back to these same values.
+        auto numor = [&](const char* nm, double dflt) {
+          int id = mj_name2id(model, mjOBJ_NUMERIC, nm);
+          return id >= 0 ? model->numeric_data[model->numeric_adr[id]] : dflt;
+        };
+        double eng_below = numor("swing_engage_below", 0.10);  // was 0.03
+        double eng_near  = numor("swing_engage_near", 0.25);   // was 0.10
+        double swing_out = numor("swing_out", 0.22);           // was 0.18
+        double swing_up  = numor("swing_up", 0.20);            // was 0.12
+        bool below = h[2] < surf_z + eng_below;
+        bool inboard = side * h[1] < half_y + 0.06;  // not yet past the side edge
+        bool near_slab = h[0] > table_near_edge_x - eng_near;
+        if (below && inboard && near_slab) {
+          via_storage[0] = h[0];                   // no forward pull while blocked
+          via_storage[1] = side * (half_y + swing_out); // OUT past the side edge...
+          via_storage[2] = surf_z + swing_up;      // ...and UP over the surface
+          reach_target = via_storage;
+        }
+      }
+    }
+  }
   double reach_err[3];
   mju_sub3(reach_err, reaching_hand, reach_target);
   if (kReachDeadband > 0.0) {
@@ -1778,6 +1866,10 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // ~0.41, letting it commit the last cm of bow to press the forearm onto the
   // 0.87 m table. Other strategies keep the 0.22 home (is_forearm_brace-gated).
   double brace_foot_x = is_forearm_brace ? 0.30 : kRightFootHomeXY[0];
+  // ★★★ 2026-08-09 MEASURED-STANCE PIN (READ ONLY -- this residual runs in
+  // parallel rollout threads; the value is captured in TransitionLocked from the
+  // real state). NaN => not pinned => hardcoded home => byte-identical.
+  if (!std::isnan(foot_pin_x_)) brace_foot_x = foot_pin_x_;
 
 
   // Left foot is the primary ground anchor during all lean stages.
@@ -1798,10 +1890,30 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   const double rf_ay = kRightFootHomeXY[1];
   const double lf_ax = brace_foot_x;
   const double lf_ay = kLeftFootHomeXY[1];
+  // ★ 2026-08-13 STANCE-WIDTH FLOOR (real flat_9): despite the ±0.163
+  // y-anchors at 4x, the feet slid to 213 mm apart during the reach — the
+  // anchor is symmetric, so both feet drifting inward the same amount is
+  // half-price. One-sided width term: when |yL - yR| < `stance_width_min`,
+  // push the feet APART through the same y-residual components.
+  // `stance_width_gain` 0/absent = OFF = byte-identical.
+  double wpush = 0.0;
+  {
+    int nwm = mj_name2id(model, mjOBJ_NUMERIC, "stance_width_min");
+    int nwg = mj_name2id(model, mjOBJ_NUMERIC, "stance_width_gain");
+    double wmin = nwm >= 0
+        ? model->numeric_data[model->numeric_adr[nwm]] : 0.0;
+    double wgain = nwg >= 0
+        ? model->numeric_data[model->numeric_adr[nwg]] : 0.0;
+    if (wmin > 0.0 && wgain > 0.0) {
+      double width = mju_abs(foot_left_pos[1] - foot_right_pos[1]);
+      double deficit = wmin - width;
+      if (deficit > 0.0) wpush = wgain * deficit;
+    }
+  }
   residual[counter++] = right_foot_scale * (foot_right_pos[0] - rf_ax);
-  residual[counter++] = right_foot_scale * (foot_right_pos[1] - rf_ay);
+  residual[counter++] = right_foot_scale * (foot_right_pos[1] - rf_ay) + wpush;
   residual[counter++] = left_foot_scale * (foot_left_pos[0] - lf_ax);
-  residual[counter++] = left_foot_scale * (foot_left_pos[1] - lf_ay);
+  residual[counter++] = left_foot_scale * (foot_left_pos[1] - lf_ay) - wpush;
 
   // ----- hip clearance from table front face ----- //
   // penalise the pelvis entering within 0.08m of the slab's front face.
@@ -1937,8 +2049,67 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
           brace_force_prox_gate * load_deficit *
               mju_max(0.0, loaded_target - (midfoot_x + 0.05));
     }
-    residual[counter++] =
-        mju_max(0.0, pelvis_forward_target - pelvis_pos_3d[0]);
+    // 2026-08-04 UPPER BOUND (bench20, n=20). This term was ONE-SIDED: it drove
+    // the pelvis forward to `pelvis_forward_target` and then charged NOTHING for
+    // going further. Combined with Balance reading ~0 during the brace (the
+    // load-gated brace vertex extends the support polygon past the CoM, so the
+    // capture point projects to itself), there was no sagittal cost opposing
+    // forward CoM travel AT ALL while braced. Measured: all 15 braced runs
+    // overshot the +0.050 target, max pelvis excursion 0.068..0.202, and that
+    // excursion correlates +0.785 with the CoM at release -- which classifies
+    // the stand-back almost perfectly (5/6 recover below CoM 0.165, 0/9 above).
+    // So: keep the forward drive, add the missing ceiling. `hi` is clamped to be
+    // >= `lo` so a far-forward forearm (loaded_target) can never make the band
+    // empty and turn this into a constant cost.
+    // ★ 2026-08-06: now a NUMERIC so the ceiling can be tuned per gate without a
+    // recompile. Default 0.13 = BYTE-IDENTICAL to the constexpr it replaces.
+    //   MEASURED (bench20_splayfix + stress sets, n=38): every one of the 25
+    //   runs that stood back entered the stand-back ladder with CoM < 150 mm,
+    //   while the stalls entered at 146-188. The offline feasible-region map puts
+    //   the feet-only limit at 152 mm INDEPENDENTLY. Three lines, one number.
+    //   The stalls are ankle-saturated at 98% BECAUSE they enter past it: knee
+    //   and hip un-bow identically in both groups, only the ankle stays stuck
+    //   (unwinds 1.3 deg vs 13.4), and straightening about a stuck ankle carries
+    //   the CoM FURTHER forward (146 -> 205 mm).
+    double kPelvisCapFwd = GetNumberOrDefault(0.13, model, "pelvis_cap_fwd");
+    // ⛔ 2026-08-06 THE CAP DID NOT BIND. The 08-04 form was
+    //     lo = pelvis_forward_target;  hi = mju_max(lo, midfoot + cap);
+    // written that way so a far-forward forearm could never make the band empty.
+    // But when the load-transfer pull drives `lo` PAST the cap, `hi` becomes `lo`,
+    // the band collapses to a point, and the residual degenerates to
+    // |pelvis - lo| -- it then ACTIVELY DRIVES the pelvis forward, past the very
+    // ceiling it was added to enforce. Raising the weight amplifies the wrong side:
+    // gateP at weight 600 entered the ladder at 174 mm (baseline mean 125).
+    // FIX: clamp `lo` to the cap so the ceiling always wins and the band can
+    // never invert. The forward drive is preserved up to the ceiling, which is
+    // all it was ever meant to do.
+    double cap_x = midfoot_x + kPelvisCapFwd;
+    double lo = mju_min(pelvis_forward_target, cap_x);
+    double hi = cap_x;
+    double pelvis_band = mju_max(0.0, lo - pelvis_pos_3d[0]) +
+                         mju_max(0.0, pelvis_pos_3d[0] - hi);
+
+    // ★★ 2026-08-06: CAP THE CoM, NOT JUST THE PELVIS.
+    // MEASURED (gateQ2 run00): with the pelvis correctly held at 114 mm under a
+    // 130 mm cap, the CoM still sat at 169 mm -- the CoM runs 45-88 mm AHEAD of
+    // the pelvis because the torso and the extended reaching arm are forward of
+    // it. So a pelvis ceiling cannot bound the CoM, and the CoM is the variable
+    // that decides recovery: all 25 stand-backs entered the ladder below 150 mm,
+    // the stalls entered at 146-188, and the offline feasible-region map puts the
+    // feet-only limit at 152 mm independently.
+    // (This restates a 2026-08-04 note -- "caps the PELVIS, not the CoM" -- that I
+    // then spent two gates re-learning. Cap the variable you actually measured.)
+    // `com_cap_fwd` numeric: 0 = OFF = BYTE-IDENTICAL default.
+    double com_cap = GetNumberOrDefault(0.0, model, "com_cap_fwd");
+    double com_over = 0.0;
+    if (com_cap > 0.0) {
+      int pid_com = mj_name2id(model, mjOBJ_BODY, "pelvis");
+      if (pid_com >= 0) {
+        double com_x_now = data->subtree_com[3 * pid_com + 0];
+        com_over = mju_max(0.0, com_x_now - (midfoot_x + com_cap));
+      }
+    }
+    residual[counter++] = pelvis_band + com_over;
   } else {
     residual[counter++] = 0.0;
   }
@@ -2379,9 +2550,35 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     // strut's last escape. Quadratic => tiny asymmetries stay ~free.
     residual[counter++] = data->qpos[7 + 4] - data->qpos[7 + 10]; // anklePitch L-R
   } else {
-    residual[counter++] = 0.0;
-    residual[counter++] = 0.0;
-    residual[counter++] = 0.0;
+    // ★ 2026-08-13 LEFT-SINK FIX (real flat_9/10): with symmetry hard-zeroed
+    // during arm contact, the planner leans toward the brace by SINKING the
+    // left knee (kneeL-kneeR hit +0.45..+0.50: run 9 froze the un-bow on one
+    // buried leg; run 10 ran away into a leftward fall at dive commit).
+    // Keep DEADBANDED knee + hip-pitch (L-R) terms alive while braced:
+    // `brace_knee_sym` gain (0 = OFF = old hard-zero), `brace_knee_sym_db`
+    // deadband (rad, default 0.30) keeps transient leg-lift shuffles and
+    // small equilibrium asymmetry free while outlawing the sustained sink.
+    // Ankle pitch stays exempt during contact (feet do the balance work).
+    double ksym = 0.0, kdb = 0.30;
+    int nks = mj_name2id(model, mjOBJ_NUMERIC, "brace_knee_sym");
+    if (nks >= 0) ksym = model->numeric_data[model->numeric_adr[nks]];
+    int nkd = mj_name2id(model, mjOBJ_NUMERIC, "brace_knee_sym_db");
+    if (nkd >= 0) kdb = model->numeric_data[model->numeric_adr[nkd]];
+    auto shrink = [&](double v) {
+      double ex = mju_abs(v) - kdb;
+      return ex > 0.0 ? (v > 0.0 ? ex : -ex) : 0.0;
+    };
+    if (ksym > 0.0) {
+      residual[counter++] =
+          ksym * shrink(data->qpos[7 + 3] - data->qpos[7 + 9]);
+      residual[counter++] =
+          ksym * shrink(data->qpos[7 + 1] - data->qpos[7 + 7]);
+      residual[counter++] = 0.0;
+    } else {
+      residual[counter++] = 0.0;
+      residual[counter++] = 0.0;
+      residual[counter++] = 0.0;
+    }
   }
 
   // ----- Base-height anchor (free-standing anti-sink) ------------------- //
@@ -2406,7 +2603,24 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     double bh_err = posture_target[2] - data->qpos[2];
     residual[counter++] = 10.0 * (bh_err >= 0.0 ? bh_err : 0.0);
   } else {
-    residual[counter++] = 0.0;
+    // ★ 2026-08-13 DRAPE FIX: this anchor used to be HARD 0 while the pad
+    // touched -- w450 x 0.0 -- so the flat-brace press could fold the legs
+    // and sink the base to z 0.30-0.55 at zero cost ("drape", 5/10 in
+    // final10; braces at 400-860 N carrying the folded body). The brace
+    // keyframes carry real base-z targets (lean 0.964 / mid 0.885), so keep
+    // the SAME one-sided anchor alive during contact with a slack band
+    // (`brace_sink_slack`, m): normal brace depth (z 0.87-0.95) stays free,
+    // only the fold below target-slack is charged. slack <= 0/absent = OFF =
+    // the old hard-0 behavior.
+    double sink_res = 0.0;
+    int nsl = mj_name2id(model, mjOBJ_NUMERIC, "brace_sink_slack");
+    double slack = nsl >= 0
+        ? model->numeric_data[model->numeric_adr[nsl]] : 0.0;
+    if (slack > 0.0) {
+      double bh_err = (posture_target[2] - slack) - data->qpos[2];
+      if (bh_err > 0.0) sink_res = 10.0 * bh_err;
+    }
+    residual[counter++] = sink_res;
   }
 
   // ----- Centroidal angular momentum (hip / Horak-Nashner strategy) ----- //
@@ -2436,7 +2650,22 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
     if (pelvis_id < 0) pelvis_id = 1;  // floating-base root fallback (always exists)
     const mjtNum *angmom = data->subtree_angmom + 3 * pelvis_id;
     double Lx_tgt = 0.0, Ly_tgt = 0.0;
-    double angmom_w = 0.0;
+    // 2026-08-04 REVIVED. This was a hard-coded 0.0, so all three residuals were
+    // identically zero while h12_simple_forearm_brace.json carried
+    // "Angular Momentum": 5.0 in ALL EIGHT phases -- the JSON weight multiplied a
+    // zeroed residual and the term has been inert for the entire gate series.
+    // Same bug, same fix as stabilize.cc:2651 (which was trot-gated there): set the
+    // carrier to 1.0 and let the JSON weight do the scaling. That fix produced the
+    // first stable non-collapsing real stand (91.7 s, 2026-06-30).
+    // WHY IT MATTERS HERE: regulating centroidal angular momentum IS the hip
+    // strategy, and Koolen's capturability analysis identifies the reaction-mass
+    // model -- the one WITH angular momentum -- as having a LARGER capture region
+    // than the ankle-only one. Our 2*tau/W bound is the ankle-only bound, which is
+    // exactly what a zeroed angmom term describes. With full parity the ankle lost
+    // authority, so the hip strategy is the lever that is supposed to cover it.
+    // Gate is unchanged (!any_arm_contact), so this switches on for the later
+    // standback rungs and the final stand -- where the un-bow has to complete.
+    double angmom_w = 1.0;
     residual[counter++] = angmom_w * 0.1 * (angmom[0] - Lx_tgt);
     residual[counter++] = angmom_w * 0.1 * (angmom[1] - Ly_tgt);
     residual[counter++] = angmom_w * 0.1 * angmom[2];
@@ -2466,9 +2695,66 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
   // free-standing (leg-lift / lean / retrieve legitimately stand off-centre);
   // XML default weight 0 -> OFF unless a strategy opts in via JSON "Lateral
   // Center", so every other task stays byte-identical.
-  if (!any_arm_contact) {
+  // ★★★ 2026-08-09 LATERAL CENTERING DURING THE BRACE (`lateral_center_braced`
+  // numeric; 0 = OFF = byte-identical). MEASURED on the twin (bench20 v5+v6,
+  // n=32-40): the BRACE-SIDE (left) foot moves 189 mm median laterally vs 61 mm
+  // for the right, and it UNLOADS 56% median across the brace while the right
+  // foot picks the load up. Unload predicts slide (Spearman rho +0.31, p=0.041;
+  // the high-unload half slides 112 mm further, p=0.029). That is EXACTLY the
+  // strut/buckle feedback this term was written to kill -- but the
+  // `!any_arm_contact` gate switches it OFF the instant the forearm seats, i.e.
+  // precisely when the brace starts pulling load off the ipsilateral leg. The
+  // gate's original rationale (leg-lift / lean / retrieve legitimately stand
+  // off-centre) still holds for those keyframes, which simply carry weight 0.
+  // Fore-aft lean is untouched: this residual is the y axis only.
+  // MODES (`lateral_center_braced`): 0 = OFF = byte-identical (residual zeroed on
+  // arm contact, the shipped behaviour). 1 = live during the brace, target = foot
+  // midpoint. 2 = live during the brace, target = the ROLL-EQUILIBRIUM point.
+  //
+  // ★★★ WHY 2 EXISTS -- mode 1 was benched (n=5) and made the slide WORSE
+  // (|dy_left| 275 mm vs 189 mm baseline), because the midpoint target is simply
+  // WRONG while a brace carries load. Measured on 20 braced frames: CoM y - mid
+  // sat at -2 mm, i.e. the CoM was ALREADY centred, so mode 1 had nothing to
+  // correct. Roll equilibrium about the foot midpoint with three contacts,
+  //     F_b*y_b + F_L*y_L + F_R*y_R = W*y_c,
+  // set F_L = F_R over a symmetric stance (y_L = -y_R) and the equal-load CoM is
+  //     y_c* = F_b * (y_b - y_mid) / W                     [+19 mm, measured]
+  // NOT the midpoint. Driving y_c to 0 therefore commands a 25 mm roll error that
+  // pushes ~52 N off the brace-side foot -- most of the measured +-81 N split
+  // (left 187 N vs right 350 N) -- and an unloaded foot has no friction budget,
+  // so it slides. Model sanity on the same frames: contacts sum 670 N vs W 674 N,
+  // 3-point moment residual 8 N.m (ankle roll torque / finite sole width).
+  double lat_mode = 0.0;
+  {
+    int lcb = mj_name2id(model, mjOBJ_NUMERIC, "lateral_center_braced");
+    if (lcb >= 0) lat_mode = model->numeric_data[model->numeric_adr[lcb]];
+  }
+  // ★ 2026-08-09 MODE 2 REFINEMENT: only steer laterally while the brace is
+  // GENUINELY LOADED. Without this, mode 2 degenerates into mode 1 exactly where
+  // mode 1 hurts: through `forearm_brace_release` and the `standback_r*` rungs the
+  // arm may still graze the slab while carrying ~0 N, so the equilibrium shift
+  // collapses to 0 and the residual reverts to the midpoint target -- steering the
+  // CoM at the moment the stand-back needs it left alone. n=20 vs the
+  // estimator-in-loop control, mode 2 traded falls for feet (never-fell 2/20 vs
+  // 5/20) and the stand-back is this pipeline's known-marginal phase.
+  bool brace_loaded = any_arm_contact && brace_contact_force > 5.0;
+  if (!any_arm_contact || (lat_mode >= 2.0 ? brace_loaded : lat_mode > 0.0)) {
     double midfoot_y = 0.5 * (foot_left_pos[1] + foot_right_pos[1]);
     double lat_tgt = midfoot_y;
+    if (lat_mode >= 2.0 && brace_loaded) {
+      int pid = mj_name2id(model, mjOBJ_BODY, "pelvis");
+      double Wn = (pid >= 0 ? model->body_subtreemass[pid] : 0.0) *
+                  mju_abs(model->opt.gravity[2]);
+      // pelvis subtree = ROBOT ONLY; mj_getTotalmass would also count the TABLE
+      // (2308 N vs the robot's 674 N) and shrink the correction by 3.4x.
+      if (Wn > 1.0) {
+        double shift = brace_contact_force * (bracing_hand[1] - midfoot_y) / Wn;
+        // clamp to half the stance half-width: past that the "equal load" target
+        // would sit outside the feet and stop being a balance point at all.
+        double lim = 0.5 * mju_abs(foot_left_pos[1] - foot_right_pos[1]) * 0.5;
+        lat_tgt += mju_max(-lim, mju_min(lim, shift));
+      }
+    }
     residual[counter++] = 10.0 * (subcom[1] - lat_tgt);
   } else {
     residual[counter++] = 0.0;
@@ -2591,6 +2877,71 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
         constexpr double kEdgeKeepout = 0.06;   // m of slab we refuse to use
         double dy = mju_abs(data->xpos[3 * b_el2 + 1] - ty);
         plane_err += mju_max(0.0, dy - (half_y - kEdgeKeepout));
+      }
+
+      // ★ BRACE FLAT (2026-08-13). Real runs 14/15: at contact the commanded
+      // forearm is inclined 24-33 deg wrist-end-up, so only the elbow-end
+      // CORNER of the pad meets the table -- right at the front edge -- and
+      // it chatters (23-25 contact-LOST resets/run) and slips. Nothing above
+      // constrains PITCH: splay/tuck live in the torso xy-plane, Brace Pos is
+      // a point target a corner can satisfy. Sim never punishes this (twin
+      // seats at +7..+21 deg and still pulls 100-160 N from a corner), so the
+      // term must be model-state, not contact-mediated: charge the WORLD
+      // elevation of elbow->wrist once the pad is near slab height. Deadband
+      // `brace_flat_tol` (rad, default 0.09 ~ 5 deg; keyframe design is +3).
+      // Activation ramps in over the last 15 cm of descent so the swing-down
+      // arc far above the table stays free.
+      if (g_tab >= 0) {
+        int g_pad2 = mj_name2id(model, mjOBJ_GEOM, "left_forearm_pad");
+        int b_wr2 = mj_name2id(model, mjOBJ_BODY, "left_wrist_roll_link");
+        if (g_pad2 >= 0 && b_el2 >= 0 && b_wr2 >= 0) {
+          int nflat = mj_name2id(model, mjOBJ_NUMERIC, "brace_flat_tol");
+          double flat_tol = nflat >= 0
+              ? model->numeric_data[model->numeric_adr[nflat]] : 0.09;
+          // ★ iter-2 (gate_braceflat 1-5): at gain 1 the press wins — seats
+          // start +6..+12 deg then the Brace Force gradient (|r| to 37 at
+          // w40) rolls them to +20..+23 deg; a 0.1-0.3 rad excess inside a
+          // shared-w300 term is ~78 cost units, not enough. `brace_flat_gain`
+          // scales the excess so flatness competes with the press.
+          int ngain = mj_name2id(model, mjOBJ_NUMERIC, "brace_flat_gain");
+          double flat_gain = ngain >= 0
+              ? model->numeric_data[model->numeric_adr[ngain]] : 1.0;
+          double surf_z2 = data->geom_xpos[3 * g_tab + 2] +
+                           model->geom_size[3 * g_tab + 2];
+          double pad_z2 = data->geom_xpos[3 * g_pad2 + 2];
+          constexpr double kFlatEngage = 0.25;  // m above slab: ramp start
+          double act = mju_clip(
+              1.0 - (pad_z2 - surf_z2) / kFlatEngage, 0.0, 1.0);
+          if (act > 0.0 && flat_tol > 0.0) {
+            double fx = data->xpos[3 * b_wr2 + 0] - data->xpos[3 * b_el2 + 0];
+            double fy = data->xpos[3 * b_wr2 + 1] - data->xpos[3 * b_el2 + 1];
+            double fz = data->xpos[3 * b_wr2 + 2] - data->xpos[3 * b_el2 + 2];
+            double elev = std::atan2(fz, mju_sqrt(fx * fx + fy * fy));
+            // ★★★ 2026-08-14 LEGAL-BAND TARGET (`brace_flat_target`, rad;
+            // 0/absent = OFF = byte-identical |elev| behaviour).
+            // MEASURED (scratch_bench/legal_band.py, pure kinematics on the
+            // build model): with the forearm shell resting on the tabletop,
+            // the Magpie gripper hangs STRUCTURALLY below the forearm line --
+            // no wrist angle can tuck it above (best -11 mm, keyframe -17 mm).
+            // So the hand clears the slab only for elevation > ~0 deg, and the
+            // flat gate caps it at +9.7 deg: the band where the brace is
+            // simultaneously (a) forearm-borne, (b) hand-clear (spec:
+            // FOREARM + FEET ONLY) and (c) gate-legal is 0.0 .. +9.4 deg,
+            // ENTIRELY ONE-SIDED. Driving |elev| -> 0 aims at the BOTTOM EDGE
+            // and puts half the dead-band in the illegal hand-digs region;
+            // the hand then lands first, props the arm, and rotates it past
+            // the gate -- the permanent brace-rung stall of real runs 12/14.
+            // Real-run confirmation (5 runs): the two runs that completed the
+            // ladder held median elevation +5.2 (flat_6, full pipeline) and
+            // +8.8 deg (flat_13) = inside the band; the two that stalled held
+            // +14.8 and +22.5 deg = outside it.
+            int nftg = mj_name2id(model, mjOBJ_NUMERIC, "brace_flat_target");
+            double flat_tgt = nftg >= 0
+                ? model->numeric_data[model->numeric_adr[nftg]] : 0.0;
+            plane_err += flat_gain * act *
+                         mju_max(0.0, mju_abs(elev - flat_tgt) - flat_tol);
+          }
+        }
       }
     }
     residual[counter++] = plane_err;
@@ -2914,7 +3265,10 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
 
   // ---- DEBUG: print leg stability diagnostics every ~0.5 s ---- //
   static int debug_tick = 0;
-  static const bool lean_dbg = (std::getenv("LEAN_DEBUG") != nullptr);
+  static const bool lean_dbg = [] {
+    const char* e = std::getenv("LEAN_DEBUG");
+    return e != nullptr && e[0] != '0';   // set but "0" = explicitly off
+  }();
   if (lean_dbg && ++debug_tick % 33 == 0) {  // ~0.5 s; set LEAN_DEBUG=1 to enable
     double *foot_right_up = SensorByName(model, data, "foot_right_up");
     double *foot_left_up  = SensorByName(model, data, "foot_left_up");
@@ -3225,6 +3579,94 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
         motion_strategy_.CalculateTotalKeyframeDistance(
             data, mjpc::humanoid::ContactKeyframeErrorType::kNorm);
 
+    // ★ 2026-08-07 COMMIT ABORT-AND-RETRY. `lean_commit_retry` numeric:
+    // 0 = OFF = BYTE-IDENTICAL. >0 = seconds of detected STALL before the
+    // strategy regresses to keyframe 0 (stand) and re-attempts, capped at 3
+    // retries. WHY: the lean commit fails ~25% on the twin bench in a
+    // RECOVERABLE way — the bow hangs quasi-statically at tilt 12-28° with
+    // the forearm pad NOT on the table (toe-margin stall), then topples
+    // seconds later. While stalled the CoM is still over the feet, so
+    // commanding the stand keyframe recovers it; riding the stall ends in a
+    // fall. The built-in time-limit reset cannot catch this because
+    // total_distance is identically 0 (all contact pairs -1). Detector is
+    // physical: in the lean/mid phases, >=6 s in phase AND torso tilt in
+    // the stall band AND no pad↔table contact, sustained `retry` seconds.
+    // Static-local state: the deploy node owns exactly one lean task
+    // instance and calls Transition serially; bench-scoped pragmatism.
+    {
+      static double stall_since = -1.0;
+      static int retries_used = 0;
+      static double last_time = -1.0;
+      static double tilt_prev = -1.0, tilt_rate_ema = 10.0;
+      if (data->time < last_time - 1.0) {  // sim restarted → clear state
+        stall_since = -1.0; retries_used = 0;
+        tilt_prev = -1.0; tilt_rate_ema = 10.0;
+      }
+      double dt_step = data->time - last_time;
+      last_time = data->time;
+      int rt_id = mj_name2id(model, mjOBJ_NUMERIC, "lean_commit_retry");
+      double retry_sec =
+          rt_id >= 0 ? model->numeric_data[model->numeric_adr[rt_id]] : 0.0;
+      const std::string& kf_name = current_kf.name;
+      bool commit_phase = (kf_name == "forearm_brace_lean" ||
+                           kf_name == "forearm_brace_mid");
+      if (retry_sec > 0.0 && commit_phase && retries_used < 3) {
+        // torso tilt from the base quaternion
+        const double* q = data->qpos + 3;
+        double tilt = 2.0 * mju_acos(mju_min(mju_abs(q[0]), 1.0));
+        // pad↔table contact scan
+        int pad_gid = mj_name2id(model, mjOBJ_GEOM, "left_forearm_pad");
+        bool pad_on = false;
+        for (int ci = 0; ci < data->ncon; ci++) {
+          const mjContact& con = data->contact[ci];
+          if (con.geom1 == pad_gid || con.geom2 == pad_gid) {
+            pad_on = true;
+            break;
+          }
+        }
+        // tilt RATE (EMA over ~1 s): a HEALTHY approach descends at 2-4
+        // deg/s through the same band with the pad still off — first gate
+        // build aborted good commits mid-approach (4/5 false positives,
+        // seats 2/5). The stall is quasi-static: |rate| < 0.8 deg/s.
+        if (tilt_prev >= 0.0 && dt_step > 1e-6 && dt_step < 1.0) {
+          double r = (tilt - tilt_prev) / dt_step;
+          double a = mju_min(1.0, dt_step / 1.0);
+          tilt_rate_ema = (1.0 - a) * tilt_rate_ema + a * r;
+        }
+        tilt_prev = tilt;
+        double in_phase =
+            data->time - motion_strategy_.GetCurrentKeyframeStartTime();
+        bool stalled = in_phase > 6.0 && !pad_on &&
+                       tilt > 12.0 * mjPI / 180.0 &&
+                       tilt < 28.0 * mjPI / 180.0 &&
+                       mju_abs(tilt_rate_ema) < 0.8 * mjPI / 180.0;
+        if (!stalled) {
+          stall_since = -1.0;
+        } else if (stall_since < 0.0) {
+          stall_since = data->time;
+        } else if (data->time - stall_since > retry_sec) {
+          retries_used++;
+          stall_since = -1.0;
+          std::printf(
+              "[lean-retry] COMMIT STALL in '%s' (tilt %.1f deg, pad off, "
+              "%.1fs) — regressing to stand, attempt %d/3\n",
+              kf_name.c_str(), tilt * 180.0 / mjPI, retry_sec, retries_used);
+          SnapshotEffectiveScales();
+          SnapshotCurrentWeightsAsPrev();
+          motion_strategy_.Reset();
+          MarkNewlyAppearedContacts(residual_.residual_keyframe_,
+                                    motion_strategy_.GetCurrentKeyframe());
+          residual_.residual_keyframe_ = motion_strategy_.GetCurrentKeyframe();
+          motion_strategy_.SetCurrentKeyframeStartTime(data->time);
+          motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+          residual_.keyframe_start_time_ = data->time;
+          PrepareNextPhaseWeights(residual_.residual_keyframe_);
+          ApplyRampedWeights(model, data);
+          return;
+        }
+      }
+    }
+
     if (data->time - motion_strategy_.GetCurrentKeyframeStartTime() >
             current_kf.time_limit &&
         total_distance > current_kf.target_distance_tolerance) {
@@ -3243,7 +3685,308 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
     } else if (total_distance <= current_kf.target_distance_tolerance &&
                data->time -
                        motion_strategy_.GetCurrentKeyframeSuccessStartTime() >
-                   current_kf.success_sustain_time) {
+                   current_kf.success_sustain_time &&
+               [&] {
+                 // ★ 2026-08-12 BRACE-CONTACT-GATED ADVANCE (user-approved
+                 // spec): brace-side rungs (lean/mid/reach) may only advance
+                 // after the forearm pad has been in believed table contact
+                 // for >= `brace_contact_verify` s continuously. 0/absent =
+                 // OFF = byte-identical. Loss >= `brace_contact_loss` s
+                 // resets the counter (freeze: the ladder holds while the
+                 // pad re-seats — Brace Pos stays active). Loss >=
+                 // `brace_contact_freeze_cap` s => give up: handled by the
+                 // retry machinery via the stall path (pad off + banded
+                 // tilt), which this freeze feeds by construction.
+                 int bcv = mj_name2id(model, mjOBJ_NUMERIC,
+                                      "brace_contact_verify");
+                 double vsec = bcv >= 0
+                     ? model->numeric_data[model->numeric_adr[bcv]] : 0.0;
+                 const std::string& kfn =
+                     motion_strategy_.GetCurrentKeyframe().name;
+                 bool brace_side = (kfn == "forearm_brace_lean" ||
+                                    kfn == "forearm_brace_mid" ||
+                                    kfn == "forearm_brace_reach");
+                 if (vsec > 0.0 && brace_side) {
+                   int pad_gid2 =
+                       mj_name2id(model, mjOBJ_GEOM, "left_forearm_pad");
+                   bool on = false;
+                   for (int ci = 0; ci < data->ncon; ci++) {
+                     const mjContact& con = data->contact[ci];
+                     if (con.geom1 == pad_gid2 || con.geom2 == pad_gid2) {
+                       on = true;
+                       break;
+                     }
+                   }
+                   // ★ 2026-08-13 NEAR-CONTACT MARGIN (real flat_2): the
+                   // REAL pad sat planted for ~65 s (pitch 30 rock-steady)
+                   // while the BELIEVED pad hovered ~2 cm above the believed
+                   // surface (attitude error at 30 deg pitch + unmodeled
+                   // rubber), so believed contact flickered 134x and the
+                   // ladder never advanced on a solid real brace. If
+                   // `brace_contact_zmargin` (m) > 0, count the pad as ON
+                   // whenever its lowest point is within that margin of the
+                   // slab top while horizontally over the slab. Flat/INCLINED
+                   // still gates edge grazes. 0/absent = strict contact scan.
+                   if (!on) {
+                     int nzm = mj_name2id(model, mjOBJ_NUMERIC,
+                                          "brace_contact_zmargin");
+                     double zmar = nzm >= 0
+                         ? model->numeric_data[model->numeric_adr[nzm]] : 0.0;
+                     int g_tab3 = mj_name2id(model, mjOBJ_GEOM,
+                                             "table_top_collision");
+                     if (zmar > 0.0 && pad_gid2 >= 0 && g_tab3 >= 0) {
+                       const double* pp = data->geom_xpos + 3 * pad_gid2;
+                       double prad = model->geom_size[3 * pad_gid2];
+                       const double* tc = data->geom_xpos + 3 * g_tab3;
+                       double thx = model->geom_size[3 * g_tab3 + 0];
+                       double thy = model->geom_size[3 * g_tab3 + 1];
+                       double surf = tc[2] + model->geom_size[3 * g_tab3 + 2];
+                       // ★ flat_4 telemetry: gap was +11 mm but over=0 on
+                       // EVERY sample — the relative tag anchor preserves
+                       // the robot-vs-table offset latched at bring-up, so
+                       // believed x can sit ~5-10 cm behind truth and the
+                       // footprint test starves the gate. Believed z is the
+                       // trustworthy axis (~1 cm); slack the x/y footprint
+                       // by `brace_contact_xyslack` (m, default 0.10).
+                       int nxs = mj_name2id(model, mjOBJ_NUMERIC,
+                                            "brace_contact_xyslack");
+                       double xys = nxs >= 0
+                           ? model->numeric_data[model->numeric_adr[nxs]]
+                           : 0.10;
+                       bool over = mju_abs(pp[0] - tc[0]) < thx + xys &&
+                                   mju_abs(pp[1] - tc[1]) < thy + xys;
+                       double gap = (pp[2] - prad) - surf;
+                       if (over && gap < zmar) on = true;
+                       // ★ measure, don't guess: print the believed gap so
+                       // real runs tell us the actual belief offset.
+                       static int gap_note = 0;
+                       if (++gap_note % 100 == 1)
+                         std::printf("[lean-gate] believed pad gap %+.0f mm "
+                                     "(over=%d margin %.0f mm)\n",
+                                     gap * 1000.0, (int)over, zmar * 1000.0);
+                     }
+                   }
+                   // ★ 2026-08-13 FLAT-GATED VERIFY: a corner graze is not a
+                   // seat (real 14/15: 24-33 deg inclined edge contact
+                   // chattered 23-25x and never verified). Contact only
+                   // counts while forearm elevation < `brace_flat_gate`
+                   // (rad; 0/absent = off).
+                   bool inclined = false;
+                   int nfg = mj_name2id(model, mjOBJ_NUMERIC,
+                                        "brace_flat_gate");
+                   double fgate = nfg >= 0
+                       ? model->numeric_data[model->numeric_adr[nfg]] : 0.0;
+                   if (on && fgate > 0.0) {
+                     int b_el3 =
+                         mj_name2id(model, mjOBJ_BODY, "left_elbow_link");
+                     int b_wr3 = mj_name2id(model, mjOBJ_BODY,
+                                            "left_wrist_roll_link");
+                     if (b_el3 >= 0 && b_wr3 >= 0) {
+                       double fx = data->xpos[3 * b_wr3 + 0] -
+                                   data->xpos[3 * b_el3 + 0];
+                       double fy = data->xpos[3 * b_wr3 + 1] -
+                                   data->xpos[3 * b_el3 + 1];
+                       double fz = data->xpos[3 * b_wr3 + 2] -
+                                   data->xpos[3 * b_el3 + 2];
+                       double elev =
+                           std::atan2(fz, mju_sqrt(fx * fx + fy * fy));
+                       // ★ 2026-08-14 BAND gate, not a symmetric |elev| gate.
+                       // NEGATIVE elevation = wrist/hand below the elbow =
+                       // the GRIPPER is the first thing on the slab (it hangs
+                       // ~17 mm below the forearm line, structurally). That is
+                       // an illegal hand-brace per the FOREARM+FEET-ONLY spec
+                       // AND it is the pose that props the arm into the
+                       // inclined stall. `brace_flat_gate_lo` (rad, >0) caps
+                       // the allowed NEGATIVE excursion; absent/<=0 falls back
+                       // to fgate == the old symmetric behaviour.
+                       int nfgl = mj_name2id(model, mjOBJ_NUMERIC,
+                                             "brace_flat_gate_lo");
+                       double fgate_lo =
+                           (nfgl >= 0 &&
+                            model->numeric_data[model->numeric_adr[nfgl]] > 0.0)
+                               ? model->numeric_data[model->numeric_adr[nfgl]]
+                               : fgate;
+                       if (elev > fgate || elev < -fgate_lo) {
+                         inclined = true;
+                         on = false;
+                       }
+                     }
+                   }
+                   static double bc_since = -1.0, bc_lost_since = -1.0;
+                   int bcl = mj_name2id(model, mjOBJ_NUMERIC,
+                                        "brace_contact_loss");
+                   double lsec = bcl >= 0
+                       ? model->numeric_data[model->numeric_adr[bcl]] : 1.0;
+                   if (on) {
+                     bc_lost_since = -1.0;
+                     if (bc_since < 0.0) bc_since = data->time;
+                   } else {
+                     if (bc_lost_since < 0.0) bc_lost_since = data->time;
+                     if (data->time - bc_lost_since > lsec) bc_since = -1.0;
+                   }
+                   if (bc_since < 0.0 ||
+                       data->time - bc_since < vsec) {
+                     static int bc_note = 0;
+                     if (++bc_note % 100 == 1)
+                       std::printf("[lean-gate] HOLD %s: pad contact %s "
+                                   "(need %.1fs verified)\n",
+                                   kfn.c_str(),
+                                   on ? "verifying"
+                                      : (inclined ? "INCLINED" : "LOST"),
+                                   vsec);
+                     return false;
+                   }
+                 }
+                 // ★ 2026-08-13 RELEASE PITCH GATE (bench20_flatstack 1-10
+                 // forensics): with Balance 40 the un-bow now WORKS (38->26,
+                 // 34->20 deg) but the pad leaves the table at 25-38 deg and
+                 // the last stretch is ankle-only -- infeasible from that
+                 // depth (the #51 toe-line bound), so every run stalls at
+                 // 17-26 deg and topples forward 1-10 s later. Hold the
+                 // release-side rungs until believed base pitch is below a
+                 // per-rung bound, so the ARM keeps pressing and walks the
+                 // pitch down into ankle-recoverable range before letting
+                 // go (counter push-off). Numerics standback_pitch_release/
+                 // _r1/_r2 in rad; 0/absent = OFF = prior behavior.
+                 {
+                   const char* pnum = nullptr;
+                   if (kfn == "forearm_brace_release")
+                     pnum = "standback_pitch_release";
+                   else if (kfn == "standback_r1")
+                     pnum = "standback_pitch_r1";
+                   else if (kfn == "standback_r2")
+                     pnum = "standback_pitch_r2";
+                   if (pnum != nullptr) {
+                     int pid = mj_name2id(model, mjOBJ_NUMERIC, pnum);
+                     double plim = pid >= 0
+                         ? model->numeric_data[model->numeric_adr[pid]] : 0.0;
+                     if (plim > 0.0) {
+                       const double* q = data->qpos;  // free joint quat wxyz
+                       double sinp = 2.0 * (q[3] * q[5] - q[6] * q[4]);
+                       sinp = mju_clip(sinp, -1.0, 1.0);
+                       double bpitch = std::asin(sinp);
+                       // ★★ 2026-08-14 STALL-AWARE RELAXATION.
+                       // The pitch gates exist to keep the ARM pressing while
+                       // pressing still buys pitch. Once the pitch PLATEAUS the
+                       // gate no longer buys anything -- it just holds the robot
+                       // in a braced stall until the operator estops. Real run
+                       // 13 ground r2 from 15.6 deg down to 10.4-10.7 deg and
+                       // then sat there ~25 s against a 10.31 deg gate: it lost
+                       // the ladder by 0.1-0.4 deg after doing all the work.
+                       // So: track the best pitch reached in THIS rung; if it
+                       // has not improved by `standback_stall_eps` within
+                       // `standback_stall_sec`, relax the gate to just past the
+                       // best achieved -- but never by more than
+                       // `standback_stall_max` (bounded so a run that plateaus
+                       // deep, e.g. 25 deg in r1, stays blocked: releasing from
+                       // depth is the #51 ankle-only failure this gate prevents).
+                       // stall_sec <= 0 (default) => OFF => byte-identical.
+                       auto snum = [&](const char* nm, double dflt) {
+                         int id = mj_name2id(model, mjOBJ_NUMERIC, nm);
+                         return id >= 0
+                             ? model->numeric_data[model->numeric_adr[id]] : dflt;
+                       };
+                       double stall_sec = snum("standback_stall_sec", 0.0);
+                       double stall_eps = snum("standback_stall_eps", 0.01);
+                       double stall_max = snum("standback_stall_max", 0.05);
+                       double eff_lim = plim;
+                       if (stall_sec > 0.0) {
+                         // single-threaded transition context (same pattern as
+                         // the bc_since / rp_note statics below).
+                         static std::string sp_rung;
+                         static double sp_best = 1e9, sp_since = -1.0;
+                         if (sp_rung != kfn) {
+                           sp_rung = kfn; sp_best = bpitch; sp_since = data->time;
+                         }
+                         if (bpitch < sp_best - stall_eps) {
+                           sp_best = bpitch; sp_since = data->time;
+                         }
+                         if (sp_since >= 0.0 &&
+                             data->time - sp_since > stall_sec) {
+                           eff_lim = mju_min(plim + stall_max,
+                                             mju_max(plim, sp_best + stall_eps));
+                           static int st_note = 0;
+                           if (++st_note % 200 == 1)
+                             std::printf("[lean-gate] %s STALLED %.0fs at "
+                                         "%.3f rad -> gate %.3f relaxed to %.3f\n",
+                                         kfn.c_str(), data->time - sp_since,
+                                         sp_best, plim, eff_lim);
+                         }
+                       }
+                       if (bpitch > eff_lim) {
+                         static int rp_note = 0;
+                         if (++rp_note % 100 == 1)
+                           std::printf(
+                               "[lean-gate] HOLD %s: pitch %.2f > %.2f rad "
+                               "— keep pressing\n",
+                               kfn.c_str(), bpitch, plim);
+                         return false;
+                       }
+                     }
+                   }
+                 }
+                 return true;
+               }() &&
+               [&] {
+                 // ★ 2026-08-06 `phase_advance_quiet_vel` numeric: 0 = OFF =
+                 // BYTE-IDENTICAL. >0 = do not advance while the base sways
+                 // faster than this (m/s, horizontal): the dwell clock can
+                 // expire mid-sway and the next phase then inherits that
+                 // velocity — on the twin bench ~half the lean commits
+                 // entered on an adverse sway sample and toppled (stall→
+                 // backward overshoot / asymmetric bow). Holding for a calm
+                 // sample costs at most a sway half-period (~0.5 s).
+                 int qv = mj_name2id(model, mjOBJ_NUMERIC,
+                                     "phase_advance_quiet_vel");
+                 if (qv < 0) return true;
+                 double lim = model->numeric_data[model->numeric_adr[qv]];
+                 if (lim <= 0.0) return true;
+                 bool quiet = mju_sqrt(data->qvel[0] * data->qvel[0] +
+                                       data->qvel[1] * data->qvel[1]) <= lim;
+                 // ★ 2026-08-11 `phase_advance_quiet_wvel`: 0 = OFF =
+                 // byte-identical. >0 = ALSO hold while the base ANGULAR
+                 // rate (roll/pitch, rad/s) exceeds this. WHY: 80-run
+                 // forensics — pre-release base roll RATE was the earliest
+                 // failure predictor (AUC 0.71); the linear gate above is
+                 // blind to it. Sway is periodic (~1 s) so waiting for a
+                 // rate zero-crossing costs at most half a period.
+                 int qw = mj_name2id(model, mjOBJ_NUMERIC,
+                                     "phase_advance_quiet_wvel");
+                 double wlim = qw >= 0
+                     ? model->numeric_data[model->numeric_adr[qw]] : 0.0;
+                 if (wlim > 0.0) {
+                   quiet = quiet &&
+                       mju_sqrt(data->qvel[3] * data->qvel[3] +
+                                data->qvel[4] * data->qvel[4]) <= wlim;
+                 }
+                 // ★ 2026-08-10 `phase_advance_upright_deg`: 0 = OFF =
+                 // byte-identical. >0 = ALSO hold the advance while the torso
+                 // is pitched more than this (deg). WHY: at seat 17/20 (the
+                 // restored-0.985 bench) all THREE failed commits launched
+                 // TILTED BACK (+3..+16 deg, base drifted -0.04..-0.16 m) --
+                 // calm but mis-postured, which the quiet gate cannot see; the
+                 // fixed-length lean then undershoots (face-plant) or recoils
+                 // (backward fall). All 17 good runs launched upright.
+                 // ESCAPE HATCH: only holds for `phase_advance_upright_wait`
+                 // seconds (default 12) past the dwell, then advances anyway --
+                 // nothing recenters a parked robot, so an unconditional gate
+                 // could hang the ladder forever.
+                 int ud = mj_name2id(model, mjOBJ_NUMERIC,
+                                     "phase_advance_upright_deg");
+                 double udeg = ud >= 0
+                     ? model->numeric_data[model->numeric_adr[ud]] : 0.0;
+                 if (udeg <= 0.0) return quiet;
+                 double over = data->time -
+                     motion_strategy_.GetCurrentKeyframeSuccessStartTime() -
+                     current_kf.success_sustain_time;
+                 double cap = GetNumberOrDefault(
+                     12.0, model, "phase_advance_upright_wait");
+                 if (over > cap) return quiet;   // escape hatch
+                 const double* q = data->qpos;
+                 double pitch_deg = 57.29578 * mju_asin(mju_max(-1.0,
+                     mju_min(1.0, 2.0 * (q[3] * q[5] - q[6] * q[4]))));
+                 return quiet && mju_abs(pitch_deg) <= udeg;
+               }()) {
       // Normal phase advance — this is the path that fires after stand_up
       // succeeds. Snapshot first so the new ramp starts from the old scales.
       SnapshotEffectiveScales();
@@ -3260,6 +4003,94 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
       // Re-arm the success clock: outside tolerance -- sustain must be
       // CONSECUTIVE.
       motion_strategy_.SetCurrentKeyframeSuccessStartTime(data->time);
+    }
+  }
+
+  // ★★★ 2026-08-09 CAPTURE THE MEASURED STANCE for the Foot Stability anchor.
+  // `foot_anchor_measured` numeric: 0 = OFF = byte-identical (hardcoded x=0.30).
+  // WHY: on the twin the feet sit at x ~= 0.005 at harness release, so the 0.30
+  // home is a standing 29 cm error the cost drags the feet toward all ladder --
+  // 200-250 mm of measured drift in benches v5/v6, and raising the weight made
+  // it WORSE, exactly as a drag would.
+  {
+    int fam = mj_name2id(model, mjOBJ_NUMERIC, "foot_anchor_measured");
+    double on = fam >= 0 ? model->numeric_data[model->numeric_adr[fam]] : 0.0;
+    const std::string& kfn = motion_strategy_.GetCurrentKeyframe().name;
+    if (on <= 0.0) {
+      residual_.foot_pin_x_ = std::numeric_limits<mjtNum>::quiet_NaN();
+    } else if (std::isnan(residual_.foot_pin_x_) && kfn == "forearm_brace_lean") {
+      double const *lp = SensorByName(model, data, "foot_left_pos");
+      double const *rp = SensorByName(model, data, "foot_right_pos");
+      if (lp && rp && lp[2] < 0.08 && rp[2] < 0.08) {
+        residual_.foot_pin_x_ = 0.5 * (lp[0] + rp[0]);
+        std::fprintf(stderr, "[lean-foot] stance PINNED at x=%.3f "
+                     "(hardcoded home was 0.30)\n", residual_.foot_pin_x_);
+      }
+    }
+  }
+
+  // ★★★ 2026-08-10 PHASE-SCHEDULED CEM VARIANCE FLOOR (`std_min_state_gated`
+  // numeric: 0 = OFF = byte-identical -> LiveStdMinOverride stays -1). WHY: the
+  // global floor trades SURVIVAL against PRECISION with opposite slopes (n=20
+  // arms, estimator-in-loop: floor 0.01 -> 5/20 never-fell but a crisp ladder;
+  // 0.05 -> 15/20 never-fell, p~=0.001, but the robot survives by DANCING --
+  // seat 15->7, up to 1.3 m of foot travel, LOW hover endings; 0.02 -> 1/20,
+  // no survival at all). So: WIDE floor (`std_min_wide`) in the fall-prone
+  // free/transition phases, TIGHT floor (`std_min_tight`) in the seated phases
+  // (mid/reach/release) where sustained pad contact is what the noise breaks.
+  {
+    int sg = mj_name2id(model, mjOBJ_NUMERIC, "std_min_state_gated");
+    if (sg >= 0 && model->numeric_data[model->numeric_adr[sg]] > 0.0) {
+      double wide = 0.05, tight = 0.01;
+      int wi = mj_name2id(model, mjOBJ_NUMERIC, "std_min_wide");
+      int ti = mj_name2id(model, mjOBJ_NUMERIC, "std_min_tight");
+      if (wi >= 0) wide = model->numeric_data[model->numeric_adr[wi]];
+      if (ti >= 0) tight = model->numeric_data[model->numeric_adr[ti]];
+      const std::string& kf = motion_strategy_.GetCurrentKeyframe().name;
+      // ★ v2 (2026-08-10): release REMOVED from the tight set. With v1 (tight =
+      // mid/reach/release) the 8 remaining falls all clustered at t=117-145 =
+      // exactly the release->standback segment: release is a PUSH-OFF transition,
+      // not a hold, and starving it of search width is what dropped it. Survival
+      // 12/20 + seat 12/20 in v1 -- first arm to recover both sides of the trade.
+      // ★ v3 (2026-08-10): stand_up ADDED to the tight set. v2 (wide everywhere
+      // but mid/reach) fixed survival (15/20, release cluster gone) but feet
+      // stayed 0/20 with 0.4-1.5 m of drift -- the scoring window is dominated
+      // by the FINAL stand phase (t~139-240 s), which sat at the wide floor, so
+      // the robot spent ~100 s wandering. Standing needs no width: strat-6
+      // free-stands to the episode cap at the default 0.01 floor. Wide is now
+      // ONLY the dynamic transitions (lean / release / standback rungs).
+      bool seated_phase = (kf == "forearm_brace_mid" ||
+                           kf == "forearm_brace_reach" ||
+                           kf == "stand_up");
+      double target = seated_phase ? tight : wide;
+      // ★ v4 (2026-08-10): SMOOTHSTEP the floor between phase targets instead of
+      // stepping. v3's step 0.01->0.05 at lean entry killed 20/20 runs at
+      // t=70-90: 5x noise injected at the exact commit moment. (v1/v2 never saw
+      // this because their stand phase was already wide -- no step -- but their
+      // "survival" was partly survival-by-never-committing: dancing robots
+      // missing the lean.) The ramp keeps the first seconds of each transition
+      // at the previous phase's crispness and grows width for the descent.
+      double ramp = 2.5;
+      int ri = mj_name2id(model, mjOBJ_NUMERIC, "std_min_ramp_sec");
+      if (ri >= 0) ramp = model->numeric_data[model->numeric_adr[ri]];
+      if (std_min_target_ < 0.0) {          // first tick after gate-on
+        std_min_target_ = target;
+        std_min_ramp_from_ = target;
+        std_min_ramp_t0_ = data->time;
+      } else if (target != std_min_target_) {
+        std_min_ramp_from_ = std_min_live_.load();
+        std_min_target_ = target;
+        std_min_ramp_t0_ = data->time;
+      }
+      double a = ramp > 0.0
+                     ? mju_min(1.0, (data->time - std_min_ramp_t0_) / ramp)
+                     : 1.0;
+      a = a * a * (3.0 - 2.0 * a);
+      std_min_live_.store(std_min_ramp_from_ +
+                          a * (std_min_target_ - std_min_ramp_from_));
+    } else {
+      std_min_live_.store(-1.0);
+      std_min_target_ = -1.0;
     }
   }
 

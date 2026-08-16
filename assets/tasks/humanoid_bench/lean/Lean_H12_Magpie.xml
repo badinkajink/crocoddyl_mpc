@@ -27,7 +27,7 @@
 
     <keyframe>
         <key name="home"
-        qpos="0.19 0 1.028 1 0 0 0 0 0 0.12 0 0 0 0 0 -0.12 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        qpos="0.19 0 1.028 1 0 0 0 0 0 0.12 0 0 0 0 0 -0.12 0 0 0 0 -0.25 0 0 0 0 0 0 -0.25 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <!-- soft-knee stand (2026-06-09): stand (strategy 6, phase "stand_up") and the
              squat top (strategy 17, phase "stand") previously fell back to home with knee
              target 0.0 — sitting 0.12 rad from the knee lock-out floor (-0.12), so one knee
@@ -61,8 +61,14 @@
              'stand_up' is the residual's posture target; a split would ramp to one pose and
              then be pulled toward another. Lean_H12.xml carries the IDENTICAL defect and is
              deliberately left alone until this is validated on Magpie. -->
-        <key name="stand_up" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
-        <key name="stand"    qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <!-- ★ 2026-08-14 ARMS-UP READY STANCE: both shoulder_pitch -0.16 rad (-9.2 deg).
+             MEASURED: the previous stand pose put the gripper jaw at z=0.989 with the
+             tabletop at 0.985 -- ZERO clearance, hands already grazing the slab, so any
+             forward torso motion jammed them into the near edge (operator had to lift the
+             arms over the table by hand on real runs 12-14). -0.16 rad lifts the lowest
+             hand point to +60 mm over the tabletop; CoM moves 3 mm. -->
+        <key name="stand_up" qpos="0.19 0 1 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 -0.16 0 0 0 0 0 0 -0.16 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="stand"    qpos="0.19 0 1 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 -0.16 0 0 0 0 0 0 -0.16 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <!-- straighten (strategy 25, pre-stand bring-up): CoM-CENTERED stand pose (hip
              -0.15/knee 0.35/ankle -0.28) = the wide-basin handoff target. stand_up plants
              the feet ~68mm ahead of the CoM (backward-tippy => harness-release fall); this
@@ -147,7 +153,7 @@
              surface (+0.0 cm), forearm LEVEL (0.0 deg), gripper lowest +3.2 cm clear, pad
              x 0.535 = seated 0.24 m past the 0.2975 near edge (short-side approach depth).
              Previous (0.865-era) pose left the pad 8.5 cm UNDER the new surface. -->
-        <key name="forearm_brace_lean" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.4625 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_lean" qpos="0.212485 0 0.964242 0.974587 0 0.224009 0 0 -0.936662 0.12 0.665198 -0.181326 0 0 -0.936662 -0.12 0.665198 -0.181326 0 -0.0593057 -0.7682 -0.112756 0.444694 0.2490 0.225548 -0.461708 -0.740967 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
         <!-- forearm_brace_reach (2026-07-31): the braced pose with the RIGHT
              arm solved for MAXIMUM forward gripper extension, staying >=10 mm
              above the tabletop. Left arm / legs / base copied unchanged, so the
@@ -155,8 +161,9 @@
              keyframe: with the reach phase pointed at forearm_brace_lean, whose
              right arm is NEUTRAL, Posture pulled the reaching arm back while
              Reaching Hand Dist pushed it out. -->
-        <key name="forearm_brace_reach" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.309 -0.122173 0.610865 0.418879 0.261799 -0.4625 -1.01229 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
-        <key name="forearm_brace_release" qpos="0.300182 0 0.915396 0.974693 0 0.223547 0 0 -0.983672 0.12 0.989648 -0.456879 0 0 -0.983672 -0.12 0.989648 -0.456879 0 0 -0.907571 -0.139626 0.767945 0.10472 0.261799 -0.4625 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_mid" qpos="0.328272 0 0.884609 0.960027 0 0.279907 0 0 -1.13959 0.12 1.09956 -0.523599 0 0 -1.13959 -0.12 1.09956 -0.523599 0 0 -1.4890 -0.122173 0.610865 0.8789 0.261799 -0.4625 -1.01229 -1.56612 -0.148513 -0.163284 1.24094 -0.626631 0.0147782 0.0793897 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_reach" qpos="0.212485 0 0.964242 0.974587 0 0.224009 0 0 -0.936662 0.12 0.665198 -0.181326 0 0 -0.936662 -0.12 0.665198 -0.181326 0 -0.0593057 -0.7682 -0.112756 0.444694 0.2490 0.225548 -0.461708 -0.740967 -1.57 -0.384143 -0.039751 0.841166 -0.000255 0.048759 1e-06 1.5 0 1.035 1 0 0 0"/>
+        <key name="forearm_brace_release" qpos="0.212485 0 0.964242 0.974587 0 0.224009 0 0 -0.936662 0.12 0.665198 -0.181326 0 0 -0.936662 -0.12 0.665198 -0.181326 0 -0.0593057 -0.907571 -0.139626 0.767945 0.10472 0.261799 -0.4625 -1.01229 0.35 -0.15 0 0.3 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="standback_r1" qpos="0.256109 0.000000 0.968080 0.990865 0.000000 0.134859 0.000000 0.000000 -0.734203 0.120000 0.813789 -0.350127 0.000000 0.000000 -0.734203 -0.120000 0.813789 -0.350127 0.000000 0.000000 -0.544543 -0.083776 0.460767 0.062832 0.157079 -0.282743 -0.607374 0.210000 -0.090000 0.000000 0.180000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
         <key name="standback_r2" qpos="0.231869 0.000000 0.985412 0.996332 0.000000 0.085567 0.000000 0.000000 -0.596995 0.120000 0.717066 -0.291414 0.000000 0.000000 -0.596995 -0.120000 0.717066 -0.291414 0.000000 0.000000 -0.344877 -0.053058 0.291819 0.039794 0.099484 -0.179071 -0.384670 0.133000 -0.057000 0.000000 0.114000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
         <key name="standback_r3" qpos="0.209833 0.000000 0.998210 0.999177 0.000000 0.040570 0.000000 0.000000 -0.472261 0.120000 0.629137 -0.238038 0.000000 0.000000 -0.472261 -0.120000 0.629137 -0.238038 0.000000 0.000000 -0.163363 -0.025133 0.138230 0.018850 0.047124 -0.084823 -0.182212 0.063000 -0.027000 0.000000 0.054000 0.000000 0.000000 0.000000 1.500000 0.000000 1.035000 1.000000 0.000000 0.000000 0.000000"/>
@@ -178,11 +185,11 @@
                class, CoM 13 cm behind the heels. Full stand z 1.0: pad +7.4 cm high. -->
 
         <!-- crouch-base variant (0.955 arm solve on the old crouch legs) -- superseded:
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.974805 0.147421 -0.292228 0.788757 -2.35963 0.243461 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.7682 0.147421 -0.292228 0.2490 -2.35963 0.243461 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
         <!-- 0.865-era pose (pad 8.5 cm under the 0.955 surface) -- superseded 2026-07-31:
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.6671 0.1496 0.316 0.6473 -1.553 0.181 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.7682 0.1496 0.316 0.2490 -1.553 0.181 -0.872665 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
         <!-- PRE-JAW-FIX pose (jaws vertical, +15 mm finger clearance) -- do not reuse:
-        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.673 -0.064 -0.307 0.582 -0.083 -0.427 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
+        <key name="forearm_brace_lean" qpos="0.19 0 0.738 1 0 0 0 0 -1.27 0.12 1.52 -0.3 0 0 -1.27 -0.12 1.52 -0.3 0 0 -0.7682 -0.064 -0.307 0.2490 -0.083 -0.427 0 -1.1 -0.1 0 0.25 0 0 0 1.5 0 0.95 1 0 0 0"/> -->
         <!-- reach_to_target (strategy 21): posture keyframe MUST exist with this exact
              name so (a) the spherical-clamp reach branch in lean.cc fires (it keys on
              residual_keyframe_.name=="reach_to_target") AND (b) the Posture target is a
@@ -305,12 +312,18 @@
         <key name="jump_crouch" qpos="0.19 0 0.780 1 0 0 0 0 -1.00 0.12 1.60 -0.72 0 0 -1.00 -0.12 1.60 -0.72 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="jump_launch" qpos="0.19 0 1.035 1 0 0 0 0 -0.05 0.12 0.10 -0.05 0 0 -0.05 -0.12 0.10 -0.05 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
         <key name="jump_land"   qpos="0.19 0 0.956 1 0 0 0 0 -0.45 0.12 0.80 -0.45 0 0 -0.45 -0.12 0.80 -0.45 0 0 -0.30 0 0 0 0 0 0 -0.30 0 0 0 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <!-- bring-up waypoints (2026-08-12): HAMS-style staged ramp — arms
+             swing BACK-tucked then settle to stand, so the bring-up never sweeps
+             the hands forward through the table edge (real run 6 estop). Consumed
+             by deploy_common bring-up; absent keys = old single-lerp behavior. -->
+        <key name="bringup_wp1" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0.45 0.15 0 -0.9 0 0 0 0.45 -0.15 0 0.9 0 0 0 1.5 0 1.035 1 0 0 0"/>
+        <key name="bringup_wp2" qpos="0.19 0 1.000 1 0 0 0 0 -0.36 0.12 0.55 -0.19 0 0 -0.36 -0.12 0.55 -0.19 0 0 0.2 0.1 0 -0.4 0 0 0 0.2 -0.1 0 0.4 0 0 0 1.5 0 1.035 1 0 0 0"/>
     </keyframe>
     
     <!-- 0.03 0.03 are the gripper pos for parallel jaw -->
     <!-- <keyframe>
         <key name="home"
-        qpos="0.19 0 1.028 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0.03 0 0 0 0 0 0 0 0.03 0.03 1.2 0 0.95 1 0 0 0"/>
+        qpos="0.190000 0.000000 1.028000 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.250000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.250000 0.030000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.030000 0.030000 1.200000 0.000000 0.950000 1.000000 0.000000 0.000000 0.000000"/>
     </keyframe> -->
 
     <custom>
@@ -363,16 +376,106 @@
              toward positive (= flexion) commands. Same story for hip_roll
              [-0.43, 3.14]. Keep σ small relative to the tightest one-sided
              ctrlrange (knee's -0.12) so samples stay in the unclipped band. -->
-        <numeric name="sampling_exploration" data="0.05"/>
+        <numeric name="sampling_exploration" data="0.12"/>
         <!-- CEM sampler knobs (foot-lift Tier C). LEGACY-SAFE defaults here
              (= current behaviour for stand/crouch/reach); bumped for stumble
              ONLY via lean::PlannerNumericOverrides so the calm strats are
              unaffected. std_initial=CEM init std; explore_fraction=share of
              samples at the wide std each step; sampling_knot_var_growth=far-
              horizon knots noisier (action-level annealing). -->
-        <numeric name="sampling_trajectories" data="10"/>
+        <numeric name="sampling_trajectories" data="20"/>
         <numeric name="std_initial" data="0.1"/>
+        <!-- ★★★ 2026-08-09 std_min: THE CEM VARIANCE FLOOR, and it was ABSENT from
+             this file, so every run of this campaign planned at the planner's
+             built-in default of 0.01 (cross_entropy/planner.cc:59). That is the
+             floor, NOT `sampling_exploration` above -- exploration is only the
+             INITIAL std, so within a few iterations CEM collapses onto its own
+             elites and stops searching. Falls are spread uniformly across all six
+             ladder phases (lean 3 / mid 3 / reach 3 / release 2 / standback 1 /
+             post 3 of 20), which is the signature of a planner that is not
+             searching widely enough rather than one bad rung -- and search width,
+             not physics or costs, was the wall the last time survival was the
+             blocker (ownsim 5/20 -> 12/20, falls 45% -> 5%).
+             FREE: same trajectory count, same plan rate, only a wider noise floor
+             -- which matters because the twin is already rate-limited at ~45
+             plans/s and cannot afford more samples. -->
+        <numeric name="std_min" data="0.01"/>
+        <!-- ★ 2026-08-10 phase-scheduled floor (lean.cc TransitionLocked ->
+             Task::LiveStdMinOverride -> CEM Rollouts). 0 = OFF = the global
+             std_min above rules. 1 = wide floor in free/transition phases
+             (survival: 0.05 gave 15/20 never-fell), tight floor in the seated
+             mid/reach/release phases (precision: noise breaks pad contact). -->
+        <numeric name="std_min_state_gated" data="0.0"/>
+        <numeric name="std_min_wide" data="0.05"/>
+        <numeric name="std_min_tight" data="0.01"/>
+        <numeric name="std_min_ramp_sec" data="2.5"/>
         <numeric name="explore_fraction" data="0.0"/>
+        <!-- 2026-08-12 brace-contact-gated advance + live side-swing arc (user-approved):
+             verify = continuous believed pad-contact seconds required before a
+             brace-side rung may advance (0 = OFF); loss = dropout tolerated
+             before the verify clock resets. swing_* = reach via-arc geometry. -->
+        <numeric name="brace_contact_verify" data="2.0"/>
+        <numeric name="brace_contact_loss" data="1.0"/>
+        <numeric name="swing_engage_below" data="0.10"/>
+        <numeric name="swing_engage_near" data="0.30"/>
+        <numeric name="swing_out" data="0.22"/>
+        <numeric name="swing_up" data="0.26"/>
+        <!-- 2026-08-13 BRACE FLAT (real 14/15: corner-of-pad edge contact,
+             24-33deg inclined, chattered and slipped). flat_tol = elevation
+             deadband (rad) for the Brace Arm Plane flatness term, active as
+             the pad nears slab height; flat_gate = max |elevation| (rad) for
+             contact to count in the verify gate (0 = off). -->
+        <!-- 2026-08-13 release pitch gate: hold release/standback rungs until
+             believed pitch is below these (rad); arm keeps pressing. 0=off. -->
+        <numeric name="standback_pitch_release" data="0.42"/>
+        <numeric name="standback_pitch_r1" data="0.30"/>
+        <numeric name="standback_pitch_r2" data="0.21"/>
+        <!-- ★★ standback stall relaxation (2026-08-14). sec<=0 = OFF.
+             12 s of no pitch improvement (>0.01 rad) in a release-side rung
+             relaxes that rung's gate to just past the best pitch achieved,
+             capped at +0.05 rad (2.9 deg) so a deep plateau stays blocked.
+             Real run 13 lost a completed ladder by 0.1-0.4 deg this way. -->
+        <numeric name="standback_stall_sec" data="12.0"/>
+        <numeric name="standback_stall_eps" data="0.01"/>
+        <numeric name="standback_stall_max" data="0.09"/>
+        <numeric name="brace_sink_slack" data="0.12"/>
+        <numeric name="brace_contact_zmargin" data="0.05"/>
+        <numeric name="brace_contact_xyslack" data="0.12"/>
+        <numeric name="brace_knee_sym" data="1.5"/>
+        <numeric name="brace_knee_sym_db" data="0.30"/>
+        <numeric name="stance_width_min" data="0.30"/>
+        <numeric name="stance_width_gain" data="2.0"/>
+        <numeric name="brace_flat_tol" data="0.05"/>
+        <numeric name="brace_flat_gate" data="0.17"/>
+        <numeric name="brace_flat_gain" data="4.0"/>
+        <!-- ★★★ brace_flat_target (2026-08-14, rad; 0 = OFF = old |elev|->0).
+             The LEGAL BAND for this arm+gripper on a 0.985 m slab is
+             elevation 0.0 .. +9.4 deg (forearm-borne AND hand-clear AND inside
+             brace_flat_gate) -- see scratch_bench/legal_band.py. 0.086 rad =
+             +4.9 deg = band centre; with brace_flat_tol 0.05 the penalty-free
+             window is +2.0 .. +7.8 deg, entirely inside the band and centred
+             on where the two successful REAL ladders actually held (+5.2 and
+             +8.8 deg median). -->
+        <!-- 0.05 (not the 0.086 band CENTRE): with tol 0.05 the penalty-free window
+             becomes 0.0 .. +5.7 deg -- one-sided, so the illegal hand-digs half of the
+             old symmetric window is gone, while the pull-DOWN from a high inclined
+             stall stays nearly as strong as baseline. Twin A/B (gate_flatband n=5 vs
+             bench20_night2 n=20): 0.086 raised the median elevation 6.9 -> 9.3 deg and
+             cut band occupancy 78 -> 45%, i.e. it over-shot to the band's top edge. -->
+        <numeric name="brace_flat_target" data="0.0"/>
+        <!-- ^ MEASURED VERDICT (08-14): keep the COST aiming at 0. The arm's
+             equilibrium settles ~2-4 deg ABOVE the top of the penalty-free
+             window, so raising the target pushes elevation OUT of the band's
+             top: twin band-occupancy 78% @0.0 (n=20) -> 62% @0.05 (n=5) ->
+             45% @0.086 (n=5), monotonic. Aiming at 0 lands the equilibrium at
+             +6.9 deg = mid-band, which is exactly where the two successful REAL
+             ladders sat (+5.2 / +8.8 deg). The one-sided protection the band
+             analysis calls for therefore belongs in the GATE
+             (brace_flat_gate_lo), not in the cost target. -->
+        <!-- brace_flat_gate_lo (rad, >0): max allowed NEGATIVE elevation for
+             contact to certify. Negative = gripper-first = illegal hand-brace
+             and the stall pose. 0.05 rad = -2.9 deg of noise headroom. -->
+        <numeric name="brace_flat_gate_lo" data="0.05"/>
         <numeric name="sampling_knot_var_growth" data="0.0"/>
         <numeric name="gradient_spline_points" data="5"/>
         <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites
@@ -386,6 +489,17 @@
              (linear, pulls torso erect); 0 = legacy cos-flat behaviour for A/B.
              Lower toward 0.3-0.5 if the stand over-stiffens/oscillates. -->
         <numeric name="upright_gain" data="1.0"/>
+        <!-- 2026-08-05: >1.0 scales Pelvis Tilt when the pelvis pitches BACKWARD.
+             1.0 = symmetric legacy form (byte-identical). See lean.cc pelvis tilt. -->
+        <numeric name="backward_tilt_gain" data="1.0"/>
+        <!-- 2026-08-06: forward CoM ceiling rel midfoot, m. All 25 stand-backs
+             entered the ladder below 0.150; the map puts the feet-only limit at
+             0.152. Tune per gate without a recompile. -->
+        <numeric name="pelvis_cap_fwd" data="0.13"/>
+        <!-- 2026-08-06: forward CoM ceiling rel midfoot, m. 0 = OFF (byte-identical).
+             The CoM runs 45-88 mm AHEAD of the pelvis, so the pelvis cap cannot
+             bound it. All 25 stand-backs entered the ladder below 0.150. -->
+        <numeric name="com_cap_fwd" data="0.145"/>
         <!-- Targeted knee+hip-pitch extension anchor (2026-06-06): amplifies ONLY the
              leg entries of the free-standing Posture residual (lean.cc) so the legs hold
              their keyframe target (straight=stand, 0.7=crouch) and stop the slow knee-creep
@@ -514,7 +628,13 @@
              1.4 (also preserves the braced pipeline 33/34 deep reach). Robust "stretched
              arm that holds" = strat 21 (upright, held 128 s); "stretched arm + LEAN that
              holds" = braced 33/34. [[project_counterbalance_strat16]] -->
-        <numeric name="reach_target" data="0.9047 -0.2348 1.0982"/>
+        <!-- ★ 2026-08-14 reach z 1.0982 -> 1.1430. The residual pulls the HAND SITE
+             here, but the Magpie gripper hangs 108 mm BELOW that site, so the old
+             target put the gripper bottom at 0.990 = +5 mm over the 0.985 slab:
+             a graze with zero margin (operator assisted the right arm on real runs
+             13/14). +44.8 mm gives the gripper a 50 mm clearance; x/y unchanged, so
+             the reach EXTENT is unchanged. -->
+        <numeric name="reach_target" data="1.05 -0.15 1.40"/>
         <!-- reach_radius / reach_drop (strategy 21): the HOLDABLE-workspace knobs.
              reach_radius = the arm's commanded extension toward the target [m];
              reach_drop = how far BELOW the shoulder the hand is pulled [m].
@@ -798,6 +918,44 @@
              no knob at all: the JSONs' own `target_ramp_sec` is gated on a brace
              transition, so 16's and 21's values were silently ignored. Try 4-6 s. -->
         <numeric name="phase_ramp_sec" data="0.0"/>
+        <!-- phase_advance_quiet_vel (2026-08-06): 0 = OFF = BYTE-IDENTICAL. >0 =
+             hold a served dwell until horizontal base speed <= this (m/s), so a
+             phase commit never launches off an adverse sway sample. Free-stand
+             sway on the twin: median 0.007, p90 0.013, max 0.026 m/s -> 0.015
+             delays the advance by at most ~a sway half-period. -->
+        <numeric name="phase_advance_quiet_vel" data="0.015"/>
+        <!-- phase_advance_upright_deg (2026-08-10): 0 = OFF = byte-identical. >0 =
+             also hold the advance while |torso pitch| exceeds this (deg), capped at
+             phase_advance_upright_wait seconds past the dwell. The restored-0.985
+             bench's only 3 seat failures all launched tilted back +3..+16 deg. -->
+        <numeric name="phase_advance_upright_deg" data="0.0"/>
+        <numeric name="phase_advance_upright_wait" data="12.0"/>
+        <!-- reach_side_swing (2026-08-10): 0 = OFF = byte-identical. 1 = while the
+             reaching hand is below the surface and inboard of the slab's side edge,
+             the reach target becomes a via-point OUT past the side and UP over the
+             surface (ownsim's around-the-side swing) instead of a straight pull
+             through the slab. -->
+        <numeric name="reach_side_swing" data="1.0"/>
+        <!-- foot_anchor_measured (2026-08-09): 1 = anchor Foot Stability to the
+             MEASURED released stance instead of the hardcoded x=0.30 (which sits
+             ~29 cm ahead of where the twin's feet actually are, and drags them). -->
+        <numeric name="foot_anchor_measured" data="0.0"/>
+        <!-- lateral_center_braced (2026-08-09): 0 = OFF = BYTE-IDENTICAL. 1 = keep
+             the `Lateral Center` residual LIVE while an arm is braced, instead of
+             zeroing it on any_arm_contact. WHY: measured on the twin, the
+             brace-side (left) foot unloads 56% median across the brace and then
+             slides 189 mm laterally (vs 61 mm for the right); unload predicts
+             slide (rho +0.31, p=0.041). That is the strut/buckle feedback this
+             residual exists to kill, and the arm-contact gate disabled it exactly
+             when the brace creates the asymmetry. y axis only -- the forward lean
+             is untouched. Phases that legitimately stand off-centre carry weight 0. -->
+        <numeric name="lateral_center_braced" data="0.0"/>
+        <!-- lean_commit_retry (2026-08-07): 0 = OFF = BYTE-IDENTICAL. >0 = seconds a
+             detected commit STALL (lean/mid phase, tilt 12-28 deg, pad NOT on table,
+             >=6 s in phase) must persist before the strategy regresses to stand and
+             re-attempts (max 3 retries). The stall hangs ~10-15 s before the topple;
+             4.0 fires the retry well inside that window. -->
+        <numeric name="lean_commit_retry" data="4.0"/>
         <!-- table_clear_margin (2026-07-27): metres of clearance above the slab FACE that
              guarded parts (pelvis, torso, hips, elbows, wrists, grippers) must keep when
              table_contact_exclusive >= 2. Default 0.08. The barrier charges

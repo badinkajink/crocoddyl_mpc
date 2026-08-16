@@ -32,13 +32,59 @@ otherwise the planner keeps commanding into the retired envelope -- and pinning 
 joint range also fixes a pre-existing inconsistency where right_shoulder_roll had
 ctrlrange="-3.4 0.19" against a joint range of "-3.4 0.38".
 
+FORCERANGE (2026-08-16, icra2026 merge). Actuator <position forcerange> is the
+torque the planner is allowed to ASK for, which is a different question from
+actuatorfrcrange (what the joint can take) and is NOT derivable from CL_Assets --
+it is a mission budget. icra2026 carried it as a hand-written hunk in
+h1_2_modified_magpie.xml.patch; that hunk cannot survive this import, because its
+context lines quote the ctrlranges this script rewrites, so it REJECTED -- and the
+magpie patch is applied through apply_patch_tolerant.cmake, which discards the
+.rej. The build therefore succeeded while silently shipping a model with no
+forcerange at all. Moving the budget here makes it derived, attributed and
+hard-failing like every other number in this file.
+
+  --forcerange none   (default) leave <position> forcerange alone.
+  --forcerange urdf   forcerange = CL_Assets actuatorfrcrange. What the hardware
+                      can take; the planner may ask for all of it.
+  --forcerange real   the budget validated on the REAL robot for the braced lean
+                      (icra2026 49e3591 "model: explicit per-joint actuator
+                      forceranges", reproduced byte-for-byte by REAL_FORCERANGE
+                      below). NOT a ratio of anything shipped: the implied
+                      ratio/URDF-torque set matches no safety-layer config
+                      (checked against default/tight/relax_safety_full.yaml), so
+                      the torques themselves are the primary record.
+
+SCOPING. Pass --forcerange only for the magpie/lean model. The shared base feeds
+stabilize, stand, upper and walk, all tuned against an unbudgeted actuator, and
+icra2026's hunk landed after those derivations for exactly that reason.
+
 usage: _gen_h12_base_limits.py <CL h1_2_handless.xml> <MJPC base in> <out>
+                               [--forcerange none|urdf|real]
 """
 import re
 import sys
 
 # Joints that must be present in BOTH files. Mirrors h12_safety_layer MOTOR_COUNT=27.
 EXPECTED_MOTORS = 27
+
+# --forcerange real. Verbatim from icra2026 49e3591; keyed by joint name so it
+# cannot be silently mis-applied by index the way a patch hunk could.
+REAL_FORCERANGE = {
+    "left_hip_yaw_joint": 54.0,      "right_hip_yaw_joint": 54.0,
+    "left_hip_pitch_joint": 117.0,   "right_hip_pitch_joint": 117.0,
+    "left_hip_roll_joint": 180.0,    "right_hip_roll_joint": 180.0,
+    "left_knee_joint": 270.0,        "right_knee_joint": 270.0,
+    "left_ankle_pitch_joint": 48.6,  "right_ankle_pitch_joint": 48.6,
+    "left_ankle_roll_joint": 32.4,   "right_ankle_roll_joint": 32.4,
+    "torso_joint": 36.0,
+    "left_shoulder_pitch_joint": 28.8, "right_shoulder_pitch_joint": 28.8,
+    "left_shoulder_roll_joint": 28.8,  "right_shoulder_roll_joint": 28.8,
+    "left_shoulder_yaw_joint": 13.0,   "right_shoulder_yaw_joint": 13.0,
+    "left_elbow_joint": 13.0,          "right_elbow_joint": 13.0,
+    "left_wrist_roll_joint": 8.6,      "right_wrist_roll_joint": 8.6,
+    "left_wrist_pitch_joint": 8.6,     "right_wrist_pitch_joint": 8.6,
+    "left_wrist_yaw_joint": 8.6,       "right_wrist_yaw_joint": 8.6,
+}
 
 
 def die(msg):
@@ -70,10 +116,35 @@ def read_cl_limits(path):
     return limits
 
 
+def forcerange_for(name, basis, cl_frc):
+    """Torque budget for one actuator, or None to leave the attribute alone."""
+    if basis == "none":
+        return None
+    if basis == "urdf":
+        return cl_frc                      # already a "lo hi" pair from CL_Assets
+    if name not in REAL_FORCERANGE:
+        die("--forcerange real has no budget for %r. REAL_FORCERANGE must cover "
+            "every actuated joint; reconcile it against the model before building."
+            % name)
+    tau = REAL_FORCERANGE[name]
+    return "%.6g %.6g" % (-tau, tau)
+
+
 def main():
-    if len(sys.argv) != 4:
-        die("usage: %s <CL h1_2_handless.xml> <base in> <out>" % sys.argv[0])
-    cl_path, in_path, out_path = sys.argv[1:4]
+    argv = [a for a in sys.argv[1:] if not a.startswith("--")]
+    basis = "none"
+    for i, a in enumerate(sys.argv):
+        if a == "--forcerange":
+            if i + 1 >= len(sys.argv):
+                die("--forcerange needs a value: none|urdf|real")
+            basis = sys.argv[i + 1]
+            argv = [x for x in argv if x != basis]
+    if basis not in ("none", "urdf", "real"):
+        die("unknown --forcerange %r (want none|urdf|real)" % basis)
+    if len(argv) != 3:
+        die("usage: %s <CL h1_2_handless.xml> <base in> <out> "
+            "[--forcerange none|urdf|real]" % sys.argv[0])
+    cl_path, in_path, out_path = argv
 
     limits = read_cl_limits(cl_path)
     with open(in_path) as f:
@@ -103,9 +174,12 @@ def main():
         joint = re.search(r'\bjoint="([^"]+)"', tag)
         if not joint or joint.group(1) not in limits:
             return tag
-        seen_ctrl.add(joint.group(1))
+        jname = joint.group(1)
+        seen_ctrl.add(jname)
         # ctrlrange tracks the joint range: the planner commands joint targets.
-        return sub_attr(tag, "ctrlrange", limits[joint.group(1)][0])
+        tag = sub_attr(tag, "ctrlrange", limits[jname][0])
+        frc = forcerange_for(jname, basis, limits[jname][1])
+        return tag if frc is None else sub_attr(tag, "forcerange", frc)
 
     xml = re.sub(r"<joint\b[^>]*/?>", fix_joint, xml)
     xml = re.sub(r"<position\b[^>]*/?>", fix_ctrl, xml)
@@ -121,8 +195,8 @@ def main():
 
     with open(out_path, "w") as f:
         f.write(xml)
-    sys.stderr.write("_gen_h12_base_limits: imported %d joint limits from CL_Assets\n"
-                     % len(limits))
+    sys.stderr.write("_gen_h12_base_limits: imported %d joint limits from CL_Assets"
+                     "; forcerange basis=%s\n" % (len(limits), basis))
 
 
 if __name__ == "__main__":
