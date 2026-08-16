@@ -440,6 +440,34 @@
         <numeric name="brace_flat_tol" data="0.05"/>
         <numeric name="brace_flat_gate" data="0.17"/>
         <numeric name="brace_flat_gain" data="4.0"/>
+        <!-- ★★★ brace_flat_target (2026-08-14, rad; 0 = OFF = old |elev|->0).
+             The LEGAL BAND for this arm+gripper on a 0.985 m slab is
+             elevation 0.0 .. +9.4 deg (forearm-borne AND hand-clear AND inside
+             brace_flat_gate) -- see scratch_bench/legal_band.py. 0.086 rad =
+             +4.9 deg = band centre; with brace_flat_tol 0.05 the penalty-free
+             window is +2.0 .. +7.8 deg, entirely inside the band and centred
+             on where the two successful REAL ladders actually held (+5.2 and
+             +8.8 deg median). -->
+        <!-- 0.05 (not the 0.086 band CENTRE): with tol 0.05 the penalty-free window
+             becomes 0.0 .. +5.7 deg -- one-sided, so the illegal hand-digs half of the
+             old symmetric window is gone, while the pull-DOWN from a high inclined
+             stall stays nearly as strong as baseline. Twin A/B (gate_flatband n=5 vs
+             bench20_night2 n=20): 0.086 raised the median elevation 6.9 -> 9.3 deg and
+             cut band occupancy 78 -> 45%, i.e. it over-shot to the band's top edge. -->
+        <numeric name="brace_flat_target" data="0.0"/>
+        <!-- ^ MEASURED VERDICT (08-14): keep the COST aiming at 0. The arm's
+             equilibrium settles ~2-4 deg ABOVE the top of the penalty-free
+             window, so raising the target pushes elevation OUT of the band's
+             top: twin band-occupancy 78% @0.0 (n=20) -> 62% @0.05 (n=5) ->
+             45% @0.086 (n=5), monotonic. Aiming at 0 lands the equilibrium at
+             +6.9 deg = mid-band, which is exactly where the two successful REAL
+             ladders sat (+5.2 / +8.8 deg). The one-sided protection the band
+             analysis calls for therefore belongs in the GATE
+             (brace_flat_gate_lo), not in the cost target. -->
+        <!-- brace_flat_gate_lo (rad, >0): max allowed NEGATIVE elevation for
+             contact to certify. Negative = gripper-first = illegal hand-brace
+             and the stall pose. 0.05 rad = -2.9 deg of noise headroom. -->
+        <numeric name="brace_flat_gate_lo" data="0.05"/>
         <numeric name="sampling_knot_var_growth" data="0.0"/>
         <numeric name="gradient_spline_points" data="5"/>
         <!-- CEM elite-set size: default is max(num_trajectory/10, 2) → only ~3 elites

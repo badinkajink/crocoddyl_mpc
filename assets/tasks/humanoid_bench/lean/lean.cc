@@ -2917,8 +2917,29 @@ void lean::ResidualFn::Residual(const mjModel *model, const mjData *data,
             double fy = data->xpos[3 * b_wr2 + 1] - data->xpos[3 * b_el2 + 1];
             double fz = data->xpos[3 * b_wr2 + 2] - data->xpos[3 * b_el2 + 2];
             double elev = std::atan2(fz, mju_sqrt(fx * fx + fy * fy));
-            plane_err +=
-                flat_gain * act * mju_max(0.0, mju_abs(elev) - flat_tol);
+            // ★★★ 2026-08-14 LEGAL-BAND TARGET (`brace_flat_target`, rad;
+            // 0/absent = OFF = byte-identical |elev| behaviour).
+            // MEASURED (scratch_bench/legal_band.py, pure kinematics on the
+            // build model): with the forearm shell resting on the tabletop,
+            // the Magpie gripper hangs STRUCTURALLY below the forearm line --
+            // no wrist angle can tuck it above (best -11 mm, keyframe -17 mm).
+            // So the hand clears the slab only for elevation > ~0 deg, and the
+            // flat gate caps it at +9.7 deg: the band where the brace is
+            // simultaneously (a) forearm-borne, (b) hand-clear (spec:
+            // FOREARM + FEET ONLY) and (c) gate-legal is 0.0 .. +9.4 deg,
+            // ENTIRELY ONE-SIDED. Driving |elev| -> 0 aims at the BOTTOM EDGE
+            // and puts half the dead-band in the illegal hand-digs region;
+            // the hand then lands first, props the arm, and rotates it past
+            // the gate -- the permanent brace-rung stall of real runs 12/14.
+            // Real-run confirmation (5 runs): the two runs that completed the
+            // ladder held median elevation +5.2 (flat_6, full pipeline) and
+            // +8.8 deg (flat_13) = inside the band; the two that stalled held
+            // +14.8 and +22.5 deg = outside it.
+            int nftg = mj_name2id(model, mjOBJ_NUMERIC, "brace_flat_target");
+            double flat_tgt = nftg >= 0
+                ? model->numeric_data[model->numeric_adr[nftg]] : 0.0;
+            plane_err += flat_gain * act *
+                         mju_max(0.0, mju_abs(elev - flat_tgt) - flat_tol);
           }
         }
       }
@@ -3674,7 +3695,23 @@ void lean::TransitionLocked(mjModel *model, mjData *data) {
                                    data->xpos[3 * b_el3 + 2];
                        double elev =
                            std::atan2(fz, mju_sqrt(fx * fx + fy * fy));
-                       if (mju_abs(elev) > fgate) {
+                       // ★ 2026-08-14 BAND gate, not a symmetric |elev| gate.
+                       // NEGATIVE elevation = wrist/hand below the elbow =
+                       // the GRIPPER is the first thing on the slab (it hangs
+                       // ~17 mm below the forearm line, structurally). That is
+                       // an illegal hand-brace per the FOREARM+FEET-ONLY spec
+                       // AND it is the pose that props the arm into the
+                       // inclined stall. `brace_flat_gate_lo` (rad, >0) caps
+                       // the allowed NEGATIVE excursion; absent/<=0 falls back
+                       // to fgate == the old symmetric behaviour.
+                       int nfgl = mj_name2id(model, mjOBJ_NUMERIC,
+                                             "brace_flat_gate_lo");
+                       double fgate_lo =
+                           (nfgl >= 0 &&
+                            model->numeric_data[model->numeric_adr[nfgl]] > 0.0)
+                               ? model->numeric_data[model->numeric_adr[nfgl]]
+                               : fgate;
+                       if (elev > fgate || elev < -fgate_lo) {
                          inclined = true;
                          on = false;
                        }
