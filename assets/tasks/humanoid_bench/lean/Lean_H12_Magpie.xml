@@ -437,7 +437,7 @@
              Real run 13 lost a completed ladder by 0.1-0.4 deg this way. -->
         <numeric name="standback_stall_sec" data="12.0"/>
         <numeric name="standback_stall_eps" data="0.01"/>
-        <numeric name="standback_stall_max" data="0.05"/>
+        <numeric name="standback_stall_max" data="0.09"/>
         <numeric name="brace_sink_slack" data="0.12"/>
         <numeric name="brace_contact_zmargin" data="0.05"/>
         <numeric name="brace_contact_xyslack" data="0.12"/>
