@@ -88,11 +88,18 @@ do_deps() {
   # checkout runs correctly at 85 ms against a 20 ms control period. Built here
   # rather than documented, because "remember to build the extensions" is the
   # kind of instruction that gets skipped exactly once.
-  if ls "$HERE"/croco_ext/croco_keepout*.so >/dev/null 2>&1; then
+  if ls "$HERE"/croco_ext/croco_keepout*.so >/dev/null 2>&1 \
+     && ls "$HERE"/croco_ext/croco_passive*.so >/dev/null 2>&1; then
     say "extensions already built"
   else
     say "building native extensions (keep-out is a 6x speed-up)"
-    bash "$HERE/croco_ext/build.sh" keepout passive
+    # ONE TARGET PER CALL. build.sh takes a single [keepout|passive|mfd], so
+    # "keepout passive" built keepout and silently dropped passive -- and
+    # croco_env then reported "passive native no", which reads as a missing
+    # optional rather than as this step having half-failed. Exactly the trap
+    # ecc41dc is named after.
+    bash "$HERE/croco_ext/build.sh" keepout
+    bash "$HERE/croco_ext/build.sh" passive
   fi
   # The OpenMP crocoddyl is the SECOND silent knob: without it every
   # `nthreads` request is pinned to 1 with a warning, and the p95 sits ON the
