@@ -279,7 +279,7 @@ Tool added: `mjpc/lean_probe.cc` (+ CMake target `lean_probe`) in the worktree �
 headless driver mirroring `testspeed.cc`'s plan/step loop that logs
 `actuator_force`, `ctrl`, CoM and summed robot↔`table_top_collision` force every
 physics step. Run: `./build/bin/lean_probe --task "Lean H12" --strategy 4 --time 60
---threads 10`. Output `lean_analysis/lean_strat4.csv` (30 000 steps, dt 2 ms).
+--threads 10`. Output `studies/lean_strat4.csv` (30 000 steps, dt 2 ms).
 
 Phase timeline (auto-advanced, no manual scrubbing):
 `stand_up` 0–5 s → `arm_extend_standing` 5–8 → `lean_with_arm_no_brace` 8–11 →
@@ -363,7 +363,7 @@ map the reach-target grid → predicted contact set.
 
 # SESSION 2 (2026-08-03, same day) — QP core works, pose stage does not
 
-Files: `mjpc_icra2026/lean_analysis/contact_select.py`, `render_poses.py`.
+Files: `mjpc_icra2026/studies/contact_select.py`, `render_poses.py`.
 
 ## S2.1 What is validated
 
@@ -402,7 +402,7 @@ correctly, so the machinery is sound.
 **`solve_ik` returns converged-but-physically-impossible poses.** It has no
 collision constraint and no posture regularization, so for a far target it solves
 the reach by driving the torso straight *through* the table top. Rendered evidence:
-`lean_analysis/poses_1.20_0.15_0.90.png` — all 8 subsets show the robot draped on
+`studies/poses_1.20_0.15_0.90.png` — all 8 subsets show the robot draped on
 and through the table rather than leaning over it, with IK residuals of ~0.001
 (i.e. "converged").
 
@@ -1004,7 +1004,7 @@ paper; re-run selection under CL_Assets limits to see whether the conclusion sur
 # SESSION 9 (2026-08-04) — the contact set in the QP is NOT the contact set in the pose
 
 Image reading was still blocked by hook timeouts, so instead of eyeballing renders I
-wrote `lean_analysis/pose_audit.py`, a numeric substitute that checks the failure
+wrote `studies/pose_audit.py`, a numeric substitute that checks the failure
 modes a filmstrip catches: body clearance over the tabletop, feet planted, joints
 pinned at their limits, and — the decisive one — **which bodies are actually
 touching the table**. It caught something a render might well have hidden.

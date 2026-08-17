@@ -91,7 +91,7 @@ not the gripper at all: it was the adapter puck. Both are now generated from
 CL_Assets at build time.</p>
 <p class="meta">2026-08-16 &middot; <code>mujoco_mpc@crocoddyl-mpc</code> &middot;
 <code>_gen_magpie_gripper.py</code>, <code>_gen_h12_base_limits.py</code>,
-<code>croco/</code> &middot; run dir <code>lean_analysis/runs/2026-08-16_session18</code></p>
+<code>croco/</code> &middot; run dir <code>studies/runs/2026-08-16_session18</code></p>
 
 <h2>0 &middot; What changed, and what it invalidates</h2>
 <ul>
@@ -114,34 +114,34 @@ changes which contact subsets are reachable at all. This page is the re-run.</p>
 
 <h2>1 &middot; What the corrected gripper certifies</h2>
 <p>The offline stage enumerates contact subsets and asks a static equilibrium QP which of them a pose can actually hold. It is the cheapest thing in the pipeline and the most sensitive to geometry, so it is where a transposed gripper shows up first.</p>
-<p><b>18 of 26 cells</b> now pick a subset that includes the <b>palm</b>, against <b>0</b> on the old proxy. That is the transposition, stated as an outcome: the old box claimed 12.5&nbsp;mm of hardware on the side the palm brace lands on and 90&deg; of it in the wrong plane, so the palm could not be seated at the same time as the forearm. S15 read that as a property of the robot &mdash; &ldquo;what the CAD-faithful gripper costs is having the palm AND the forearm down at once&rdquo; &mdash; and it was a property of the proxy.</p>
+<p><b>19 of 26 cells</b> now pick a subset that includes the <b>palm</b>, against <b>0</b> on the old proxy. That is the transposition, stated as an outcome: the old box claimed 12.5&nbsp;mm of hardware on the side the palm brace lands on and 90&deg; of it in the wrong plane, so the palm could not be seated at the same time as the forearm. S15 read that as a property of the robot &mdash; &ldquo;what the CAD-faithful gripper costs is having the palm AND the forearm down at once&rdquo; &mdash; and it was a property of the proxy.</p>
 <table><thead><tr><th>cell</th><th colspan="2">corrected</th><th colspan="2">old proxy</th></tr><tr><th></th><th>#adm</th><th>cheapest</th><th>#adm</th><th>cheapest</th></tr></thead><tbody>
-<tr><td><code>x0905_y-235_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>4</td><td>elbow+forearm</td></tr>
-<tr class="hi"><td><code>x0905_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y+000_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y+000_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow+forearm</td></tr>
-<tr class="hi"><td><code>x1050_y+120_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow+forearm</td></tr>
-<tr class="hi"><td><code>x1050_y+120_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>0</td><td>&mdash;</td></tr>
-<tr class="hi"><td><code>x1050_y-120_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-120_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-235_z1020_dy+000</code></td><td>5</td><td>elbow+palm</td><td>4</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-235_z1020_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-235_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-280_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1050_y-280_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y+000_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y+000_z1098_dy-120</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y-120_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y-120_z1098_dy-120</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y-235_z1020_dy+000</code></td><td>4</td><td>elbow+palm</td><td>&mdash;</td><td>&mdash;</td></tr>
-<tr class="hi"><td><code>x1150_y-235_z1020_dy-120</code></td><td>5</td><td>elbow+palm</td><td>&mdash;</td><td>&mdash;</td></tr>
-<tr class="hi"><td><code>x1150_y-235_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y-280_z1098_dy+000</code></td><td>4</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1150_y-280_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1250_y-235_z1098_dy+000</code></td><td>4</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
-<tr class="hi"><td><code>x1250_y-235_z1098_dy-120</code></td><td>4</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x0905_y-235_z1098_dy+000</code></td><td>6</td><td>elbow+forearm+palm</td><td>4</td><td>elbow+forearm</td></tr>
+<tr class="hi"><td><code>x0905_y-235_z1098_dy-120</code></td><td>6</td><td>palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y+000_z1098_dy+000</code></td><td>6</td><td>elbow+forearm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y+000_z1098_dy-120</code></td><td>6</td><td>elbow+forearm+palm</td><td>3</td><td>elbow+forearm</td></tr>
+<tr><td><code>x1050_y+120_z1098_dy+000</code></td><td>6</td><td>elbow+forearm</td><td>3</td><td>elbow+forearm</td></tr>
+<tr class="hi"><td><code>x1050_y+120_z1098_dy-120</code></td><td>6</td><td>elbow+forearm+palm</td><td>0</td><td>&mdash;</td></tr>
+<tr class="hi"><td><code>x1050_y-120_z1098_dy+000</code></td><td>6</td><td>elbow+forearm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-120_z1098_dy-120</code></td><td>6</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1020_dy+000</code></td><td>6</td><td>elbow+palm</td><td>4</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1020_dy-120</code></td><td>6</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1098_dy+000</code></td><td>6</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1098_dy-120</code></td><td>6</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-280_z1098_dy+000</code></td><td>6</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-280_z1098_dy-120</code></td><td>6</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y+000_z1098_dy+000</code></td><td>6</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y+000_z1098_dy-120</code></td><td>6</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-120_z1098_dy+000</code></td><td>6</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-120_z1098_dy-120</code></td><td>6</td><td>elbow+forearm+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1020_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1020_dy-120</code></td><td>6</td><td>elbow+forearm+palm</td><td>1</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1098_dy+000</code></td><td>6</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1098_dy-120</code></td><td>6</td><td>elbow+forearm+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-280_z1098_dy+000</code></td><td>6</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-280_z1098_dy-120</code></td><td>6</td><td>elbow+forearm+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1250_y-235_z1098_dy+000</code></td><td>4</td><td>elbow+forearm+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1250_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
 </tbody></table>
 <p class="note">Old-proxy column is the same enumeration run against the pre-fix <code>Lean_H12_Magpie.xml</code>, same targets, same stances, same code &mdash; only the model differs.</p>
 <h2>2 &middot; The gripper</h2>
@@ -149,7 +149,38 @@ changes which contact subsets are reachable at all. This page is the re-run.</p>
 <figure><video src="media/s18_gripper_orbit.mp4" autoplay loop muted playsinline controls></video><figcaption>The corrected gripper at the braced pose, visual mesh and collision proxy overlaid. The proxy is what the planner reasons about; the mesh is what it stands for, and they now agree.</figcaption></figure>
 <figure><video src="media/s18_gripper_wrist_roll.mp4" autoplay loop muted playsinline controls></video><figcaption>The brace wrist rolled through &plusmn;100&deg;. The certified brace rolls it ~89&deg; to put the jaws <i>lateral</i>; against the transposed proxy that same roll put them up and down, which is the configuration the study rejected for hanging a finger at the wood.</figcaption></figure>
 <h2>3 &middot; Does it survive</h2>
-<p class="note">Not measured yet &mdash; this section fills in when <code>grid.json</code> exists.</p>
+<p>Each cell is planned once, then replayed in MuJoCo under the MPC. <b>Nominal</b> is the plan with no disturbance at all &mdash; it asks whether the trajectory is executable. <b>winch1</b> perturbs how the robot arrives: 20&nbsp;mm of placement, 10&nbsp;mm of height, 50&nbsp;mrad of heading, 20&nbsp;mrad of tilt, 0.02&nbsp;rad of joint noise.</p>
+<p><b>Nominal: 25 of 26 cells.</b> That is the number the palm-site fix bought &mdash; before it, every <code>elbow+palm</code> cell failed nominal at 0%, because the plan was aiming a contact point that sat 18&nbsp;mm inside the gripper.</p>
+<p><b>winch1: 35%</b> (45 of 130 runs), against S17's 75%. <i>Do not read this as a controller regression yet.</i> Seeds 1, 3, 5 fail in <b>every one of the 26 cells</b>, and 22 cells share the identical outcome sequence end to end. The result is therefore set by which disturbance the seed drew, not by the target &mdash; and five draws is too few to separate five correlated variables. The leading suspect is start height: the two surviving seeds are the two that start low (&minus;15 and &minus;21&nbsp;mm); all three that fall start at or above nominal. Isolating it needs a fixed-offset sweep, which the profile cannot currently express (it takes standard deviations, not offsets). Open.</p>
+<table><thead><tr><th>cell</th><th>mode</th><th>nominal</th><th>winch1</th><th>reach (mm)</th></tr></thead><tbody>
+<tr><td><code>x0905_y-235_z1098_dy+000</code></td><td>elbow+forearm+palm</td><td>ok</td><td>40%</td><td>1136</td></tr>
+<tr><td><code>x0905_y-235_z1098_dy-120</code></td><td>palm</td><td>ok</td><td>40%</td><td>1303</td></tr>
+<tr><td><code>x1050_y-235_z1098_dy+000</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1200</td></tr>
+<tr><td><code>x1050_y-235_z1098_dy-120</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1413</td></tr>
+<tr><td><code>x1150_y-235_z1098_dy+000</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1064</td></tr>
+<tr><td><code>x1150_y-235_z1098_dy-120</code></td><td>elbow+forearm+palm</td><td>ok</td><td>40%</td><td>1156</td></tr>
+<tr><td><code>x1250_y-235_z1098_dy+000</code></td><td>elbow+forearm+palm</td><td>ok</td><td>40%</td><td>1095</td></tr>
+<tr><td><code>x1250_y-235_z1098_dy-120</code></td><td>elbow+forearm</td><td>ok</td><td>20%</td><td>1146</td></tr>
+<tr><td><code>x1050_y-280_z1098_dy+000</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1363</td></tr>
+<tr><td><code>x1050_y-280_z1098_dy-120</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1353</td></tr>
+<tr><td><code>x1050_y-120_z1098_dy+000</code></td><td>elbow+forearm</td><td>ok</td><td>40%</td><td>1024</td></tr>
+<tr><td><code>x1050_y-120_z1098_dy-120</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1024</td></tr>
+<tr><td><code>x1050_y+000_z1098_dy+000</code></td><td>elbow+forearm</td><td>ok</td><td>40%</td><td>1225</td></tr>
+<tr><td><code>x1050_y+000_z1098_dy-120</code></td><td>elbow+forearm+palm</td><td>ok</td><td>0%</td><td>1067</td></tr>
+<tr><td><code>x1050_y+120_z1098_dy+000</code></td><td>elbow+forearm</td><td>ok</td><td>40%</td><td>998</td></tr>
+<tr class="hi"><td><code>x1050_y+120_z1098_dy-120</code></td><td>elbow+forearm+palm</td><td><b>FAIL</b></td><td>0%</td><td>1024</td></tr>
+<tr><td><code>x1150_y-280_z1098_dy+000</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1161</td></tr>
+<tr><td><code>x1150_y-280_z1098_dy-120</code></td><td>elbow+forearm+palm</td><td>ok</td><td>40%</td><td>1094</td></tr>
+<tr><td><code>x1150_y-120_z1098_dy+000</code></td><td>elbow+forearm</td><td>ok</td><td>40%</td><td>1101</td></tr>
+<tr><td><code>x1150_y-120_z1098_dy-120</code></td><td>elbow+forearm+palm</td><td>ok</td><td>40%</td><td>1183</td></tr>
+<tr><td><code>x1150_y+000_z1098_dy+000</code></td><td>elbow+forearm</td><td>ok</td><td>40%</td><td>1162</td></tr>
+<tr><td><code>x1150_y+000_z1098_dy-120</code></td><td>elbow+forearm</td><td>ok</td><td>0%</td><td>1067</td></tr>
+<tr><td><code>x1050_y-235_z1020_dy+000</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1250</td></tr>
+<tr><td><code>x1050_y-235_z1020_dy-120</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1349</td></tr>
+<tr><td><code>x1150_y-235_z1020_dy+000</code></td><td>elbow+palm</td><td>ok</td><td>40%</td><td>1067</td></tr>
+<tr><td><code>x1150_y-235_z1020_dy-120</code></td><td>elbow+forearm+palm</td><td>ok</td><td>40%</td><td>1389</td></tr>
+</tbody></table>
+<p class="note">Solve time here is 84.7&nbsp;ms mean / 138.8&nbsp;ms p95 against a 20&nbsp;ms control period, because this environment's crocoddyl is not the OpenMP build S15 measured 12.4&nbsp;ms on. Survival is unaffected (the replay is not real-time); the timing numbers are not comparable to S15/S17 until that build is restored.</p>
 
 <h2>4 &middot; Where this leaves the deploy</h2>
 <p>The controller was always deployment-shaped and it was hard to see: the replay

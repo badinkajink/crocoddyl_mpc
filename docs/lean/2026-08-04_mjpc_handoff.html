@@ -81,7 +81,7 @@ friction stops mattering below <span class="m">μ&nbsp;=&nbsp;0.3</span>, and MJ
 established a brace in 12&nbsp;s.</p>
 <p class="meta">§11 supersedes §3.1 and restates §3.2 · 2026-08-04 · branch <code>asset-unification</code> · follows
 <a href="2026-08-04_allen_parity.html">Allen parity, and what the real table broke</a> ·
-code in <code>lean_analysis/</code> · run dir <code>lean_analysis/runs/2026-08-04_session11/</code></p>
+code in <code>studies/</code> · run dir <code>studies/runs/2026-08-04_session11/</code></p>
 
 <div class="note warn">
 <b>Correction to the previous page.</b> Its reach-envelope table reported <code>slvd=NO</code> for the
@@ -685,7 +685,7 @@ these poses — only that the poses exist and are admissible.</li>
 </ul>
 
 <h2>10. Repro</h2>
-<pre>cd lean_analysis
+<pre>cd studies
 
 # §0  torque bases
 python3 -c "import contact_select as cs, mujoco; m,_=cs.load(0); print(cs.torque_limits(m,'clamp'))"
@@ -727,7 +727,7 @@ build/bin/testspeed --task="Lean H12 Magpie" --total_time=8 --strategy=22 \
     --start_qpos=runs/2026-08-04_session11/qp_brace_qpos.txt \
     --dump_traj=runs/2026-08-04_session11/hold_qp_0.csv</pre>
 
-<p class="meta">All results: <code>lean_analysis/runs/2026-08-04_session11/</code>.
+<p class="meta">All results: <code>studies/runs/2026-08-04_session11/</code>.
 Torque basis <code>clamp</code> (0.9 × TAU_ESTOP) throughout, model <code>Lean_H12_Magpie.xml</code>,
 sites <code>v2</code>, μ = 0.6 unless swept.</p>
 

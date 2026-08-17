@@ -9,8 +9,8 @@ launch takes the survival rate from 38% to 92%, and from 25% to 75% under a dist
 matches how this robot is actually instantiated. Six other things that look like the fix are measured
 and are not.</p>
 
-<p class="meta">2026-08-14 · <code>lean_analysis/croco_{robust,grid,plan,run,replay}.py</code> ·
-run dir <code>lean_analysis/runs/2026-08-14_session17/</code> ·
+<p class="meta">2026-08-14 · <code>studies/croco_{robust,grid,plan,run,replay}.py</code> ·
+run dir <code>studies/runs/2026-08-14_session17/</code> ·
 follows <a href="2026-08-13_mpc_threads.html">the OpenMP build</a> and
 <a href="2026-08-13_mpc_speed.html">the cost-stack page</a> ·
 crocoddyl 3.2.1 (OpenMP build), Pinocchio 4.1.0, 12 threads,
@@ -440,7 +440,7 @@ re-scored; on the two cells checked so far that is worth +12 points of survival 
 
 <h2>11 · Reproducing this</h2>
 
-<pre>cd lean_analysis
+<pre>cd studies
 OMP=$HOME/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1
 R=runs/2026-08-14_session17
 

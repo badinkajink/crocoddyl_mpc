@@ -1,0 +1,9 @@
+x=0.52 z=0.95 -> ['palm']
+x=0.76 z=0.95 -> ['elbow', 'forearm', 'torso']
+x=1.00 z=0.95 -> ['elbow', 'forearm', 'hip', 'torso']
+x=1.24 z=0.95 -> ['elbow', 'forearm', 'hip']
+x=0.52 z=1.09 -> ['elbow', 'forearm', 'hip', 'torso']
+x=0.76 z=1.09 -> ['elbow', 'forearm', 'hip', 'torso']
+x=1.00 z=1.09 -> ['elbow', 'forearm', 'hip']
+x=1.24 z=1.09 -> ['elbow', 'forearm', 'hip']
+wrote sweep5.json 8 targets

@@ -77,7 +77,7 @@ with it.</p>
 <code>Lean Simple H12 Magpie</code> · new
 <code>mjpc/tasks/humanoid_bench/lean/lean_simple.{h,cc}</code> +
 <code>Lean_Simple_H12_Magpie.xml</code> · runs and figures under
-<code>lean_analysis/runs/2026-08-06_simple/</code></p>
+<code>studies/runs/2026-08-06_simple/</code></p>
 
 <div class="note ok"><b>What this page claims.</b> (1) An 11-term static cost reaches where the
 35-term keyframe stack did not: <b>+0.31 m to +0.70 m</b> of reach gain against <b>−0.041 m</b>,
@@ -216,7 +216,7 @@ not record what it was asked to do is not evidence.</p>
 
 <p>A seat cost needs a distance that is zero where MuJoCo starts reporting contact — not before (the
 planner stops short of the table) and not after (it demands penetration it cannot get, which is the
-<code>Brace Pos</code> defect). <code>lean_analysis/seat_calib.py</code> fits that by translating a
+<code>Brace Pos</code> defect). <code>studies/seat_calib.py</code> fits that by translating a
 braced pose vertically in 5 mm steps and recording both the analytic measure and whether the
 narrowphase reports link-vs-slab contact:</p>
 
@@ -594,14 +594,14 @@ it works by moving the target rather than by sharpening the cost.</p>
     --weights="Brace Elbow=0,Brace Forearm=0,Brace Palm=300" \
     --numeric="reach_target=1.15|-0.2348|1.0982" --dump_traj=run.csv --dump_stride=5
 
-python3 lean_analysis/seat_calib.py                       # the seat calibration
-python3 lean_analysis/simple_matrix.py --out runs/&lt;dir&gt; --seeds 2 --seconds 18 \
+python3 studies/seat_calib.py                       # the seat calibration
+python3 studies/simple_matrix.py --out runs/&lt;dir&gt; --seeds 2 --seconds 18 \
         --jobs 1 --resume                                 # the 13-cell matrix
-python3 lean_analysis/simple_metrics.py --run runs/&lt;dir&gt;  # tables + figures
-python3 lean_analysis/simple_region.py  --run runs/&lt;dir&gt; \
+python3 studies/simple_metrics.py --run runs/&lt;dir&gt;  # tables + figures
+python3 studies/simple_region.py  --run runs/&lt;dir&gt; \
         --cells far_brace_s0,far_none_s0 --times 0,3,6,9,12,15,18
-python3 lean_analysis/simple_region_svg.py runs/&lt;dir&gt;/regions_all.json panels.html
-python3 lean_analysis/simple_video.py runs/&lt;dir&gt;/far_brace_s0.csv --out docs/lean/media</pre>
+python3 studies/simple_region_svg.py runs/&lt;dir&gt;/regions_all.json panels.html
+python3 studies/simple_video.py runs/&lt;dir&gt;/far_brace_s0.csv --out docs/lean/media</pre>
 
 <div class="note warn"><b>Run the rollouts one at a time.</b> A single MJPC process on this model
 holds <b>~7–8 GB</b> resident — a fixed pool of <code>kMaxTrajectory = 128</code> trajectories,

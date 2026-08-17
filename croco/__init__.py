@@ -1,6 +1,6 @@
 """The crocoddyl braced-lean controller, as a library rather than a script pile.
 
-WHAT LIVES HERE vs in `studies/` (was `lean_analysis/`): this package is the
+WHAT LIVES HERE vs in `studies/` (was `studies/`): this package is the
 RUNTIME -- the things that have to run on a robot. Everything that measures,
 sweeps, scores or renders stays a study. The split is the deploy boundary, so
 "can this ship" is answerable by looking at the import graph.

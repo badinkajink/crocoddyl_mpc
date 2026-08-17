@@ -73,7 +73,7 @@ Intel(R) Core(TM) Ultra 7 265KF (20 threads), commit <code>d77b069fd</code>. Nod
 microseconds; MPC step times are means over the 200 control steps of a full 4 s MuJoCo replay,
 because there the question is what a control period costs in practice. n<sub>v</sub> =
 33, n<sub>u</sub> = 27, n<sub>x</sub> = 66. Everything below is regenerated
-from <code>runs/2026-08-13_session15/</code> by <code>lean_analysis/croco_speed_page.py</code>.</p>
+from <code>runs/2026-08-13_session15/</code> by <code>studies/croco_speed_page.py</code>.</p>
 
 <div class="note warn"><b>Which model and which maneuver, because both moved under this page.</b>
 S14's CAD-faithful brace surfaces landed while this session was running: the wrist pad became a
@@ -459,7 +459,7 @@ Below it there is no more accounting to do; there is a different action model.</
 
 <h2>12. Reproducing this</h2>
 
-<pre>cd lean_analysis
+<pre>cd studies
 bash croco_ext/build.sh                    # keepout (activation + fused cost), passive, mfd
 python croco_ext/test_keepout.py           # the fused cost is the same objective
 python croco_ext/test_passive.py           # the C++ actuation is the same model

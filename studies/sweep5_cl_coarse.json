@@ -1,0 +1,4059 @@
+[
+ {
+  "x": 0.52,
+  "y": 0.15,
+  "z": 0.95,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": true,
+    "reach": 0.003919468609517473,
+    "pen": -0.0,
+    "placed": true,
+    "base_res": 3.962165205854051e-13,
+    "max_ratio": 0.24564267031607637,
+    "effort": 0.18139057381953683,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.005708076547329492,
+    "pen": 0.0020478365968589866,
+    "placed": true,
+    "base_res": 1.5918972240480786e-13,
+    "max_ratio": 0.24432828466491976,
+    "effort": 0.25775177839017777,
+    "brace": 91.9709940052932,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0039471621986685995,
+    "pen": 0.002000000000000418,
+    "placed": true,
+    "base_res": 6.016377959368544e-13,
+    "max_ratio": 0.23703529370873042,
+    "effort": 0.22139297179002526,
+    "brace": 89.91727646316608,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.004070225678341714,
+    "pen": 0.0019999999999999254,
+    "placed": true,
+    "base_res": 1.2715932173610093e-13,
+    "max_ratio": 0.21894037939729463,
+    "effort": 0.09203446397347309,
+    "brace": 9.363309092492736,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0037482622820558097,
+    "pen": 0.0015348722045771604,
+    "placed": true,
+    "base_res": 1.5105709323887095e-13,
+    "max_ratio": 0.2456832261234412,
+    "effort": 0.24276379860530511,
+    "brace": 78.67655554662372,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003350962811499006,
+    "pen": 0.00199999999999996,
+    "placed": true,
+    "base_res": 1.5044206127690302e-13,
+    "max_ratio": 0.2658491948700124,
+    "effort": 0.3375835922400405,
+    "brace": 80.77091353461437,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.004359590234844551,
+    "pen": 0.002000000000000529,
+    "placed": true,
+    "base_res": 6.241588138270302e-13,
+    "max_ratio": 0.2057711790344674,
+    "effort": 0.1588660903795177,
+    "brace": 99.46176716855702,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.004791988477194727,
+    "pen": 0.0020000000000004806,
+    "placed": true,
+    "base_res": 3.282876731842219e-13,
+    "max_ratio": 0.2306425009306543,
+    "effort": 0.24886458351547186,
+    "brace": 88.4428750843676,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0036346012228563045,
+    "pen": 0.002000032017207068,
+    "placed": true,
+    "base_res": 8.541764754656463e-14,
+    "max_ratio": 0.24495865810002027,
+    "effort": 0.22264409603116883,
+    "brace": 107.00925538748724,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0035359562257411214,
+    "pen": 0.0020000007881924714,
+    "placed": true,
+    "base_res": 5.083118873746464e-13,
+    "max_ratio": 0.2446313016392131,
+    "effort": 0.2437382929445674,
+    "brace": 106.67641636712531,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.004368330703444185,
+    "pen": 0.002000000000000085,
+    "placed": true,
+    "base_res": 1.1427598452979932e-13,
+    "max_ratio": 0.24629618837372533,
+    "effort": 0.3107387413708837,
+    "brace": 81.00791938338428,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0036867875796862118,
+    "pen": 0.002000000000000307,
+    "placed": true,
+    "base_res": 9.15619337705364e-13,
+    "max_ratio": 0.20257462358509382,
+    "effort": 0.17956072541020815,
+    "brace": 105.1984574727973,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003908529129406788,
+    "pen": 0.0030991961227501696,
+    "placed": true,
+    "base_res": 5.220740402616997e-13,
+    "max_ratio": 0.2452920737150894,
+    "effort": 0.21768802988285985,
+    "brace": 98.8083962276152,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.003444074072971022,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 1.1410262785569032e-13,
+    "max_ratio": 0.21967493575884858,
+    "effort": 0.2567156679075622,
+    "brace": 94.57317671395786,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0051266364192105365,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 2.3280413402087233e-13,
+    "max_ratio": 0.2515150786005263,
+    "effort": 0.28402174185658113,
+    "brace": 79.84764466946588,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.009155304712300062,
+    "pen": 0.002277693348475468,
+    "placed": true,
+    "base_res": 1.0536572653425254e-12,
+    "max_ratio": 0.23885294454890044,
+    "effort": 0.24021716472539562,
+    "brace": 105.94362533893216,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.004794974546816784,
+    "pen": 0.002000000000000071,
+    "placed": true,
+    "base_res": 9.91404867570679e-13,
+    "max_ratio": 0.2257681513180545,
+    "effort": 0.21665169918138832,
+    "brace": 94.28019641767314,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0036084978582346166,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 5.021005446635526e-13,
+    "max_ratio": 0.20180605020621392,
+    "effort": 0.13411346893315737,
+    "brace": 111.05843787895938,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0025814816253814468,
+    "pen": 0.0020000000000001718,
+    "placed": true,
+    "base_res": 8.042037253476668e-13,
+    "max_ratio": 0.24501858851753078,
+    "effort": 0.24196351108884412,
+    "brace": 102.84270583012407,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0036626461154862827,
+    "pen": 0.0020000000000002897,
+    "placed": true,
+    "base_res": 5.692163577055879e-13,
+    "max_ratio": 0.20228865065950696,
+    "effort": 0.1944122310133399,
+    "brace": 104.20912072826162,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003278900294082025,
+    "pen": 0.002000000000000085,
+    "placed": true,
+    "base_res": 4.107268241482765e-13,
+    "max_ratio": 0.2395787772974615,
+    "effort": 0.21443427542096158,
+    "brace": 104.05317034254915,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00728375465365733,
+    "pen": 0.0024140758285713625,
+    "placed": true,
+    "base_res": 9.343832875744672e-13,
+    "max_ratio": 0.22641049740217317,
+    "effort": 0.16856919912287238,
+    "brace": 112.59608920265372,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0038168910940668977,
+    "pen": 0.00199999999999996,
+    "placed": true,
+    "base_res": 2.632426586977015e-13,
+    "max_ratio": 0.21010791677225896,
+    "effort": 0.24171260454459575,
+    "brace": 99.69482663517238,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005160813849124691,
+    "pen": 0.0020000000000001683,
+    "placed": true,
+    "base_res": 6.253096596061535e-13,
+    "max_ratio": 0.24593309433683952,
+    "effort": 0.25028806571610573,
+    "brace": 93.63889096131678,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.010600005236119535,
+    "pen": 0.002010105913656496,
+    "placed": true,
+    "base_res": 1.587930999196677e-13,
+    "max_ratio": 0.2252068681144007,
+    "effort": 0.18878705980354146,
+    "brace": 111.36168534375443,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00933143099208776,
+    "pen": 0.0020142059301566234,
+    "placed": true,
+    "base_res": 1.1393571496636707e-13,
+    "max_ratio": 0.22590332155626786,
+    "effort": 0.22289421073783353,
+    "brace": 100.89834594476298,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0036629831684333743,
+    "pen": 0.002000000000000307,
+    "placed": true,
+    "base_res": 7.24977777314445e-13,
+    "max_ratio": 0.20229058449160084,
+    "effort": 0.17074701336856565,
+    "brace": 106.9448648710531,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0025655737114931012,
+    "pen": 0.0020000000000000503,
+    "placed": true,
+    "base_res": 6.530780283639231e-13,
+    "max_ratio": 0.26411096359796155,
+    "effort": 0.26330613317017865,
+    "brace": 99.51133325467394,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0067270736728437825,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 1.260171236200034e-13,
+    "max_ratio": 0.209250249147913,
+    "effort": 0.13366351722991535,
+    "brace": 115.12884492827018,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.006729103730319228,
+    "pen": 0.0020000000000001926,
+    "placed": true,
+    "base_res": 1.1015561013452563e-13,
+    "max_ratio": 0.2106906774886706,
+    "effort": 0.16595970720864403,
+    "brace": 108.93010826420291,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.009008543815779403,
+    "pen": 0.005260270015670074,
+    "placed": true,
+    "base_res": 2.7297329649728126e-13,
+    "max_ratio": 0.2481537196711009,
+    "effort": 0.22148021259878076,
+    "brace": 105.35904939023432,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.006729048685211906,
+    "pen": 0.0019999999999999254,
+    "placed": true,
+    "base_res": 3.935865735709068e-13,
+    "max_ratio": 0.21066685479658803,
+    "effort": 0.15339423392774104,
+    "brace": 109.60347525257478,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "palm"
+  ]
+ },
+ {
+  "x": 0.76,
+  "y": 0.15,
+  "z": 0.95,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": true,
+    "reach": 0.0058791108651715185,
+    "pen": 0.001999999999999974,
+    "placed": true,
+    "base_res": 4.709931959400403e-13,
+    "max_ratio": 0.4855320798761086,
+    "effort": 0.6081899165592729,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.005131866880540561,
+    "pen": 0.002065372469647126,
+    "placed": true,
+    "base_res": 1.611976544107498e-13,
+    "max_ratio": 0.33963692675385465,
+    "effort": 0.36058011215705027,
+    "brace": 108.06259069242621,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.004974544671774184,
+    "pen": 0.0019999999999992454,
+    "placed": true,
+    "base_res": 1.8313390443885236e-13,
+    "max_ratio": 0.27744255329403844,
+    "effort": 0.2561366069348197,
+    "brace": 108.21149761114323,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0033314586587125314,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 3.0758588140434446e-14,
+    "max_ratio": 0.5030972275425956,
+    "effort": 0.5192583731913364,
+    "brace": 61.1762278299266,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.003271189966922885,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 2.362134051567939e-13,
+    "max_ratio": 0.3235949686493128,
+    "effort": 0.33640873123873793,
+    "brace": 108.3810953550556,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.01569827847661617,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 1.1920962535426371e-13,
+    "max_ratio": 0.2448881172420674,
+    "effort": 0.33705423734062173,
+    "brace": 101.85279149596575,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.005084900446314711,
+    "pen": 0.002000000000000158,
+    "placed": true,
+    "base_res": 4.052116932479893e-13,
+    "max_ratio": 0.23848851077368238,
+    "effort": 0.20185818721486393,
+    "brace": 103.77969146873934,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.005091748442434226,
+    "pen": 0.002000000000000078,
+    "placed": true,
+    "base_res": 1.1532433318237957e-13,
+    "max_ratio": 0.2907809228322099,
+    "effort": 0.27312700873303825,
+    "brace": 87.02056391254902,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.005057971109391525,
+    "pen": 0.0016412485443877758,
+    "placed": true,
+    "base_res": 3.550123139120939e-13,
+    "max_ratio": 0.2449636467087218,
+    "effort": 0.24031553376277986,
+    "brace": 110.79123962299471,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00806456202059079,
+    "pen": 0.0019999846995912523,
+    "placed": true,
+    "base_res": 2.091111790248096e-13,
+    "max_ratio": 0.24503327764760474,
+    "effort": 0.23076800095968036,
+    "brace": 97.89399241368899,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.005016543262052919,
+    "pen": 0.0019999999999998005,
+    "placed": true,
+    "base_res": 1.154469670841781e-13,
+    "max_ratio": 0.3841570256645067,
+    "effort": 0.3349097670606118,
+    "brace": 83.98556309630588,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.004443140675598713,
+    "pen": 0.0020000000000004806,
+    "placed": true,
+    "base_res": 3.1721774393938346e-13,
+    "max_ratio": 0.24073937888640687,
+    "effort": 0.16510068069169148,
+    "brace": 109.93443300869014,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008012987693153444,
+    "pen": 0.0020000000000001874,
+    "placed": true,
+    "base_res": 6.028068375038173e-13,
+    "max_ratio": 0.24543869749928213,
+    "effort": 0.16464124330598354,
+    "brace": 98.01641399120734,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0032711899669229595,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 1.1457867379444857e-13,
+    "max_ratio": 0.2859336413334922,
+    "effort": 0.25488805626443994,
+    "brace": 91.35690210991461,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.01569827847661507,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 1.1577449138664577e-13,
+    "max_ratio": 0.261227686506907,
+    "effort": 0.29363764804475745,
+    "brace": 86.53556322403489,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008545796359794178,
+    "pen": 0.004749852514669556,
+    "placed": true,
+    "base_res": 5.114095554229305e-13,
+    "max_ratio": 0.24502182001177772,
+    "effort": 0.25977472758321324,
+    "brace": 107.67034884509678,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.005091701791857602,
+    "pen": 0.0020000000000000642,
+    "placed": true,
+    "base_res": 2.3110779663204817e-14,
+    "max_ratio": 0.23860724517775866,
+    "effort": 0.2152135233697845,
+    "brace": 89.501618598562,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.004609529207398211,
+    "pen": 0.0019999999999999254,
+    "placed": true,
+    "base_res": 8.379199672247088e-13,
+    "max_ratio": 0.24111276497676462,
+    "effort": 0.15541062201639014,
+    "brace": 111.59162215563285,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0035562267233995373,
+    "pen": 0.0020000000000000642,
+    "placed": true,
+    "base_res": 2.4942000376116355e-13,
+    "max_ratio": 0.2461430584845747,
+    "effort": 0.1373311381426018,
+    "brace": 107.44016125074158,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.004641957832528619,
+    "pen": 0.001999999999999974,
+    "placed": true,
+    "base_res": 3.2341526557348775e-13,
+    "max_ratio": 0.24112877422557177,
+    "effort": 0.2094728411771875,
+    "brace": 100.63540801405073,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003585774750514635,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 3.153213741808821e-13,
+    "max_ratio": 0.24612624216260734,
+    "effort": 0.17688691972285217,
+    "brace": 97.12646529050035,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005613539676103613,
+    "pen": 0.003700808462360698,
+    "placed": true,
+    "base_res": 8.349531737723175e-13,
+    "max_ratio": 0.24486858255365584,
+    "effort": 0.1858054967382496,
+    "brace": 113.7840748259696,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.004484216599318343,
+    "pen": 0.0019999999999998977,
+    "placed": true,
+    "base_res": 1.4837166048920482e-14,
+    "max_ratio": 0.2858613337697241,
+    "effort": 0.23410855722672497,
+    "brace": 97.97233253118043,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.018248826922592845,
+    "pen": 0.0021790518734151124,
+    "placed": true,
+    "base_res": 1.708445301822023e-14,
+    "max_ratio": 0.2884271164434542,
+    "effort": 0.2984722866879344,
+    "brace": 93.77445884020284,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00904223695198052,
+    "pen": 0.0020071873820559707,
+    "placed": true,
+    "base_res": 5.384204409299605e-13,
+    "max_ratio": 0.24509159836488884,
+    "effort": 0.21081011632582636,
+    "brace": 112.13671075981354,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005683466430596825,
+    "pen": 0.00813908192843718,
+    "placed": true,
+    "base_res": 1.1137700720795299e-14,
+    "max_ratio": 0.2444002205466089,
+    "effort": 0.24124911658478845,
+    "brace": 101.76574536721624,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.004641600299666764,
+    "pen": 0.001999999999999908,
+    "placed": true,
+    "base_res": 9.900566317071486e-13,
+    "max_ratio": 0.24112858418745464,
+    "effort": 0.18064010435784714,
+    "brace": 102.88386656361675,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0035853890895697973,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 3.0646533709485007e-13,
+    "max_ratio": 0.24612645128018226,
+    "effort": 0.16315656106873813,
+    "brace": 101.30648963371324,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004448412295810517,
+    "pen": 0.0020039633981054905,
+    "placed": true,
+    "base_res": 1.7458604113792552e-13,
+    "max_ratio": 0.2440307603163413,
+    "effort": 0.14138296070669323,
+    "brace": 115.24602966859713,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0044261638148376135,
+    "pen": 0.0019999999999999254,
+    "placed": true,
+    "base_res": 3.1356000404619065e-13,
+    "max_ratio": 0.24408499415535,
+    "effort": 0.16484587579325238,
+    "brace": 107.4371682064828,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008675845109732593,
+    "pen": 0.0020083664665928175,
+    "placed": true,
+    "base_res": 2.432260223615467e-13,
+    "max_ratio": 0.2520141527049813,
+    "effort": 0.24398922345306726,
+    "brace": 105.73185010388623,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0044266407852984625,
+    "pen": 0.0020000000000000087,
+    "placed": true,
+    "base_res": 3.992173044224403e-13,
+    "max_ratio": 0.2440842467402401,
+    "effort": 0.15253529703582097,
+    "brace": 108.70693994727537,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "torso"
+  ]
+ },
+ {
+  "x": 1.0,
+  "y": 0.15,
+  "z": 0.95,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": false,
+    "reach": 0.009171729619659622,
+    "pen": 0.0020000000140451696,
+    "placed": true,
+    "base_res": 12.054154120986581,
+    "max_ratio": 0.6252486075119805,
+    "effort": 0.9480401591823131,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.0034449354482369945,
+    "pen": 0.00382508615651379,
+    "placed": true,
+    "base_res": 2.569542774998326e-14,
+    "max_ratio": 0.5018051698502788,
+    "effort": 0.5417690324053624,
+    "brace": 135.94597796619718,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0035744175235789748,
+    "pen": 0.001999999999999995,
+    "placed": true,
+    "base_res": 2.2061894264123476e-14,
+    "max_ratio": 0.40086699639328316,
+    "effort": 0.38519435608641084,
+    "brace": 134.70167991085276,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.009171615847568565,
+    "pen": 0.002000000012246997,
+    "placed": true,
+    "base_res": 1.288155371928833e-13,
+    "max_ratio": 0.833022549656925,
+    "effort": 1.2158129845823349,
+    "brace": 79.02168952957743,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": false,
+    "reach": 0.0025361784039727824,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 19.668636744867367,
+    "max_ratio": 0.64439374710336,
+    "effort": 0.9588364612417618,
+    "brace": 1.3042975881163292e-12,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.012386908604228806,
+    "pen": 0.002000000000000054,
+    "placed": true,
+    "base_res": 1.432789243768019e-13,
+    "max_ratio": 0.3918968820960621,
+    "effort": 0.4799535843843552,
+    "brace": 177.16011620364975,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0034405101218877134,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 3.5090932437602544e-13,
+    "max_ratio": 0.31517100112736607,
+    "effort": 0.29097089662993403,
+    "brace": 121.17261942523206,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.003431593865055051,
+    "pen": 0.0020000000000003383,
+    "placed": true,
+    "base_res": 2.44281865259123e-14,
+    "max_ratio": 0.420749433562329,
+    "effort": 0.4303705312612044,
+    "brace": 104.9218435138909,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0033571305131708455,
+    "pen": 0.001994418098986761,
+    "placed": true,
+    "base_res": 1.1419023299078012e-13,
+    "max_ratio": 0.24612660911653025,
+    "effort": 0.265561790023806,
+    "brace": 112.90267198284913,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.009706482812706101,
+    "pen": 0.0023016436017045012,
+    "placed": true,
+    "base_res": 1.1671479607607579e-13,
+    "max_ratio": 0.5018550188796143,
+    "effort": 0.4961990331000805,
+    "brace": 130.4384297697784,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0035767250106365175,
+    "pen": 0.0020000000000001336,
+    "placed": true,
+    "base_res": 2.076918399302593e-14,
+    "max_ratio": 0.509540677703509,
+    "effort": 0.5165584993153406,
+    "brace": 103.62615203230116,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.002780255906590538,
+    "pen": 0.002000000000000307,
+    "placed": true,
+    "base_res": 2.611359388317322e-13,
+    "max_ratio": 0.24618620432489186,
+    "effort": 0.19103445936723437,
+    "brace": 112.61332034340573,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.013093550873012961,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 7.99071404845879e-15,
+    "max_ratio": 0.40242069680547443,
+    "effort": 0.33675756774196014,
+    "brace": 130.2287164015664,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0025361784039730066,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 2.817080173960865e-14,
+    "max_ratio": 0.5956010136654838,
+    "effort": 0.6915558431518428,
+    "brace": 112.21220377324278,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.012386908604228008,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 2.3197237075950274e-13,
+    "max_ratio": 0.6059838933686955,
+    "effort": 0.6876563703239892,
+    "brace": 127.8515029126149,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.013591366241964947,
+    "pen": 0.0020000000000001787,
+    "placed": true,
+    "base_res": 1.239148792410342e-13,
+    "max_ratio": 0.2669221470516697,
+    "effort": 0.3116567264930263,
+    "brace": 154.87897138408442,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.003431718083638936,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 2.225879494234519e-14,
+    "max_ratio": 0.33858224106268975,
+    "effort": 0.30490858032974194,
+    "brace": 102.59944940690977,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0028980893067935805,
+    "pen": 0.0020000000000000573,
+    "placed": true,
+    "base_res": 5.926094295157662e-13,
+    "max_ratio": 0.24610352163439067,
+    "effort": 0.18029706531628847,
+    "brace": 113.92383841627317,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.029226799852465315,
+    "pen": 0.0020000000000010565,
+    "placed": true,
+    "base_res": 1.0805156823142815e-14,
+    "max_ratio": 0.2901123629799001,
+    "effort": 0.30244005737771856,
+    "brace": 120.23964428403012,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0028970959085314616,
+    "pen": 0.002000000000000099,
+    "placed": true,
+    "base_res": 1.155506982191427e-13,
+    "max_ratio": 0.2460981180085718,
+    "effort": 0.23554407473052408,
+    "brace": 102.19132686664072,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.05343860696135588,
+    "pen": 0.0020000000000029786,
+    "placed": true,
+    "base_res": 1.1495993539128149e-13,
+    "max_ratio": 0.25245279282421745,
+    "effort": 0.3078446382934039,
+    "brace": 110.60898608251944,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.010514742989512589,
+    "pen": 0.0035650926369586687,
+    "placed": true,
+    "base_res": 1.1479981211220665e-13,
+    "max_ratio": 0.3299496811355786,
+    "effort": 0.3265932985792149,
+    "brace": 128.66615418164145,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0032614498755480174,
+    "pen": 0.002000000000000099,
+    "placed": true,
+    "base_res": 1.4287841374022352e-14,
+    "max_ratio": 0.38181870186187034,
+    "effort": 0.3299519368087261,
+    "brace": 111.45765929942374,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.013041577273504945,
+    "pen": 0.0020000000000000365,
+    "placed": true,
+    "base_res": 1.348181194482242e-14,
+    "max_ratio": 0.3940092024205835,
+    "effort": 0.3702252581010821,
+    "brace": 112.08443163109554,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.014506171885963313,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 3.217282192832852e-14,
+    "max_ratio": 0.24511745085834807,
+    "effort": 0.20837049461212107,
+    "brace": 128.6137613042107,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.013591366241963079,
+    "pen": 0.0020000000000002273,
+    "placed": true,
+    "base_res": 1.1432399377227435e-13,
+    "max_ratio": 0.28399706050238627,
+    "effort": 0.28265553598284426,
+    "brace": 119.8327005736222,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.002897096130783937,
+    "pen": 0.002000000000000085,
+    "placed": true,
+    "base_res": 1.153360894660565e-13,
+    "max_ratio": 0.24609817993439576,
+    "effort": 0.20448395002426542,
+    "brace": 104.470086473698,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.05338442970454498,
+    "pen": 0.002000000000002153,
+    "placed": true,
+    "base_res": 2.2765810061763025e-13,
+    "max_ratio": 0.2680323512330506,
+    "effort": 0.3156428044861572,
+    "brace": 112.57942097173961,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.002999879678093982,
+    "pen": 0.002000000000000085,
+    "placed": true,
+    "base_res": 3.656925666620982e-13,
+    "max_ratio": 0.24487904799148272,
+    "effort": 0.16755555770455202,
+    "brace": 117.93040272340914,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0022093548769293475,
+    "pen": 0.002000148988825199,
+    "placed": true,
+    "base_res": 2.933490765401168e-13,
+    "max_ratio": 0.2453270293656786,
+    "effort": 0.22043447256864968,
+    "brace": 109.44554098684972,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.014490390163782792,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 8.183000835783482e-15,
+    "max_ratio": 0.31102060090380795,
+    "effort": 0.2636640847939387,
+    "brace": 117.08835163269336,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0022143825546645764,
+    "pen": 0.0020016413188803407,
+    "placed": true,
+    "base_res": 3.679273073423454e-13,
+    "max_ratio": 0.2453263789133658,
+    "effort": 0.22056594081130554,
+    "brace": 111.61728150696018,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "hip",
+   "torso"
+  ]
+ },
+ {
+  "x": 1.24,
+  "y": 0.15,
+  "z": 0.95,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": false,
+    "reach": 0.010314369235827568,
+    "pen": 0.0020000000001962094,
+    "placed": true,
+    "base_res": 25.899835780834,
+    "max_ratio": 0.5635771604221234,
+    "effort": 0.9192317931209857,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.010049918431959348,
+    "pen": 0.0037474881231098142,
+    "placed": true,
+    "base_res": 1.3373579918760993e-14,
+    "max_ratio": 0.45068097310197863,
+    "effort": 0.5526567598607589,
+    "brace": 152.06356904808578,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.00958699395057199,
+    "pen": 0.0020000004674471383,
+    "placed": true,
+    "base_res": 3.058246824162042e-14,
+    "max_ratio": 0.5298034700931872,
+    "effort": 0.6203015634664549,
+    "brace": 155.92138176124917,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.010314369251225685,
+    "pen": 0.0020000000001939196,
+    "placed": true,
+    "base_res": 1.314280872377684e-13,
+    "max_ratio": 0.7689293957959292,
+    "effort": 1.401540681575836,
+    "brace": 92.96625798365544,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": false,
+    "reach": 0.009433539604253912,
+    "pen": 0.002000000000000137,
+    "placed": true,
+    "base_res": 49.9004260105672,
+    "max_ratio": 0.2446518686133351,
+    "effort": 0.19173452939988397,
+    "brace": 673.2770819254306,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005995318113287909,
+    "pen": 0.0020000000000000642,
+    "placed": true,
+    "base_res": 1.5912590785604443e-13,
+    "max_ratio": 0.3347365411259445,
+    "effort": 0.4381753485931928,
+    "brace": 304.1984385371887,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.009482126738892696,
+    "pen": 0.002000000000000307,
+    "placed": true,
+    "base_res": 9.043527009188809e-14,
+    "max_ratio": 0.3839310589475209,
+    "effort": 0.4321212972668904,
+    "brace": 128.59514240182858,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.009479270106613678,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 2.2804748447789378e-14,
+    "max_ratio": 0.4674020089735481,
+    "effort": 0.5686079440954763,
+    "brace": 113.17718725170697,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009112349852349669,
+    "pen": 0.0024214656897903857,
+    "placed": true,
+    "base_res": 8.128925314203829e-15,
+    "max_ratio": 0.3084015788666864,
+    "effort": 0.3988752329376275,
+    "brace": 140.9711076323796,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005993930869536906,
+    "pen": 0.002000009756287599,
+    "placed": true,
+    "base_res": 1.168494833655313e-13,
+    "max_ratio": 0.6029310644675041,
+    "effort": 0.7252482385711203,
+    "brace": 154.22120551129547,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.009583139943695253,
+    "pen": 0.002000000460334498,
+    "placed": true,
+    "base_res": 2.0417126692335086e-14,
+    "max_ratio": 0.6906452935514618,
+    "effort": 0.8628211161743143,
+    "brace": 116.51978880875217,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009334943449942339,
+    "pen": 0.0020000000000000365,
+    "placed": true,
+    "base_res": 3.3844593544941255e-14,
+    "max_ratio": 0.5253964337205049,
+    "effort": 0.5589701529314235,
+    "brace": 147.23585751791688,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005993522707635139,
+    "pen": 0.0020000000000000885,
+    "placed": true,
+    "base_res": 2.9191899439142324e-14,
+    "max_ratio": 0.5091464647678529,
+    "effort": 0.5410703349596491,
+    "brace": 143.84295339652948,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009433539604253973,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 6.088338459228084e-14,
+    "max_ratio": 0.9245734181269343,
+    "effort": 1.4350086753927431,
+    "brace": 131.8272670629995,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005995318113287392,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 1.2416245100786962e-13,
+    "max_ratio": 0.751968856582863,
+    "effort": 1.024495865742581,
+    "brace": 142.575575773965,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005993747703779655,
+    "pen": 0.0020000000000007026,
+    "placed": true,
+    "base_res": 1.2657399465977808e-13,
+    "max_ratio": 0.3076822687206285,
+    "effort": 0.42634369784555226,
+    "brace": 177.30512812623394,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.009479301802567239,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 1.138688380052469e-13,
+    "max_ratio": 0.3760199006245293,
+    "effort": 0.4270290445981415,
+    "brace": 107.93269852429557,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.00978715911372398,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 1.1617591443391304e-13,
+    "max_ratio": 0.24485084553796663,
+    "effort": 0.28552061592550304,
+    "brace": 129.38193821808,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.012339911975390581,
+    "pen": 0.0020000010994946776,
+    "placed": true,
+    "base_res": 3.114260086533417e-13,
+    "max_ratio": 0.32911757641836803,
+    "effort": 0.30520673101290113,
+    "brace": 114.89230385965092,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009766711466021498,
+    "pen": 0.002000000000000158,
+    "placed": true,
+    "base_res": 1.1538923182805398e-13,
+    "max_ratio": 0.3374514779058696,
+    "effort": 0.3800484068641678,
+    "brace": 118.466332361984,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.012426142269813971,
+    "pen": 0.002013053147838416,
+    "placed": true,
+    "base_res": 5.667438327237297e-13,
+    "max_ratio": 0.3289469633529222,
+    "effort": 0.34007252697189616,
+    "brace": 103.42701225921861,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005156373860744089,
+    "pen": 0.003638685802316275,
+    "placed": true,
+    "base_res": 2.569296919879557e-14,
+    "max_ratio": 0.42767459506594746,
+    "effort": 0.5094125434979856,
+    "brace": 136.73992482740647,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009336642238882446,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 1.1747691448599472e-13,
+    "max_ratio": 0.5149078768695019,
+    "effort": 0.6277387944754326,
+    "brace": 119.72731434846287,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005993557908735346,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 9.283482853724433e-15,
+    "max_ratio": 0.5282061220755812,
+    "effort": 0.6349384774436971,
+    "brace": 125.35401121086102,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0048321478273186695,
+    "pen": 0.002000000000000418,
+    "placed": true,
+    "base_res": 1.1410673273693847e-13,
+    "max_ratio": 0.384287284402133,
+    "effort": 0.3956254365215798,
+    "brace": 133.61894609597942,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005993747703779832,
+    "pen": 0.002000000000000137,
+    "placed": true,
+    "base_res": 2.733139321230502e-14,
+    "max_ratio": 0.44533478430757156,
+    "effort": 0.5144687237140645,
+    "brace": 133.5362491606103,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009766769659434698,
+    "pen": 0.002000000000000411,
+    "placed": true,
+    "base_res": 1.1436175055281053e-13,
+    "max_ratio": 0.29226698202494283,
+    "effort": 0.31305028480619973,
+    "brace": 115.69022614905468,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004051231953367754,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 7.306898740338238e-13,
+    "max_ratio": 0.369789191812322,
+    "effort": 0.5095707245253126,
+    "brace": 99.4361606322055,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005391145619713258,
+    "pen": 0.003923304647295796,
+    "placed": true,
+    "base_res": 6.500248009517947e-13,
+    "max_ratio": 0.38561684713525535,
+    "effort": 0.4156181779888271,
+    "brace": 114.83613358643845,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0063478749434058394,
+    "pen": 0.0019980236458194203,
+    "placed": true,
+    "base_res": 6.973793264561578e-13,
+    "max_ratio": 0.2954188278011217,
+    "effort": 0.3671089641211852,
+    "brace": 109.64350067762774,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004837323312944801,
+    "pen": 0.002000000000000085,
+    "placed": true,
+    "base_res": 1.3002413343305853e-14,
+    "max_ratio": 0.3304947810929322,
+    "effort": 0.3969274241179477,
+    "brace": 120.59208372991989,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.005350345141212732,
+    "pen": 0.0039162185120759085,
+    "placed": true,
+    "base_res": 4.041146537754803e-13,
+    "max_ratio": 0.3021506897735672,
+    "effort": 0.41906187386444205,
+    "brace": 109.35823885620712,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "hip"
+  ]
+ },
+ {
+  "x": 0.52,
+  "y": 0.15,
+  "z": 1.09,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": true,
+    "reach": 0.0028741534858594178,
+    "pen": -0.0,
+    "placed": true,
+    "base_res": 1.5973953010379247e-13,
+    "max_ratio": 0.24711297348822328,
+    "effort": 0.3135871998680895,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.003950764568931632,
+    "pen": 0.0019998287959016176,
+    "placed": true,
+    "base_res": 7.030289866808849e-13,
+    "max_ratio": 0.24447671828338516,
+    "effort": 0.26986799939761114,
+    "brace": 88.73580061951606,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0026780404718734297,
+    "pen": 0.0020000000000002793,
+    "placed": true,
+    "base_res": 3.6880693149916223e-13,
+    "max_ratio": 0.24073100305956174,
+    "effort": 0.24879977744146034,
+    "brace": 85.25049981119602,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0031008850404470596,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 2.516795792559645e-13,
+    "max_ratio": 0.2554621755963454,
+    "effort": 0.2736018816400654,
+    "brace": 2.6738550319197616,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.007599581042802172,
+    "pen": 0.002000000000000071,
+    "placed": true,
+    "base_res": 3.541749962699428e-13,
+    "max_ratio": 0.2435151903741032,
+    "effort": 0.2731632350224525,
+    "brace": 83.11801436138644,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00419012936023022,
+    "pen": 0.00215775699372462,
+    "placed": true,
+    "base_res": 1.5698930442779033e-13,
+    "max_ratio": 0.26135480802747935,
+    "effort": 0.34116585561236795,
+    "brace": 79.67700238032243,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0025206806709886474,
+    "pen": 0.002000000000000751,
+    "placed": true,
+    "base_res": 3.0212985288112537e-13,
+    "max_ratio": 0.2276538473746822,
+    "effort": 0.19610397235385735,
+    "brace": 96.8054743209399,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.003097712607450058,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 1.1437258738701823e-13,
+    "max_ratio": 0.2397505572831061,
+    "effort": 0.2685437538270218,
+    "brace": 85.81714056661271,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0031834032417611137,
+    "pen": 0.0022414767816798693,
+    "placed": true,
+    "base_res": 3.818134299430063e-13,
+    "max_ratio": 0.24313510138256003,
+    "effort": 0.23331620867292563,
+    "brace": 104.35462142831534,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0037837123155316124,
+    "pen": 0.00330729704599593,
+    "placed": true,
+    "base_res": 4.729831541520552e-13,
+    "max_ratio": 0.2345617604146983,
+    "effort": 0.26251104205274617,
+    "brace": 102.81636641566973,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0039145723140033,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 1.1550466118410782e-13,
+    "max_ratio": 0.28454040871977676,
+    "effort": 0.3189748522925431,
+    "brace": 78.56950497343915,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0036187209409916754,
+    "pen": 0.00199999999999996,
+    "placed": true,
+    "base_res": 5.055420748966279e-13,
+    "max_ratio": 0.22131364879327256,
+    "effort": 0.1937613316630654,
+    "brace": 103.78277373140945,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003294135297725831,
+    "pen": 0.002303727318736515,
+    "placed": true,
+    "base_res": 3.5105877016317564e-13,
+    "max_ratio": 0.22528369050226,
+    "effort": 0.22072229067419336,
+    "brace": 97.95388386264436,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.007366515874976181,
+    "pen": 0.0020000000000016255,
+    "placed": true,
+    "base_res": 3.413934898101892e-13,
+    "max_ratio": 0.24335391783202415,
+    "effort": 0.23862574832345138,
+    "brace": 84.08621975828319,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004934020229512208,
+    "pen": 0.002000000000000071,
+    "placed": true,
+    "base_res": 7.01569747489523e-13,
+    "max_ratio": 0.2479795789035534,
+    "effort": 0.2824570299028124,
+    "brace": 79.30838767793996,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.025733455536724494,
+    "pen": 0.011041360174585485,
+    "placed": true,
+    "base_res": 4.24662614435218e-13,
+    "max_ratio": 0.23859574795658992,
+    "effort": 0.21667325673799853,
+    "brace": 110.46206175670272,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0030913343862400203,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 1.138714359018278e-13,
+    "max_ratio": 0.26544687532419103,
+    "effort": 0.24999997835730303,
+    "brace": 92.15098409011927,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.004254256824660038,
+    "pen": 0.002000000000000071,
+    "placed": true,
+    "base_res": 1.945191849636581e-13,
+    "max_ratio": 0.22355203614987731,
+    "effort": 0.15192982553421866,
+    "brace": 110.62717686365066,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003941202053985751,
+    "pen": 0.0020000000000000946,
+    "placed": true,
+    "base_res": 2.733029956038095e-13,
+    "max_ratio": 0.23417583463939928,
+    "effort": 0.17512737244738635,
+    "brace": 110.09326432650869,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0039132938932160384,
+    "pen": 0.0020000000000001718,
+    "placed": true,
+    "base_res": 4.829044935742405e-13,
+    "max_ratio": 0.2235859390623265,
+    "effort": 0.2062733475327601,
+    "brace": 103.37694924659726,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004007573275565598,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 9.760637339346726e-13,
+    "max_ratio": 0.23421593131820406,
+    "effort": 0.2205188595547261,
+    "brace": 103.22181427934905,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.01815054686495813,
+    "pen": 0.005733230841051817,
+    "placed": true,
+    "base_res": 7.218530430440614e-13,
+    "max_ratio": 0.19796209074445978,
+    "effort": 0.14559597276042063,
+    "brace": 114.1330844337722,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.00337594496182706,
+    "pen": 0.00199999999999996,
+    "placed": true,
+    "base_res": 5.00895619909615e-13,
+    "max_ratio": 0.22187305004278704,
+    "effort": 0.2423414229472008,
+    "brace": 97.62639168023792,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004824013794978113,
+    "pen": 0.001999999940416282,
+    "placed": true,
+    "base_res": 3.0232430976824934e-13,
+    "max_ratio": 0.2215960182129588,
+    "effort": 0.25079595761436363,
+    "brace": 92.58979562627589,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.02255408628263273,
+    "pen": 0.009345968241833723,
+    "placed": true,
+    "base_res": 4.977707186080588e-13,
+    "max_ratio": 0.20966393158831692,
+    "effort": 0.17122825738406655,
+    "brace": 113.34570653646202,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.02571809187085388,
+    "pen": 0.010990768417840198,
+    "placed": true,
+    "base_res": 1.142026153203988e-13,
+    "max_ratio": 0.24107707870607842,
+    "effort": 0.21884654247423496,
+    "brace": 103.96995035365514,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.00391327228998565,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 3.585040627149619e-13,
+    "max_ratio": 0.22358718350256782,
+    "effort": 0.18620766244131254,
+    "brace": 106.37391821802456,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0039837013294963764,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 4.089425093538815e-13,
+    "max_ratio": 0.23418469548766,
+    "effort": 0.20527609629307583,
+    "brace": 106.85084160968175,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00690908040191867,
+    "pen": 0.0020000000000001336,
+    "placed": true,
+    "base_res": 3.572218493610281e-13,
+    "max_ratio": 0.18511850553811982,
+    "effort": 0.13876689288741342,
+    "brace": 121.4416543577335,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.022358859387163615,
+    "pen": 0.00215448426777904,
+    "placed": true,
+    "base_res": 3.6627827896762507e-13,
+    "max_ratio": 0.21004273149939473,
+    "effort": 0.16900124674423442,
+    "brace": 109.89350636685177,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.022649892115240027,
+    "pen": 0.009543048568629454,
+    "placed": true,
+    "base_res": 9.438437879006698e-13,
+    "max_ratio": 0.2554504901637205,
+    "effort": 0.20767305638408462,
+    "brace": 106.75380732011986,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.006965092468939386,
+    "pen": 0.002000000000697673,
+    "placed": true,
+    "base_res": 7.803818845060345e-13,
+    "max_ratio": 0.18363374277370548,
+    "effort": 0.16606337655803913,
+    "brace": 116.21198501291317,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "hip",
+   "torso"
+  ]
+ },
+ {
+  "x": 0.76,
+  "y": 0.15,
+  "z": 1.09,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": true,
+    "reach": 0.0055986447116347145,
+    "pen": 0.001999999999999974,
+    "placed": true,
+    "base_res": 6.045805086865552e-13,
+    "max_ratio": 0.32995792214588293,
+    "effort": 0.37459890642912874,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.016629103974722517,
+    "pen": 0.0019999980381158605,
+    "placed": true,
+    "base_res": 3.601740253943441e-13,
+    "max_ratio": 0.33884282805444943,
+    "effort": 0.3624843607849144,
+    "brace": 106.48021726347932,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.00781711343866142,
+    "pen": 0.0020000000000001336,
+    "placed": true,
+    "base_res": 4.665722874159914e-13,
+    "max_ratio": 0.2574174574910627,
+    "effort": 0.2488976115436019,
+    "brace": 106.68285914064614,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.003603774012836949,
+    "pen": 0.00200000000000098,
+    "placed": true,
+    "base_res": 1.1428434347170992e-13,
+    "max_ratio": 0.26306327421678494,
+    "effort": 0.2403418260047201,
+    "brace": 45.06273127402859,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.003674818665683187,
+    "pen": 0.0020000000000000018,
+    "placed": true,
+    "base_res": 1.1471132090580671e-12,
+    "max_ratio": 0.24518214462765542,
+    "effort": 0.22844158378356288,
+    "brace": 79.62519819196406,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0051317403913532815,
+    "pen": 0.0020000000000000573,
+    "placed": true,
+    "base_res": 2.739380613651206e-13,
+    "max_ratio": 0.24438160316689275,
+    "effort": 0.28955048770902486,
+    "brace": 78.88563882781798,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.015396497505695612,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 5.517193642852904e-13,
+    "max_ratio": 0.24473634530195257,
+    "effort": 0.19015635557006128,
+    "brace": 102.91551946953975,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.01607784132372368,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 1.1450097735094058e-13,
+    "max_ratio": 0.2787499409852646,
+    "effort": 0.26268144416967654,
+    "brace": 86.03285638559579,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009763830094457263,
+    "pen": 0.001999971000252024,
+    "placed": true,
+    "base_res": 5.952889553819742e-13,
+    "max_ratio": 0.24517446463698356,
+    "effort": 0.2637261152241928,
+    "brace": 102.23849084957092,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003723034541515156,
+    "pen": 0.002000109805763206,
+    "placed": true,
+    "base_res": 2.516050507598261e-13,
+    "max_ratio": 0.2447586366306916,
+    "effort": 0.2072518804928299,
+    "brace": 101.88471250439221,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.007983341877144638,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 4.864753555590494e-15,
+    "max_ratio": 0.3711941010162235,
+    "effort": 0.3265169493782935,
+    "brace": 83.75531787315276,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.010008159963967646,
+    "pen": 0.001999999980475911,
+    "placed": true,
+    "base_res": 2.8524220193459306e-13,
+    "max_ratio": 0.20545166428921885,
+    "effort": 0.20228003546105974,
+    "brace": 102.09793642512358,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0035891249254195777,
+    "pen": 0.002000022739296149,
+    "placed": true,
+    "base_res": 3.128182172832521e-13,
+    "max_ratio": 0.23113921305043567,
+    "effort": 0.14304302409105052,
+    "brace": 101.29003928121787,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0026223853849177874,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 1.4997465305882225e-14,
+    "max_ratio": 0.24510939722987254,
+    "effort": 0.21228370502592273,
+    "brace": 79.46319442227848,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00462172775610241,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 2.0929684036043122e-13,
+    "max_ratio": 0.23444290397982678,
+    "effort": 0.2663772207131563,
+    "brace": 78.12502811007013,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.031133956350577422,
+    "pen": 0.00202059671889597,
+    "placed": true,
+    "base_res": 3.873186106987589e-13,
+    "max_ratio": 0.23789782113814636,
+    "effort": 0.2383748721629597,
+    "brace": 107.58715156517117,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.016067973773852034,
+    "pen": 0.001999999999999974,
+    "placed": true,
+    "base_res": 2.860851505183948e-13,
+    "max_ratio": 0.2447471361006497,
+    "effort": 0.20721383548088987,
+    "brace": 89.23072083243372,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.010026776669482394,
+    "pen": 0.002000000000000276,
+    "placed": true,
+    "base_res": 4.461355212832022e-13,
+    "max_ratio": 0.20551505689278227,
+    "effort": 0.1834442949081723,
+    "brace": 107.7816983978702,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.007870234345658783,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 2.672214338524389e-13,
+    "max_ratio": 0.23318180356162646,
+    "effort": 0.1931629407541097,
+    "brace": 105.8635200054973,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.01006368302026244,
+    "pen": 0.002000000000000529,
+    "placed": true,
+    "base_res": 2.730628681763896e-13,
+    "max_ratio": 0.2052511112229029,
+    "effort": 0.22878812040768,
+    "brace": 98.80304178808463,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0038600135132275067,
+    "pen": 0.0020000000000050464,
+    "placed": true,
+    "base_res": 5.967981227549872e-13,
+    "max_ratio": 0.22777433457216606,
+    "effort": 0.1711816625079601,
+    "brace": 96.6270543348216,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.029516990097217137,
+    "pen": 0.0034052947545049096,
+    "placed": true,
+    "base_res": 1.4408526425789058e-13,
+    "max_ratio": 0.23553700423142615,
+    "effort": 0.17510592627594268,
+    "brace": 114.46449882573657,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.009995199667973301,
+    "pen": 0.0019999999893190595,
+    "placed": true,
+    "base_res": 3.1002548083707507e-13,
+    "max_ratio": 0.21027145138872438,
+    "effort": 0.24291405458109713,
+    "brace": 93.4077467722072,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0036431261021172556,
+    "pen": 0.0020000000060497528,
+    "placed": true,
+    "base_res": 2.5388312522546873e-13,
+    "max_ratio": 0.23038498797545368,
+    "effort": 0.1905220273385421,
+    "brace": 93.60648145447321,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.03396854538101286,
+    "pen": 0.00844910207908596,
+    "placed": true,
+    "base_res": 4.664705620633921e-13,
+    "max_ratio": 0.23607521871030723,
+    "effort": 0.19271258657771592,
+    "brace": 113.18682417242188,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.031133956350600133,
+    "pen": 0.0020205967188960047,
+    "placed": true,
+    "base_res": 1.2531265855673069e-14,
+    "max_ratio": 0.23520552881941073,
+    "effort": 0.22181649853566474,
+    "brace": 101.8774453828611,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.01006358546203702,
+    "pen": 0.0020000000000005916,
+    "placed": true,
+    "base_res": 3.065389906708971e-13,
+    "max_ratio": 0.20525343109841054,
+    "effort": 0.20938658902624457,
+    "brace": 102.616286040554,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003859630929085954,
+    "pen": 0.002000000000000522,
+    "placed": true,
+    "base_res": 2.3722855283939485e-13,
+    "max_ratio": 0.22777594562839262,
+    "effort": 0.1582793789569841,
+    "brace": 100.98279828390301,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.015748380116626874,
+    "pen": 0.002006131565558584,
+    "placed": true,
+    "base_res": 2.9222934380941436e-13,
+    "max_ratio": 0.2328936188868516,
+    "effort": 0.12989347693807077,
+    "brace": 115.44599275419107,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.01723331712721166,
+    "pen": 0.0019999998610010644,
+    "placed": true,
+    "base_res": 2.6782666430313956e-13,
+    "max_ratio": 0.2335247501669161,
+    "effort": 0.15555152312825243,
+    "brace": 107.69427500360577,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": false,
+    "reach": 0.03385414878953527,
+    "pen": 0.008608533929176487,
+    "placed": true,
+    "base_res": 7.201874301820935e-13,
+    "max_ratio": 0.2557714384159294,
+    "effort": 0.22926199334125677,
+    "brace": 106.42752429638067,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.01730442456213946,
+    "pen": 0.0019999946528856463,
+    "placed": true,
+    "base_res": 6.097194852039381e-13,
+    "max_ratio": 0.23352302098471908,
+    "effort": 0.14238328813493323,
+    "brace": 108.89383506838014,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "hip",
+   "torso"
+  ]
+ },
+ {
+  "x": 1.0,
+  "y": 0.15,
+  "z": 1.09,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": false,
+    "reach": 0.0068034665252315425,
+    "pen": 0.0019999999999999775,
+    "placed": true,
+    "base_res": 6.16343220748913,
+    "max_ratio": 0.6136632633548292,
+    "effort": 0.9240178741707392,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.0036680321696052256,
+    "pen": 0.0020647511293628816,
+    "placed": true,
+    "base_res": 2.276019209654558e-13,
+    "max_ratio": 0.4982032365481766,
+    "effort": 0.5311526659271149,
+    "brace": 137.7529620161113,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0036368913348638794,
+    "pen": 0.0020000000000000746,
+    "placed": true,
+    "base_res": 1.1705521038386143e-13,
+    "max_ratio": 0.3967245419535057,
+    "effort": 0.377116156428609,
+    "brace": 130.69697143609767,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.006803466525231629,
+    "pen": 0.0020000000000000365,
+    "placed": true,
+    "base_res": 4.6977523201658435e-14,
+    "max_ratio": 0.7148743474759539,
+    "effort": 0.9526288514630632,
+    "brace": 73.67187594732366,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": false,
+    "reach": 0.0029730378697545045,
+    "pen": 0.0020000000000000365,
+    "placed": true,
+    "base_res": 10.462893268654675,
+    "max_ratio": 0.623232854180803,
+    "effort": 0.9606298106127764,
+    "brace": 1.1864555039961557e-11,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004664328159309185,
+    "pen": 0.0020000000000001336,
+    "placed": true,
+    "base_res": 6.674998388313018e-14,
+    "max_ratio": 0.38454598625312014,
+    "effort": 0.45215961162599333,
+    "brace": 191.9061839920786,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.0035090788299562796,
+    "pen": 0.0020000000638195695,
+    "placed": true,
+    "base_res": 1.0253164072897925e-12,
+    "max_ratio": 0.2855173860367389,
+    "effort": 0.26772080931350817,
+    "brace": 116.48274953866849,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0035587179645796933,
+    "pen": 0.0020000000204427604,
+    "placed": true,
+    "base_res": 1.1624225935546256e-13,
+    "max_ratio": 0.40054262471723867,
+    "effort": 0.3978270648039033,
+    "brace": 102.80236231136278,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.003921522396427397,
+    "pen": 0.0016216468788364038,
+    "placed": true,
+    "base_res": 5.542302511985712e-13,
+    "max_ratio": 0.24504844043774923,
+    "effort": 0.26351786254753934,
+    "brace": 110.9246235739126,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0036620936978601134,
+    "pen": 0.002024419076634726,
+    "placed": true,
+    "base_res": 1.0367366991496098e-14,
+    "max_ratio": 0.2442891596348819,
+    "effort": 0.2956074399825623,
+    "brace": 116.40290578438527,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0036448110679407415,
+    "pen": 0.0020000000000000226,
+    "placed": true,
+    "base_res": 1.661184533420731e-14,
+    "max_ratio": 0.48994125195977845,
+    "effort": 0.49359190618757387,
+    "brace": 100.34864754827504,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.003207091893320109,
+    "pen": 0.001999999999999967,
+    "placed": true,
+    "base_res": 8.06934918505597e-13,
+    "max_ratio": 0.23295002697687892,
+    "effort": 0.19054749585697744,
+    "brace": 109.3843664267127,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0035868506299894425,
+    "pen": 0.0019999999982664995,
+    "placed": true,
+    "base_res": 8.747542958250513e-15,
+    "max_ratio": 0.23451771756888534,
+    "effort": 0.28253097411495004,
+    "brace": 111.63817968165637,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0029730378697543657,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 1.181079027450311e-13,
+    "max_ratio": 0.46437693236811506,
+    "effort": 0.5008269714621344,
+    "brace": 102.67280273704256,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004664328159309267,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 4.7143055575985655e-14,
+    "max_ratio": 0.6174678558137903,
+    "effort": 0.6973877083765574,
+    "brace": 129.06950956072038,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004837907817165507,
+    "pen": 0.0020000000000001926,
+    "placed": true,
+    "base_res": 2.3313795982662465e-13,
+    "max_ratio": 0.2705212749093247,
+    "effort": 0.30622876325170284,
+    "brace": 156.40872331524469,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.0035581247023874674,
+    "pen": 0.0020000000211767427,
+    "placed": true,
+    "base_res": 2.422754926200034e-14,
+    "max_ratio": 0.3237272172885318,
+    "effort": 0.28666204706328635,
+    "brace": 100.29574233628685,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.003334314124741475,
+    "pen": 0.0019999999958081674,
+    "placed": true,
+    "base_res": 1.6856798105367893e-13,
+    "max_ratio": 0.2285595056128527,
+    "effort": 0.17926090520306173,
+    "brace": 112.92966212813059,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0036128292935275665,
+    "pen": 0.0020000000000000018,
+    "placed": true,
+    "base_res": 1.0695084443661336e-14,
+    "max_ratio": 0.25004824296456446,
+    "effort": 0.26474610329724446,
+    "brace": 117.1500324962008,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0033275371464248013,
+    "pen": 0.0019999999998638503,
+    "placed": true,
+    "base_res": 1.17248014442828e-13,
+    "max_ratio": 0.23061381712217421,
+    "effort": 0.2314489922428117,
+    "brace": 101.31492196452646,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0036183607976535536,
+    "pen": 0.0020000000000002516,
+    "placed": true,
+    "base_res": 2.283240524376058e-13,
+    "max_ratio": 0.23746695304084767,
+    "effort": 0.2728861454672639,
+    "brace": 108.33425891844722,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004878606173107186,
+    "pen": 0.0024839458397480398,
+    "placed": true,
+    "base_res": 3.8719791602789917e-13,
+    "max_ratio": 0.24067688781872493,
+    "effort": 0.2285189148904861,
+    "brace": 119.63124689834389,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.0032058170598235334,
+    "pen": 0.001999999999999856,
+    "placed": true,
+    "base_res": 1.155426042452281e-13,
+    "max_ratio": 0.2853516338125246,
+    "effort": 0.2549906561200411,
+    "brace": 97.64579605337923,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0035768894560894455,
+    "pen": 0.0019999999979714578,
+    "placed": true,
+    "base_res": 1.6968624882578708e-14,
+    "max_ratio": 0.2705700932731879,
+    "effort": 0.32605824289944985,
+    "brace": 103.52723533445149,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003229716052595432,
+    "pen": 0.002001134259668587,
+    "placed": true,
+    "base_res": 6.051801979248619e-13,
+    "max_ratio": 0.21846548495730578,
+    "effort": 0.2243359613575644,
+    "brace": 114.80522215780195,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004837907817166203,
+    "pen": 0.0020000000000000816,
+    "placed": true,
+    "base_res": 9.28481048803279e-15,
+    "max_ratio": 0.3081663804194281,
+    "effort": 0.2889592327761523,
+    "brace": 121.71668464233795,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.00332761940483638,
+    "pen": 0.0019999999998657446,
+    "placed": true,
+    "base_res": 8.408634889907674e-13,
+    "max_ratio": 0.2285385741380122,
+    "effort": 0.2024879016504291,
+    "brace": 103.8944458677712,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0036183376119226455,
+    "pen": 0.002000000000000335,
+    "placed": true,
+    "base_res": 3.1115572463624434e-14,
+    "max_ratio": 0.23746530966821364,
+    "effort": 0.27491190604463467,
+    "brace": 110.65151082997548,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004423462739388913,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 5.922765031592801e-13,
+    "max_ratio": 0.21462643356877298,
+    "effort": 0.19087246484447487,
+    "brace": 122.35239929677073,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00442541470117394,
+    "pen": 0.002000000000000196,
+    "placed": true,
+    "base_res": 3.379656020792068e-13,
+    "max_ratio": 0.21442376654012169,
+    "effort": 0.2162826082293608,
+    "brace": 114.13406655429364,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.00496807776020936,
+    "pen": 0.002000000000000012,
+    "placed": true,
+    "base_res": 2.1848698319297807e-14,
+    "max_ratio": 0.31117697062910377,
+    "effort": 0.2518700122918266,
+    "brace": 117.55121627354089,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.004425421441282863,
+    "pen": 0.0019999999999998977,
+    "placed": true,
+    "base_res": 2.2603617290972606e-13,
+    "max_ratio": 0.2144218219787103,
+    "effort": 0.20389499177581516,
+    "brace": 115.30672932752695,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "hip"
+  ]
+ },
+ {
+  "x": 1.24,
+  "y": 0.15,
+  "z": 1.09,
+  "cands": [
+   {
+    "subset": [],
+    "admissible": false,
+    "reach": 0.009453747972131964,
+    "pen": 0.00199999999999715,
+    "placed": true,
+    "base_res": 19.42209791396143,
+    "max_ratio": 0.6207878148841621,
+    "effort": 1.0280311313174428,
+    "brace": 0.0,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow"
+    ],
+    "admissible": true,
+    "reach": 0.009490890976144677,
+    "pen": 0.003984908140550355,
+    "placed": true,
+    "base_res": 1.1441372819104174e-13,
+    "max_ratio": 0.46185355368782854,
+    "effort": 0.5705114740561508,
+    "brace": 152.8855062678038,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.008866251381267305,
+    "pen": 0.002000000000000085,
+    "placed": true,
+    "base_res": 2.2912700905943867e-13,
+    "max_ratio": 0.41669025960010664,
+    "effort": 0.4818268636719367,
+    "brace": 149.67878365790517,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.009453748825237722,
+    "pen": 0.001999999999997705,
+    "placed": true,
+    "base_res": 7.181014869618532e-14,
+    "max_ratio": 0.7961591850229265,
+    "effort": 1.3904216644730452,
+    "brace": 89.68363292019504,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip"
+    ],
+    "admissible": false,
+    "reach": 0.008678895734636281,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 50.35156296446734,
+    "max_ratio": 0.3037490320518424,
+    "effort": 0.3876052427010284,
+    "brace": 334.6760933818668,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003829146538014764,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 3.0712902819015463e-13,
+    "max_ratio": 0.3578825373080501,
+    "effort": 0.48754274687465843,
+    "brace": 279.50380569709773,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm"
+    ],
+    "admissible": true,
+    "reach": 0.008712360123744534,
+    "pen": 0.001999999999999988,
+    "placed": true,
+    "base_res": 2.3247068050292344e-13,
+    "max_ratio": 0.38635875511962053,
+    "effort": 0.43611642462809025,
+    "brace": 128.59148392642933,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.008704350674075398,
+    "pen": 0.0020000000000001718,
+    "placed": true,
+    "base_res": 3.1662591829972525e-14,
+    "max_ratio": 0.46903715453467953,
+    "effort": 0.5754473992852003,
+    "brace": 113.16442590937015,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.008206003993450383,
+    "pen": 0.0020015330451768273,
+    "placed": true,
+    "base_res": 1.1396848981886857e-13,
+    "max_ratio": 0.33506955548348494,
+    "effort": 0.42168554507020606,
+    "brace": 141.4408322597001,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008880413921360384,
+    "pen": 0.002359782522590427,
+    "placed": true,
+    "base_res": 1.9547644805019778e-13,
+    "max_ratio": 0.39219851927588256,
+    "effort": 0.5268198055000145,
+    "brace": 110.41812018319764,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.008867131941078384,
+    "pen": 0.002000000000001209,
+    "placed": true,
+    "base_res": 1.1627768348762707e-13,
+    "max_ratio": 0.6179893886674187,
+    "effort": 0.713907738719253,
+    "brace": 114.09994911329002,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.008622746262449755,
+    "pen": 0.0020000000000090917,
+    "placed": true,
+    "base_res": 2.2975303873844436e-13,
+    "max_ratio": 0.49952446021911834,
+    "effort": 0.5268393887813081,
+    "brace": 145.09512679670556,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008952219050344672,
+    "pen": 0.002001775866615617,
+    "placed": true,
+    "base_res": 1.150429469557534e-13,
+    "max_ratio": 0.3577687524911263,
+    "effort": 0.4255645132075213,
+    "brace": 109.19324337053166,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.00867889573463651,
+    "pen": 0.0020000000000001336,
+    "placed": true,
+    "base_res": 6.681375293294186e-14,
+    "max_ratio": 0.9026974581425553,
+    "effort": 1.3875906265701476,
+    "brace": 130.7385548628502,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003829146538015072,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 5.6525073032871023e-14,
+    "max_ratio": 0.7529599523429984,
+    "effort": 1.0297034748690534,
+    "brace": 142.47791335528646,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0038891081026261034,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 5.182922532224315e-14,
+    "max_ratio": 0.3177267302171206,
+    "effort": 0.4455199561158881,
+    "brace": 174.5241574770898,
+    "n_arm": 0
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm"
+    ],
+    "admissible": true,
+    "reach": 0.008704427025609784,
+    "pen": 0.0020000000000000087,
+    "placed": true,
+    "base_res": 1.1429650413485313e-13,
+    "max_ratio": 0.3799011297784853,
+    "effort": 0.43559356157333184,
+    "brace": 107.15658460033144,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.00873089555321762,
+    "pen": 0.0020000000000002585,
+    "placed": true,
+    "base_res": 1.1704325818682105e-13,
+    "max_ratio": 0.2626521295626423,
+    "effort": 0.2884719752285604,
+    "brace": 130.2959964945027,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.012915583964716227,
+    "pen": 0.0020000375028907426,
+    "placed": true,
+    "base_res": 1.1512241900040192e-13,
+    "max_ratio": 0.36510795185725675,
+    "effort": 0.3407495754649893,
+    "brace": 117.41622981638899,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.008723763336778894,
+    "pen": 0.0020000000000003695,
+    "placed": true,
+    "base_res": 2.975077930081454e-14,
+    "max_ratio": 0.3404646492570032,
+    "effort": 0.386967810686591,
+    "brace": 118.63653282219404,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.013142452946180884,
+    "pen": 0.002002787391287845,
+    "placed": true,
+    "base_res": 2.45529932171652e-13,
+    "max_ratio": 0.36676193691322956,
+    "effort": 0.3729838791061848,
+    "brace": 106.72710862438497,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008860069161658175,
+    "pen": 0.0020002300889183644,
+    "placed": true,
+    "base_res": 4.219183030533485e-13,
+    "max_ratio": 0.3111058821666083,
+    "effort": 0.4033587523742233,
+    "brace": 114.4052083038875,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.008623646618085647,
+    "pen": 0.002000000000011569,
+    "placed": true,
+    "base_res": 2.445667690470455e-14,
+    "max_ratio": 0.49886546051803077,
+    "effort": 0.5943957432284469,
+    "brace": 119.53587224534192,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008786986360875135,
+    "pen": 0.006902741201015895,
+    "placed": true,
+    "base_res": 1.1595257712505095e-13,
+    "max_ratio": 0.3125169397523043,
+    "effort": 0.4271212177963976,
+    "brace": 97.98676480602738,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008782337050661724,
+    "pen": 0.0020008793235366945,
+    "placed": true,
+    "base_res": 2.5893116839131593e-13,
+    "max_ratio": 0.31070530735585666,
+    "effort": 0.3283036236528767,
+    "brace": 116.04344722982766,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.0038891081026266017,
+    "pen": 0.0020000000000004806,
+    "placed": true,
+    "base_res": 3.668778978806643e-14,
+    "max_ratio": 0.44846115014989313,
+    "effort": 0.5214510736981304,
+    "brace": 133.70457270569432,
+    "n_arm": 1
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip"
+    ],
+    "admissible": true,
+    "reach": 0.008723798624865832,
+    "pen": 0.0020000000000000365,
+    "placed": true,
+    "base_res": 1.157713639298485e-13,
+    "max_ratio": 0.29585918838161546,
+    "effort": 0.31958906976349594,
+    "brace": 115.84137535047587,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.013131516663546845,
+    "pen": 0.002003395074376531,
+    "placed": true,
+    "base_res": 1.1602738936068394e-13,
+    "max_ratio": 0.3667694732645903,
+    "effort": 0.3657395482907657,
+    "brace": 109.82804012037852,
+    "n_arm": 3
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008966806493158423,
+    "pen": 0.0020002753610838322,
+    "placed": true,
+    "base_res": 1.142354214970934e-13,
+    "max_ratio": 0.39517501419685735,
+    "effort": 0.42440998338989006,
+    "brace": 114.60047893843232,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008971806344411054,
+    "pen": 0.002000279617110662,
+    "placed": true,
+    "base_res": 5.269067946147193e-13,
+    "max_ratio": 0.3110597103810627,
+    "effort": 0.3712760059644587,
+    "brace": 109.57424797805885,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.003915385334570203,
+    "pen": 0.0020000000000001475,
+    "placed": true,
+    "base_res": 1.142863387416475e-13,
+    "max_ratio": 0.3298878270995156,
+    "effort": 0.3861865275389868,
+    "brace": 121.10195614244563,
+    "n_arm": 2
+   },
+   {
+    "subset": [
+     "elbow",
+     "forearm",
+     "palm",
+     "hip",
+     "torso"
+    ],
+    "admissible": true,
+    "reach": 0.008866591421256466,
+    "pen": 0.0020012120254710025,
+    "placed": true,
+    "base_res": 9.015932452661118e-13,
+    "max_ratio": 0.31148012940979686,
+    "effort": 0.42629232166916853,
+    "brace": 109.14155822685625,
+    "n_arm": 3
+   }
+  ],
+  "best": [
+   "elbow",
+   "forearm",
+   "hip"
+  ]
+ }
+]

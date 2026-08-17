@@ -1,0 +1,89 @@
+y=-0.2348 z=1.0982  basis=clamp  model=Lean_H12_Magpie.xml
+x      set                         slvd  feas   drift   peak   margin   push
+0.80   legs-only                      y     y     0.0  0.480   0.0011      1
+0.80   palm                           y     n    32.0  0.495   0.0170     14
+0.80   elbow+forearm                  y     y    55.5  0.458   0.0563     46
+0.80   elbow+forearm+palm             y     y    52.2  0.458   0.0463     38
+0.80   hip                            y     y   106.9  0.459   0.2381    172
+0.80   elbow+forearm+hip              y     y   110.0  0.381   0.2532    205
+0.85   legs-only                      y     y     0.0  0.464   0.0338     27
+0.85   palm                           y     y    32.0  0.461   0.0519     42
+0.85   elbow+forearm                  y     y    55.5  0.463   0.0723     59
+0.85   elbow+forearm+palm             y     y    52.9  0.463   0.0601     49
+0.85   hip                            y     y   106.6  0.459   0.2414    174
+0.85   elbow+forearm+hip              y     y   108.4  0.379   0.2673    210
+0.90   legs-only                      y     y     0.0  0.464   0.0663     53
+0.90   palm                           y     y    32.0  0.464   0.0839     68
+0.90   elbow+forearm                  y     y    55.5  0.466   0.0892     72
+0.90   elbow+forearm+palm             y     y    54.6  0.466   0.0894     72
+0.90   hip                            y     y   104.4  0.468   0.2532    182
+0.90   elbow+forearm+hip              y     y   129.5  0.370   0.2786    217
+0.95   legs-only                      y     y     0.0  0.466   0.0980     79
+0.95   palm                           y     y    32.0  0.466   0.1192     97
+0.95   elbow+forearm                  y     y    53.8  0.456   0.1276    103
+0.95   elbow+forearm+palm             y     y    43.1  0.469   0.1545    125
+0.95   hip                            y     y   102.2  0.472   0.2647    190
+0.95   elbow+forearm+hip              y     y   129.5  0.361   0.2917    221
+1.00   legs-only                      y     y     0.0  0.468   0.0753     60
+1.00   palm                           y     y    32.0  0.473   0.1436    116
+1.00   elbow+forearm                  y     y    55.5  0.473   0.1293    104
+1.00   elbow+forearm+palm             y     y    47.2  0.475   0.1688    137
+1.00   hip                           NO     y     0.0  0.575   0.1855    263
+1.00   elbow+forearm+hip              y     y   102.3  0.352   0.2954    223
+1.05   legs-only                      y     y     0.0  0.625   0.0440     35
+1.05   palm                           y     y    32.0  0.476   0.1255    103
+1.05   elbow+forearm                  y     y    55.5  0.475   0.1542    125
+1.05   elbow+forearm+palm             y     y    54.6  0.475   0.1549    126
+1.05   hip                            y     y   103.6  0.471   0.2634    204
+1.05   elbow+forearm+hip              y     y    96.6  0.351   0.3341    259
+1.10   legs-only                      y     y     0.0  0.844   0.0129     10
+1.10   palm                           y     y    32.0  0.778   0.0688     60
+1.10   elbow+forearm                  y     y    55.5  0.478   0.1862    151
+1.10   elbow+forearm+palm             y     y    54.6  0.479   0.1863    152
+1.10   hip                            y     y   105.1  0.466   0.2581    211
+1.10   elbow+forearm+hip              y     y    90.8  0.369   0.3353    268
+1.15   legs-only                      y     n     0.0  0.954  -0.0133      0
+1.15   palm                           y     y    32.0  0.756   0.0993     85
+1.15   elbow+forearm                  y     y    55.5  0.484   0.1844    174
+1.15   elbow+forearm+palm             y     y    54.7  0.484   0.2147    175
+1.15   hip                            y     y   105.7  0.457   0.2534    219
+1.15   elbow+forearm+hip              y     y   138.0  0.541   0.2924    270
+1.20   legs-only                      y     n     0.0  0.982  -0.0398      0
+1.20   palm                           y     n    32.0  1.236   0.0234     20
+1.20   elbow+forearm                  y     y    55.5  0.562   0.1515    175
+1.20   elbow+forearm+palm             y     y    54.6  0.513   0.1841    196
+1.20   hip                            y     y   106.3  0.449   0.2497    225
+1.20   elbow+forearm+hip              y     y   300.3  0.964   0.1171    106
+1.25   legs-only                      y     n     0.0  0.988  -0.0620      0
+1.25   palm                           y     n    32.0  1.081   0.0336     28
+1.25   elbow+forearm                  y     y    55.5  0.676   0.1285    148
+1.25   elbow+forearm+palm             y     y    45.1  0.749   0.1175    121
+1.25   hip                            y     y   107.9  0.461   0.2470    228
+1.25   elbow+forearm+hip              y     y    89.5  0.442   0.3053    227
+1.30   legs-only                      y     n     0.0  0.938  -0.0463      0
+1.30   palm                           y     y    32.0  0.845   0.0625     51
+1.30   elbow+forearm                  y     y    55.5  0.653   0.1412    153
+1.30   elbow+forearm+palm             y     y    51.6  0.679   0.1334    139
+1.30   hip                            y     y   110.1  0.474   0.2436    232
+1.30   elbow+forearm+hip              y     y   301.5  0.944   0.1212    127
+1.35   legs-only                      y     n     0.0  0.986  -0.0223      0
+1.35   palm                           y     n    32.0  1.084   0.0555     44
+1.35   elbow+forearm                 NO     y    52.5  0.699   0.1277    116
+1.35   elbow+forearm+palm            NO     y    51.5  0.716   0.1350    130
+1.35   hip                            y     y   130.0  0.608   0.1494    197
+1.35   elbow+forearm+hip             NO     y   316.8  0.923   0.1117    129
+1.40   legs-only                      y     n     0.0  1.088  -0.0193      0
+1.40   palm                          NO     y    32.0  0.962   0.0560     44
+1.40   elbow+forearm                 NO     y    52.5  0.736   0.1325    122
+1.40   elbow+forearm+palm            NO     y    51.5  0.724   0.1379    130
+1.40   hip                           NO     y   130.0  0.520   0.1488    194
+1.40   elbow+forearm+hip             NO     y   303.7  0.497   0.2988    221
+
+== reach envelope: furthest x that is BOTH solved and feasible ==
+  legs-only                  1.10 m
+  palm                       1.30 m
+  elbow+forearm              1.30 m
+  elbow+forearm+palm         1.30 m
+  hip                        1.35 m
+  elbow+forearm+hip          1.30 m
+wrote /home/humanoid/Programs/mjpc_icra2026/lean_analysis/reach_envelope_clamp.json 78 evaluations

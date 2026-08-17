@@ -68,7 +68,7 @@ times it against the operator it would replace, and answers whether it belongs i
 x86-64 box. Operator timings are best-of-300 in microseconds; MPC step times are means, because
 there the question is what a control period costs in practice. Everything below is regenerated
 from <code>runs/2026-08-06_session14/delassus.json</code> by
-<code>lean_analysis/croco_delassus_page.py</code>.</p>
+<code>studies/croco_delassus_page.py</code>.</p>
 
 <div class="note"><b>The short version.</b> The operator is exact here —
 6.7e-16 relative error against an independently assembled J M⁻¹Jᵀ, holding to
@@ -135,7 +135,7 @@ for a vector — the matrix path calls a vector-only Eigen method inside
 <code>mapConstraintForcesToJointSpace</code>. G has to be materialised column by column.</li>
 </ul>
 
-<p>The result is <code>lean_analysis/croco_ext/mfdelassus.cpp</code>, which also exposes the
+<p>The result is <code>studies/croco_ext/mfdelassus.cpp</code>, which also exposes the
 operator as a reusable Python class, closing the caveat above for anything downstream:</p>
 
 <pre>import croco_mfd
@@ -382,7 +382,7 @@ arithmetic that is a diagonal.</li>
 
 <h2>9. Reproduce</h2>
 
-<pre>cd lean_analysis
+<pre>cd studies
 croco_ext/build.sh mfd                      # builds croco_mfd against the conda croco env
 ~/miniforge3/envs/croco/bin/python croco_ext/test_mfd.py
 

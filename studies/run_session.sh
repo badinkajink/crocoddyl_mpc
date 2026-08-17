@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# ONE command to reproduce a session: stage the model, check the interpreter,
+# run the grid, render the videos.
+#
+# WHY THIS EXISTS.  Reproducing S18 took three separate discoveries that nothing
+# in the repo recorded, and each one presented as a different bug:
+#
+#   1. build/ is root-owned under docker, so stage_assets.sh could not write ->
+#      STAGE_ROOT.
+#   2. croco_bridge defaulted its URDF to the cmake FetchContent tree, so a
+#      machine that staged with CL_ASSETS_DIR got a staged MJCF and no URDF, and
+#      failed inside urdfdom as "does not contain a valid URDF model".
+#   3. `base` has a crocoddyl wheel set whose CONTACT dynamics SEGFAULT. Every
+#      cell died with rc=-11 and no traceback, on the old model as well as the
+#      new one, which reads exactly like an asset regression and is not.
+#
+# All three are now either handled or checked here, so the next re-run starts
+# from a green light instead of from a bisect.
+#
+# usage:
+#   studies/run_session.sh check                 # env + assets only
+#   studies/run_session.sh stage                 # (re)stage the model
+#   studies/run_session.sh grid   [stages...]    # default: certify plan stress collect
+#   studies/run_session.sh videos                # grid videos + gripper orientations
+#   studies/run_session.sh all
+#
+# env:
+#   CROCO_PY     interpreter (default: the `croco` conda env)
+#   RUN          run directory (default: runs/<today>_session18)
+#   SEEDS        stress seeds (default: 1 2 3 4 5)
+#   PROFILES     stress profiles (default: nominal winch1)
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+
+CROCO_PY="${CROCO_PY:-/home/humanoid/miniconda3/envs/croco/bin/python}"
+RUN="${RUN:-$HERE/runs/$(date +%Y-%m-%d)_session18}"
+SEEDS="${SEEDS:-1 2 3 4 5}"
+PROFILES="${PROFILES:-nominal winch1}"
+
+# CL_Assets: prefer an explicit export, else the sibling checkout in the
+# superproject, else the cmake FetchContent tree.
+if [ -z "${CL_ASSETS_DIR:-}" ]; then
+  for c in "$ROOT/../CL_Assets" "$ROOT/build/_deps/cl_assets-src"; do
+    [ -d "$c/mujoco_assets" ] && { CL_ASSETS_DIR="$(cd "$c" && pwd)"; break; }
+  done
+fi
+: "${CL_ASSETS_DIR:?set CL_ASSETS_DIR to the CL_Assets checkout}"
+export CL_ASSETS_DIR
+
+# Stage somewhere writable: build/ is commonly root-owned (docker bind mount).
+export STAGE_ROOT="${STAGE_ROOT:-$HERE/runs/_stage}"
+export LEAN_TASK_DIR="${LEAN_TASK_DIR:-$STAGE_ROOT/mjpc/tasks/humanoid_bench/lean}"
+export MUJOCO_GL="${MUJOCO_GL:-egl}"
+
+say() { printf '\n=== %s ===\n' "$*"; }
+
+do_stage() {
+  say "staging model  -> $STAGE_ROOT"
+  bash "$HERE/stage_assets.sh"
+}
+
+do_check() {
+  say "environment"
+  "$CROCO_PY" "$HERE/croco_env.py"
+}
+
+do_grid() {
+  local stages=("$@")
+  [ ${#stages[@]} -eq 0 ] && stages=(certify plan stress collect)
+  mkdir -p "$RUN/grid"
+  for s in "${stages[@]}"; do
+    say "grid $s  -> $RUN/grid"
+    case "$s" in
+      stress)  "$CROCO_PY" "$HERE/croco_grid.py" stress --dir "$RUN/grid" \
+                  --seeds $SEEDS --profiles $PROFILES ;;
+      collect) "$CROCO_PY" "$HERE/croco_grid.py" collect --dir "$RUN/grid" \
+                  --out "$RUN/grid.json" ;;
+      *)       "$CROCO_PY" "$HERE/croco_grid.py" "$s" --dir "$RUN/grid" ;;
+    esac
+  done
+}
+
+do_videos() {
+  say "grid videos -> $RUN/media"
+  "$CROCO_PY" "$HERE/croco_grid.py" videos --dir "$RUN/grid" \
+      --out "$RUN/media" || echo "(grid videos stage reported a failure)"
+  say "gripper orientation videos -> $RUN/media"
+  "$CROCO_PY" "$HERE/gripper_views.py" --out "$RUN/media"
+}
+
+cmd="${1:-all}"; shift || true
+case "$cmd" in
+  check)  do_check ;;
+  stage)  do_stage ;;
+  grid)   do_check; do_grid "$@" ;;
+  videos) do_check; do_videos ;;
+  all)    do_stage; do_check; do_grid; do_videos ;;
+  *) echo "usage: $0 {check|stage|grid|videos|all}" >&2; exit 2 ;;
+esac
+
+say "done -- run dir $RUN"

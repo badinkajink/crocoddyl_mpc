@@ -13,7 +13,7 @@ step has three stages and crocoddyl's OpenMP reaches exactly one of them.</p>
 (<!--NCPU--> threads), commit <code><!--COMMIT--></code>. Multithreading reported as
 <b><!--MT--></b>; library actually mapped: <code><!--LIBPATH--></code>. Step times are means over
 the 200 control steps of a full 4 s MuJoCo replay. Regenerated from
-<code>runs/2026-08-13_session16/</code> by <code>lean_analysis/croco_threads_page.py</code>.</p>
+<code>runs/2026-08-13_session16/</code> by <code>studies/croco_threads_page.py</code>.</p>
 
 <div class="note"><b>The short version.</b> A step is a derivative sweep, a backward pass and a
 handful of line-search rollouts. Only the <i>derivative sweep</i> is parallel in crocoddyl, and it
@@ -64,7 +64,7 @@ recorded because a reader reproducing this will hit it and it has nothing to do 
 cmake .. -DCMAKE_BUILD_TYPE=Release \
          -DCMAKE_INSTALL_PREFIX=$HOME/opt/crocoddyl-omp \
          -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
-         -DCMAKE_CXX_FLAGS="-I<repo>/lean_analysis/croco_ext/pinocchio_compat" \
+         -DCMAKE_CXX_FLAGS="-I<repo>/studies/croco_ext/pinocchio_compat" \
          -DBUILD_WITH_MULTITHREADS=ON -DBUILD_WITH_NTHREADS=4 \
          -DBUILD_PYTHON_INTERFACE=OFF -DBUILD_TESTING=OFF \
          -DBUILD_BENCHMARK=OFF -DBUILD_EXAMPLES=OFF -DBUILD_WITH_IPOPT=OFF

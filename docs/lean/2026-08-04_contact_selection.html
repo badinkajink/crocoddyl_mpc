@@ -60,7 +60,7 @@
 <p class="sub">A static formulation that decides <em>which</em> surfaces the robot should brace on
 to reach a given target — solved by enumeration over candidate contact sets, not authored by hand.</p>
 <p class="meta">2026-08-04 · branch <code>asset-unification</code> · worktree
-<code>/home/humanoid/Programs/mjpc_icra2026</code> · code in <code>lean_analysis/</code></p>
+<code>/home/humanoid/Programs/mjpc_icra2026</code> · code in <code>studies/</code></p>
 
 <h2>What this is</h2>
 <p>The lean pipeline in <code>mjpc/tasks/humanoid_bench/lean/</code> currently specifies bracing
@@ -267,7 +267,7 @@ resting contact still leaves ~35 mm</td><td>read actual MuJoCo contacts</td></tr
 </tbody></table></div>
 
 <h2>Reproducing</h2>
-<pre>cd /home/humanoid/Programs/mjpc_icra2026/lean_analysis
+<pre>cd /home/humanoid/Programs/mjpc_icra2026/studies
 
 # variant: handless | magpie (box proxies+jaws) | sphere | mesh
 # CL_ARM_TORQUE=1 overrides the model's stale arm actuatorfrcrange
