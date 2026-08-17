@@ -90,6 +90,7 @@ class ControlLoop:
         self.stance = None if stance is None else np.asarray(stance, float)
         self.on_step = on_step
         self.phase = Phase.WARMUP
+        self.watchdog_trips = 0
         self.t0 = None
         self.q_start = None
         self._solve_ewma = 0.0
@@ -224,6 +225,7 @@ class ControlLoop:
         # stop driving rather than to drive from a guess.
         if st.age > c.stale_s:
             self.phase = Phase.SAFE
+            self.watchdog_trips += 1
             plant.write(plant.safe_hold(c.safe_hold_kd))
             self.log.append(dict(t=t, phase=self.phase, age=st.age))
             return True
@@ -235,6 +237,15 @@ class ControlLoop:
                                  tau_sat=0, q_clip=0))
             return True
 
+        # THE PHASE IS A STATE, AND A TRIP MUST NOT LATCH IT. A stale state is
+        # a transient: the next period reads a fresh one and the policy owns
+        # the robot again. Leaving `phase` at SAFE made every subsequent row
+        # -- all of them solved, commanded and logged normally -- read as
+        # blind, and the first twin run was reported as 62 of 195 periods on
+        # the watchdog when it took exactly ONE trip. Nothing about the run
+        # changed; the label did. Counting trips separately is what makes the
+        # claim checkable instead of inferable from a phase histogram.
+        self.phase = Phase.RUN
         t_pol = t - (c.warmup_s + c.ramp_s + c.ramp_hold_s
                      if self.stance is not None else 0.0)
         # PREDICT FORWARD, then solve. Both the state and the plan index move:

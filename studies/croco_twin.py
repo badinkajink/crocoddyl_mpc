@@ -56,7 +56,8 @@ import contact_select as cs                                     # noqa: E402
 import croco_replay as cr                                       # noqa: E402
 
 from croco.control.mpc import MPC                               # noqa: E402
-from croco.plant.dds_plant import DDSPlant, assert_joint_order  # noqa: E402
+from croco.plant.dds_plant import (DDSPlant, PollingReceiver,   # noqa: E402
+                                   assert_joint_order)
 from croco.runtime.loop import ControlLoop, LoopConfig          # noqa: E402
 
 
@@ -68,17 +69,30 @@ class TruthBase:
     input in the loop, it exists so the deployment plumbing can be tested with
     the estimator held at perfect, and every result taken with it has to say so.
     Swapping in a real estimator means replacing this class and nothing else.
+
+    POLLED, for the reason in dds_plant.py: a Python callback cannot run while
+    crocoddyl holds the GIL. This channel was the worse of the two offenders --
+    it carries JSON, so the callback path spent a `json.loads` per sample at the
+    twin's 500 Hz, all of it contending for the same GIL the solver is sitting
+    on. Polling parses ONE document per control period, and parses the newest.
     """
 
-    def __init__(self):
-        from unitree_sdk2py.core.channel import ChannelSubscriber
+    def __init__(self, recv="poll"):
         from unitree_sdk2py.idl.std_msgs.msg.dds_ import String_
-        self._lock = threading.Lock()
         self._v = None
-        self._sub = ChannelSubscriber("rt/sim_state", String_)
-        self._sub.Init(self._on, 10)
+        self._lock = threading.Lock()
+        self._recv = None
+        if recv == "poll":
+            self._recv = PollingReceiver("rt/sim_state", String_)
+        else:
+            from unitree_sdk2py.core.channel import ChannelSubscriber
+            self._sub = ChannelSubscriber("rt/sim_state", String_)
+            self._sub.Init(self._on, 10)
 
     def _on(self, msg):
+        self._decode(msg)
+
+    def _decode(self, msg):
         try:
             d = json.loads(msg.data)
         except Exception:                                       # noqa: BLE001
@@ -89,6 +103,9 @@ class TruthBase:
                        time.monotonic())
 
     def __call__(self):
+        msg = self._recv.latest() if self._recv is not None else None
+        if msg is not None:
+            self._decode(msg)
         with self._lock:
             v = self._v
         if v is None:
@@ -155,6 +172,11 @@ def main():
                          "a ~16 ms solve, so the two are not obviously the same "
                          "setting. Raise it to test whether a fall is the "
                          "watchdog or the latency -- not to make it go away.")
+    ap.add_argument("--recv", default="poll", choices=("poll", "callback"),
+                    help="how lowstate/sim_state are received. `poll` takes the "
+                         "newest sample in the control thread; `callback` is "
+                         "unitree_sdk2py's listener+queue threads, which starve "
+                         "while the solver holds the GIL. Kept only for the A/B.")
     ap.add_argument("--max-seconds", type=float, default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--emit-qpos0", default=None,
@@ -214,8 +236,9 @@ def main():
         plant = DDSPlant(network_interface=args.iface, domain_id=args.domain,
                          twin_dt=None, base_source=None, tau_limit=tau_lim,
                          q_range=(m.jnt_range[1:28, 0].copy(),
-                                  m.jnt_range[1:28, 1].copy()))
-        base = TruthBase()
+                                  m.jnt_range[1:28, 1].copy()),
+                         recv=args.recv)
+        base = TruthBase(recv=args.recv)
         plant.base_source = base
         print("[croco_twin] waiting for the twin ...")
         plant.wait_for_state(timeout=15.0)
@@ -291,6 +314,7 @@ def main():
         periods=len(log), mpc_steps=stats["steps"],
         overruns=getattr(loop, "overruns", None),
         worst_overrun_ms=1e3 * getattr(loop, "worst_overrun_s", 0.0),
+        watchdog_trips=getattr(loop, "watchdog_trips", None),
         safe_periods=sum(1 for r in log if r.get("phase") == "safe"),
         tau_saturated=sum(r.get("tau_sat", 0) for r in log),
         q_clipped=sum(r.get("q_clip", 0) for r in log),
@@ -301,6 +325,11 @@ def main():
         age_ms_max=float(np.max(ages)) if ages else None,
         stale_ms=args.stale_ms,
         nthreads_effective=int(mpc.problem.nthreads),
+        recv=args.recv,
+        recv_samples_per_poll=(
+            None if getattr(plant, "recv_polls", 0) == 0
+            else round(plant.recv_samples / plant.recv_polls, 2)),
+        recv_empty_polls=getattr(plant, "recv_empty", None),
         base_source="GROUND TRUTH (rt/sim_state)")
     print("[croco_twin] " + json.dumps(out, indent=1))
     if args.out:

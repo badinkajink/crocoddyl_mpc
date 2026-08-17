@@ -23,6 +23,23 @@ WHAT IT DELIBERATELY DOES NOT DO.
     sim-coupled controller on the wall clock makes its plan index drift against
     the plant whenever the sim is not real-time, and the twin frequently is not.
 
+RECEIVE IS POLLED, NOT CALLED BACK. unitree_sdk2py's default is a cyclonedds
+listener that invokes a PYTHON callback, which hands the sample to a PYTHON
+queue thread. Both hops need the GIL, and crocoddyl's bindings hold the GIL for
+the whole solve (Boost.Python releases it nowhere; measured: a 112 ms solve
+stops every other Python thread in the process for 112 ms). So on a control
+loop whose period is mostly solve, the receive thread cannot run during the
+part of the period when the samples are actually arriving, and the state the
+controller reads is as old as the last gap it was allowed to breathe in -- 62
+of 195 periods over the watchdog on the first twin run, with a 0.7 ms MEDIAN
+age. It presents as a network problem and is not one: cyclonedds's own receive
+threads are C and were never blocked; only the Python that drains them was.
+
+Polling inverts it. The reader accumulates in C, and the control thread -- the
+one that by definition holds the GIL when it wants a state -- takes the newest
+sample itself, at the instant it needs it. No second thread, no queue, no
+starvation, and the age becomes transport time rather than scheduling time.
+
 ORDERING. `JOINT_ORDER` is the Unitree `LowCmd_.motor_cmd` index for each of the
 27 joints in MJCF order. It is asserted against the model at construction rather
 than trusted, because a silent permutation here is a robot that moves the wrong
@@ -59,6 +76,68 @@ JOINT_NAMES = [
 ]
 
 
+class PollingReceiver:
+    """A DDS subscriber the caller drains, instead of one that calls back.
+
+    WHY THE NAME MANGLING BELOW. unitree_sdk2py exposes exactly one read path,
+    `ChannelSubscriber.Read()` -> cyclonedds `take_one()`, and `take_one()` with
+    no timeout is an INFINITE BLOCKING iterator when the reader is empty -- it
+    cannot be called from a control period. The `DataReader` underneath has the
+    non-blocking `take(N)` this needs, and there is no public accessor for it.
+    So it is reached by mangled name and ASSERTED, so that an upstream rename
+    fails loudly here rather than silently falling back to a receive path whose
+    whole problem is that it is invisible.
+
+    `take(N)` returns oldest-first, so the newest sample is the LAST one. Taking
+    it (rather than the first) is the entire point: between two control periods
+    several samples arrive, and the stale ones are of no interest to anybody.
+    """
+
+    def __init__(self, topic, dtype, depth=64):
+        from unitree_sdk2py.core.channel import ChannelSubscriber
+        self.depth = depth
+        self.n_last = 0
+        self._sub = ChannelSubscriber(topic, dtype)
+        self._sub.Init()                       # handler=None -> no listener
+        try:
+            self._rd = (self._sub._ChannelSubscriber__channel
+                        ._Channel__reader._Reader__reader)
+        except AttributeError as e:            # noqa: BLE001
+            raise RuntimeError(
+                "cannot reach the DataReader inside unitree_sdk2py's "
+                "ChannelSubscriber (%s). Its internals changed; fix "
+                "PollingReceiver rather than reverting to the callback path, "
+                "which starves under the GIL." % e)
+        from cyclonedds.internal import InvalidSample
+        self._invalid = InvalidSample
+
+    def latest(self):
+        """The newest sample waiting, or None. Never blocks.
+
+        `n_last` is how many were waiting. It is the honest health signal on
+        this path: with the twin at 500 Hz and the loop at 50 Hz it should be
+        ~10, and a run of zeros means the publisher stopped or the transport
+        did -- which `age` alone can no longer tell you (see DDSPlant.read).
+        """
+        try:
+            samples = self._rd.take(N=self.depth)
+        except Exception:                                       # noqa: BLE001
+            self.n_last = 0
+            return None
+        samples = samples or ()
+        self.n_last = len(samples)
+        for s in reversed(samples):
+            if not isinstance(s, self._invalid):
+                return s
+        return None
+
+    def close(self):
+        try:
+            self._sub.Close()
+        except Exception:                                       # noqa: BLE001
+            pass
+
+
 class DDSPlant(Plant):
     """Drive `rt/lowcmd` from a Command; read `rt/lowstate` into a State.
 
@@ -73,7 +152,7 @@ class DDSPlant(Plant):
 
     def __init__(self, network_interface=None, domain_id=None, twin_dt=None,
                  base_source=None, tau_limit=None, q_range=None,
-                 stale_after=0.05):
+                 stale_after=0.05, recv="poll"):
         self.nu = len(JOINT_NAMES)
         self.tau_limit = None if tau_limit is None else np.asarray(tau_limit, float)
         self.q_range = q_range
@@ -89,6 +168,7 @@ class DDSPlant(Plant):
         self._imu_gyro = np.zeros(3)
         self._tick = 0
         self._stamp = None                  # monotonic time of the last sample
+        self.recv_samples = self.recv_polls = self.recv_empty = 0
 
         from unitree_sdk2py.core.channel import (ChannelFactoryInitialize,
                                                  ChannelPublisher,
@@ -103,12 +183,22 @@ class DDSPlant(Plant):
         self._cmd_msg = unitree_hg_msg_dds__LowCmd_()
         self._pub = ChannelPublisher(TOPIC_LOWCMD, LowCmd_)
         self._pub.Init()
-        self._sub = ChannelSubscriber(TOPIC_LOWSTATE, LowState_)
-        self._sub.Init(self._on_lowstate, 10)
+        self.recv = recv
+        if recv == "poll":
+            self._recv = PollingReceiver(TOPIC_LOWSTATE, LowState_)
+            self._sub = None
+        elif recv == "callback":
+            self._recv = None
+            self._sub = ChannelSubscriber(TOPIC_LOWSTATE, LowState_)
+            self._sub.Init(self._ingest, 10)   # kept for the A/B, not for use
+        else:
+            raise ValueError("recv must be 'poll' or 'callback'")
 
     # -- DDS ---------------------------------------------------------------
 
-    def _on_lowstate(self, msg):
+    def _ingest(self, msg):
+        """Fold one lowstate into the cached state. Same body either way -- the
+        receive STRATEGY changes, the decoding does not."""
         with self._lock:
             for i in range(self.nu):
                 mm = msg.motor_state[i]
@@ -117,6 +207,18 @@ class DDSPlant(Plant):
             self._imu_gyro[:] = msg.imu_state.gyroscope
             self._tick = int(getattr(msg, "tick", self._tick + 1))
             self._stamp = time.monotonic()
+
+    def _pump(self):
+        """Take the newest lowstate, if polling. No-op on the callback path."""
+        if self._recv is None:
+            return
+        msg = self._recv.latest()
+        self.recv_samples += self._recv.n_last
+        self.recv_polls += 1
+        if msg is None:
+            self.recv_empty += 1
+        else:
+            self._ingest(msg)
 
     def wait_for_state(self, timeout=5.0):
         """Block until a lowstate has arrived. Fail loudly, not silently at zero.
@@ -127,6 +229,7 @@ class DDSPlant(Plant):
         """
         t0 = time.monotonic()
         while time.monotonic() - t0 < timeout:
+            self._pump()
             with self._lock:
                 if self._stamp is not None:
                     return True
@@ -146,6 +249,24 @@ class DDSPlant(Plant):
         return 0.0 if stamp is None else stamp
 
     def read(self) -> State:
+        """WHAT `age` MEANS DEPENDS ON THE RECEIVE PATH, and it is worth being
+        exact about because the watchdog reads it.
+
+        callback: time since a background thread decoded a sample -- so it
+                  measures arrival AND that thread's ability to get scheduled,
+                  and under a GIL-holding solver the second term dominates.
+        poll:     time since THIS thread last took a new sample. Within a
+                  period there is no staleness to measure, by construction: the
+                  newest sample in the reader is taken at the instant it is
+                  wanted. The watchdog still does its job -- nothing new to
+                  take means `_stamp` stops advancing and `age` grows -- but it
+                  now detects a DEAD PUBLISHER rather than a busy interpreter,
+                  which is the failure it was always meant to catch.
+
+        Sub-period transport delay is no longer visible in `age` on the polling
+        path. `recv_samples / recv_polls` is what to watch instead.
+        """
+        self._pump()
         with self._lock:
             q, v, tau = self._q.copy(), self._v.copy(), self._tau.copy()
             quat, gyro = self._imu_quat.copy(), self._imu_gyro.copy()
@@ -181,6 +302,9 @@ class DDSPlant(Plant):
         self._pub.Write(m)
 
     def close(self) -> None:
+        if self._recv is not None:
+            self._recv.close()
+            self._recv = None
         for h in ("_sub", "_pub"):
             c = getattr(self, h, None)
             if c is not None:

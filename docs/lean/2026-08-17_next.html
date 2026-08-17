@@ -98,7 +98,7 @@ to see why is to put the two side by side.</p>
 <tr><td>Scene</td><td>lean MJCF</td><td>lean MJCF (same)</td></tr>
 <tr><td>Grippers</td><td>welded, unactuated</td><td>welded, unactuated</td></tr>
 <tr><td>Safety layer / e-stop</td><td>n/a</td><td class="bad">not in the loop</td></tr>
-<tr><td>Periods flying blind</td><td>0</td><td class="bad">62 of 195</td></tr>
+<tr><td>Periods flying blind</td><td>0</td><td>1 of 195 &rarr; 0 (&sect;2)</td></tr>
 </table></div>
 
 <p>What the twin run <em>does</em> license is narrow and real: the command tuple means
@@ -128,29 +128,82 @@ the first thing that could honestly be called equivalent.</p>
 <p>Two things should be fixed before spending those three hours, or the run measures
 the harness instead of the controller.</p>
 
-<h2>2. The blocker: a third of the periods fly blind</h2>
+<h2>2. RESOLVED: the watchdog, which was two bugs wearing one number</h2>
 
-<p>62 of 195 control periods took the watchdog. State age is 0.7&nbsp;ms at the median
-and 55&ndash;83&nbsp;ms in the tail, against a 50&nbsp;ms threshold. The cause is not
-the network: the DDS receive callback is a Python thread, and it cannot run while
-crocoddyl holds the GIL through a 16&nbsp;ms solve. The run survives anyway, and it was
-ruled out as the cause of the earlier falls &mdash; a run with zero trips fell
-identically &mdash; but a controller that is blind a third of the time is not something
-to take to hardware, and raising the threshold hides it rather than fixing it.</p>
+<p class="meta">Written first as &ldquo;62 of 195 periods fly blind&rdquo;. Both halves of
+that turned out to be wrong, in opposite directions, and the correction is more
+interesting than the original claim.</p>
 
-<p>Three candidate fixes, cheapest first:</p>
-<ul>
-<li><b>Release the GIL around the solve.</b> If crocoddyl&rsquo;s bindings hold it for
-the whole <code>solver.solve</code>, nothing else in the process runs. Worth checking
-first because if the bindings already release it, the cause is something else and the
-other two fixes are wasted.</li>
-<li><b>Move DDS receive out of the GIL&rsquo;s way</b> &mdash; a separate process with
-shared memory, or the C++ SDK behind a thin extension. Definitive, and the most work.</li>
-<li><b>Stop conflating two clocks.</b> <code>age</code> is measured from when the
-callback ran, not from the timestamp in the message. The twin publishes a
-<code>tick</code>; deriving age from it measures the data&rsquo;s age instead of the
-thread&rsquo;s scheduling, which is what the watchdog is actually for.</li>
-</ul>
+<h3>The 62 was a label, not an event</h3>
+
+<p>The loop logs <code>phase</code> on every row, and <code>phase</code> is a field on
+the loop rather than a property of the period. A stale state set it to
+<code>safe</code> &mdash; and nothing ever set it back, because with no bring-up
+requested <code>_phase_command</code> returns early without touching it. Every period
+after the first trip was solved, clamped, commanded and logged exactly as normal, and
+labelled <code>safe</code> anyway.</p>
+
+<p>Separating the rows that actually took the watchdog branch (they carry no
+<code>solve_ms</code>, having never reached the solver) from the rows that merely
+inherited the label gives <b>1 real trip and 61 mislabelled periods</b>. The run was
+never blind a third of the time. <code>ControlLoop</code> now resets the phase each
+period and counts <code>watchdog_trips</code> directly, so the claim is read off a
+counter instead of inferred from a histogram.</p>
+
+<h3>The GIL was real, and worse than a callback thread being slow</h3>
+
+<p>The underlying mechanism held up. Measured directly: a Python thread ticking at
+1&nbsp;ms, and a 112&nbsp;ms crocoddyl solve on the main thread.</p>
+
+<div class="scroll"><table>
+<tr><th></th><th>largest gap in the ticker</th></tr>
+<tr><td>idle baseline</td><td>1.25 ms</td></tr>
+<tr><td>during <code>solver.solve()</code></td><td class="bad">112.81 ms</td></tr>
+</table></div>
+
+<p>Boost.Python releases the GIL nowhere, so the solve stops <em>every other Python
+thread in the process</em> for its full duration. unitree_sdk2py's receive path is two
+Python hops &mdash; a cyclonedds listener invoking a Python callback, which hands the
+sample to a Python queue thread &mdash; and neither can run while the solver is in
+C++. It presents as a network problem and is not one: cyclonedds&rsquo;s own receive
+threads are C and were never blocked. Only the Python draining them was.</p>
+
+<h3>The fix was the receive strategy, not the GIL</h3>
+
+<p>Releasing the GIL around the solve was the obvious repair and it is the expensive
+one &mdash; a Boost.Python shim linking crocoddyl, and a standing constraint that no
+action model in the problem may ever be Python-derived. Inverting the receive is
+neither. The reader accumulates in C; the control thread, which by definition holds the
+GIL at the moment it wants a state, takes the newest sample itself. No second thread,
+no queue, nothing to starve. <code>PollingReceiver</code> in
+<code>croco/plant/dds_plant.py</code>, about forty lines, and it is now the default.</p>
+
+<p>A/B against the twin, same session, same machine, same cell and gains:</p>
+
+<div class="scroll"><table>
+<tr><th>state age</th><th>callback (was)</th><th>poll (now)</th></tr>
+<tr><td>median</td><td>0.931 ms</td><td class="good">0.006 ms</td></tr>
+<tr><td>p95</td><td class="bad">16.13 ms</td><td class="good">0.007 ms</td></tr>
+<tr><td>max</td><td class="bad">48.35 ms</td><td class="good">0.063 ms</td></tr>
+<tr><td>watchdog trips</td><td>0</td><td>0</td></tr>
+<tr><td>pelvis, final</td><td>0.9368 m</td><td>0.9379 m</td></tr>
+</table></div>
+
+<p>The p95 is the line to read. On the callback path one control period in twenty
+planned from a state a full solve out of date &mdash; 16&nbsp;ms of dead reckoning that
+the latency compensator was already predicting forward from, and therefore
+double-counting. The tail reached 48&nbsp;ms against a 50&nbsp;ms threshold, which is
+why a single 65&nbsp;ms sample was enough to trip it on the earlier run.</p>
+
+<div class="note"><b>One honest caveat about what <code>age</code> now means.</b>
+Polling stamps the state when this thread takes it, so within a period there is no
+staleness left to measure &mdash; 0.006 ms is not a transport time, it is the cost of
+calling <code>monotonic()</code> twice. The watchdog still works, and now catches the
+failure it was always meant to: nothing new to take means the stamp stops advancing and
+the age grows. Sub-period transport delay is simply no longer visible there, so the
+plant counts samples per poll instead. Measured 0.98 &mdash; which incidentally
+confirms the reader&rsquo;s history is <code>KeepLast(1)</code>, so the sample taken is
+by construction the newest published, and there is no queue that can fall behind.</div>
 
 <h2>3. Wrist roll, and the palm that carries nothing</h2>
 
