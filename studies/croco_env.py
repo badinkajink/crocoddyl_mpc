@@ -130,6 +130,46 @@ def extensions(python=None):
         return None, "unparseable probe output"
 
 
+OMP_PROBE = r"""
+import json, numpy as np, crocoddyl
+p = crocoddyl.ShootingProblem(np.zeros(3), [crocoddyl.ActionModelUnicycle()] * 2,
+                              crocoddyl.ActionModelUnicycle())
+p.nthreads = 4
+print(json.dumps(dict(
+    live=int(p.nthreads) == 4, default=int(p.nthreads),
+    lib=next((l.split()[-1] for l in open("/proc/self/maps")
+              if "libcrocoddyl.so" in l), "unknown"))))
+"""
+
+
+def openmp(python=None):
+    """Is multithreading LIVE in the libcrocoddyl this process actually maps?
+
+    It is a property of the LOADED LIBRARY, not of the bindings -- the pywrap is
+    the stock one either way, so no module constant answers this. `set_nthreads`
+    does: it warns and pins the count to 1 without OpenMP, and honours the value
+    with it. Worth 1.4x at the deployed configuration (14.4 -> 10.4 ms mean,
+    21.3 -> 16.7 ms p95 against a 20 ms period), i.e. the difference between a
+    tail ON the deadline and one under it.
+
+    NOT a hard failure, unlike the keep-out extension: 6x outside the loop is
+    broken, 1.4x is slow.
+    """
+    exe = python or sys.executable
+    try:
+        p = subprocess.run([exe, "-c", OMP_PROBE], capture_output=True,
+                           text=True, timeout=180)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, "probe did not run: %s" % exc
+    if p.returncode != 0:
+        return None, "probe failed"
+    import json
+    try:
+        return json.loads(p.stdout.strip().splitlines()[-1]), "ok"
+    except Exception:                                           # noqa: BLE001
+        return None, "unparseable probe output"
+
+
 def require():
     """Fail fast, with the fix, before a long run starts."""
     ok, detail = check()
@@ -163,6 +203,17 @@ def main():
               % (ext["keepout_mode"],
                  "YES" if ext["keepout_cpp"] else "NO -- ~6x SLOWER",
                  "YES" if ext["passive_cpp"] else "no"))
+    omp, _ = openmp()
+    if omp is None:
+        print("openmp      : could not probe")
+    elif omp["live"]:
+        print("openmp      : YES  %s" % omp["lib"])
+    else:
+        print("openmp      : no -- nthreads pinned to 1, ~1.4x slower, p95 ON "
+              "the 20 ms period.\n"
+              "              build:  croco_ext/build_crocoddyl_omp.sh\n"
+              "              use:    LD_PRELOAD=<lib> python ...  (run_session.sh "
+              "does this)")
     try:
         for k, p, e in assets():
             print("%-12s: %s %s" % (k.split()[0], "OK " if e else "MISSING", p))

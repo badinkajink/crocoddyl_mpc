@@ -554,6 +554,25 @@ def cmd_threads(args):
     a speed-up that never happened.
     """
     import croco_replay as cr
+
+    # ONE THROWAWAY REPLAY BEFORE THE SWEEP, and it is not superstition.
+    # The closed loop is CHAOTIC: a 1e-12 rad perturbation of the start moves the
+    # reach error from 5.34 mm to 12.39 mm (measured), and building an OCP leaves
+    # enough process state -- allocator, and so Eigen's aligned/unaligned kernel
+    # choice -- to act as exactly such a perturbation. So the FIRST replay in a
+    # process lands on a different branch from every later one, and without this
+    # line the first row of the table below differs from the rest for a reason
+    # that has nothing to do with the thing being swept. It looked like
+    # "1 thread gives a different trajectory", i.e. like a race in the parallel
+    # build, which is the one conclusion this sweep must not get wrong.
+    #
+    # It also means the trajectory columns are NOT an A/B signal here: two builds
+    # that differ only in floating-point association are expected to land on
+    # different branches. What IS a signal is a matched comparison -- same rep
+    # index, stock vs preloaded library -- and that one is bit-identical.
+    cr.replay(args.tag, ctrl_mode="mpc", dt_plan=0.02, run_dir=args.dir,
+              mpc_horizon=args.horizon, mpc_iters=args.iters, mpc_threads=1)
+
     rows = []
     for n in args.threads:
         log, plan = cr.replay(

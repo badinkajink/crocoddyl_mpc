@@ -57,6 +57,26 @@ export MUJOCO_GL="${MUJOCO_GL:-egl}"
 
 say() { printf '\n=== %s ===\n' "$*"; }
 
+# --- the OpenMP libcrocoddyl -------------------------------------------------
+# conda-forge's crocoddyl has no OpenMP, so `nthreads` is silently pinned to 1.
+# The rebuilt one is selected PER PROCESS with LD_PRELOAD, because the bindings
+# carry RPATH $ORIGIN/../../.. and RPATH beats LD_LIBRARY_PATH -- exporting a
+# path does nothing at all. See croco_ext/build_crocoddyl_omp.sh.
+#
+# It is NOT exported into this shell's environment on purpose: LD_PRELOAD is
+# inherited by every child, and preloading libcrocoddyl into `git` makes git
+# fail to start -- which is how croco_speed.py's recorded commit silently became
+# "unknown" for a whole session. Only `pyrun` sets it.
+CROCO_OMP_LIB="${CROCO_OMP_LIB:-$HOME/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1}"
+
+pyrun() {
+  if [ -f "$CROCO_OMP_LIB" ]; then
+    LD_PRELOAD="$CROCO_OMP_LIB" "$CROCO_PY" "$@"
+  else
+    "$CROCO_PY" "$@"
+  fi
+}
+
 do_stage() {
   say "staging model  -> $STAGE_ROOT"
   bash "$HERE/stage_assets.sh"
@@ -74,11 +94,23 @@ do_deps() {
     say "building native extensions (keep-out is a 6x speed-up)"
     bash "$HERE/croco_ext/build.sh" keepout passive
   fi
+  # The OpenMP crocoddyl is the SECOND silent knob: without it every
+  # `nthreads` request is pinned to 1 with a warning, and the p95 sits ON the
+  # 20 ms control period instead of under it (16.7 ms vs 21.3 ms measured).
+  # Worth 1.4x, not 6x -- Amdahl, see the S16 docpage -- but it is the
+  # difference between missing a deadline sometimes and never.
+  if [ -f "$CROCO_OMP_LIB" ]; then
+    say "OpenMP crocoddyl present: $CROCO_OMP_LIB"
+  else
+    say "building the OpenMP crocoddyl (p95 21.3 -> 16.7 ms)"
+    bash "$HERE/croco_ext/build_crocoddyl_omp.sh" || \
+      echo "(OpenMP build failed; runs will use the stock single-threaded library)"
+  fi
 }
 
 do_check() {
   say "environment"
-  "$CROCO_PY" "$HERE/croco_env.py"
+  pyrun "$HERE/croco_env.py"
 }
 
 do_grid() {
@@ -88,21 +120,21 @@ do_grid() {
   for s in "${stages[@]}"; do
     say "grid $s  -> $RUN/grid"
     case "$s" in
-      stress)  "$CROCO_PY" "$HERE/croco_grid.py" stress --dir "$RUN/grid" \
+      stress)  pyrun "$HERE/croco_grid.py" stress --dir "$RUN/grid" \
                   --seeds $SEEDS --profiles $PROFILES ;;
-      collect) "$CROCO_PY" "$HERE/croco_grid.py" collect --dir "$RUN/grid" \
+      collect) pyrun "$HERE/croco_grid.py" collect --dir "$RUN/grid" \
                   --out "$RUN/grid.json" ;;
-      *)       "$CROCO_PY" "$HERE/croco_grid.py" "$s" --dir "$RUN/grid" ;;
+      *)       pyrun "$HERE/croco_grid.py" "$s" --dir "$RUN/grid" ;;
     esac
   done
 }
 
 do_videos() {
   say "grid videos -> $RUN/media"
-  "$CROCO_PY" "$HERE/croco_grid.py" videos --dir "$RUN/grid" \
+  pyrun "$HERE/croco_grid.py" videos --dir "$RUN/grid" \
       --out "$RUN/media" || echo "(grid videos stage reported a failure)"
   say "gripper orientation videos -> $RUN/media"
-  "$CROCO_PY" "$HERE/gripper_views.py" --out "$RUN/media"
+  pyrun "$HERE/gripper_views.py" --out "$RUN/media"
 }
 
 cmd="${1:-all}"; shift || true
