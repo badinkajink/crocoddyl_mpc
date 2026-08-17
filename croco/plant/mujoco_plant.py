@@ -27,6 +27,10 @@ from .base import Plant, State
 
 
 class MuJoCoPlant(Plant):
+    """In-process physics. This process advances the clock."""
+
+    OWNS_CLOCK = True
+
     def __init__(self, model, data, sense=None, tau_limit=None, nu=None):
         import mujoco
 
@@ -97,6 +101,27 @@ class MuJoCoPlant(Plant):
         n = max(1, int(round(dt / self.m.opt.timestep)))
         for _ in range(n):
             self._mj.mj_step(self.m, self.d)
+
+    def safe_hold(self, kd=2.0):
+        """The closest thing a POSITION servo can do to a damping stop.
+
+        The base class's safe hold is kp = 0, kd > 0: resist motion, drive
+        toward nothing. A MuJoCo <position> actuator cannot express that -- its
+        kp/kd are baked into the model and `write` rejects a command carrying
+        different ones (rightly: the inversion would not reproduce the commanded
+        torque). So here it is "hold exactly where you are, no feedforward",
+        which resists deviation but is a stiff hold rather than a soft one.
+
+        THIS IS A REAL DIFFERENCE BETWEEN THE PLANTS, not a detail. A watchdog
+        trip in MuJoCo behaves better than the same trip on hardware, so a
+        stale-state recovery that only ever gets tested here is not tested. The
+        `kd` argument is accepted and ignored, deliberately, rather than
+        silently reinterpreted.
+        """
+        from ..control.command import Command
+        st = self.read()
+        return Command(q_des=st.q, kp=self.kp, kd=self.kd,
+                       tau_ff=np.zeros(self.nu))
 
 
 def default_sense(rng, base_bias_m=0.01, base_bias_rad=0.01,

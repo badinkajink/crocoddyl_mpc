@@ -75,6 +75,10 @@ class Plant:
     """
 
     nu: int = 0
+    #: True if this process advances the plant (MuJoCo), False if it just
+    #: watches an external one advance (DDS). Decides whether the loop steps
+    #: physics or sleeps.
+    OWNS_CLOCK: bool = False
     #: (nu,) actuator torque limits the plan should be clamped against, or None.
     tau_limit: np.ndarray | None = None
     #: ((nu,), (nu,)) joint range for setpoint clamping, or None.

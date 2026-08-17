@@ -69,6 +69,8 @@ class DDSPlant(Plant):
     FAST-LIO or the tag anchor supplies it) without a branch in here.
     """
 
+    OWNS_CLOCK = False          # the twin/robot advances itself; we just watch
+
     def __init__(self, network_interface=None, domain_id=None, twin_dt=None,
                  base_source=None, tau_limit=None, q_range=None,
                  stale_after=0.05):
