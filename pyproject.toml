@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crocoddyl-mpc"
+version = "0.1.0"
+description = "A crocoddyl MPC runtime for the Unitree H1-2: braced-lean planning, an in-process plant, a DDS twin, and a live panel."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+
+# NOT INSTALLABLE FROM PyPI ALONE, and saying so here rather than letting a
+# `pip install .` half-succeed. crocoddyl and pinocchio are conda-forge
+# packages with compiled Boost.Python bindings; there are no usable wheels, and
+# the crocoddyl that conda's `base` env ships SEGFAULTS in contact dynamics.
+# See README "Install" -- the environment is created with conda, and this file
+# exists so `croco` is importable from anywhere once it is.
+dependencies = [
+  "numpy<2",
+  "scipy",
+  "imageio[ffmpeg]",
+  "matplotlib",
+  "quadprog",
+]
+
+[project.optional-dependencies]
+# The DDS twin only. The in-process plant needs none of this.
+twin = ["cyclonedds", "unitree_sdk2py"]
+
+[tool.setuptools]
+packages = ["croco", "croco.control", "croco.gui", "croco.model",
+            "croco.plant", "croco.runtime", "croco.twin"]
+
+[tool.setuptools.package-data]
+"croco.gui" = ["page.html"]

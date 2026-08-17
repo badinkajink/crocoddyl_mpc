@@ -1,0 +1,13 @@
+# Session artifacts. These are generated, large (the fork carried 153 MB of
+# them before the split) and never inputs to anything -- runs are reproduced
+# with studies/run_session.sh, not restored from git.
+studies/runs/
+
+# Staged model tree: studies/stage_assets.sh rebuilds it from assets/.
+build/
+
+# Native extensions: studies/croco_ext/build.sh rebuilds them, and a committed
+# .so is wrong for every machine but the one that built it.
+*.so
+__pycache__/
+*.py[cod]
