@@ -177,6 +177,14 @@ def main():
                          "newest sample in the control thread; `callback` is "
                          "unitree_sdk2py's listener+queue threads, which starve "
                          "while the solver holds the GIL. Kept only for the A/B.")
+    ap.add_argument("--gui", nargs="?", type=int, const=8770, default=None,
+                    metavar="PORT",
+                    help="serve the live panel (default port 8770): solve time "
+                         "against the period, cost per term, state age, and "
+                         "sliders for every cost weight. Weight edits are "
+                         "applied BETWEEN periods and recorded in --out, "
+                         "because a retuned run that does not say so is not "
+                         "reproducible.")
     ap.add_argument("--max-seconds", type=float, default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--emit-qpos0", default=None,
@@ -292,7 +300,14 @@ def main():
 
     cfg = LoopConfig(ctrl_hz=1.0 / dt_plan, stale_s=args.stale_ms * 1e-3)
     stance = cs.start_qpos(m, plan["start"])[7:] if args.bringup else None
-    loop = ControlLoop(plant, policy, stance=stance, cfg=cfg)
+    panel = None
+    if args.gui:
+        from croco.gui import Panel
+        panel = Panel(mpc, port=args.gui, period_ms=1e3 * dt_plan)
+        print("[croco_twin] panel on %s -- open it before the maneuver starts, "
+              "the run is only %.1f s long" % (panel.url, len(us) * dt_plan))
+    loop = ControlLoop(plant, policy, stance=stance, cfg=cfg,
+                       on_step=None if panel is None else panel.on_step)
     print("[croco_twin] %.0f Hz, horizon %d, %d iter(s), %d thread(s), "
           "%s bring-up" % (cfg.ctrl_hz, args.horizon, args.iters, args.threads,
                            "with" if args.bringup else "no"))
@@ -326,16 +341,34 @@ def main():
         stale_ms=args.stale_ms,
         nthreads_effective=int(mpc.problem.nthreads),
         recv=args.recv,
+        **({} if panel is None else panel.summary()),
         recv_samples_per_poll=(
             None if getattr(plant, "recv_polls", 0) == 0
             else round(plant.recv_samples / plant.recv_polls, 2)),
         recv_empty_polls=getattr(plant, "recv_empty", None),
         base_source="GROUND TRUTH (rt/sim_state)")
+    if panel is not None and panel.dirty:
+        print("[croco_twin] WEIGHTS WERE CHANGED LIVE (%d edits). This run is "
+              "NOT the plan's cost function; see gui_weight_changes in --out."
+              % len(panel.changes))
     print("[croco_twin] " + json.dumps(out, indent=1))
     if args.out:
         os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
         json.dump(dict(summary=out, log=log), open(args.out, "w"), indent=1)
         print("[croco_twin] wrote %s" % args.out)
+    if panel is not None:
+        # HOLD THE PANEL OPEN. The maneuver is four seconds long and the
+        # process would otherwise exit before a browser could finish loading
+        # the page, which is how the first run of this was measured as
+        # "HTTP 000". The run is over; the numbers are what you came to look at.
+        print("[croco_twin] panel still serving at %s -- Ctrl-C to exit"
+              % panel.url)
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        panel.close()
     return 0
 
 

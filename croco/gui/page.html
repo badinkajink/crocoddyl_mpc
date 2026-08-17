@@ -1,0 +1,153 @@
+<!doctype html>
+<meta charset="utf-8"><title>crocoddyl-mpc panel</title>
+<style>
+:root{--bg:#0e1116;--panel:#161b22;--line:#272d36;--ink:#d7dde5;--ink2:#8b95a3;
+      --good:#4ec9a0;--warn:#e6a35c;--bad:#e06c6c;--acc:#6ea8fe}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+     font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+header{display:flex;gap:1rem;align-items:baseline;padding:.6rem 1rem;
+       border-bottom:1px solid var(--line)}
+h1{font-size:.95rem;margin:0;font-weight:600;letter-spacing:.02em}
+#status{color:var(--ink2)}
+#dirty{color:var(--warn);font-weight:600}
+main{display:grid;grid-template-columns:minmax(0,2fr) minmax(19rem,1fr);
+     gap:1rem;padding:1rem;align-items:start}
+@media(max-width:60rem){main{grid-template-columns:1fr}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.8rem}
+h2{font-size:.78rem;margin:0 0 .6rem;color:var(--ink2);text-transform:uppercase;
+   letter-spacing:.08em;font-weight:600}
+canvas{width:100%;height:110px;display:block}
+.cap{color:var(--ink2);font-size:.75rem;margin:.15rem 0 .9rem}
+.kv{display:grid;grid-template-columns:1fr auto;gap:.15rem .8rem}
+.kv b{font-weight:600}
+.w{margin:.55rem 0}
+.w label{display:flex;justify-content:space-between;color:var(--ink2)}
+.w label b{color:var(--ink);font-weight:600}
+.w input{width:100%;accent-color:var(--acc)}
+.d{color:var(--ink2);font-size:.72rem}
+.bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--warn)}
+</style>
+<header>
+  <h1>crocoddyl-mpc</h1>
+  <span id="status">connecting…</span>
+  <span id="dirty"></span>
+</header>
+<main>
+  <div>
+    <section>
+      <h2>solve time vs the control period</h2>
+      <canvas id="c_solve"></canvas>
+      <div class="cap" id="cap_solve">&nbsp;</div>
+      <h2>cost, per term</h2>
+      <canvas id="c_terms"></canvas>
+      <div class="cap" id="cap_terms">&nbsp;</div>
+      <h2>state age</h2>
+      <canvas id="c_age"></canvas>
+      <div class="cap" id="cap_age">&nbsp;</div>
+    </section>
+  </div>
+  <div>
+    <section><h2>loop</h2><div class="kv" id="kv"></div></section>
+    <section style="margin-top:1rem">
+      <h2>cost weights</h2>
+      <div id="ws"></div>
+      <div class="d">Log-scaled, 1/100&times; to 100&times; the value this run
+        started with. Every change is recorded in the run artifact.</div>
+    </section>
+  </div>
+</main>
+<script>
+const N = 300, hist = {solve:[], age:[], terms:{}}, colors =
+  ["#6ea8fe","#4ec9a0","#e6a35c","#e06c6c","#b48ead","#88c0d0","#d0b070","#a3be8c"];
+let base = null, period = null, live = false;
+
+function push(a, v){ a.push(v); if (a.length > N) a.shift(); }
+function dpi(c){ const r = c.getBoundingClientRect(), s = devicePixelRatio||1;
+  c.width = r.width*s; c.height = r.height*s; const g = c.getContext("2d");
+  g.setTransform(s,0,0,s,0,0); return [g, r.width, r.height]; }
+
+function plot(id, series, opts){
+  const [g,W,H] = dpi(document.getElementById(id));
+  g.clearRect(0,0,W,H);
+  let hi = opts.min || 1e-9;
+  for (const s of series) for (const v of s.data) if (isFinite(v)) hi = Math.max(hi, v);
+  if (opts.ref) hi = Math.max(hi, opts.ref*1.15);
+  g.strokeStyle = "#272d36"; g.lineWidth = 1;
+  for (let i=0;i<=2;i++){ const y = H - H*i/2; g.beginPath();
+    g.moveTo(0,y+.5); g.lineTo(W,y+.5); g.stroke(); }
+  if (opts.ref){ const y = H - H*opts.ref/hi; g.strokeStyle="#e06c6c";
+    g.setLineDash([4,3]); g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke();
+    g.setLineDash([]); }
+  series.forEach((s,i)=>{
+    g.strokeStyle = s.color || colors[i%colors.length]; g.lineWidth = 1.5;
+    g.beginPath();
+    s.data.forEach((v,j)=>{ const x = W*j/(N-1), y = H - H*(isFinite(v)?v:0)/hi;
+      j ? g.lineTo(x,y) : g.moveTo(x,y); });
+    g.stroke();
+  });
+  return hi;
+}
+
+function redraw(){
+  const hi = plot("c_solve", [{data:hist.solve}], {ref:period, min:1});
+  const last = hist.solve[hist.solve.length-1];
+  document.getElementById("cap_solve").innerHTML = period
+    ? `now <b>${(last||0).toFixed(1)} ms</b> &middot; period <span class="bad">${period.toFixed(0)} ms</span> &middot; peak ${hi.toFixed(0)} ms`
+    : "&nbsp;";
+  const names = Object.keys(hist.terms).sort();
+  plot("c_terms", names.map((n,i)=>({data:hist.terms[n], color:colors[i%colors.length]})), {});
+  document.getElementById("cap_terms").innerHTML = names.map((n,i)=>
+    `<span style="color:${colors[i%colors.length]}">&#9632;</span> ${n}`).join(" &nbsp; ") || "&nbsp;";
+  const a = plot("c_age", [{data:hist.age, color:"#4ec9a0"}], {min:0.05});
+  document.getElementById("cap_age").innerHTML =
+    `peak <b>${a.toFixed(3)} ms</b> &middot; polled receive: this should be microseconds`;
+}
+
+function slider(name, w){
+  const lo = Math.log10(Math.max(w,1e-12)/100), hi = Math.log10(Math.max(w,1e-12)*100);
+  const d = document.createElement("div"); d.className = "w";
+  d.innerHTML = `<label><span>${name}</span><b id="v_${name}">${w.toPrecision(3)}</b></label>`;
+  const s = document.createElement("input");
+  s.type="range"; s.min=lo; s.max=hi; s.step=(hi-lo)/400; s.value=Math.log10(Math.max(w,1e-12));
+  s.oninput = () => {
+    const v = Math.pow(10, +s.value);
+    document.getElementById("v_"+name).textContent = v.toPrecision(3);
+    ws.send(JSON.stringify({cmd:"weight", name:name, value:v}));
+  };
+  d.appendChild(s); return d;
+}
+
+const ws = new WebSocket("ws://" + location.host + "/ws");
+ws.onopen  = () => { document.getElementById("status").textContent = "live"; live = true; };
+ws.onclose = () => { document.getElementById("status").textContent =
+  live ? "loop finished" : "no controller on this port"; };
+ws.onmessage = ev => {
+  const m = JSON.parse(ev.data);
+  if (m.type !== "step") return;
+  if (m.solve_ms != null && !period && m.t) period = null;
+  push(hist.solve, m.solve_ms || 0);
+  push(hist.age, m.age_ms || 0);
+  for (const [k,v] of Object.entries(m.terms||{})){
+    if (!hist.terms[k]) hist.terms[k] = new Array(hist.solve.length-1).fill(0);
+    push(hist.terms[k], v);
+  }
+  if (m.period_ms) period = m.period_ms;
+  document.getElementById("kv").innerHTML = [
+    ["period", m.k], ["phase", m.phase],
+    ["solve", (m.solve_ms||0).toFixed(1)+" ms"],
+    ["state age", (m.age_ms||0).toFixed(3)+" ms"],
+    ["latency comp", (m.latency_ms||0).toFixed(1)+" ms"],
+    ["step length", m.step_length==null?"--":m.step_length.toFixed(4)],
+    ["tau saturated", m.tau_sat], ["q clipped", m.q_clip],
+  ].map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join("");
+  document.getElementById("dirty").textContent =
+    m.dirty ? "weights modified — this run is not the plan's" : "";
+  if (!base && m.weights){ base = m.weights;
+    const box = document.getElementById("ws");
+    for (const [n,w] of Object.entries(base).sort()) box.appendChild(slider(n,w));
+  }
+  redraw();
+};
+addEventListener("resize", redraw);
+</script>
