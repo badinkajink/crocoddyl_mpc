@@ -57,6 +57,18 @@ import numpy as np
 from ..plant.dds_plant import JOINT_NAMES, TOPIC_LOWCMD, TOPIC_LOWSTATE
 
 TOPIC_TRUTH = "rt/sim_state"
+TOPIC_SPORT = "rt/sportmodestate"   # the fork's estimator bench speaks this
+# pelvis -> IMU site. Must equal base_estimator_node.IMU_OFFSET and
+# h12_control_node.cc's kImuOffset, or the two ends of the reconstruction
+# disagree and every base pose is wrong by a quarter of a metre.
+IMU_OFFSET = np.array([-0.04452, -0.01891, 0.27756])
+
+
+def _quat_to_mat(q):
+    import mujoco
+    R = np.zeros(9)
+    mujoco.mju_quat2Mat(R, np.asarray(q, float))
+    return R.reshape(3, 3)
 
 
 def to_torque_actuators(m):
@@ -194,11 +206,23 @@ class LeanTwin:
         self._pub.Init()
         self._sub = ChannelSubscriber(TOPIC_LOWCMD, LowCmd_)
         self._sub.Init(self._on_lowcmd, 10)
-        self._truth_pub = None
+        self._truth_pub = self._sport_pub = None
         if publish_truth:
             self._String_ = String_
             self._truth_pub = ChannelPublisher(TOPIC_TRUTH, String_)
             self._truth_pub.Init()
+            # ALSO as SportModeState_ on rt/sportmodestate, which is what
+            # h1_robocasa's h12_mujoco.py publishes and therefore what the
+            # fork's whole estimator bench already speaks: sim_tag_anchor.py
+            # and base_estimator_node --compare both read this topic and need
+            # no adapter. Same gate, same warning -- one flag still turns all
+            # ground truth on and off.
+            from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
+            from unitree_sdk2py.idl.default import (
+                unitree_go_msg_dds__SportModeState_)
+            self._sport_msg = unitree_go_msg_dds__SportModeState_()
+            self._sport_pub = ChannelPublisher(TOPIC_SPORT, SportModeState_)
+            self._sport_pub.Init()
             print("[lean_twin] GROUND TRUTH IS ON: base pose on %s. Any result "
                   "from this run is a plumbing result, not a deployment "
                   "result." % TOPIC_TRUTH)
@@ -271,6 +295,23 @@ class LeanTwin:
             base_angvel=[float(x) for x in self.d.qvel[3:6]]))
         msg = self._String_(data=payload)
         self._truth_pub.Write(msg)
+        if self._sport_pub is not None:
+            # THE IMU SITE, NOT THE PELVIS. `rt/sportmodestate` means the site
+            # everywhere else in this stack -- the factory topic does, the
+            # fork's estimator publishes it, and h12_control_node.cc undoes the
+            # offset on the way in. Publishing the pelvis here would make
+            # `--compare` read a constant 0.278 m error and call the estimator
+            # broken when it was exact.
+            sm = self._sport_msg
+            R = _quat_to_mat(self.d.qpos[3:7])
+            roff = R @ IMU_OFFSET
+            p = self.d.qpos[0:3] + roff
+            v = self.d.qvel[0:3] + np.cross(R @ self.d.qvel[3:6], roff)
+            for k in range(3):
+                sm.position[k] = float(p[k])
+                sm.velocity[k] = float(v[k])
+            sm.imu_state.quaternion[:] = [float(x) for x in self.d.qpos[3:7]]
+            self._sport_pub.Write(sm)
 
     # -- run --------------------------------------------------------------
 
@@ -389,7 +430,7 @@ class LeanTwin:
         return self.stats
 
     def close(self):
-        for h in ("_sub", "_pub", "_truth_pub"):
+        for h in ("_sub", "_pub", "_truth_pub", "_sport_pub"):
             c = getattr(self, h, None)
             if c is not None:
                 try:
