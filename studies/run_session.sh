@@ -35,7 +35,24 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
-CROCO_PY="${CROCO_PY:-/home/humanoid/miniconda3/envs/croco/bin/python}"
+# The interpreter. `croco` is a conda env with a crocoddyl whose CONTACT
+# dynamics do not segfault -- `base`'s does, which cost a whole session to
+# find (see the header). Resolved rather than hardcoded to one developer's
+# absolute path, which is what it was: CROCO_PY wins, then a `croco` env under
+# whatever conda is installed, then the active env, then python3. `croco_env.py`
+# is what actually checks the interpreter is usable; this only has to find a
+# plausible one.
+_croco_py() {
+  if [ -n "${CROCO_PY:-}" ]; then echo "$CROCO_PY"; return; fi
+  for base in "${CONDA_EXE%/bin/conda}" "$HOME/miniconda3" "$HOME/anaconda3" \
+              "$HOME/miniforge3" /opt/conda; do
+    [ -x "$base/envs/croco/bin/python" ] && { echo "$base/envs/croco/bin/python"; return; }
+  done
+  [ -n "${CONDA_PREFIX:-}" ] && [ -x "$CONDA_PREFIX/bin/python" ] \
+    && { echo "$CONDA_PREFIX/bin/python"; return; }
+  command -v python3
+}
+CROCO_PY="$(_croco_py)"
 RUN="${RUN:-$HERE/runs/$(date +%Y-%m-%d)_session18}"
 SEEDS="${SEEDS:-1 2 3 4 5}"
 PROFILES="${PROFILES:-nominal winch1}"
