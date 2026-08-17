@@ -94,7 +94,7 @@ to see why is to put the two side by side.</p>
 <tr><td>Target cells</td><td>26</td><td>1 &rarr; <span class="good">26</span> (&sect;7)</td></tr>
 <tr><td>Disturbance profiles</td><td>nominal, winch1</td><td class="bad">none</td></tr>
 <tr><td>Seeds per cell</td><td>5</td><td class="bad">1</td></tr>
-<tr><td>Base pose</td><td>estimator error model (bias + white)</td><td class="bad">GROUND TRUTH</td></tr>
+<tr><td>Base pose</td><td class="bad">no state-estimate error at all (&sect;7)</td><td class="bad">GROUND TRUTH &rarr; real estimator (&sect;7)</td></tr>
 <tr><td>Scene</td><td>lean MJCF</td><td>lean MJCF (same)</td></tr>
 <tr><td>Grippers</td><td>welded, unactuated</td><td>welded, unactuated</td></tr>
 <tr><td>Safety layer / e-stop</td><td>n/a</td><td class="bad">not in the loop</td></tr>
@@ -390,26 +390,7 @@ tree, a built-in profiler. Still to build: the horizon overlay from
 <code>solver.xs</code>, which belongs in the twin&rsquo;s viewer process rather than the
 browser.</p>
 
-<h2>6. Housekeeping: the media links</h2>
-
-<p>Every video in every docpage in this series was a broken element. The pages reference
-<code>media/&lt;name&gt;</code> relative to <code>docs/lean/</code>, and that directory
-did not survive the move out of the pre-rename checkout and the <code>studies/</code>
-reorg. It was silent because a missing <code>&lt;video&gt;</code> renders as blank space
-rather than as an error.</p>
-
-<p><code>docs/lean/fix_media.py</code> resolves it: it scans every page for references,
-searches all four places media has lived, newest mtime wins, and copies what it finds.
-<b>33 of 46 restored.</b> The directory is gitignored, so the script is the deliverable
-&mdash; on a fresh checkout <code>fix_media.py --copy</code> is what makes the pages
-viewable.</p>
-
-<p>The remaining 13 exist nowhere on this machine. They are S13 and S14 replay videos, and
-they are not worth regenerating: both sessions predate the gripper correction, so
-re-rendering them would produce videos of a model this series has since established was
-90&deg; out. The script names them rather than leaving blank rectangles.</p>
-
-<h2>7. RESOLVED: the cells axis, closed</h2>
+<h2>6. RESOLVED: the cells axis, closed</h2>
 
 <p>With the receive path fixed, the grid was worth running.
 <code>studies/twin_grid.sh</code> puts every certified cell through the twin, one twin
@@ -465,6 +446,274 @@ the loop is already what would run on the robot.</li>
 a clear prediction, and it makes recovery usable rather than merely possible.</li>
 <li><b>The palm</b>, which needs <code>resolved_contacts</code> to place contacts on
 surfaces, and the grid redone behind it.</li>
+</ol>
+
+<h2>7. The estimator: exact standing, 100 mm leaning</h2>
+
+<p class="meta">Correction to yesterday&rsquo;s page, which said a real base estimator
+was the biggest missing piece. It was never missing.
+<code>mjpc/deploy/helper_scripts/base_estimator_node_v{1..4}.py</code> has been on this
+branch the whole time, and v4 is the deploy candidate. It is now in the loop as
+<code>--base estimator</code>, and it is what breaks the maneuver.</p>
+
+<h3>It dropped in with no changes to the twin</h3>
+
+<p>Two properties made that possible. The rw-ekf <b>never integrates the
+accelerometer</b> &mdash; &ldquo;no drift to learn&rdquo; &mdash; so the twin&rsquo;s
+<code>rt/lowstate</code> (q, dq, tau, IMU quaternion, gyro) is already complete for it.
+And it publishes only <em>position and velocity</em>, which is right: attitude and body
+rate are measured, and no proprioceptive filter improves on them.
+<code>DDSPlant</code>&rsquo;s <code>base_source</code> now fills in what it has and
+leaves the IMU for the rest.</p>
+
+<div class="note"><b>One offset that is not cosmetic.</b> The estimator publishes the
+<b>IMU site</b> &mdash; the convention <code>h12_control_node.cc</code> consumes &mdash;
+and the OCP wants the <b>pelvis</b>. They differ by 0.278 m in z. The twin now publishes
+its ground truth on <code>rt/sportmodestate</code> in the same site convention, so
+<code>sim_tag_anchor.py</code> and <code>--compare</code> work against it unmodified.</div>
+
+<h3>The measurement that settles what is wrong</h3>
+
+<p>Closed-loop numbers are contaminated: the estimator errs, the robot falls, and the
+fall makes the error enormous. So the estimator was run <b>open loop</b> &mdash;
+watching, with the controller steering on truth, so the maneuver actually works:</p>
+
+<div class="scroll"><table>
+<tr><th>estimator vs truth, on a run that succeeds</th><th></th></tr>
+<tr><td>static, before the maneuver</td><td class="good">4 mm</td></tr>
+<tr><td>during the braced lean</td><td class="bad">64 &ndash; 101 mm</td></tr>
+</table></div>
+
+<p>So it is <b>not</b> calibration, not initialisation, not the model. The estimator is
+exact on a standing robot and loses 100 mm during this maneuver specifically. S18
+stress-tested the plan against base_xy &sigma; = 20 mm; this is five times that, and
+closed loop the maneuver does not survive it.</p>
+
+<div class="scroll"><table>
+<tr><th>configuration</th><th>error p50</th><th>tau saturated</th><th>outcome</th></tr>
+<tr><td>ground truth (the &sect;6 baseline)</td><td>&mdash;</td><td>20</td><td class="good">upright</td></tr>
+<tr><td>bare v4</td><td>129 mm</td><td>317</td><td class="bad">FELL</td></tr>
+<tr><td>v4, upright gate raised to 35&deg;</td><td>149 mm</td><td>107</td><td class="bad">FELL</td></tr>
+<tr><td>v4 + april anchor, <code>--aux-gate always</code></td><td>113 mm</td><td>517</td><td class="bad">FELL</td></tr>
+<tr><td>v4 + april, <code>--aux-xy-tau 0.25</code></td><td>99 mm</td><td>185</td><td class="bad">FELL</td></tr>
+</table></div>
+
+<h3>Why a stand works and this does not</h3>
+
+<p>The bare-v4 run was not the deployed configuration &mdash; on the robot v4 runs with
+AprilTags and LIO feeding its aux bus, and <code>est_bringup.sh</code> even defaults
+<code>--aux-gate always</code> for v4+april. Wiring the anchor in
+(<code>sim_tag_anchor.py</code>: 15 Hz, 3 mm 1&sigma;, 60 ms late, position-only &mdash;
+the real bridge&rsquo;s measured characteristics) helps and does not rescue it, and the
+reason is a timescale mismatch that shows up plainly once you look for it.</p>
+
+<ul>
+<li><b>ZUPT pins velocity, and ZUPT is a stand-still aid.</b> It correctly never fires
+during a maneuver &mdash; <code>zupt=0%</code> throughout, even with the gate forced
+open. A standing robot gets its velocity nailed to zero many times a second. A leaning
+one never does.</li>
+<li><b>The anchor pins position, on a 2-second time constant.</b>
+<code>--aux-xy-tau</code> defaults to 2.0 s. This error develops in <b>0.4 s</b>.
+Shortening it to 0.25 s recovers 30 mm of the 130 and not the rest.</li>
+</ul>
+
+<p>A stand has both mechanisms working, on drift slow enough for them to work on. A
+braced lean has neither. That is the whole discrepancy, and it means the good sim2real
+results on stands are not evidence about this maneuver either way.</p>
+
+<div class="note warn"><b>A coincidence, recorded so nobody else chases it.</b> The
+braced pelvis sits at <b>25.3&deg;</b> of tilt against
+<code>--upright-tilt-deg</code>&rsquo;s <b>25.0&deg;</b> default, so the maneuver does
+cross the estimator&rsquo;s upright gate &mdash; by three tenths of a degree. It looks
+like a smoking gun and it is not: opening the gate changed nothing, because ZUPT was
+never going to fire on a moving robot anyway.</div>
+
+<h3>What to chase</h3>
+
+<p>The estimator says where to look. <code>slip=ACTIVE</code> for the whole maneuver
+&mdash; its own monitor reporting that the two legs&rsquo; implied base velocities
+disagree. The error is <b>83% lateral</b> (dy &minus;133 mm at peak against dx +17) in a
+maneuver that is almost purely sagittal, which is the signature of a left/right contact
+blend problem rather than forward drift. Two candidate mechanisms, both testable: the
+brace unloading one side as it takes 26% of body weight, and sole roll about the heel
+edge that the planned CoP already rides. That is a mechanism to find, not a knob to
+turn.</p>
+
+<h2>8. The hold does not decay, and what that means for a mode switch</h2>
+
+<p>&ldquo;Benchmark the hold alone&rdquo; &mdash; same cell, <code>n_braced</code> swept
+80 &rarr; 200 &rarr; 400 nodes, everything else identical.</p>
+
+<div class="scroll"><table>
+<tr><th>n_braced</th><th>brace</th><th>pelvis</th><th>reach err at end</th><th>margin at brace end</th></tr>
+<tr><td>80</td><td>1.6 s</td><td>0.955 m</td><td>5.3 mm</td><td>+70.2 mm</td></tr>
+<tr><td>200</td><td>4.0 s</td><td>0.950 m</td><td>14.7 mm</td><td>+74.6 mm</td></tr>
+<tr><td>400</td><td>8.0 s</td><td>0.945 m</td><td>7.9 mm</td><td class="good">+79.6 mm</td></tr>
+</table></div>
+
+<p><b>Nothing drifts.</b> The margin at brace end slightly <em>improves</em> with
+duration, elbow force is flat at 179 N, and the run&rsquo;s minimum margin stays pinned
+at +37 mm &mdash; which belongs to the approach, not the hold. In process the brace is
+not something that runs out; it is a fixed point the MPC sits on, and &ldquo;hold as long
+as possible&rdquo; has no in-process limit to find.</p>
+
+<h3>Which simplifies the mode design</h3>
+
+<ul>
+<li><b>HOLD should be the steady state, not the tail of a finite plan.</b> If the braced
+phase is effectively unbounded and the MPC simply regulates about the fixed point, then
+holding needs no plan length at all &mdash; and the plan&rsquo;s length stops being a
+hidden timeout. This also fixes the thing where the twin robot collapses five seconds
+after a <em>successful</em> run: the loop signs off with a damping stop when the policy
+retires, and with a real HOLD mode it never retires.</li>
+<li><b>RECOVER is a triggered transition</b>, and &sect;4 already showed the transition
+itself is safe: +41.5 mm and rising, 300 N moved onto the feet in one control period
+without the CoM leaving the support polygon.</li>
+<li><b>Manual before auto</b> &mdash; not because auto is hard, but because the trigger
+predicate is the thing worth watching before trusting. Everything it needs is already
+computed per period: support margin, reach error, brace force, torque ratio. Auto is then
+&ldquo;margin &gt; X and reach error &lt; Y, sustained N periods&rdquo;, and the panel
+from &sect;5 is exactly where you would watch that predicate live before promoting it
+from a readout to a trigger.</li>
+</ul>
+
+<div class="note warn"><b>But not yet.</b> Both modes are about <em>when</em> to leave a
+brace that the robot holds indefinitely in process and cannot hold at all over the wire
+with a real base estimate (&sect;7). Mode logic on top of that is polish on a foundation
+that is still moving.</div>
+
+<h2>9. What it looks like</h2>
+
+<p>Rendered from the same plans the numbers above come from, all MPC in the loop.</p>
+
+<h3>Variable reach, at the certified contact modes</h3>
+
+<div class="grid2">
+<figure><video src="media/s19_reach_x0905.mp4" controls muted loop playsinline></video>
+<figcaption><b>x = 0.905 m</b>, elbow+forearm+palm. Nearest target: reach error
+0.5&nbsp;mm, 144.7&nbsp;N through the brace, margin +37.2&nbsp;mm.</figcaption></figure>
+<figure><video src="media/s19_reach_x1050.mp4" controls muted loop playsinline></video>
+<figcaption><b>x = 1.050 m</b>, elbow+palm. The cell every other measurement on this page
+uses. 12.8&nbsp;mm, 144.6&nbsp;N, +37.3&nbsp;mm.</figcaption></figure>
+<figure><video src="media/s19_reach_x1150.mp4" controls muted loop playsinline></video>
+<figcaption><b>x = 1.150 m</b>, elbow+palm. Brace force climbs to 176.5&nbsp;N and the
+margin drops to <b>+8.2&nbsp;mm</b>.</figcaption></figure>
+<figure><video src="media/s19_reach_x1250.mp4" controls muted loop playsinline></video>
+<figcaption><b>x = 1.250 m</b>, the far edge. 206.4&nbsp;N, and the CoM leaves the
+support polygon &mdash; minimum margin <b class="bad">&minus;18.8&nbsp;mm</b>. It stays
+up because the arm is holding it up.</figcaption></figure>
+</div>
+
+<p class="meta">Reach is what loads the arm: 145&nbsp;N at 0.905&nbsp;m, 206&nbsp;N at
+1.250&nbsp;m, and the support margin goes +37 &rarr; +8 &rarr; &minus;19&nbsp;mm across
+the same span. The far cells are not braces that happen to work &mdash; they are braces
+the robot cannot stand without.</p>
+
+<h3>Other contact modes and heights</h3>
+
+<div class="grid2">
+<figure><video src="media/s19_mode_elbow_forearm.mp4" controls muted loop playsinline></video>
+<figcaption><b>elbow+forearm</b>, no palm. The heaviest brace of the set at
+245.7&nbsp;N &mdash; two contacts on one link pair.</figcaption></figure>
+<figure><video src="media/s19_mode_low_table.mp4" controls muted loop playsinline></video>
+<figcaption><b>Lower target</b>, z = 1.020 m, elbow+palm. 193.2&nbsp;N, margin
++36.5&nbsp;mm.</figcaption></figure>
+</div>
+
+<h3>The recovery</h3>
+
+<figure><video src="media/s19_recovery.mp4" controls muted loop playsinline></video>
+<figcaption><code>n_return: 60</code> (&sect;4). Approach, brace, then the release
+&mdash; 185.7&nbsp;N to 0.0&nbsp;N in one control period, 300&nbsp;N transferred onto the
+feet, and the robot stands back up to 0.988&nbsp;m without the CoM leaving the
+polygon.</figcaption></figure>
+
+<h3>The sim2real failure, made visible in process</h3>
+
+<p>The estimator&rsquo;s error is hard to watch over the wire because the fall
+contaminates it. Injected in process instead, with <code>--sense base_p</code>, the same
+magnitudes reproduce the same degradation with nothing else changed:</p>
+
+<div class="grid2">
+<figure><video src="media/s19_sense_base_p002.mp4" controls muted loop playsinline></video>
+<figcaption><b>20 mm</b> running base error. Reach error 5.3 &rarr; 33.3&nbsp;mm; still
+a good brace.</figcaption></figure>
+<figure><video src="media/s19_sense_base_p010.mp4" controls muted loop playsinline></video>
+<figcaption><b>100 mm</b> &mdash; what the estimator actually delivers. Reach error
+<b class="bad">199.8&nbsp;mm</b>, pelvis sags to 0.854&nbsp;m, and the margin at brace end
+collapses +70 &rarr; <b class="bad">+14.6&nbsp;mm</b>. It survives in process; over the
+wire, with real dead time on top, it does not.</figcaption></figure>
+</div>
+
+<div class="scroll"><table>
+<tr><th>running base-sensing error</th><th>pelvis</th><th>reach err at brace end</th><th>margin at brace end</th></tr>
+<tr><td>none</td><td>0.955 m</td><td>5.3 mm</td><td class="good">+70.2 mm</td></tr>
+<tr><td>20 mm</td><td>0.928 m</td><td>33.3 mm</td><td>+101.7 mm</td></tr>
+<tr><td>100 mm</td><td class="bad">0.854 m</td><td class="bad">199.8 mm</td><td class="bad">+14.6 mm</td></tr>
+</table></div>
+
+<p>And this is the axis S18 never swept. <code>winch1</code> is an <em>initial
+placement</em> error &mdash; a one-time offset on where the robot is set down, which the
+MPC simply plans about; a placement error of 100&nbsp;mm leaves the brace at 12.8&nbsp;mm
+and the margin at +80.7&nbsp;mm. A <em>running</em> error of the same size is a different
+disturbance entirely, and it is the one the robot will actually have.</p>
+
+<h2>10. Housekeeping: the media links</h2>
+
+<p>Every video in every docpage in this series was a broken element. The pages reference
+<code>media/&lt;name&gt;</code> relative to <code>docs/lean/</code>, and that directory
+did not survive the move out of the pre-rename checkout and the <code>studies/</code>
+reorg. It was silent because a missing <code>&lt;video&gt;</code> renders as blank space
+rather than as an error.</p>
+
+<p><code>docs/lean/fix_media.py</code> resolves it: it scans every page for references,
+searches all four places media has lived, newest mtime wins, and copies what it finds.
+<b>33 of 46 restored.</b> The directory is gitignored, so the script is the deliverable
+&mdash; on a fresh checkout <code>fix_media.py --copy</code> is what makes the pages
+viewable.</p>
+
+<p>The remaining 13 exist nowhere on this machine. They are S13 and S14 replay videos, and
+they are not worth regenerating: both sessions predate the gripper correction, so
+re-rendering them would produce videos of a model this series has since established was
+90&deg; out. The script names them rather than leaving blank rectangles.</p>
+
+<h2>11. Where this leaves it</h2>
+
+<div class="scroll"><table>
+<tr><th></th><th>outcome</th></tr>
+<tr><td>GIL / watchdog</td><td class="good">Polling the wire &mdash; age p95 16.1 &rarr; 0.007 ms; the &ldquo;62 blind periods&rdquo; was 1 (&sect;2)</td></tr>
+<tr><td>Wrist roll / the palm</td><td class="good">Roll lands it 26/26, but the contact was certified in mid-air (&sect;3)</td></tr>
+<tr><td>Recovery</td><td class="good">Works; the release is safe and the brace is what pays (&sect;4)</td></tr>
+<tr><td>Live GUI</td><td class="good">Built (&sect;5)</td></tr>
+<tr><td>Twin grid</td><td class="good">26/26 upright, 0 watchdog trips in 5140 periods (&sect;6)</td></tr>
+<tr><td>Base estimator</td><td class="bad">In the loop, and the maneuver does not survive it (&sect;7)</td></tr>
+<tr><td>Hold / mode switch</td><td>Hold does not decay; mode logic deferred behind the estimator (&sect;8)</td></tr>
+</table></div>
+
+<p>Everything that was in doubt about the <em>controller</em> came back clean. The
+maneuver survives real dead time, a real clock, a real wire, and every cell it was
+certified in. What it does not survive is knowing where it is.</p>
+
+<p>Four of this page&rsquo;s findings were instruments lying rather than physics failing
+&mdash; a latched phase label, a fabricated mid-air contact, a force sum with no name for
+half its contacts, and a disturbance profile that was measuring initial placement while
+being described as an estimator model. Each is now something that says so when it cannot
+answer. That is most of what changed today.</p>
+
+<h3>Next, in order</h3>
+
+<ol>
+<li><b>The lateral divergence.</b> <code>slip=ACTIVE</code> for the whole maneuver, error
+83% in y on a sagittal motion. Test it directly: the estimator against the twin through a
+pure weight shift with no lean. If the lateral error appears there, the maneuver was never
+the problem and the fix is in the contact blend.</li>
+<li><b>Sweep <code>--sense base_p</code> across the grid.</b> The axis S18 never had.
+It gives the tolerance the estimator has to meet, per cell, in process, in an afternoon
+&mdash; and it is the number that says whether the estimator has to improve by 2&times;
+or 10&times;.</li>
+<li><b>The last-braced-node cost</b> (&sect;4), which makes recovery usable rather than
+merely possible.</li>
+<li><b>Then the mode switch</b> (&sect;8), on a foundation that has stopped moving.</li>
 </ol>
 
 </div>
