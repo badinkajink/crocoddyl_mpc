@@ -272,16 +272,22 @@ class DDSPlant(Plant):
             quat, gyro = self._imu_quat.copy(), self._imu_gyro.copy()
             stamp = self._stamp
         age = 0.0 if stamp is None else max(0.0, time.monotonic() - stamp)
-        bp = bq = bv = bw = None
+        # IMU orientation and body rate are MEASURED and are the best estimate
+        # of themselves; POSITION and LINEAR VELOCITY are not measured on any
+        # legged robot and have to come from somewhere else. So the IMU is the
+        # default for attitude, and a `base_source` FILLS IN what it has --
+        # returning None for attitude means "I do not improve on the IMU",
+        # which is true of every proprioceptive base estimator here.
+        bp, bq, bv, bw = None, quat, None, gyro
         if self.base_source is not None:
             got = self.base_source()
             if got is not None:
-                bp, bq, bv, bw, b_age = got
+                gp, gq, gv, gw, b_age = got
+                bp = gp if gp is not None else bp
+                bq = gq if gq is not None else bq
+                bv = gv if gv is not None else bv
+                bw = gw if gw is not None else bw
                 age = max(age, b_age)
-        else:
-            # IMU orientation is measured; POSITION is not, and is left None so
-            # a controller that needs it cannot quietly proceed on zeros.
-            bq, bw = quat, gyro
         return State(t=self.now(), q=q, v=v, base_pos=bp, base_quat=bq,
                      base_linvel=bv, base_angvel=bw, tau=tau, age=age)
 

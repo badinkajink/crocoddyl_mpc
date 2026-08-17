@@ -124,6 +124,90 @@ class TruthBase:
             "or the OCP has no base pose to plan from." % timeout)
 
 
+class EstimatorBase:
+    """The fork's proprioceptive base estimator, as the loop's base source.
+
+    THIS IS THE ONE THAT COUNTS. `TruthBase` exists so the plumbing could be
+    tested with the estimator held at perfect; this is the estimator. It is
+    `mjpc/deploy/helper_scripts/base_estimator_node_v4.py` -- rw-ekf leg
+    odometry over `rt/lowstate` and NOTHING ELSE, run as a separate process
+    exactly as it runs on the robot, publishing `SportModeState_`. No ground
+    truth, no motion capture, no privileged topic. Base linear velocity is
+    never measured on a legged robot; the factory `rt/sportmodestate.velocity`
+    is itself an estimator output, and this is the same class of quantity with
+    its sources written down.
+
+    IT DOES NOT PUBLISH ATTITUDE, and should not: `position` and `velocity` are
+    the two things proprioception has to reconstruct, while orientation and body
+    rate are measured by the IMU and arrive on `rt/lowstate` already. Returning
+    None for those lets `DDSPlant` keep the measured ones.
+
+    THE OFFSET IS NOT COSMETIC. The estimator publishes the IMU SITE, because
+    that is the convention `h12_control_node.cc` consumes; the OCP wants the
+    PELVIS, which is the MuJoCo free joint. They differ by 0.278 m in z, so
+    skipping the inversion puts the robot a foot above where it is and the
+    plan's CoM barrier reasons about a different robot. The constant is
+    duplicated from the estimator rather than imported because importing it
+    would drag in the estimator's whole module (and its MuJoCo scene load) into
+    the controller process; it is asserted against the estimator's value in the
+    docstring above and must be changed in both places or in neither.
+    """
+
+    IMU_OFFSET = np.array([-0.04452, -0.01891, 0.27756])   # pelvis -> IMU site
+
+    def __init__(self, topic="rt/sportmodestate_est", recv="poll"):
+        from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
+        self.topic = topic
+        self._v = None
+        self._lock = threading.Lock()
+        self._recv = None
+        if recv == "poll":
+            self._recv = PollingReceiver(topic, SportModeState_)
+        else:
+            from unitree_sdk2py.core.channel import ChannelSubscriber
+            self._sub = ChannelSubscriber(topic, SportModeState_)
+            self._sub.Init(self._decode, 10)
+
+    def _decode(self, msg):
+        with self._lock:
+            self._v = (np.array(list(msg.position), float),
+                       np.array(list(msg.velocity), float),
+                       time.monotonic())
+
+    def attach(self, plant):
+        """Bind to the plant, whose IMU supplies the attitude this cannot."""
+        self._plant = plant
+        return self
+
+    def __call__(self):
+        msg = self._recv.latest() if self._recv is not None else None
+        if msg is not None:
+            self._decode(msg)
+        with self._lock:
+            v = self._v
+        if v is None:
+            return None
+        site_p, site_v, stamp = v
+        # Site -> pelvis, using the attitude the plant just read off the IMU.
+        quat = self._plant._imu_quat
+        R = _quat_to_mat(quat)
+        roff = R @ self.IMU_OFFSET
+        base_p = site_p - roff
+        base_v = site_v - np.cross(R @ self._plant._imu_gyro, roff)
+        return base_p, None, base_v, None, max(0.0, time.monotonic() - stamp)
+
+    def wait(self, timeout=15.0):
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < timeout:
+            if self() is not None:
+                return True
+            time.sleep(0.01)
+        raise TimeoutError(
+            "no %s in %.1f s -- start base_estimator_node_v4.py against the "
+            "same domain, with --out-topic %s. It needs nothing but "
+            "rt/lowstate." % (self.topic, timeout, self.topic))
+
+
 # ---------------------------------------------------------------- run --- #
 def build(args):
     """The MPC and the reference plan, exactly as croco_replay builds them."""
@@ -158,7 +242,17 @@ def main():
                          "experiment: if the maneuver survives there and dies "
                          "over DDS, the deployment is what broke it; if it dies "
                          "in both, the bug is in this file and not on the wire.")
-    ap.add_argument("--base", choices=["truth", "none"], default="none",
+    ap.add_argument("--est-topic", default="rt/sportmodestate_est",
+                    help="where base_estimator_node_v4.py publishes")
+    ap.add_argument("--est-error", action="store_true",
+                    help="with --base estimator: also subscribe the twin's "
+                         "ground truth and record the estimator's error per "
+                         "period. MEASUREMENT ONLY -- the truth never reaches "
+                         "the controller, which is why this is a separate flag "
+                         "from --base truth. Off by default because a run that "
+                         "touches ground truth has to say so.")
+    ap.add_argument("--base", choices=["truth", "estimator", "none"],
+                    default="none",
                     help="'truth' reads the TWIN'S GROUND TRUTH base pose. "
                          "There is no estimator in this loop yet, so 'none' "
                          "cannot run the MPC -- it is here to make the "
@@ -210,10 +304,12 @@ def main():
     if args.base == "none":
         raise SystemExit(
             "--base none: the lean OCP needs a floating-base pose and "
-            "rt/lowstate does not carry one. Pass --base truth to use the "
-            "twin's ground truth (and say so in whatever you report), or plug "
-            "an estimator into TruthBase's place.")
+            "rt/lowstate does not carry one. Pass --base estimator to run "
+            "against the fork's proprioceptive estimator (what the robot would "
+            "use), or --base truth to hold the estimator at perfect while "
+            "testing something else -- and say which in whatever you report.")
 
+    truth_probe = None
     plan, mpc, xs, us = build(args)
     dt_plan = plan["dt"]
     nq = cb.NQ_ROBOT
@@ -246,16 +342,24 @@ def main():
                          q_range=(m.jnt_range[1:28, 0].copy(),
                                   m.jnt_range[1:28, 1].copy()),
                          recv=args.recv)
-        base = TruthBase(recv=args.recv)
+        base = (TruthBase(recv=args.recv) if args.base == "truth"
+                else EstimatorBase(args.est_topic, recv=args.recv))
         plant.base_source = base
         print("[croco_twin] waiting for the twin ...")
         plant.wait_for_state(timeout=15.0)
+        if args.base == "estimator":
+            base.attach(plant)
+            if args.est_error:
+                truth_probe = TruthBase(recv=args.recv)
+                truth_probe.wait(timeout=15.0)
         base.wait(timeout=15.0)
-        print("[croco_twin] twin is up: lowstate + rt/sim_state (GROUND TRUTH "
-              "base)")
+        print("[croco_twin] twin is up: lowstate + %s"
+              % ("rt/sim_state (GROUND TRUTH base)" if args.base == "truth"
+                 else "%s (PROPRIOCEPTIVE estimate; attitude from the IMU)"
+                      % args.est_topic))
 
     stats = dict(steps=0, mpc_none=0)
-
+    est_err = []            # |p_est - p_true| per period, measurement only
     first = {}
 
     def policy(t, st):
@@ -287,6 +391,10 @@ def main():
                   "base %.1f mm  dquat %.4f  |v|max %.3f rad/s"
                   % (first["dq_max_rad"], first["dq_rms_rad"], first["dbase_mm"],
                      first["dquat"], first["v_max"]))
+        if truth_probe is not None:
+            got = truth_probe()
+            if got is not None:
+                est_err.append(np.asarray(st.base_pos - got[0], float))
         qpos = np.concatenate([st.base_pos, st.base_quat, st.q])
         R = _quat_to_mat(st.base_quat)
         qvel = np.concatenate([st.base_linvel, st.base_angvel, st.v])
@@ -346,7 +454,15 @@ def main():
             None if getattr(plant, "recv_polls", 0) == 0
             else round(plant.recv_samples / plant.recv_polls, 2)),
         recv_empty_polls=getattr(plant, "recv_empty", None),
-        base_source="GROUND TRUTH (rt/sim_state)")
+        est_err_mm_p50=(None if not est_err else float(
+            1e3 * np.percentile(np.linalg.norm(est_err, axis=1), 50))),
+        est_err_mm_p95=(None if not est_err else float(
+            1e3 * np.percentile(np.linalg.norm(est_err, axis=1), 95))),
+        est_err_mm_max=(None if not est_err else float(
+            1e3 * np.max(np.linalg.norm(est_err, axis=1)))),
+        est_err_mm_xyz=[[round(1e3 * c, 2) for c in e] for e in est_err],
+        base_source=("GROUND TRUTH (rt/sim_state)" if args.base == "truth"
+                     else "estimator (%s) + IMU attitude" % args.est_topic))
     if panel is not None and panel.dirty:
         print("[croco_twin] WEIGHTS WERE CHANGED LIVE (%d edits). This run is "
               "NOT the plan's cost function; see gui_weight_changes in --out."
