@@ -20,6 +20,7 @@
 # usage:
 #   studies/run_session.sh check                 # env + assets only
 #   studies/run_session.sh stage                 # (re)stage the model
+#   studies/run_session.sh deps                  # build the native extensions
 #   studies/run_session.sh grid   [stages...]    # default: certify plan stress collect
 #   studies/run_session.sh videos                # grid videos + gripper orientations
 #   studies/run_session.sh all
@@ -61,6 +62,20 @@ do_stage() {
   bash "$HERE/stage_assets.sh"
 }
 
+do_deps() {
+  # The native extensions are a 6x knob that fails SILENTLY: croco_geom falls
+  # back to the Python keep-out activation with a one-line note, so an unbuilt
+  # checkout runs correctly at 85 ms against a 20 ms control period. Built here
+  # rather than documented, because "remember to build the extensions" is the
+  # kind of instruction that gets skipped exactly once.
+  if ls "$HERE"/croco_ext/croco_keepout*.so >/dev/null 2>&1; then
+    say "extensions already built"
+  else
+    say "building native extensions (keep-out is a 6x speed-up)"
+    bash "$HERE/croco_ext/build.sh" keepout passive
+  fi
+}
+
 do_check() {
   say "environment"
   "$CROCO_PY" "$HERE/croco_env.py"
@@ -92,12 +107,13 @@ do_videos() {
 
 cmd="${1:-all}"; shift || true
 case "$cmd" in
+  deps)   do_deps ;;
   check)  do_check ;;
   stage)  do_stage ;;
-  grid)   do_check; do_grid "$@" ;;
+  grid)   do_deps; do_check; do_grid "$@" ;;
   videos) do_check; do_videos ;;
-  all)    do_stage; do_check; do_grid; do_videos ;;
-  *) echo "usage: $0 {check|stage|grid|videos|all}" >&2; exit 2 ;;
+  all)    do_stage; do_deps; do_check; do_grid; do_videos ;;
+  *) echo "usage: $0 {check|stage|deps|grid|videos|all}" >&2; exit 2 ;;
 esac
 
 say "done -- run dir $RUN"
