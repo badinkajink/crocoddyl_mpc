@@ -861,6 +861,17 @@ def replay(tag, ctrl_mode="riccati", dt_plan=0.02, run_dir=".", video=None,
                    cmd_ratio=float(np.max(np.abs(tau_cmd) / tau_lim)))
         f_brace = {s: 0.0 for s in subset}
         f_feet = 0.0
+        # EVERY robot-table normal force gets counted SOMEWHERE. Until now
+        # `f_brace` was keyed on the plan's subset, so any contact on a body
+        # that is not a named site's body and not a foot was summed nowhere and
+        # the total silently under-reported the brace. It is not hypothetical:
+        # in `elbow+palm` the arm rests on `left_wrist_pad`, which lives on
+        # `left_wrist_yaw_link` -- a body no site names -- while the "palm"
+        # site lives on the gripper, which a 90 mm keepout holds clear of the
+        # table. So the plan reported 175 N through the elbow and 0 N through
+        # the palm and neither number was the whole brace.
+        f_other = 0.0
+        other_bodies = set()
         deepest = 0.0
         buf = np.zeros(6)
         for c in range(d.ncon):
@@ -872,14 +883,24 @@ def replay(tag, ctrl_mode="riccati", dt_plan=0.02, run_dir=".", video=None,
                 rb = b2 if b1 == tbl else b1
                 if _under(m, rb, 1):
                     deepest = min(deepest, float(con.dist))
-            for s, bid_ in brace_bodies.items():
-                if bid_ in (b1, b2) and tbl in (b1, b2):
-                    f_brace[s] += fn
+            if tbl in (b1, b2):
+                rb = b2 if b1 == tbl else b1
+                hit = [s for s, bid_ in brace_bodies.items() if bid_ == rb]
+                if hit:
+                    for s in hit:
+                        f_brace[s] += fn
+                elif rb not in feet and _under(m, rb, 1):
+                    f_other += fn
+                    other_bodies.add(rb)
             if b1 in feet or b2 in feet:
                 f_feet += fn
         rec.update({f"F_{s}": f_brace[s] for s in subset})
         rec["F_feet"] = f_feet
-        rec["F_brace_total"] = float(sum(f_brace.values()))
+        rec["F_other"] = f_other
+        rec["F_other_bodies"] = sorted(
+            mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) or str(b)
+            for b in other_bodies)
+        rec["F_brace_total"] = float(sum(f_brace.values()) + f_other)
         rec["penetration"] = deepest
         log.append(rec)
         qtrace.append(d.qpos.copy())
@@ -956,6 +977,10 @@ def summarise(log, plan, ctrl_mode, verbose=True):
             for s in plan["subset"]},
         brace_total_braced_mean=float(np.mean([r["F_brace_total"] for r in braced]))
         if braced else 0.0,
+        brace_force_other_mean=float(np.mean([r["F_other"] for r in braced]))
+        if braced else 0.0,
+        brace_force_other_peak=max(r["F_other"] for r in log),
+        brace_other_bodies=sorted({b for r in log for b in r["F_other_bodies"]}),
         feet_force_final=last["F_feet"],
         min_support_margin=min(r["support_margin"] for r in log),
         support_margin_at_brace_end=log[k_score]["support_margin"],
@@ -979,6 +1004,12 @@ def summarise(log, plan, ctrl_mode, verbose=True):
         print(f"  brace {s:9s} force  braced-mean "
               f"{res['brace_force_braced_mean'][s]:7.1f} N   "
               f"peak {res['brace_force_peak'][s]:7.1f} N")
+    if res["brace_force_other_peak"] > 0.0:
+        print(f"  brace UNATTRIBUTED    braced-mean "
+              f"{res['brace_force_other_mean']:7.1f} N   "
+              f"peak {res['brace_force_other_peak']:7.1f} N")
+        print(f"    carried by {', '.join(res['brace_other_bodies'])} -- bodies "
+              f"no site in the plan's subset names")
     print(f"  feet normal force    final {res['feet_force_final']:7.1f} N   "
           f"(robot weight 673.6 N)")
     print(f"  CoM support margin   min {res['min_support_margin']*1000:+7.1f} mm  "

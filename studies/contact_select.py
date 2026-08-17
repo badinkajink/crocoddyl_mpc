@@ -446,6 +446,22 @@ def resolved_contacts(m, d, subset):
     (which is what the feet always use -- flat floor, and the corner model is a
     deliberate 4-point approximation of a sole, not a narrowphase result).
 
+    THE FALLBACK IS NOT FREE, AND IT USED TO BE SILENT. When the narrowphase
+    reports nothing for a brace body, this returns the SITE point with an
+    assumed vertical normal -- i.e. it will happily hand the QP a contact
+    hanging in mid-air, and the QP will certify force balance at it. That is
+    exactly what happened to the palm: in 26 of 26 S18 cells the gripper's
+    nearest collision geom sits 9.0 mm above the tabletop and the narrowphase
+    finds no contact, so every "elbow+palm" certification balanced a force at a
+    point that never touches anything. The replay then measured 0.0 N through
+    the palm and 175 N through the elbow, and the two were never in
+    disagreement -- they were answering different questions.
+
+    So the fallback now says so, once per (site, body). It is still a fallback
+    and not an error, because the FEET legitimately use it: a flat floor with a
+    deliberate 4-point corner model of a sole is an approximation, not a missing
+    contact. Brace sites are the case worth hearing about.
+
     Returns a list of (body_id, world_point, R) where R's ROWS are (n, t1, t2)
     and n points into the robot, so lam_n >= 0 is "push, do not pull".
     """
@@ -478,8 +494,19 @@ def resolved_contacts(m, d, subset):
             _, p, R = found[b]
             out.append((b, p, R))
         else:
-            out.append((b, point_world(m, d, body, off), VERT.copy()))
+            p = point_world(m, d, body, off)
+            if s not in _AIRBORNE:
+                _AIRBORNE.add(s)
+                print("[contact_select] WARNING: no narrowphase contact on '%s' "
+                      "(%s); the QP will balance a force at the site instead, "
+                      "%.1f mm above the tabletop. A certification that passes "
+                      "here is a certification about a point in the air."
+                      % (s, body, 1e3 * (p[2] - table_top_z(m, d))))
+            out.append((b, p, VERT.copy()))
     return out
+
+
+_AIRBORNE = set()
 
 
 def table_top_z(m, d):
