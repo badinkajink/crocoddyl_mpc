@@ -133,6 +133,32 @@ class MPC:
         self.head = self.H            # index of the next model to append
         self.xs = self.us = None
 
+    def reset(self):
+        """Put the sliding window back at the start of the plan.
+
+        WHY A RESET EXISTS. The window only ever slides FORWARD -- `__call__`
+        does `while self.head < k + H`, which is what makes sliding cost a
+        4.4 us rotation instead of a rebuild. The corollary is that an MPC
+        which has reached the end of a plan is parked there: feed it k=0 again
+        and the `while` does not fire, so it keeps solving the LAST window
+        against a robot standing at the first pose. Measured, when the panel's
+        reset button first put the plant back without doing this: torque
+        saturating on 1497 of 160 periods and the robot at pelvis z 0.069 m,
+        i.e. flat on the floor, with a solve time that had DROPPED to 2.5 ms
+        because the problem it was solving no longer had anything to do with
+        the state it was given.
+
+        Rebuilding the problem costs one allocateData over the horizon. That
+        is a per-step disaster (336 ms, see `datas` above) and a per-EPISODE
+        rounding error, which is the only place it is paid.
+        """
+        cro = _import_crocoddyl()
+        self.problem = cro.ShootingProblem(
+            self.ocp.x0, list(self.models[:self.H]), self.terminal)
+        self.solver = self._make_solver(cro, self.problem)
+        self.head = self.H
+        self.xs = self.us = None
+
     def _make_solver(self, cro, problem):
         """A BoxFDDP with, optionally, a TRUNCATED line-search ladder.
 

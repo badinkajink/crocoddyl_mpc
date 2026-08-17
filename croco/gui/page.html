@@ -7,26 +7,53 @@
 body{margin:0;background:var(--bg);color:var(--ink);
      font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
 header{display:flex;gap:1rem;align-items:baseline;padding:.6rem 1rem;
-       border-bottom:1px solid var(--line)}
+       border-bottom:1px solid var(--line);flex-wrap:wrap}
 h1{font-size:.95rem;margin:0;font-weight:600;letter-spacing:.02em}
 #status{color:var(--ink2)}
 #dirty{color:var(--warn);font-weight:600}
-main{display:grid;grid-template-columns:minmax(0,2fr) minmax(19rem,1fr);
+main{display:grid;grid-template-columns:minmax(0,2fr) minmax(20rem,1fr);
      gap:1rem;padding:1rem;align-items:start}
-@media(max-width:60rem){main{grid-template-columns:1fr}}
-section{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.8rem}
+@media(max-width:66rem){main{grid-template-columns:1fr}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+        padding:.8rem;margin-bottom:1rem}
 h2{font-size:.78rem;margin:0 0 .6rem;color:var(--ink2);text-transform:uppercase;
    letter-spacing:.08em;font-weight:600}
-canvas{width:100%;height:110px;display:block}
+canvas{width:100%;display:block}
+video{background:#000;width:100%;display:block;border-radius:4px}
 .cap{color:var(--ink2);font-size:.75rem;margin:.15rem 0 .9rem}
 .kv{display:grid;grid-template-columns:1fr auto;gap:.15rem .8rem}
 .kv b{font-weight:600}
+.kv .num{font-variant-numeric:tabular-nums}
 .w{margin:.55rem 0}
 .w label{display:flex;justify-content:space-between;color:var(--ink2)}
 .w label b{color:var(--ink);font-weight:600}
 .w input{width:100%;accent-color:var(--acc)}
 .d{color:var(--ink2);font-size:.72rem}
 .bad{color:var(--bad)}.good{color:var(--good)}.warn{color:var(--warn)}
+.row{display:flex;gap:.4rem;flex-wrap:wrap;margin:.4rem 0}
+button{background:#1d232c;color:var(--ink);border:1px solid var(--line);
+       border-radius:5px;padding:.35rem .7rem;font:inherit;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--acc)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.on{background:var(--acc);color:#0e1116;border-color:var(--acc);font-weight:600}
+button.danger.on{background:var(--warn);border-color:var(--warn)}
+select{background:#1d232c;color:var(--ink);border:1px solid var(--line);
+       border-radius:5px;padding:.3rem;font:inherit;width:100%}
+select:disabled{opacity:.5}
+.terms{display:grid;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));
+       gap:.1rem .5rem;margin-top:.4rem}
+.terms label{display:flex;gap:.35rem;align-items:center;color:var(--ink2);
+             font-size:.75rem;cursor:pointer;white-space:nowrap}
+.terms input{accent-color:var(--acc);margin:0}
+.sw{width:.6rem;height:.6rem;border-radius:2px;flex:none}
+.note{color:var(--warn);font-size:.72rem;margin-top:.3rem}
+.trow{display:grid;grid-template-columns:1rem 1fr auto auto;gap:.3rem;
+      align-items:center;margin:.25rem 0}
+.trow span{color:var(--ink2)}
+.trow input{background:#1d232c;color:var(--ink);border:1px solid var(--line);
+            border-radius:5px;padding:.25rem .4rem;font:inherit;width:100%;
+            font-variant-numeric:tabular-nums}
+button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
 </style>
 <header>
   <h1>crocoddyl-mpc</h1>
@@ -37,71 +64,188 @@ canvas{width:100%;height:110px;display:block}
   <div>
     <section>
       <h2>solve time vs the control period</h2>
-      <canvas id="c_solve"></canvas>
+      <canvas id="c_solve" height="120"></canvas>
       <div class="cap" id="cap_solve">&nbsp;</div>
+    </section>
+    <section>
       <h2>cost, per term</h2>
-      <canvas id="c_terms"></canvas>
+      <canvas id="c_terms" height="230"></canvas>
       <div class="cap" id="cap_terms">&nbsp;</div>
-      <h2>state age</h2>
-      <canvas id="c_age"></canvas>
-      <div class="cap" id="cap_age">&nbsp;</div>
+      <div class="terms" id="term_boxes"></div>
+    </section>
+    <section>
+      <h2>wall period vs deadline</h2>
+      <canvas id="c_period" height="120"></canvas>
+      <div class="cap" id="cap_period">&nbsp;</div>
+    </section>
+    <section id="vid_sec" hidden>
+      <h2>the run</h2>
+      <video id="vid" controls loop muted playsinline></video>
+      <div class="cap">Rendered from the states the loop observed. Paused
+        periods leave no frames — the loop does not call the recorder while
+        paused, so this is the trajectory, not the wall-clock session.</div>
     </section>
   </div>
   <div>
+    <section>
+      <h2>session</h2>
+      <div class="row">
+        <button id="b_play">▶ play</button>
+        <button id="b_reset">⟲ reset</button>
+        <button id="b_render">● render</button>
+      </div>
+      <div class="row"><button id="b_viewer">⊞ viewer</button></div>
+      <div id="ctl_note" class="note" hidden></div>
+      <h2 style="margin-top:.9rem">task</h2>
+      <select id="s_task"></select>
+      <div id="task_note" class="note" hidden></div>
+      <h2 style="margin-top:.9rem">submode</h2>
+      <select id="s_submode"></select>
+      <div class="d" id="submode_note">&nbsp;</div>
+      <h2 style="margin-top:.9rem">reach target</h2>
+      <div id="tgt"></div>
+      <div class="row"><button id="b_tgt_reset">↺ plan target</button></div>
+      <div class="d" id="tgt_note">Applied in place to every node carrying the
+        reach cost — no rebuild, and it survives a reset. The offline warm
+        start still descends toward the original target, so small moves track
+        and large ones want a re-solve.</div>
+      <h2 style="margin-top:.9rem">gripper roll</h2>
+      <div class="row" id="rot_axis"></div>
+      <div class="w">
+        <label><span>about local axis</span><b id="rot_val">0°</b></label>
+        <input id="rot" type="range" min="-180" max="180" step="1" value="0">
+      </div>
+      <div class="d" id="rot_note">Rotates the commanded orientation away from
+        the one q* already reaches. Carried at a token weight by default — raise
+        <code>reachRot</code> in the weights below to give it authority.</div>
+      <h2 style="margin-top:.9rem">speed</h2>
+      <div class="row" id="rt_row"></div>
+      <div class="d">Sim seconds per wall second. Below 1× the solver is given
+        wall clock the robot would not give it, so the overrun count stops
+        being a deployment result.</div>
+    </section>
     <section><h2>loop</h2><div class="kv" id="kv"></div></section>
-    <section style="margin-top:1rem">
+    <section>
       <h2>cost weights</h2>
       <div id="ws"></div>
-      <div class="d">Log-scaled, 1/100&times; to 100&times; the value this run
-        started with. Every change is recorded in the run artifact.</div>
+      <div id="ws_note" class="note" hidden></div>
+      <div class="d">Log-scaled, 1/100× to 100× the value this run started
+        with. Every change is recorded in the run artifact.</div>
+    </section>
+    <section><h2>config</h2><div class="kv" id="cfg"></div>
+      <div class="d">Launch-time. The plant is fixed for the process: DDSPlant
+        owns cyclonedds participants and the twin owns the far clock, so
+        swapping it live would mean tearing down both.</div>
     </section>
   </div>
 </main>
 <script>
-const N = 300, hist = {solve:[], age:[], terms:{}}, colors =
+const N = 300, colors =
   ["#6ea8fe","#4ec9a0","#e6a35c","#e06c6c","#b48ead","#88c0d0","#d0b070","#a3be8c"];
-let base = null, period = null, live = false;
+const hist = {solve:[], age:[], period:[], terms:{}};
+let base = null, period = null, live = false, deadline = null;
+let pending = 0, replayed = 0, sess = null, hidden = {};
 
 function push(a, v){ a.push(v); if (a.length > N) a.shift(); }
 function dpi(c){ const r = c.getBoundingClientRect(), s = devicePixelRatio||1;
   c.width = r.width*s; c.height = r.height*s; const g = c.getContext("2d");
   g.setTransform(s,0,0,s,0,0); return [g, r.width, r.height]; }
+function fmt(v){
+  if (!isFinite(v)) return "0";
+  const a = Math.abs(v);
+  if (a === 0) return "0";
+  if (a >= 1e4 || a < 1e-2) return v.toExponential(0);
+  return a >= 100 ? v.toFixed(0) : a >= 1 ? v.toFixed(1) : v.toFixed(2);
+}
 
+// PAD is the y-axis gutter. Every plot has one now: an unlabelled trace can
+// show that a number moved but never how big it is, which is the difference
+// between "the solve time is spiky" and "the solve time is over the period".
+const PAD = 46;
 function plot(id, series, opts){
   const [g,W,H] = dpi(document.getElementById(id));
   g.clearRect(0,0,W,H);
+  const x0 = PAD, plotW = Math.max(1, W - PAD - 4);
   let hi = opts.min || 1e-9;
   for (const s of series) for (const v of s.data) if (isFinite(v)) hi = Math.max(hi, v);
   if (opts.ref) hi = Math.max(hi, opts.ref*1.15);
+  hi = hi * 1.05;
   g.strokeStyle = "#272d36"; g.lineWidth = 1;
-  for (let i=0;i<=2;i++){ const y = H - H*i/2; g.beginPath();
-    g.moveTo(0,y+.5); g.lineTo(W,y+.5); g.stroke(); }
-  if (opts.ref){ const y = H - H*opts.ref/hi; g.strokeStyle="#e06c6c";
-    g.setLineDash([4,3]); g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke();
-    g.setLineDash([]); }
+  g.fillStyle = "#8b95a3"; g.font = "10px ui-monospace,monospace";
+  g.textAlign = "right"; g.textBaseline = "middle";
+  for (let i=0;i<=4;i++){
+    const y = H - (H-12)*i/4 - 6;
+    g.beginPath(); g.moveTo(x0,y+.5); g.lineTo(W,y+.5); g.stroke();
+    g.fillText(fmt(hi*i/4), x0-6, y);
+  }
+  if (opts.unit){ g.textAlign="left"; g.fillText(opts.unit, 2, 6); }
+  if (opts.ref){
+    const y = H - 6 - (H-12)*opts.ref/hi;
+    g.strokeStyle="#e06c6c"; g.setLineDash([4,3]);
+    g.beginPath(); g.moveTo(x0,y); g.lineTo(W,y); g.stroke(); g.setLineDash([]);
+  }
   series.forEach((s,i)=>{
-    g.strokeStyle = s.color || colors[i%colors.length]; g.lineWidth = 1.5;
+    g.strokeStyle = s.color || colors[i%colors.length];
+    g.lineWidth = s.width || 1.5; g.globalAlpha = s.alpha == null ? 1 : s.alpha;
     g.beginPath();
-    s.data.forEach((v,j)=>{ const x = W*j/(N-1), y = H - H*(isFinite(v)?v:0)/hi;
-      j ? g.lineTo(x,y) : g.moveTo(x,y); });
-    g.stroke();
+    s.data.forEach((v,j)=>{ const x = x0 + plotW*j/(N-1),
+      y = H - 6 - (H-12)*(isFinite(v)?v:0)/hi; j ? g.lineTo(x,y) : g.moveTo(x,y); });
+    g.stroke(); g.globalAlpha = 1;
+    // Overrun marks: the periods the deadline line was crossed, drawn ON the
+    // series that crossed it rather than reported only as a count.
+    if (s.markOver && opts.ref) s.data.forEach((v,j)=>{
+      if (!(v > opts.ref)) return;
+      const x = x0 + plotW*j/(N-1), y = H - 6 - (H-12)*v/hi;
+      g.fillStyle = "#e06c6c"; g.fillRect(x-1.5, y-1.5, 3, 3);
+    });
   });
   return hi;
 }
 
 function redraw(){
-  const hi = plot("c_solve", [{data:hist.solve}], {ref:period, min:1});
+  const hi = plot("c_solve", [{data:hist.solve, markOver:true}],
+                  {ref:period, min:1, unit:"ms"});
   const last = hist.solve[hist.solve.length-1];
   document.getElementById("cap_solve").innerHTML = period
     ? `now <b>${(last||0).toFixed(1)} ms</b> &middot; period <span class="bad">${period.toFixed(0)} ms</span> &middot; peak ${hi.toFixed(0)} ms`
     : "&nbsp;";
+
   const names = Object.keys(hist.terms).sort();
-  plot("c_terms", names.map((n,i)=>({data:hist.terms[n], color:colors[i%colors.length]})), {});
-  document.getElementById("cap_terms").innerHTML = names.map((n,i)=>
-    `<span style="color:${colors[i%colors.length]}">&#9632;</span> ${n}`).join(" &nbsp; ") || "&nbsp;";
-  const a = plot("c_age", [{data:hist.age, color:"#4ec9a0"}], {min:0.05});
-  document.getElementById("cap_age").innerHTML =
-    `peak <b>${a.toFixed(3)} ms</b> &middot; polled receive: this should be microseconds`;
+  const shown = names.filter(n=>!hidden[n]);
+  plot("c_terms", shown.map(n=>({data:hist.terms[n],
+        color:colors[names.indexOf(n)%colors.length]})), {unit:"cost"});
+  document.getElementById("cap_terms").innerHTML = shown.length
+    ? `${shown.length} of ${names.length} terms shown &middot; scale is the largest shown term`
+    : "all terms hidden";
+  syncBoxes(names);
+
+  const over = hist.period.filter(v=>deadline && v>deadline).length;
+  plot("c_period", [
+      {data:hist.period, color:"#6ea8fe", markOver:true},
+      {data:hist.age, color:"#4ec9a0", alpha:.45, width:1}],
+      {ref:deadline, min:1, unit:"ms"});
+  const lastP = hist.period[hist.period.length-1] || 0;
+  const lastA = hist.age[hist.age.length-1] || 0;
+  document.getElementById("cap_period").innerHTML = deadline
+    ? `period <b>${lastP.toFixed(1)} ms</b> vs deadline <span class="bad">${deadline.toFixed(0)} ms</span> &middot; <span class="${over?'bad':'good'}">${over} overrun${over===1?'':'s'}</span> in view &middot; <span style="color:#4ec9a0">state age ${lastA.toFixed(3)} ms</span>`
+    : `free-run: no deadline &middot; period <b>${lastP.toFixed(1)} ms</b> &middot; <span style="color:#4ec9a0">state age ${lastA.toFixed(3)} ms</span>`;
+}
+
+function syncBoxes(names){
+  const box = document.getElementById("term_boxes");
+  if (box.dataset.names === names.join(",")) return;
+  box.dataset.names = names.join(",");
+  box.innerHTML = "";
+  names.forEach((n,i)=>{
+    const l = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !hidden[n];
+    cb.onchange = () => { hidden[n] = !cb.checked; redraw(); };
+    const sw = document.createElement("span");
+    sw.className = "sw"; sw.style.background = colors[i%colors.length];
+    l.append(cb, sw, document.createTextNode(n));
+    box.appendChild(l);
+  });
 }
 
 function slider(name, w){
@@ -113,39 +257,199 @@ function slider(name, w){
   s.oninput = () => {
     const v = Math.pow(10, +s.value);
     document.getElementById("v_"+name).textContent = v.toPrecision(3);
-    ws.send(JSON.stringify({cmd:"weight", name:name, value:v}));
+    send({cmd:"weight", name:name, value:v});
   };
   d.appendChild(s); return d;
 }
 
 const ws = new WebSocket("ws://" + location.host + "/ws");
-ws.onopen  = () => { document.getElementById("status").textContent = "live"; live = true; };
-ws.onclose = () => { document.getElementById("status").textContent =
-  live ? "loop finished" : "no controller on this port"; };
+function send(o){ if (ws.readyState === 1) ws.send(JSON.stringify(o)); }
+function setStatus(t){ document.getElementById("status").textContent = t; }
+function $(id){ return document.getElementById(id); }
+
+// -- controls ---------------------------------------------------------------
+const RT = [["free",null],["1×",1],["0.5×",0.5],["0.25×",0.25],["0.1×",0.1]];
+RT.forEach(([label,v])=>{
+  const b = document.createElement("button");
+  b.textContent = label; b.dataset.rt = String(v);
+  b.onclick = () => send({cmd:"realtime", value:v === null ? "free" : v});
+  $("rt_row").appendChild(b);
+});
+$("b_play").onclick   = () => send({cmd:"pause", on: !(sess && sess.paused) ? true : false});
+$("b_reset").onclick  = () => send({cmd:"reset"});
+$("b_render").onclick = () => send({cmd:"render"});
+$("b_viewer").onclick = () => send({cmd:"viewer", on: !(sess && sess.viewer)});
+$("s_task").onchange     = e => send({cmd:"task", value:e.target.value});
+$("s_submode").onchange  = e => send({cmd:"submode", value:e.target.value});
+
+// -- reach target: three nudgeable boxes -----------------------------------
+const AX = ["x","y","z"], STEP = 0.01;
+let tgt = [0,0,0], tgtBuilt = false;
+function buildTarget(){
+  const box = $("tgt"); box.innerHTML = "";
+  AX.forEach((ax,i)=>{
+    const row = document.createElement("div");
+    row.className = "trow";
+    const lab = document.createElement("span"); lab.textContent = ax;
+    const inp = document.createElement("input");
+    inp.type = "number"; inp.step = STEP; inp.id = "t_"+ax;
+    inp.onchange = () => sendTarget();
+    const up = document.createElement("button"), dn = document.createElement("button");
+    up.textContent = "▲"; dn.textContent = "▼"; up.className = dn.className = "nudge";
+    up.onclick = () => { inp.value = (+inp.value + STEP).toFixed(4); sendTarget(); };
+    dn.onclick = () => { inp.value = (+inp.value - STEP).toFixed(4); sendTarget(); };
+    row.append(lab, inp, dn, up); box.appendChild(row);
+  });
+  tgtBuilt = true;
+}
+function sendTarget(){
+  const v = AX.map(a => +$("t_"+a).value);
+  if (v.every(x=>isFinite(x))) send({cmd:"target", value:v});
+}
+$("b_tgt_reset").onclick = () => send({cmd:"target", reset:true});
+
+let rotAxis = "x", rotBuilt = false;
+$("rot").oninput = () => {
+  $("rot_val").textContent = $("rot").value + "\u00b0";
+  send({cmd:"rot", deg:+$("rot").value, axis:rotAxis});
+};
+
+const SUBMODE_NOTE = {
+  "single-shot": "Run the plan once, then hold position and wait for reset.",
+  "hold": "Run it, then freeze the plan index at the last node and keep solving — the brace stays braced.",
+  "automode": "Loop the available tasks back to back. Rendering is skipped between them.",
+};
+
+function applySession(s){
+  sess = s;
+  $("b_play").textContent = s.paused ? "▶ play" : "⏸ pause";
+  $("b_play").classList.toggle("on", !!s.paused);
+  $("b_viewer").classList.toggle("on", !!s.viewer);
+  $("b_viewer").disabled = !s.can_viewer;
+  $("b_reset").disabled = !s.can_reset;
+  $("ctl_note").hidden = s.can_viewer && s.can_reset;
+  $("ctl_note").textContent = !s.can_reset
+    ? "Reset and the viewer are in-process only: the twin owns its physics and has no reset channel."
+    : (!s.can_viewer ? "Viewer disabled: MUJOCO_GL is an offscreen backend." : "");
+  const sel = $("s_task");
+  if (sel.dataset.n !== String((s.tasks||[]).length)){
+    sel.innerHTML = ""; sel.dataset.n = String((s.tasks||[]).length);
+    (s.tasks||[]).forEach(t=>{
+      const o = document.createElement("option");
+      o.value = t.name; o.textContent = t.name + (t.ready ? "" : "  (unavailable)");
+      o.disabled = !t.ready; sel.appendChild(o);
+    });
+  }
+  sel.value = s.task;
+  const cur = (s.tasks||[]).find(t=>t.name===s.task);
+  $("task_note").hidden = !(cur && cur.why);
+  $("task_note").textContent = cur && cur.why ? cur.why : "";
+  const sm = $("s_submode");
+  if (!sm.options.length) (s.submodes||[]).forEach(n=>{
+    const o = document.createElement("option"); o.value = o.textContent = n;
+    sm.appendChild(o); });
+  sm.value = s.submode;
+  $("submode_note").textContent = SUBMODE_NOTE[s.submode] || "";
+  [...$("rt_row").children].forEach(b=>b.classList.toggle(
+    "on", b.dataset.rt === String(s.realtime)));
+  if (s.target){
+    if (!tgtBuilt) buildTarget();
+    // Do not fight the operator's cursor: only refresh a box that is not
+    // focused, or typing a coordinate gets overwritten mid-keystroke by the
+    // session echoing back the value before the last digit.
+    s.target.forEach((v,i)=>{ const el = $("t_"+AX[i]);
+      if (el && document.activeElement !== el) el.value = (+v).toFixed(4); });
+    tgt = s.target;
+    $("tgt_note").firstChild.textContent =
+      `Applied to ${s.target_nodes} nodes in place — no rebuild, survives reset. `;
+  }
+  if (s.rot_axes && !rotBuilt){
+    rotBuilt = true;
+    s.rot_axes.forEach(ax=>{
+      const b = document.createElement("button");
+      b.textContent = ax; b.dataset.ax = ax;
+      b.onclick = () => { rotAxis = ax;
+        [...$("rot_axis").children].forEach(x=>x.classList.toggle("on", x.dataset.ax===ax));
+        send({cmd:"rot", deg:+$("rot").value, axis:ax}); };
+      $("rot_axis").appendChild(b);
+    });
+    [...$("rot_axis").children].forEach(x=>x.classList.toggle("on", x.dataset.ax===s.rot_axis));
+  }
+  if (s.rot_nodes === 0){
+    $("rot").disabled = true;
+    $("rot_note").innerHTML = "<b>No reachRot cost in this OCP.</b> The plan " +
+      "was solved with w_reach_rot = 0, so the term does not exist and cannot " +
+      "be added to a built model. Re-solve with --reach-rot auto.";
+  } else {
+    $("rot").disabled = false;
+    if (document.activeElement !== $("rot")){
+      $("rot").value = s.rot_deg; $("rot_val").textContent = s.rot_deg + "\u00b0";
+    }
+  }
+  setStatus(s.status);
+}
+
+ws.onopen  = () => { live = true; };
+ws.onclose = () => { setStatus(live ? "session ended" : "no controller on this port");
+  live = false; };
 ws.onmessage = ev => {
   const m = JSON.parse(ev.data);
+  if (m.type === "config"){
+    $("cfg").innerHTML = Object.entries(m.config||{})
+      .filter(([,v])=>v!=null && v!=="")
+      .map(([k,v])=>`<span>${k}</span><b class="num">${v}</b>`).join("");
+    return;
+  }
+  if (m.type === "session"){ applySession(m); return; }
+  if (m.type === "replay"){
+    pending = m.n; replayed = m.n;
+    if (m.n) setStatus(`replaying ${m.n} recorded periods…`);
+    return;
+  }
+  if (m.type === "weights"){
+    base = m.weights; const box = $("ws"); box.innerHTML = "";
+    for (const [n,w] of Object.entries(base||{}).sort()) box.appendChild(slider(n,w));
+    // A term that is not in the OCP has no slider and no explanation, which
+    // reads as a missing feature. Say which one and why, here rather than
+    // only next to the roll knob -- this is the panel people look at.
+    const miss = !(base && "reachRot" in base);
+    $("ws_note").hidden = !miss;
+    if (miss) $("ws_note").textContent =
+      "No reachRot slider: this plan was solved with w_reach_rot = 0, so the " +
+      "term is absent from the built models. Re-solve with --reach-rot auto.";
+    return;
+  }
+  if (m.type === "video"){
+    $("vid").src = m.url + "?t=" + Date.now();
+    $("vid_sec").hidden = false;
+    return;
+  }
   if (m.type !== "step") return;
-  if (m.solve_ms != null && !period && m.t) period = null;
   push(hist.solve, m.solve_ms || 0);
   push(hist.age, m.age_ms || 0);
+  push(hist.period, m.period_ms_actual || 0);
+  if (m.deadline_ms != null) deadline = m.deadline_ms; 
   for (const [k,v] of Object.entries(m.terms||{})){
     if (!hist.terms[k]) hist.terms[k] = new Array(hist.solve.length-1).fill(0);
     push(hist.terms[k], v);
   }
   if (m.period_ms) period = m.period_ms;
-  document.getElementById("kv").innerHTML = [
+  if (pending > 0 && --pending > 0) return;   // still catching up: data only
+  $("kv").innerHTML = [
     ["period", m.k], ["phase", m.phase],
     ["solve", (m.solve_ms||0).toFixed(1)+" ms"],
+    ["wall period", (m.period_ms_actual||0).toFixed(1)+" ms"],
     ["state age", (m.age_ms||0).toFixed(3)+" ms"],
     ["latency comp", (m.latency_ms||0).toFixed(1)+" ms"],
     ["step length", m.step_length==null?"--":m.step_length.toFixed(4)],
     ["tau saturated", m.tau_sat], ["q clipped", m.q_clip],
-  ].map(([k,v])=>`<span>${k}</span><b>${v}</b>`).join("");
-  document.getElementById("dirty").textContent =
-    m.dirty ? "weights modified — this run is not the plan's" : "";
-  if (!base && m.weights){ base = m.weights;
-    const box = document.getElementById("ws");
-    for (const [n,w] of Object.entries(base).sort()) box.appendChild(slider(n,w));
+  ].map(([k,v])=>`<span>${k}</span><b class="num">${v}</b>`).join("");
+  $("dirty").textContent = m.dirty ? "weights modified — this run is not the plan's" : "";
+  if (!base && m.weights){ base = m.weights; const box = $("ws");
+    for (const [n,w] of Object.entries(base).sort()) box.appendChild(slider(n,w)); }
+  if (replayed && pending === 0){
+    if (!sess) setStatus(live ? "live" : "run finished — " + replayed + " periods replayed");
+    replayed = 0;
   }
   redraw();
 };

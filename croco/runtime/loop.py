@@ -56,6 +56,7 @@ class LoopConfig:
     latency_max_ms: float = 40.0    # kLatencyMaxMs: hard cap on predict-forward
     clamp_ratio: float = 0.9        # kClampRatio: 0.9 x TAU_ESTOP
     safe_hold_kd: float = 2.0       # kSafeHoldKd
+    realtime: float | None = None   # sim seconds per wall second; see `run`
 
 
 class Phase:
@@ -83,17 +84,43 @@ class ControlLoop:
     the whole error at once through the position gains.
     """
 
-    def __init__(self, plant, policy, stance=None, cfg=None, on_step=None):
+    def __init__(self, plant, policy, stance=None, cfg=None, on_step=None,
+                 paused=None, stop=None):
+        """`paused` / `stop` are CALLABLES polled once per period, not flags.
+
+        The panel sets its state on a socket thread and the loop reads it on
+        the control thread; passing predicates rather than a shared mutable
+        keeps the ownership of that state with whoever is answering the
+        browser, and keeps this class from growing a command queue it would
+        then have to define semantics for.
+        """
         self.plant = plant
         self.policy = policy
         self.cfg = cfg or LoopConfig()
         self.stance = None if stance is None else np.asarray(stance, float)
         self.on_step = on_step
+        self.paused = paused
+        self.stop = stop
         self.phase = Phase.WARMUP
         self.watchdog_trips = 0
         self.t0 = None
         self.q_start = None
         self._solve_ewma = 0.0
+        # PAUSED TIME IS SUBTRACTED FROM THE PLAN INDEX, and it has to be.
+        # `t` comes off the plant's clock, and only a plant this process owns
+        # stops when we stop asking it to step. The twin does not: it keeps
+        # running physics at 500 Hz through a pause, so without this the
+        # maneuver would play on unattended while the panel said "paused" and
+        # resume several plan nodes further along than it was left.
+        self.paused_s = 0.0
+        self.paused_periods = 0
+        # MEASURED wall period, and the deadline it is measured against. The
+        # solve time alone cannot say whether a period was met: it excludes
+        # the physics step, the write, the hooks and the scheduler. This pair
+        # is what the overrun count is computed from, so plotting it shows the
+        # same event the counter counts rather than a proxy for it.
+        self.last_period_s = None
+        self.dt_wall = None
         self.log = []
 
     # -- policies ---------------------------------------------------------
@@ -218,7 +245,7 @@ class ControlLoop:
             self.t0, self.q_start = st.t, st.q.copy()
             if self.stance is None:
                 self.phase = Phase.RUN
-        t = st.t - self.t0
+        t = st.t - self.t0 - self.paused_s
 
         # WATCHDOG FIRST. Everything below reasons about the state; if the state
         # is old, none of that reasoning is valid, and the right answer is to
@@ -275,6 +302,10 @@ class ControlLoop:
         # watchdog is invisible from a count of the trips it happened to take.
         self.log.append(dict(t=t, phase=self.phase, solve_ms=solve_s * 1e3,
                              age=st.age,
+                             period_ms=(None if self.last_period_s is None
+                                        else 1e3 * self.last_period_s),
+                             deadline_ms=(None if self.dt_wall is None
+                                          else 1e3 * self.dt_wall),
                              latency_ms=lat * 1e3,
                              tau_sat=rep["tau_saturated"],
                              q_clip=rep["q_clipped"]))
@@ -298,14 +329,70 @@ class ControlLoop:
         elapsed time, so the maneuver simply plays slow, and nothing reports it.
         Overruns are COUNTED instead of absorbed: a period that misses its
         deadline is the thing this loop exists to make visible.
+
+        `cfg.realtime` IS SIM SECONDS PER WALL SECOND, and it is the one knob
+        here that can invalidate a result. 1.0 is real time; 0.25 runs the
+        maneuver at quarter speed, which is what makes a live viewer watchable
+        and, on an external plant, hands the solver 80 ms of wall clock to do
+        its 12-17 ms of work in. `None` keeps each branch's own default: free
+        (as fast as physics goes) for a plant this process owns, real time for
+        an external one, i.e. exactly what this loop did before the knob
+        existed.
+
+        WHAT SLOWING IT DOWN COSTS. The deadline the solver is being measured
+        against is the ROBOT'S, and the robot has no such knob. Below 1.0 the
+        overrun count stops being a deployment result and becomes a
+        counterfactual -- "would this maneuver survive if compute were cheaper"
+        -- which is a real question and a different one. That is why the factor
+        is recorded on the loop and belongs in whatever the run reports,
+        alongside `--base truth`, rather than being inferable from a wall time.
         """
+        c = self.cfg
         dt = 1.0 / self.cfg.ctrl_hz
         owns = getattr(self.plant, "OWNS_CLOCK", False)
+        rt = self.cfg.realtime
+        self.realtime = rt
+        if rt is not None and rt > 0:
+            dt_wall = dt / rt
+        elif owns:
+            dt_wall = None          # free-run: this process sets the clock
+        else:
+            dt_wall = dt            # an external plant sets the rate; match it
+        self.dt_wall = dt_wall
         self.overruns = 0
         self.worst_overrun_s = 0.0
-        next_deadline = time.monotonic() + dt
+        next_deadline = time.monotonic() + (dt_wall or 0.0)
+        t_pause = None
+        t_wall_prev = None
         try:
             while True:
+                if self.stop is not None and self.stop():
+                    break
+                if self.paused is not None and self.paused():
+                    # HOLD, DO NOT FREEZE. Not stepping is enough to stop an
+                    # in-process plant, but the twin drops torque to zero
+                    # 0.5 s after the last lowcmd and puts the robot on the
+                    # floor -- so a pause has to keep commanding the pose it
+                    # paused in, which is exactly what `safe_hold` is.
+                    st = self.plant.read()
+                    if t_pause is None:
+                        t_pause = st.t
+                    self.paused_s += max(0.0, st.t - t_pause)
+                    t_pause = st.t
+                    self.paused_periods += 1
+                    self.phase = Phase.HOLD
+                    try:
+                        self.plant.write(self.plant.safe_hold(c.safe_hold_kd))
+                    except Exception:                            # noqa: BLE001
+                        pass
+                    time.sleep(min(dt_wall or dt, 0.05))
+                    next_deadline = time.monotonic() + (dt_wall or 0.0)
+                    continue
+                t_pause = None
+                _now = time.monotonic()
+                if t_wall_prev is not None:
+                    self.last_period_s = _now - t_wall_prev
+                t_wall_prev = _now
                 if not self.step(kp, kd):
                     break
                 if self.t0 is not None and max_seconds is not None \
@@ -313,19 +400,19 @@ class ControlLoop:
                     break
                 if owns:
                     self.plant.step(dt)
-                    next_deadline += dt
+                if dt_wall is None:
+                    continue
+                slack = next_deadline - time.monotonic()
+                if slack > 0:
+                    time.sleep(slack)
                 else:
-                    slack = next_deadline - time.monotonic()
-                    if slack > 0:
-                        time.sleep(slack)
-                    else:
-                        self.overruns += 1
-                        self.worst_overrun_s = max(self.worst_overrun_s, -slack)
-                        # Do not try to catch up by shortening later periods:
-                        # that turns one late solve into a burst of commands at
-                        # the wrong rate. Give up the missed slot and re-phase.
-                        next_deadline = time.monotonic()
-                    next_deadline += dt
+                    self.overruns += 1
+                    self.worst_overrun_s = max(self.worst_overrun_s, -slack)
+                    # Do not try to catch up by shortening later periods:
+                    # that turns one late solve into a burst of commands at
+                    # the wrong rate. Give up the missed slot and re-phase.
+                    next_deadline = time.monotonic()
+                next_deadline += dt_wall
         finally:
             try:
                 self.plant.write(self.plant.safe_hold(self.cfg.safe_hold_kd))

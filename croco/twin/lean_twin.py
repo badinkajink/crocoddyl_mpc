@@ -322,7 +322,24 @@ class LeanTwin:
         the failure this process exists to expose -- a controller that cannot
         keep up. The loop sleeps to the wall clock and reports how far it
         drifted.
+
+        `realtime` is SIM SECONDS PER WALL SECOND -- True/1.0 for real time,
+        0.25 for quarter speed, False/0 for free-run. Slowing the twin is the
+        only way to give a controller on the far side of the wire more wall
+        clock per control period, because THIS process owns the clock the
+        controller is racing; `croco_twin --realtime` paces its own loop and
+        cannot reach in here. The two must be set to the SAME factor or the
+        controller and the physics disagree about what a second is, which
+        presents as a controller that is late on every period.
+
+        AND IT INVALIDATES THE DEPLOYMENT CLAIM, for the reason this file
+        exists: the robot has no slowdown knob. Below 1.0 this is a
+        counterfactual -- would the maneuver survive if compute were cheaper --
+        not a measurement of whether it survives deployment.
         """
+        factor = 1.0 if realtime is True else (0.0 if not realtime
+                                               else float(realtime))
+        self.stats["realtime"] = factor or None
         mujoco = self._mj
         v = None
         if viewer:
@@ -403,8 +420,8 @@ class LeanTwin:
                         self._publish_truth()
                     if v is not None:
                         v.sync()
-                if realtime:
-                    lag = (time.monotonic() - t_wall0) - self.d.time
+                if factor > 0:
+                    lag = (time.monotonic() - t_wall0) - self.d.time / factor
                     worst_lag = max(worst_lag, lag)
                     if lag < 0:
                         time.sleep(-lag)
@@ -492,6 +509,14 @@ def main(argv=None):
     ap.add_argument("--viewer", action="store_true")
     ap.add_argument("--free-run", action="store_true",
                     help="do not pace to the wall clock (hides late controllers)")
+    ap.add_argument("--realtime", type=float, default=1.0, metavar="FACTOR",
+                    help="sim seconds per wall second (default 1.0). 0.25 runs "
+                         "the twin at quarter speed, which is what gives a "
+                         "controller over the wire 80 ms of wall clock per "
+                         "20 ms control period -- pass the SAME factor to "
+                         "`croco_twin --realtime` or the two disagree about "
+                         "what a second is. A slowed run is a counterfactual, "
+                         "not a deployment result: the robot has no such knob.")
     a = ap.parse_args(argv)
 
     _install_sigterm()
@@ -500,11 +525,15 @@ def main(argv=None):
                     cmd_timeout=a.cmd_timeout,
                     hold_until_cmd=not a.no_hold, qpos0=a.qpos0,
                     wait_for_cmd=not a.no_wait)
-    print("[lean_twin] %s  dt=%.4f s  lowstate %.0f Hz  domain %d/%s"
-          % (a.model.split("/")[-1], twin.dt, a.rate, a.domain, a.iface))
+    print("[lean_twin] %s  dt=%.4f s  lowstate %.0f Hz  domain %d/%s  %s"
+          % (a.model.split("/")[-1], twin.dt, a.rate, a.domain, a.iface,
+             "free-run" if a.free_run else "%.3gx real time" % a.realtime))
+    if not a.free_run and a.realtime < 1.0:
+        print("[lean_twin] SLOWED to %.3gx -- the controller is being given "
+              "wall clock the robot would not give it." % a.realtime)
     try:
         stats = twin.run(duration=a.duration, viewer=a.viewer,
-                         realtime=not a.free_run)
+                         realtime=0.0 if a.free_run else a.realtime)
     except KeyboardInterrupt:
         stats = twin.stats
         stats.setdefault("pelvis_z0", twin.z0)

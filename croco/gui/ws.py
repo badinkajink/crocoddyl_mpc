@@ -125,9 +125,28 @@ class Server:
     or wedged browser marks itself not-alive and is dropped on the next sweep.
     """
 
-    def __init__(self, page_path, on_message=None, host="127.0.0.1", port=8770):
+    def __init__(self, page_path, on_message=None, host="127.0.0.1", port=8770,
+                 on_connect=None, routes=None):
+        """`on_connect` -> the backlog a NEW client is sent before it goes live.
+
+        WHY A BACKLOG EXISTS AT ALL. `broadcast` reaches only the clients that
+        are attached at the instant it is called, and the maneuver is four
+        seconds long. The panel was constructed one line above `loop.run`, so
+        the window in which a human could attach a browser was nil, and every
+        chart was empty by the time anyone looked -- the page loaded, said
+        "live", and plotted nothing, which reads exactly like a broken panel
+        and is not one. Replaying the recorded steps to each new connection
+        makes the run inspectable AFTER it is over, which is when it is
+        actually looked at.
+
+        `routes` is {path: callable() -> (content_type, bytes) | None}, for
+        content that does not exist yet when the server starts -- the run's
+        video is rendered after the loop finishes and is fetched from here.
+        """
         self.page_path = page_path
         self.on_message = on_message
+        self.on_connect = on_connect
+        self.routes = dict(routes or {})
         self.host, self.port = host, port
         self.conns = []
         self._lock = threading.Lock()
@@ -190,9 +209,40 @@ class Server:
                               "Upgrade: websocket\r\nConnection: Upgrade\r\n"
                               "Sec-WebSocket-Accept: %s\r\n\r\n" % accept).encode())
                 conn = _Conn(sock, self.on_message)
+                # BACKLOG BEFORE THE LOCK. A new client is caught up outside
+                # `self.conns`, so a broadcast racing this connect cannot
+                # interleave a live step into the middle of the replay and put
+                # the page's ring buffer out of order.
+                if self.on_connect is not None:
+                    try:
+                        for msg in self.on_connect():
+                            conn.send(msg)
+                    except Exception:                            # noqa: BLE001
+                        pass      # a panel is never a reason to fail a request
                 with self._lock:
                     self.conns.append(conn)
                 conn.pump()
+                return
+            path = (lines[0].split(" ")[1] if len(lines[0].split(" ")) > 2
+                    else "/").split("?")[0]
+            handler = self.routes.get(path)
+            if handler is not None:
+                got = None
+                try:
+                    got = handler()
+                except Exception:                                # noqa: BLE001
+                    got = None
+                if got is None:
+                    sock.sendall(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0"
+                                 b"\r\nConnection: close\r\n\r\n")
+                    return
+                ctype, body = got
+                sock.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: "
+                             + ctype.encode() + b"\r\nContent-Length: "
+                             + str(len(body)).encode() + b"\r\n"
+                             b"Accept-Ranges: none\r\n"
+                             b"Cache-Control: no-store\r\nConnection: close"
+                             b"\r\n\r\n" + body)
                 return
             body = open(self.page_path, "rb").read() \
                 if os.path.exists(self.page_path) else b"panel page missing"
