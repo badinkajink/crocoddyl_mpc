@@ -97,20 +97,63 @@ class ControlLoop:
 
     # -- policies ---------------------------------------------------------
 
-    def _latency(self, solve_s):
+    def _observe_solve(self, solve_s):
+        """Fold one measured compute time into the latency estimate."""
+        self._solve_ewma = 0.9 * self._solve_ewma + 0.1 * solve_s
+
+    def _latency(self):
         """How far to predict the state forward before handing it to the policy.
 
-        AUTO mode is an EWMA of the measured compute time plus a fixed transport
-        term, capped. The cap matters more than the estimate: a single slow step
-        with no cap predicts the robot somewhere it will never be, and the
-        command that comes back is worse than no compensation at all.
+        An EWMA of the measured compute time plus a fixed transport term,
+        capped. The cap matters more than the estimate: a single slow step with
+        no cap predicts the robot somewhere it will never be, and the command
+        that comes back is worse than no compensation at all.
+
+        IT IS ESTIMATED FROM PREVIOUS STEPS, and it has to be: the compensation
+        is needed BEFORE this step's solve, and this step's duration is not
+        knowable until after it.
         """
         c = self.cfg
         if not c.latency_comp:
             return 0.0
-        self._solve_ewma = 0.9 * self._solve_ewma + 0.1 * solve_s
         ms = self._solve_ewma * 1e3 + c.latency_extra_ms
         return min(ms, c.latency_max_ms) * 1e-3
+
+    @staticmethod
+    def _predict(st, dt):
+        """The state at APPLY time, not at read time.
+
+        THIS IS WHAT DEPLOYMENT ADDS. In-process the two are the same instant.
+        Over a wire the controller reads a state, spends its whole compute
+        budget on it, and applies the answer to a robot that has moved on --
+        measured here at ~16 ms of dead time against a 20 ms period, and the
+        maneuver that stands at 0.956 m in-process ends flat on the floor
+        without this, with the torque clamp saturating on ~10 joints per period
+        as the controller fights a robot that is no longer where it looked.
+
+        First-order and deliberately so: q += v*dt, base += vel*dt, attitude
+        integrated by the body rate. No dynamics, because the loop has no model
+        -- the MODEL's job is the policy's, and a wrong second-order term is
+        worse than an honest first-order one over 16 ms.
+        """
+        if dt <= 0.0:
+            return st
+        import dataclasses as _dc
+        out = _dc.replace(st, t=st.t + dt, q=st.q + st.v * dt)
+        if st.base_pos is not None and st.base_linvel is not None:
+            out.base_pos = st.base_pos + st.base_linvel * dt
+        if st.base_quat is not None and st.base_angvel is not None:
+            w = st.base_angvel
+            n = float(np.linalg.norm(w))
+            if n > 1e-12:
+                a = 0.5 * n * dt
+                dq = np.concatenate([[np.cos(a)], (w / n) * np.sin(a)])
+                w0, v0 = st.base_quat[0], st.base_quat[1:]
+                w1, v1 = dq[0], dq[1:]
+                out.base_quat = np.concatenate([
+                    [w0 * w1 - v0 @ v1],
+                    w0 * v1 + w1 * v0 + np.cross(v0, v1)])
+        return out
 
     def _clamp(self, cmd):
         """Keep the planner inside the box it solved against. NOT a safety layer.
@@ -188,14 +231,21 @@ class ControlLoop:
         scripted = self._phase_command(t, st, kp, kd)
         if isinstance(scripted, Command):
             plant.write(scripted)
-            self.log.append(dict(t=t, phase=self.phase, tau_sat=0, q_clip=0))
+            self.log.append(dict(t=t, phase=self.phase, age=st.age,
+                                 tau_sat=0, q_clip=0))
             return True
 
         t_pol = t - (c.warmup_s + c.ramp_s + c.ramp_hold_s
                      if self.stance is not None else 0.0)
+        # PREDICT FORWARD, then solve. Both the state and the plan index move:
+        # the command about to be issued lands `lat` seconds from now, so it has
+        # to be the command for then.
+        lat = self._latency()
+        st_solve = self._predict(st, lat)
         t0 = time.perf_counter()
-        out = self.policy(max(t_pol, 0.0), st)
+        out = self.policy(max(t_pol + lat, 0.0), st_solve)
         solve_s = time.perf_counter() - t0
+        self._observe_solve(solve_s)
         if out is None:
             self.phase = Phase.DONE
             plant.write(plant.safe_hold(c.safe_hold_kd))
@@ -210,8 +260,11 @@ class ControlLoop:
                           v_des=u * cmd.v_des)
         cmd, rep = self._clamp(cmd)
         plant.write(cmd)
+        # `age` on every row, not just the trips. Whether a run is near the
+        # watchdog is invisible from a count of the trips it happened to take.
         self.log.append(dict(t=t, phase=self.phase, solve_ms=solve_s * 1e3,
-                             latency_ms=self._latency(solve_s) * 1e3,
+                             age=st.age,
+                             latency_ms=lat * 1e3,
                              tau_sat=rep["tau_saturated"],
                              q_clip=rep["q_clipped"]))
         if self.on_step:
@@ -225,9 +278,21 @@ class ControlLoop:
         plan whenever the sim is not real-time, and the twin frequently is not.
         For a plant this process owns, `step(dt)` advances it; for an external
         one the sleep is what yields.
+
+        SLEEP TO THE NEXT DEADLINE, never for a whole period. `sleep(dt)` after
+        a step that already took `solve` seconds gives a period of dt + solve --
+        a 20 ms loop with a 12 ms solve runs at 31 Hz, not 50, and every
+        measured solve time in the study says the budget is met while the robot
+        is commanded at two thirds of the planned rate. The plan indexes on
+        elapsed time, so the maneuver simply plays slow, and nothing reports it.
+        Overruns are COUNTED instead of absorbed: a period that misses its
+        deadline is the thing this loop exists to make visible.
         """
         dt = 1.0 / self.cfg.ctrl_hz
         owns = getattr(self.plant, "OWNS_CLOCK", False)
+        self.overruns = 0
+        self.worst_overrun_s = 0.0
+        next_deadline = time.monotonic() + dt
         try:
             while True:
                 if not self.step(kp, kd):
@@ -237,8 +302,19 @@ class ControlLoop:
                     break
                 if owns:
                     self.plant.step(dt)
+                    next_deadline += dt
                 else:
-                    time.sleep(dt)
+                    slack = next_deadline - time.monotonic()
+                    if slack > 0:
+                        time.sleep(slack)
+                    else:
+                        self.overruns += 1
+                        self.worst_overrun_s = max(self.worst_overrun_s, -slack)
+                        # Do not try to catch up by shortening later periods:
+                        # that turns one late solve into a burst of commands at
+                        # the wrong rate. Give up the missed slot and re-phase.
+                        next_deadline = time.monotonic()
+                    next_deadline += dt
         finally:
             try:
                 self.plant.write(self.plant.safe_hold(self.cfg.safe_hold_kd))

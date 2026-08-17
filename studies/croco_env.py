@@ -203,6 +203,20 @@ def main():
               % (ext["keepout_mode"],
                  "YES" if ext["keepout_cpp"] else "NO -- ~6x SLOWER",
                  "YES" if ext["passive_cpp"] else "no"))
+    # The twin needs a DDS stack the study itself does not. Reported, not
+    # required: croco_replay and the grid run perfectly well without it.
+    import importlib.util as _u
+    dds = [n for n in ("cyclonedds", "unitree_sdk2py") if _u.find_spec(n) is None]
+    if dds:
+        print("dds         : %s MISSING -- needed only for croco_twin.py / "
+              "croco.twin.lean_twin\n"
+              "              pip install cyclonedds==11.0.1 && pip install "
+              "--no-deps -e <repo>/unitree_sdk2_python\n"
+              "              (11.0.1 is the only cp312 wheel; unitree_sdk2py "
+              "pins 0.10.2 in setup.py but works against it)"
+              % ", ".join(dds))
+    else:
+        print("dds         : cyclonedds + unitree_sdk2py OK (twin runs possible)")
     omp, _ = openmp()
     if omp is None:
         print("openmp      : could not probe")
