@@ -125,8 +125,9 @@ of build plus 4 s of run per cell, 260 runs is about three hours of wall time, a
 comparison it produces &mdash; survival per cell over DDS versus in process &mdash; is
 the first thing that could honestly be called equivalent.</p>
 
-<p>Two things should be fixed before spending those three hours, or the run measures
-the harness instead of the controller.</p>
+<p>One thing had to be fixed before spending those three hours, or the run would have
+measured the harness instead of the controller. It is fixed &mdash; and it turned out
+not to be the thing it looked like.</p>
 
 <h2>2. RESOLVED: the watchdog, which was two bugs wearing one number</h2>
 
@@ -205,79 +206,132 @@ plant counts samples per poll instead. Measured 0.98 &mdash; which incidentally
 confirms the reader&rsquo;s history is <code>KeepLast(1)</code>, so the sample taken is
 by construction the newest published, and there is no queue that can fall behind.</div>
 
-<h2>3. Wrist roll, and the palm that carries nothing</h2>
+<h2>3. RESOLVED: wrist roll works, and it is not why the palm is empty</h2>
 
-<p>This is worth exploring, and there is a specific reason to think it will pay.</p>
+<p class="meta">The exploration as posed: with the corrected gripper, can wrist roll drive
+the palm down into the table and reproduce a palm brace? Answer: yes, 8&deg; of it, in
+every cell. But the sweep found the reason the planner never does it, and it is not a
+reachability problem.</p>
 
-<p>The corrected gripper moved the palm site onto the real <code>_gripper_collision</code>
-face, and certification went from <b>0 of 26</b> cells admitting a palm contact to
-<b>19 of 26</b>. But the MPC does not use it: in the replay the palm carries
-<b>0.0&nbsp;N</b> while the elbow takes 175.5&nbsp;N. A contact the static QP certifies
-and the dynamic plan declines to load is either unreachable in the pose the plan picks,
-or unhelpful once the cost function has its say &mdash; and those two have different
-fixes.</p>
+<h3>The measurement</h3>
 
-<p>The observation that wrist <em>roll</em> can drive the gripper down into the table is
-the right axis to suspect. Wrist pitch is limited to &plusmn;0.4625&nbsp;rad, which is
-what caps top-down travel elsewhere in this study; roll is the free axis, and with the
-jaws now in their true orientation a roll is what puts the palm flat rather than edge-on.</p>
+<p>Swept at the certified pose <span class="m">q*</span>, across all 26 S18 cells, one
+wrist joint at a time. Lowest-point computed from the collision primitives directly
+&mdash; <code>mj_geomDistance</code> returns spurious exact zeros on these box/cylinder
+pairs and briefly made wrist <em>yaw</em> look like the answer, when in fact the yaw
+axis is vertical at this pose and yaw moves the gripper neither down nor flat.</p>
 
-<div class="note"><b>The first measurement is cheap and decisive.</b> Before changing any
-cost: at the certified braced pose, sweep wrist roll and record the angle between the
-palm normal and the table normal, and the palm site&rsquo;s clearance. If some roll makes
-the palm flat and reachable within limits, the palm is a <em>reachability</em> problem
-and the plan needs a wrist-roll term. If no roll does, it is a <em>geometry</em> problem
-and no cost weight will produce palm force. <code>studies/brace_surfaces.py</code> and
-<code>contact_select.py</code>&rsquo;s <code>palm_align_rows</code> already compute the
-alignment; this is a sweep over one joint, not new machinery.</div>
+<div class="scroll"><table>
+<tr><th>joint</th><th>extra angle to touch</th><th>palm tilt at touch</th><th>wrist pad then</th><th>joint travel spare</th><th>cells</th></tr>
+<tr><td>wrist roll</td><td class="good">+7.8&deg;</td><td>7.8&deg;</td><td>&minus;10.2 mm</td><td>140&deg;</td><td>26 / 26</td></tr>
+<tr><td>wrist pitch</td><td class="good">+6.6&deg;</td><td>6.7&deg;</td><td>&minus;11.5 mm</td><td>18&deg;</td><td>26 / 26</td></tr>
+<tr><td>wrist yaw</td><td class="bad">never</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td><td>0 / 26</td></tr>
+</table></div>
 
-<p>Only if the sweep says &ldquo;reachable&rdquo; is the second half worth doing: add the
-palm to the prescribed contact schedule with a nonzero normal-force floor
-(<code>min_nforce</code> already exists) and re-certify. The payoff is worth the
-detour &mdash; the elbow currently carries the whole brace, and a loaded palm is a
-second support that shortens the moment arm the torso is holding.</p>
+<p>So the intuition was geometrically right and the axis was right. What it was
+<em>not</em> was an alignment fix: <b>the palm face is already 0.05&ndash;0.07&deg; from
+flat in all 26 cells.</b> It is not edge-on and never was. It is 9.0 mm too high &mdash;
+to within 0.1 mm, in every cell, because that height is set by wrist-link geometry and
+not by the target. Rolling to land it <em>costs</em> 8&deg; of tilt rather than removing
+any, which is still far inside a &mu;&nbsp;=&nbsp;0.6 cone (31&deg;), and presses the
+wrist pad 10 mm deeper &mdash; so a palm brace is <b>coupled</b> to the wrist brace, not
+a second independent support.</p>
 
-<h2>4. Plan: recovery from the brace back to a stable stand</h2>
+<h3>Why the planner never does it</h3>
 
-<p><b>Most of this is already written and has never been switched on.</b>
-<code>croco_plan.py</code> has a RETURN phase &mdash; brace released, feet only, state
-regulariser flipped from q* back to the start pose, CoM barrier restored, terminal
-contact set following the last running phase. Every S18 plan runs with
-<code>n_return: 0</code>. There are also three unused <code>standback_r*</code>
-keyframes in the MJCF.</p>
+<div class="note warn"><b><code>resolved_contacts</code> was fabricating the contact.</b>
+When the narrowphase reports nothing for a brace body it falls back to the SITE point
+with an assumed vertical normal. The narrowphase reports nothing for the gripper in
+<b>26 of 26 cells</b>. So the static QP certified force balance at a point hanging
+22&nbsp;mm in the air, the OCP anchored its palm contact there, and the plan satisfied it
+to 0.88&nbsp;mm. Nothing in the objective ever asked the gripper to descend, because by
+the model&rsquo;s own accounting it was already exactly where the contact was. The
+&ldquo;19 of 26 cells admit a palm contact&rdquo; result has to be read that way: it
+certified a force at a point near the gripper, not a contact.</div>
 
-<p>So this is validation of existing code, not new modelling, and the phases are:</p>
+<p>The fallback now announces itself, once per site, with the height. It stays a
+fallback rather than becoming an error because the feet legitimately use it &mdash; a
+flat floor with a deliberate four-point corner model of a sole is an approximation, not
+a missing contact.</p>
+
+<h3>And the force accounting was open</h3>
+
+<p><code>f_brace</code> was keyed on the plan&rsquo;s subset, so a robot&ndash;table
+contact on any body that no site names was summed nowhere. What actually carries the
+brace is <code>left_wrist_pad</code>, which lives on <code>left_wrist_yaw_link</code>.
+Re-running the cell with the accounting closed: 177.6&nbsp;N elbow, 0.0&nbsp;N palm, and
+<b>5.2&nbsp;N braced-mean / 59.3&nbsp;N peak that had previously been reported nowhere at
+all</b> &mdash; across <code>left_elbow_link</code>, <code>left_wrist_yaw_link</code>,
+and unexpectedly <code>right_magpie_gripper</code>. Every replay now carries an
+<code>F_other</code> column and names the bodies in it.</p>
+
+<h3>What this makes the palm question</h3>
+
+<p>Not &ldquo;can the palm reach the table&rdquo; &mdash; it can, from every cell, with a
+joint that has 140&deg; to spare. The question is whether a brace whose two contacts
+share the same 10&nbsp;mm of wrist compression is worth having, and that is answerable
+only after the contact is placed on the surface instead of above it. That is a change to
+<code>resolved_contacts</code>, a re-certification, and a re-plan &mdash; a session, not
+a patch, and the S18 grid would have to be redone with it.</p>
+
+<h2>4. RESOLVED (first pass): the release is not the dangerous part &mdash; the brace is</h2>
+
+<p class="meta">The plan above said: turn <code>n_return</code> on, expect the failure
+backward, and measure the support margin through the release. Done, on
+<span class="m">x1050_y-235_z1098_dy+000</span>, <code>elbow+palm</code>, 60 return nodes
+(1.2 s) against the same cell at <code>n_return: 0</code>. The prediction was wrong, and
+usefully so.</p>
+
+<p>Both plans converge and are feasible. The <code>n_return: 0</code> control reproduces
+the S18 cell to twelve digits (cost 24.733003063938), so the comparison is clean.</p>
+
+<div class="scroll"><table>
+<tr><th></th><th>n_return: 0</th><th>n_return: 60</th></tr>
+<tr><td>pelvis z, final</td><td>0.955 m (braced)</td><td class="good">0.988 m (stood up)</td></tr>
+<tr><td>feet normal force, final</td><td>529.3 N</td><td class="good">700.9 N &asymp; body weight</td></tr>
+<tr><td>support margin, approach</td><td>+37.2 mm</td><td>+37.3 mm</td></tr>
+<tr><td>support margin, <b>braced</b></td><td>+61.2 mm</td><td class="bad">+28.6 mm</td></tr>
+<tr><td>support margin, <b>release</b></td><td>&mdash;</td><td class="good">+41.5 mm, rising</td></tr>
+<tr><td>worst penetration</td><td>&minus;0.5 mm (approach)</td><td class="bad">&minus;7.9 mm (brace entry)</td></tr>
+<tr><td>reach error at brace end</td><td>5.3 mm</td><td class="bad">88.8 mm</td></tr>
+</table></div>
+
+<p><b>The robot stands back up.</b> The margin at the release is +41.5 mm and rises
+monotonically to +76 mm; it never dips. Traced through the transition, the brace goes
+from 185.7&nbsp;N to 0.0&nbsp;N in a single control period while the feet step from
+460.5&nbsp;N to 764.4&nbsp;N &mdash; a 300&nbsp;N transfer, peaking at 1.13&times; body
+weight, absorbed without the CoM leaving the support polygon. Contact removal really is
+the free transition, and the &ldquo;expect failure backward&rdquo; instinct simply does
+not show up in the data.</p>
+
+<div class="note warn"><b>What the return phase actually costs is the brace.</b>
+Braced-phase margin drops 61.2 &rarr; 28.6 mm, brace-entry penetration goes 0.5 &rarr;
+7.9 mm, and the hand ends 88.8 mm off target instead of 5.3 mm. The mechanism is in the
+cost shaping, not the physics: with <code>n_return &gt; 0</code> the terminal node is no
+longer braced, so it drops the 10&times; reach weight and flips its state reference to
+<span class="m">x0</span>. The brace stops being what the terminal node rewards, and the
+solver spends brace fidelity to buy a clean landing. The fix is to stop leaning on the
+terminal node &mdash; put a strong hold/reach cost on the LAST BRACED node, where it
+belongs, instead of getting it for free from a terminal that no longer exists.</div>
+
+<h3>What is still open here</h3>
 
 <ul>
-<li><b>Turn it on and see what breaks.</b> Re-plan one certified cell with
-<code>n_return</code> at 60&ndash;120 nodes. A release is a contact <em>removal</em>,
-which a prescribed-schedule DDP handles without impulse or complementarity &mdash; this
-is the one mode transition that is free, and it is why recovery is tractable at all.</li>
-<li><b>Expect the failure to be backward.</b> The planned CoP already rides the heel edge
-during the brace; <code>croco_replay</code>&rsquo;s push default is &minus;x precisely
-because that is the direction the plant already falls. Unloading the arm removes a
-forward support, so the CoM must transfer back over the feet <em>before</em> the brace
-force goes to zero. If the return fails, the first thing to measure is the support
-margin through the release, not the joint tracking.</li>
-<li><b>Make the release rate a variable, not a constant.</b> The interesting knob is how
-many nodes the unloading takes. Too fast is a step disturbance at the worst moment; too
-slow and the arm holds a load the legs are already carrying. Sweep it the way the horizon
-was swept.</li>
-<li><b>Score it on the same axes as the brace.</b> Survival, support margin, worst
-penetration, and torque saturation &mdash; through the release and for a settle window
-after it, so &ldquo;recovered&rdquo; means still standing seconds later and not merely
-upright at the last node.</li>
-<li><b>Then the twin.</b> Recovery is where deployment gets harder, not easier: the
-release is the moment the controller most needs a current state, and it is exactly when
-the watchdog above is most likely to fire.</li>
+<li><b>Release rate.</b> 60 nodes was one guess and it worked; the sweep over unloading
+duration is still the interesting variable and has not been run.</li>
+<li><b>Settle window.</b> The plan ends with <code>terminal_vel_norm</code> 1.75 rad/s
+against 0.035 for the braced terminal &mdash; the OCP hands over a robot that is still
+moving, and the MPC catches it. &ldquo;Recovered&rdquo; should mean still standing
+seconds later, which needs a settle window past the last node.</li>
+<li><b>The handoff.</b> Unchanged from the plan and now more clearly needed: the loop
+signs off with a damping stop when the policy retires, which is why the twin robot
+collapses five seconds after a successful run. With a return phase the maneuver ends in a
+stand, and holding that stand is a controller, not a <code>None</code>. It belongs in
+<code>ControlLoop</code> next to the bring-up phases it already owns.</li>
+<li><b>The twin.</b> Recovery over the wire has not been run. It is where deployment gets
+harder, not easier &mdash; though with the receive path fixed (&sect;2) the state is now
+current at the moment the release needs it.</li>
 </ul>
-
-<p>One design note worth settling early: the loop currently signs off with a damping stop
-when the plan retires, which is why the twin robot collapses five seconds after a
-successful run. With a return phase the maneuver should end in a <em>held stand</em>, and
-that hold is a controller, not a <code>None</code> return. It is the natural place for
-the FAME stand policy or a simple posture PD to take over, and the handoff between them
-belongs in <code>ControlLoop</code> alongside the bring-up phases it already owns.</p>
 
 <h2>5. Plan: a live GUI, without the MJPC bloat</h2>
 
@@ -358,21 +412,37 @@ they are not worth regenerating: both sessions predate the gripper correction, s
 re-rendering them would produce videos of a model this series has since established was
 90&deg; out. The script names them rather than leaving blank rectangles.</p>
 
-<h2>7. What to do first</h2>
+<h2>7. Where this leaves the list</h2>
 
-<ol>
-<li>Check whether crocoddyl&rsquo;s bindings release the GIL. It is a ten-minute question
-that decides how much the watchdog fix costs.</li>
-<li>Sweep wrist roll at the braced pose. One joint, no new machinery, and it decides
-whether the palm is worth pursuing at all.</li>
-<li>Turn on <code>n_return</code> on one cell and look at the support margin through the
-release.</li>
-<li>Then the 260-run twin grid &mdash; after 1, so it measures the controller.</li>
-</ol>
+<p>Three of the four items above are done, and two of them changed what the fourth is
+worth doing to.</p>
 
-<p class="meta">The GUI is the odd one out: nothing above depends on it, and it makes
-everything above easier to debug. It is the right thing to build while a three-hour grid
-is running.</p>
+<div class="scroll"><table>
+<tr><th></th><th></th><th>outcome</th></tr>
+<tr><td>1</td><td>Does crocoddyl release the GIL?</td><td class="good">No. Fixed by polling the wire instead &mdash; age p95 16.1 &rarr; 0.007 ms (&sect;2)</td></tr>
+<tr><td>2</td><td>Sweep wrist roll at the braced pose</td><td class="good">Roll reaches, 26/26. But the palm was never on the table to begin with (&sect;3)</td></tr>
+<tr><td>3</td><td>Turn on <code>n_return</code>, watch the margin</td><td class="good">Stands back up. The release is safe; the brace is what degrades (&sect;4)</td></tr>
+<tr><td>4</td><td>The 260-run twin grid</td><td>Now unblocked &mdash; the harness no longer flies blind</td></tr>
+</table></div>
+
+<p>Two of these were reporting failures rather than engineering ones, and that is the
+pattern worth carrying forward. The watchdog number was a stale phase label. The palm
+force was a contact fabricated in mid-air by a silent fallback, certified by a QP that
+had no way to know, and reported against a body-keyed sum that dropped every contact it
+did not have a name for. In all three the physics was fine and the instrument was
+lying &mdash; so all three fixes are now instruments that say something when they cannot
+answer, rather than answering anyway.</p>
+
+<p>What to do next, in order: the twin grid, which is mechanical and finally measures the
+controller rather than the harness; then the last-braced-node cost that &sect;4 identified,
+which is a small change with a clear prediction; then the palm, which needs
+<code>resolved_contacts</code> to place contacts on surfaces and the grid redone behind
+it.</p>
+
+<p class="meta">The GUI is still the odd one out, and still the right thing to build
+while a three-hour grid is running: nothing above depends on it, and every finding on
+this page would have been quicker to see with a live plot of costs and contact forces
+than with a print statement.</p>
 
 </div>
 
