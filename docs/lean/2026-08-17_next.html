@@ -90,8 +90,8 @@ to see why is to put the two side by side.</p>
 
 <div class="scroll"><table>
 <tr><th>Axis</th><th>S18 grid</th><th>S19 twin</th></tr>
-<tr><td>Runs</td><td>260</td><td class="bad">1</td></tr>
-<tr><td>Target cells</td><td>26</td><td class="bad">1</td></tr>
+<tr><td>Runs</td><td>260</td><td>1 &rarr; 26 (&sect;7)</td></tr>
+<tr><td>Target cells</td><td>26</td><td>1 &rarr; <span class="good">26</span> (&sect;7)</td></tr>
 <tr><td>Disturbance profiles</td><td>nominal, winch1</td><td class="bad">none</td></tr>
 <tr><td>Seeds per cell</td><td>5</td><td class="bad">1</td></tr>
 <tr><td>Base pose</td><td>estimator error model (bias + white)</td><td class="bad">GROUND TRUTH</td></tr>
@@ -333,65 +333,62 @@ harder, not easier &mdash; though with the receive path fixed (&sect;2) the stat
 current at the moment the release needs it.</li>
 </ul>
 
-<h2>5. Plan: a live GUI, without the MJPC bloat</h2>
+<h2>5. BUILT: a live panel, without the MJPC bloat</h2>
 
-<p>Not too ambitious, if the MVP is scoped to the three things actually wanted: watch the
-planner live, change cost weights live, plot costs. The first and third are display; the
-second is the one that could have been hard, and it is not.</p>
+<p class="meta">MVP scoped to the three things actually wanted &mdash; watch the planner
+live, change cost weights live, plot costs. Built and verified against the real OCP.
+<code>croco/gui/</code>, and <code>--gui</code> on <code>croco_twin.py</code>.</p>
 
-<div class="note ok"><b>Live weights are free.</b> Verified against this environment:
-<code>costs.costs["reg"].weight = 7.5</code> mutates in place on a built
-<code>CostModelSum</code>, and <code>changeCostStatus</code> switches a term off
-entirely. The OCP does not need rebuilding to retune it, which is what makes a slider
-meaningful rather than a restart button.</div>
+<pre>studies/croco_twin.py --dir runs/.../grid/&lt;cell&gt; --tag elbow_palm \
+    --plant mujoco --gui        # panel on http://127.0.0.1:8770/</pre>
 
-<h3>Where it taps in</h3>
+<p>Only the middle item was ever in doubt, and it was free:
+<code>costs.costs["reg"].weight = 7.5</code> mutates a <em>built</em>
+<code>CostModelSum</code> in place, so a slider is a slider and not a restart button. The
+integration surface was a hook that already existed &mdash; <code>ControlLoop</code>
+takes <code>on_step(row, state, cmd)</code> and is already called once per period with
+everything a display needs, so the panel is a consumer and not a change to the loop.</p>
 
-<p><code>ControlLoop</code> already takes an <code>on_step(row, state, cmd)</code>
-callback and is already called once per control period with everything a display needs.
-That is the whole integration surface &mdash; the GUI is a consumer of a hook that
-exists, not a rewrite of the loop.</p>
+<h3>What the GIL finding changed about the design</h3>
 
-<h3>Browser, not a GL toolkit</h3>
+<div class="note"><b>&sect;2 is why the data flows the way it does.</b> Socket threads
+starve during a solve exactly as the DDS receive path did. So telemetry is
+<b>pushed</b> from inside <code>on_step</code>, which already holds the GIL, rather than
+polled; and the browser&rsquo;s weight edits are only <b>enqueued</b> there, with
+<code>drain()</code> applying them at the top of the next period, in the control thread,
+never into a model the solver is reading. A panel may lag a period. A controller may
+not.</div>
 
-<p>MJPC&rsquo;s GUI is GLFW plus ImGui compiled into the agent, and inheriting that is
-inheriting the bloat the request explicitly excludes. A small HTTP plus WebSocket server
-in the controller process, with a plain HTML page, wins on four counts: no GL dependency
-to fight, it works headless and over SSH, it composes with the twin already running in
-another process, and the plotting is a few dozen lines of canvas rather than an ImGui
-port. The cost is that the 3D view is not free the way it is in a native viewer.</p>
+<h3>Eighty lines of RFC 6455, and no dependency</h3>
 
-<p>For the 3D view, the MVP answer is to not build one: run
-<code>mujoco.viewer.launch_passive</code> in the twin process, which already exists and
-already shows the robot, and let the browser own the numbers and the sliders. Overlaying
-the predicted trajectory is the one thing worth adding on top &mdash; the MPC returns
-<code>solver.xs</code> every period, and drawing that horizon as a line in
-<code>user_scn</code> is what &ldquo;watching the planner&rdquo; actually means.</p>
+<p>Browser rather than GLFW+ImGui: no GL to fight, works headless and over SSH, composes
+with the twin&rsquo;s own passive viewer in the other process, and the plotting is canvas
+rather than an ImGui port. The WebSocket server is written out rather than pulled in
+&mdash; adding an async stack to a conda env already refereeing numpy, eigenpy and a
+hand-built crocoddyl is the worse trade. Handshake, text frames both ways, ping/pong,
+close. Nothing else.</p>
 
-<h3>MVP, in the order it should be built</h3>
+<h3>Verified live</h3>
 
-<ul>
-<li><b>Telemetry out.</b> <code>on_step</code> pushes solve time, phase, per-term cost,
-step length, saturation counts and state age over a WebSocket. Ship this alone first
-&mdash; it replaces the JSON-at-the-end workflow every run currently uses, and it is
-useful before any UI exists.</li>
-<li><b>Plots in.</b> Rolling traces of solve time against the period, cost per term, and
-support margin. The per-term breakdown is the one that pays: it is currently only
-visible by running <code>croco_speed.py terms</code> offline.</li>
-<li><b>Weights back.</b> Sliders posting to a queue the loop drains between periods
-&mdash; never mid-solve. Show the value and the default, and log every change into the
-run JSON, or a retuned run becomes unreproducible.</li>
-<li><b>Horizon overlay</b> in the passive viewer, from <code>solver.xs</code>.</li>
-<li><b>Not in the MVP:</b> editing the task, saving configurations, a scene tree, a
-built-in profiler. That is where MJPC&rsquo;s GUI became something to maintain rather
-than something to use.</li>
-</ul>
+<p>Against <span class="m">x1050_y-235_z1098_dy+000</span>, over the socket: <b>14 cost
+weights across all phases</b> (<code>land_*</code>, <code>hold_*</code>,
+<code>cone_*</code>, <code>comSupport</code>, <code>jointLim</code>, <code>ko_all</code>,
+<code>ctrlReg</code>, <code>stateReg</code>, <code>reach</code>) and per-term costs read
+off the first running node every period &mdash; the breakdown that was previously only
+visible by running <code>croco_speed.py terms</code> offline. Masked client frames apply
+correctly; the panel holds open after the maneuver, because the run is four seconds long
+and the process used to exit before a browser finished loading the page.</p>
 
-<div class="note warn"><b>One hazard worth naming.</b> A GUI that retunes weights live
-makes it easy to produce a run nobody can reproduce. Every weight change must land in the
-run artifact, and a run whose weights differ from the plan&rsquo;s should say so in its
-summary &mdash; the same discipline that makes <code>--base truth</code> something you
-have to type.</div>
+<div class="note warn"><b>Retuning live makes it easy to produce a run nobody can
+reproduce.</b> So every edit is timestamped into <code>gui_weight_changes</code>,
+<code>dirty</code> latches the first time one lands, and a run whose weights differ from
+its plan&rsquo;s prints a warning and carries it in <code>--out</code>. The same
+discipline that makes <code>--base truth</code> something you have to type.</div>
+
+<p>Deliberately absent, and staying absent: task editing, saved configurations, a scene
+tree, a built-in profiler. Still to build: the horizon overlay from
+<code>solver.xs</code>, which belongs in the twin&rsquo;s viewer process rather than the
+browser.</p>
 
 <h2>6. Housekeeping: the media links</h2>
 
@@ -412,37 +409,63 @@ they are not worth regenerating: both sessions predate the gripper correction, s
 re-rendering them would produce videos of a model this series has since established was
 90&deg; out. The script names them rather than leaving blank rectangles.</p>
 
-<h2>7. Where this leaves the list</h2>
+<h2>7. RESOLVED: the cells axis, closed</h2>
 
-<p>Three of the four items above are done, and two of them changed what the fourth is
-worth doing to.</p>
+<p>With the receive path fixed, the grid was worth running.
+<code>studies/twin_grid.sh</code> puts every certified cell through the twin, one twin
+per cell, and pairs each against the S18 stress sweep&rsquo;s <code>nominal</code> row
+&mdash; the undisturbed in-process run of the same plan, which is the correct partner
+for an undisturbed twin run.</p>
+
+<div class="scroll"><table>
+<tr><th>26 cells over the wire</th><th></th></tr>
+<tr><td>upright</td><td class="good">26 of 26</td></tr>
+<tr><td>agreement with in process</td><td class="good">26 / 26 &mdash; no cell disagrees either way</td></tr>
+<tr><td>watchdog trips</td><td class="good">0, over 5140 control periods</td></tr>
+<tr><td>state age, worst p95 of any cell</td><td class="good">0.008 ms</td></tr>
+<tr><td>solve time</td><td>11.4&ndash;14.0 ms mean, 17.9&ndash;22.4 ms p95</td></tr>
+<tr><td>pelvis height, final</td><td>0.9328&ndash;0.9549 m</td></tr>
+</table></div>
+
+<p>So the answer to &sect;1 has moved, and only on the axis that was actually measured:
+<b>the maneuver survives deployment in every cell it was certified in</b>. The
+disturbance-profile and seed axes are untouched &mdash; <code>croco_twin</code> has no
+push or noise plumbing &mdash; and the base pose is still ground truth. Those are what
+stand between this and 260.</p>
+
+<h3>Where the list ended up</h3>
 
 <div class="scroll"><table>
 <tr><th></th><th></th><th>outcome</th></tr>
-<tr><td>1</td><td>Does crocoddyl release the GIL?</td><td class="good">No. Fixed by polling the wire instead &mdash; age p95 16.1 &rarr; 0.007 ms (&sect;2)</td></tr>
-<tr><td>2</td><td>Sweep wrist roll at the braced pose</td><td class="good">Roll reaches, 26/26. But the palm was never on the table to begin with (&sect;3)</td></tr>
+<tr><td>1</td><td>Does crocoddyl release the GIL?</td><td class="good">No. Fixed by polling the wire &mdash; age p95 16.1 &rarr; 0.007 ms (&sect;2)</td></tr>
+<tr><td>2</td><td>Sweep wrist roll at the braced pose</td><td class="good">Roll reaches, 26/26. The palm was never on the table to begin with (&sect;3)</td></tr>
 <tr><td>3</td><td>Turn on <code>n_return</code>, watch the margin</td><td class="good">Stands back up. The release is safe; the brace is what degrades (&sect;4)</td></tr>
-<tr><td>4</td><td>The 260-run twin grid</td><td>Now unblocked &mdash; the harness no longer flies blind</td></tr>
+<tr><td>4</td><td>The twin grid</td><td class="good">26 of 26 upright, 0 watchdog trips (above)</td></tr>
+<tr><td>&mdash;</td><td>The GUI</td><td class="good">Built (&sect;5)</td></tr>
 </table></div>
 
-<p>Two of these were reporting failures rather than engineering ones, and that is the
+<p>Three of these were reporting failures rather than engineering ones, and that is the
 pattern worth carrying forward. The watchdog number was a stale phase label. The palm
 force was a contact fabricated in mid-air by a silent fallback, certified by a QP that
 had no way to know, and reported against a body-keyed sum that dropped every contact it
-did not have a name for. In all three the physics was fine and the instrument was
-lying &mdash; so all three fixes are now instruments that say something when they cannot
-answer, rather than answering anyway.</p>
+had no name for. In each case the physics was fine and the instrument was lying &mdash;
+so each fix is now an instrument that says something when it cannot answer, rather than
+answering anyway.</p>
 
-<p>What to do next, in order: the twin grid, which is mechanical and finally measures the
-controller rather than the harness; then the last-braced-node cost that &sect;4 identified,
-which is a small change with a clear prediction; then the palm, which needs
-<code>resolved_contacts</code> to place contacts on surfaces and the grid redone behind
-it.</p>
+<h3>Next</h3>
 
-<p class="meta">The GUI is still the odd one out, and still the right thing to build
-while a three-hour grid is running: nothing above depends on it, and every finding on
-this page would have been quicker to see with a live plot of costs and contact forces
-than with a print statement.</p>
+<ol>
+<li><b>Disturbance profiles and seeds over the wire.</b> The remaining two axes between
+26 runs and 260. It is push/noise plumbing in <code>croco_twin</code>, which
+<code>croco_replay</code> already has.</li>
+<li><b>A real base estimator in <code>base_source</code>.</b> The single biggest
+remaining gap, and the one the whole deployment argument turns on. Everything else in
+the loop is already what would run on the robot.</li>
+<li><b>The last-braced-node cost</b> that &sect;4 identified &mdash; a small change with
+a clear prediction, and it makes recovery usable rather than merely possible.</li>
+<li><b>The palm</b>, which needs <code>resolved_contacts</code> to place contacts on
+surfaces, and the grid redone behind it.</li>
+</ol>
 
 </div>
 
