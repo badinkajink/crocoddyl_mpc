@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The gripper was 90 degrees out, and everything downstream believed it</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     Ported from the S11 handoff page so the whole series types maths the same
+     way.  A fenced block gets a rule on the left so a derivation reads as one
+     unit.  Anything written as hand-rolled <sub>/<sup> before this existed is
+     still fine for a lone symbol; it is equations that need the real thing. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+  .eq .lbl{color:var(--ink3);font-size:.8rem;text-transform:uppercase;
+           letter-spacing:.04em;margin:0 0 .45rem}
+</style>
+<style>
+figure{margin:1.6rem 0}
+figure video{width:100%;border-radius:6px;display:block}
+figcaption{font-size:.92rem;opacity:.85;margin-top:.5rem}
+tr.hi td{background:rgba(120,180,255,.13)}
+.note{font-size:.92rem;opacity:.8}
+.lede{font-size:1.06rem}
+</style>
+
+</head>
+<body><div class="wrap">
+
+<h1>The gripper was 90&deg; out, and everything downstream believed it</h1>
+<p class="lede">Session 18. Syncing the crocoddyl branch with Allen's
+<code>icra2026</code> for asset parity turned up a geometry error in the part of
+the robot this whole study is about. The magpie collision proxy had the right
+three numbers in the wrong two axes &mdash; body half-extents
+(0.0415, <b>0.0170, 0.0667</b>) against the CAD's
+(0.0415, <b>0.0667, 0.0170</b>) &mdash; and sat 25&nbsp;mm short. The visual was
+not the gripper at all: it was the adapter puck. Both are now generated from
+CL_Assets at build time.</p>
+<p class="meta">2026-08-16 &middot; <code>mujoco_mpc@crocoddyl-mpc</code> &middot;
+<code>_gen_magpie_gripper.py</code>, <code>_gen_h12_base_limits.py</code>,
+<code>croco/</code> &middot; run dir <code>lean_analysis/runs/2026-08-16_session18</code></p>
+
+<h2>0 &middot; What changed, and what it invalidates</h2>
+<ul>
+<li><b>Merged <code>icra2026</code></b> for asset and environment parity: table
+at 1.04&nbsp;m, legs to the floor, Allen's real-run brace keyframes, the deploy
+helpers and the base estimator. The MPC method is <i>not</i> synced.</li>
+<li><b>The actuator torque budget moved into the generator.</b> icra2026 shipped
+it as a patch hunk quoting the ctrlranges the CL_Assets import rewrites, so the
+hunk rejected &mdash; and the magpie patch runs through a tolerant wrapper that
+discards the <code>.rej</code>. The build reported success while shipping a model
+with no <code>forcerange</code> at all.</li>
+<li><b>The gripper is generated from CL_Assets</b>, welded: no joint, no body,
+mass&nbsp;0. <code>nq/nv/nu</code> stay 41/39/27 and the inertia is untouched;
+the generator re-loads the task model and refuses to write otherwise. All eight
+parts land within 0.0004&nbsp;mm of the CAD.</li>
+</ul>
+<p><b>Every S14&ndash;S17 number is stale.</b> The table moved and the seed
+keyframe changed, which alone re-derives the certified pose; the gripper fix
+changes which contact subsets are reachable at all. This page is the re-run.</p>
+
+<h2>1 &middot; What the corrected gripper certifies</h2>
+<p>The offline stage enumerates contact subsets and asks a static equilibrium QP which of them a pose can actually hold. It is the cheapest thing in the pipeline and the most sensitive to geometry, so it is where a transposed gripper shows up first.</p>
+<p><b>18 of 26 cells</b> now pick a subset that includes the <b>palm</b>, against <b>0</b> on the old proxy. That is the transposition, stated as an outcome: the old box claimed 12.5&nbsp;mm of hardware on the side the palm brace lands on and 90&deg; of it in the wrong plane, so the palm could not be seated at the same time as the forearm. S15 read that as a property of the robot &mdash; &ldquo;what the CAD-faithful gripper costs is having the palm AND the forearm down at once&rdquo; &mdash; and it was a property of the proxy.</p>
+<table><thead><tr><th>cell</th><th colspan="2">corrected</th><th colspan="2">old proxy</th></tr><tr><th></th><th>#adm</th><th>cheapest</th><th>#adm</th><th>cheapest</th></tr></thead><tbody>
+<tr><td><code>x0905_y-235_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>4</td><td>elbow+forearm</td></tr>
+<tr class="hi"><td><code>x0905_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y+000_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y+000_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow+forearm</td></tr>
+<tr class="hi"><td><code>x1050_y+120_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow+forearm</td></tr>
+<tr class="hi"><td><code>x1050_y+120_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>0</td><td>&mdash;</td></tr>
+<tr class="hi"><td><code>x1050_y-120_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-120_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1020_dy+000</code></td><td>5</td><td>elbow+palm</td><td>4</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1020_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-280_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1050_y-280_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>3</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y+000_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y+000_z1098_dy-120</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-120_z1098_dy+000</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-120_z1098_dy-120</code></td><td>5</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1020_dy+000</code></td><td>4</td><td>elbow+palm</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1020_dy-120</code></td><td>5</td><td>elbow+palm</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1098_dy+000</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-235_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-280_z1098_dy+000</code></td><td>4</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1150_y-280_z1098_dy-120</code></td><td>5</td><td>elbow+palm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1250_y-235_z1098_dy+000</code></td><td>4</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+<tr class="hi"><td><code>x1250_y-235_z1098_dy-120</code></td><td>4</td><td>elbow+forearm</td><td>2</td><td>elbow</td></tr>
+</tbody></table>
+<p class="note">Old-proxy column is the same enumeration run against the pre-fix <code>Lean_H12_Magpie.xml</code>, same targets, same stances, same code &mdash; only the model differs.</p>
+<h2>2 &middot; The gripper</h2>
+<figure><video src="media/s18_gripper_old_vs_new.mp4" autoplay loop muted playsinline controls></video><figcaption><b>Old proxy (left) against the corrected CAD (right)</b>, same pose, same camera. Left is the whole gripper as the planner used to see it: the 26&nbsp;mm adapter puck, with collision boxes standing on end. Right is the real assembly &mdash; base, cranks, fingers, rockers &mdash; with the jaw plates lying in the plane they actually lie in.</figcaption></figure>
+<figure><video src="media/s18_gripper_orbit.mp4" autoplay loop muted playsinline controls></video><figcaption>The corrected gripper at the braced pose, visual mesh and collision proxy overlaid. The proxy is what the planner reasons about; the mesh is what it stands for, and they now agree.</figcaption></figure>
+<figure><video src="media/s18_gripper_wrist_roll.mp4" autoplay loop muted playsinline controls></video><figcaption>The brace wrist rolled through &plusmn;100&deg;. The certified brace rolls it ~89&deg; to put the jaws <i>lateral</i>; against the transposed proxy that same roll put them up and down, which is the configuration the study rejected for hanging a finger at the wood.</figcaption></figure>
+<h2>3 &middot; Does it survive</h2>
+<p class="note">Not measured yet &mdash; this section fills in when <code>grid.json</code> exists.</p>
+
+<h2>4 &middot; Where this leaves the deploy</h2>
+<p>The controller was always deployment-shaped and it was hard to see: the replay
+computed <code>(q_des, kp, kd, tau_ff)</code> &mdash; exactly what
+<code>rt/lowcmd</code> carries &mdash; and then collapsed it into MuJoCo's single
+<code>ctrl</code> on the last line before stepping. That collapse,
+<code>ctrl = q_des + (tau_ff + kd&nbsp;v_des)/kp</code>, is a property of the
+MuJoCo <i>plant</i>, not of the controller.</p>
+<p>So the port is a plant swap, and <code>croco/plant/</code> is the whole of it:
+<code>read()</code>, <code>write()</code>, <code>now()</code>. None of
+<code>deploy_common.cc</code>'s 2683 lines are needed, because this stack never
+links <code>libmjpc</code> &mdash; it reads one MJCF and plans in Pinocchio.
+Verified against the staged model: the inversion reproduces
+<code>kp&thinsp;e + kd&thinsp;e&#775; + tau_ff</code> to 1.2e-14, and the MJCF
+actuator order <i>is</i> the Unitree motor order.</p>
+
+<h2>5 &middot; Three things that cost a bisect</h2>
+<p>The re-run failed with SIGSEGV in every contact mode before it produced a
+number, and none of the causes was the assets. They are recorded because each
+one presented as something else:</p>
+<ol>
+<li><code>build/</code> is root-owned under docker, so the staging script could
+not write. Now <code>STAGE_ROOT</code>.</li>
+<li>The bridge defaulted its URDF to the cmake FetchContent tree, so a machine
+that staged with <code>CL_ASSETS_DIR</code> got a staged MJCF and no URDF, and
+failed inside urdfdom as <i>&ldquo;does not contain a valid URDF model&rdquo;</i>
+&mdash; a parse error for a file that is simply absent.</li>
+<li><b>The interpreter.</b> <code>base</code> has a crocoddyl wheel set whose
+<i>contact</i> dynamics segfault; the <code>croco</code> env's works. Every cell
+died <code>rc=-11</code> with no traceback, on the old model as well as the new
+one, which reads exactly like an asset regression. A contact-<i>free</i>
+crocoddyl problem solves fine in the broken environment, so &ldquo;crocoddyl
+works&rdquo; proves nothing. <code>croco_env.py</code> now probes it in a
+subprocess &mdash; the failure is a signal, not an exception &mdash; and
+<code>run_session.sh</code> runs that check before anything long starts.</li>
+</ol>
+
+</div></body>
+</html>
