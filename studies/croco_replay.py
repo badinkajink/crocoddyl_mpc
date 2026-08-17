@@ -497,6 +497,12 @@ def build_ocp(plan, run_dir):
                      w_vel=plan.get("w_vel", 0.0),
                      reach_rot=plan.get("reach_rot"),
                      w_reach_rot=plan.get("w_reach_rot", 0.0),
+                     # Reconstructed from the plan, not defaulted: a recovery
+                     # that begins braced returns to a DIFFERENT pose than it
+                     # started from, and rebuilding it without this silently
+                     # gives the MPC a problem that returns to the brace.
+                     return_q_mj=(None if not plan.get("return_start")
+                                  else cs.start_qpos(m, plan["return_start"])),
                      drop=[v for v in plan.get("drop", "").split(",") if v])
     return ocp, q_star
 

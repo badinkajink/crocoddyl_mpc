@@ -234,7 +234,7 @@ class LeanOCP:
                  cop_shrink=1.0, min_nforce=1.0, w_com_track=0.0,
                  w_ctrl=1e-3, n_hold=0, w_hold_state=1e2, w_com_damp=0.0,
                  w_jlim=1e3, w_vel=0.0, reach_rot=None, w_reach_rot=0.0,
-                 drop=()):
+                 return_q_mj=None, drop=()):
         self.rmodel = cb.build_pin(reconcile_passive=not legacy)
         self.sites = cb.mj_site_frames(self.rmodel)
         self.subset = list(subset)
@@ -274,6 +274,16 @@ class LeanOCP:
         self.q_star = cb.mj_to_pin(q_star_mj)
         self.x0 = np.concatenate([self.q0, np.zeros(self.rmodel.nv)])
         self.x_star = np.concatenate([self.q_star, np.zeros(self.rmodel.nv)])
+        # WHERE THE RETURN PHASE GOES, which is not always where it started.
+        # `x0` was doing double duty: the initial state AND the pose the R
+        # phase regulates back to. That is right for the round trip (stand ->
+        # brace -> stand) and wrong for the only maneuver that makes chaining
+        # possible -- a recovery that BEGINS braced, whose x0 is the braced
+        # pose and whose destination is the stand. Left as x0 such a plan
+        # "returns" to the brace it is supposed to be leaving.
+        self.x_return = (self.x0 if return_q_mj is None else
+                         np.concatenate([cb.mj_to_pin(np.asarray(return_q_mj)),
+                                         np.zeros(self.rmodel.nv)]))
         self.mu = mu
         self.cones = cones
         self.table_z = table_z
@@ -291,6 +301,14 @@ class LeanOCP:
         self.site_ref = {s: self.rdata.oMf[self.sites[s]].translation.copy()
                          for s in self.subset}
         self.reach_ref = self.rdata.oMf[self.sites["reach"]].translation.copy()
+        # The gripper orientation the IK pose ALREADY reaches. `reach_rot=
+        # "auto"` references the cost to this, which makes the term cost
+        # nothing at q* -- so it can be carried at a token weight purely so it
+        # EXISTS in the built models. That existence is the whole point: a
+        # residual's `.reference` is live-settable, so a term that is present
+        # can be rotated from the panel, and a term that is absent cannot be
+        # added to a built model without reallocating its data.
+        self.reach_rot_auto = self.rdata.oMf[self.sites["reach"]].rotation.copy()
 
         self.tau_lim = cs.torque_limits(m_mj)
         self.jlb, self.jub = _joint_bounds(m_mj)
@@ -508,7 +526,8 @@ class LeanOCP:
         """Hold the reaching gripper at a commanded world orientation."""
         if not self.reach_rot or not weight:
             return
-        R = self.REACH_ROT[self.reach_rot]
+        R = (self.reach_rot_auto if self.reach_rot == "auto"
+             else self.REACH_ROT[self.reach_rot])
         costs.addCost("reachRot", crocoddyl.CostModelResidual(
             self.state, crocoddyl.ResidualModelFrameRotation(
                 self.state, self.sites["reach"], R, nu)), weight)
@@ -769,7 +788,7 @@ class LeanOCP:
         ret = []
         for k in range(n_return):
             costs = self._base_costs(braced=False, w_state=1e0, cones=cones,
-                                     x_ref=self.x0)
+                                     x_ref=self.x_return)
             self._geometry(costs, self.nu, feet_only=True)
             dmodel = crocoddyl.DifferentialActionModelContactFwdDynamics(
                 self.state, self.actuation, self._contacts(False), costs, INV_DAMPING, enable_force)
@@ -782,7 +801,7 @@ class LeanOCP:
         terminal_braced = n_return == 0
         tcosts = self._base_costs(braced=terminal_braced, w_state=w_terminal,
                                   w_ctrl=0.0, cones=cones,
-                                  x_ref=None if terminal_braced else self.x0)
+                                  x_ref=None if terminal_braced else self.x_return)
         tcosts.removeCost("ctrlReg")
         self._geometry(tcosts, self.nu, feet_only=not terminal_braced)
         if self.reach_target is not None and terminal_braced:

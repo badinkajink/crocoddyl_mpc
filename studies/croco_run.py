@@ -77,11 +77,24 @@ def main():
     ap.add_argument("--w-vel", type=float, default=0.0,
                     help="velocity regulariser, all joints, every phase.  The "
                          "move-to-brace peaks at 2.5-3.2 rad/s unpriced")
-    ap.add_argument("--reach-rot", default=None,
-                    choices=["flat", "down", "side"],
+    ap.add_argument("--return-start", default=None, metavar="KEYFRAME",
+                    help="the keyframe the RETURN phase regulates back to "
+                         "(default: the start pose). Needed for a recovery "
+                         "that begins braced -- `--start forearm_brace_reach "
+                         "--return-start stand` -- where the start and the "
+                         "destination are different poses.")
+    ap.add_argument("--reach-rot", default="auto",
+                    choices=["auto", "flat", "down", "side"],
                     help="hold the REACHING gripper at this world orientation "
                          "through the braced phase")
-    ap.add_argument("--w-reach-rot", type=float, default=0.0)
+    ap.add_argument("--w-reach-rot", type=float, default=1e-2,
+                    help="TOKEN BY DEFAULT, and deliberately. With `auto` the "
+                         "reference is the orientation q* already reaches, so "
+                         "1e-2 against w_reach=1e2 costs nothing and changes "
+                         "no plan -- it exists so the term is PRESENT in the "
+                         "built models, which is what lets the panel rotate "
+                         "the gripper live. Raise it to actually command an "
+                         "orientation.")
     ap.add_argument("--drop", default="",
                     help="comma-separated cost groups to leave out: stateReg, "
                          "ctrlReg, jointLim, cones, keepout, comSupport, land, "
@@ -163,6 +176,8 @@ def main():
                      n_hold=args.n_hold, w_hold_state=args.w_hold_state,
                      w_jlim=args.w_jlim, w_vel=args.w_vel,
                      reach_rot=args.reach_rot, w_reach_rot=args.w_reach_rot,
+                     return_q_mj=(None if not args.return_start
+                                  else cs.start_qpos(m_mj, args.return_start)),
                      drop=[v for v in args.drop.split(",") if v])
     n_tot = args.n_approach + args.n_braced + args.n_return
     total_t = n_tot * args.dt
@@ -180,7 +195,8 @@ def main():
         ocp, args.dt, args.n_approach, args.n_braced, iters=args.iters,
         impulse=args.impulse, n_return=args.n_return, dwell=args.dwell)
     rep = cp.report(solver, ocp)
-    rep.update(mode=args.mode, subset=subset, start=args.start, dt=args.dt,
+    rep.update(mode=args.mode, subset=subset, start=args.start,
+               return_start=args.return_start, dt=args.dt,
                impulse=args.impulse, cones=not args.no_cones,
                n_approach=args.n_approach, n_braced=args.n_braced,
                n_return=args.n_return, dwell=args.dwell, mu=args.mu,
