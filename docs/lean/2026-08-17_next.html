@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One twin run is not 260, and the two things worth building next</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     Ported from the S11 handoff page so the whole series types maths the same
+     way.  A fenced block gets a rule on the left so a derivation reads as one
+     unit.  Anything written as hand-rolled <sub>/<sup> before this existed is
+     still fine for a lone symbol; it is equations that need the real thing. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+  .eq .lbl{color:var(--ink3);font-size:.8rem;text-transform:uppercase;
+           letter-spacing:.04em;margin:0 0 .45rem}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<h1>One twin run is not 260, and the two things worth building next</h1>
+<p class="sub">Session 19. What the first DDS deployment does and does not license,
+one experiment the corrected gripper makes possible, and plans for a return-to-stand
+controller and a live GUI.</p>
+<p class="meta">Companion to the S18 assets page. Numbers here come from
+<code>studies/runs/2026-08-17_session19/</code>; the deployment code is
+<code>croco/twin/lean_twin.py</code> and <code>studies/croco_twin.py</code> at
+<code>086baa5</code>.</p>
+
+<h2>1. No, and the gap is not small</h2>
+
+<p>The question was whether the twin run is effectively equivalent to the testing that
+came before it, and therefore whether sim2real is next. It is not, and the honest way
+to see why is to put the two side by side.</p>
+
+<div class="scroll"><table>
+<tr><th>Axis</th><th>S18 grid</th><th>S19 twin</th></tr>
+<tr><td>Runs</td><td>260</td><td class="bad">1</td></tr>
+<tr><td>Target cells</td><td>26</td><td class="bad">1</td></tr>
+<tr><td>Disturbance profiles</td><td>nominal, winch1</td><td class="bad">none</td></tr>
+<tr><td>Seeds per cell</td><td>5</td><td class="bad">1</td></tr>
+<tr><td>Base pose</td><td>estimator error model (bias + white)</td><td class="bad">GROUND TRUTH</td></tr>
+<tr><td>Scene</td><td>lean MJCF</td><td>lean MJCF (same)</td></tr>
+<tr><td>Grippers</td><td>welded, unactuated</td><td>welded, unactuated</td></tr>
+<tr><td>Safety layer / e-stop</td><td>n/a</td><td class="bad">not in the loop</td></tr>
+<tr><td>Periods flying blind</td><td>0</td><td class="bad">62 of 195</td></tr>
+</table></div>
+
+<p>What the twin run <em>does</em> license is narrow and real: the command tuple means
+the same thing on both sides of the wire, the 27-motor order is right end to end, the
+loop holds its period, and the maneuver survives a real clock with real dead time.
+That is the plumbing, and the plumbing now works. It is one cell of one grid with a
+perfect estimator, which is not evidence about the robot.</p>
+
+<div class="note warn"><b>The single biggest gap is the base pose.</b>
+<code>rt/lowstate</code> carries IMU and encoders and nothing else, so the twin run
+reads the true base off <code>rt/sim_state</code>. Every S18 number was taken with a
+per-run bias plus white noise standing in for an estimator; the twin run was taken
+with that error set to exactly zero. The repo&rsquo;s own rule &mdash; ground truth is
+never on by default &mdash; exists because a controller that reads it works in sim and
+fails on hardware. Until a real estimator is in this loop, the twin result is strictly
+easier than the replay it is being compared to.</div>
+
+<h3>What would close it</h3>
+
+<p>The work is mechanical, not novel, and that is the point: <code>croco_twin.py</code>
+takes the same <code>--dir</code> and <code>--tag</code> the grid does. Running the S18
+grid through the twin is a loop around the script that already exists. At roughly 30 s
+of build plus 4 s of run per cell, 260 runs is about three hours of wall time, and the
+comparison it produces &mdash; survival per cell over DDS versus in process &mdash; is
+the first thing that could honestly be called equivalent.</p>
+
+<p>Two things should be fixed before spending those three hours, or the run measures
+the harness instead of the controller.</p>
+
+<h2>2. The blocker: a third of the periods fly blind</h2>
+
+<p>62 of 195 control periods took the watchdog. State age is 0.7&nbsp;ms at the median
+and 55&ndash;83&nbsp;ms in the tail, against a 50&nbsp;ms threshold. The cause is not
+the network: the DDS receive callback is a Python thread, and it cannot run while
+crocoddyl holds the GIL through a 16&nbsp;ms solve. The run survives anyway, and it was
+ruled out as the cause of the earlier falls &mdash; a run with zero trips fell
+identically &mdash; but a controller that is blind a third of the time is not something
+to take to hardware, and raising the threshold hides it rather than fixing it.</p>
+
+<p>Three candidate fixes, cheapest first:</p>
+<ul>
+<li><b>Release the GIL around the solve.</b> If crocoddyl&rsquo;s bindings hold it for
+the whole <code>solver.solve</code>, nothing else in the process runs. Worth checking
+first because if the bindings already release it, the cause is something else and the
+other two fixes are wasted.</li>
+<li><b>Move DDS receive out of the GIL&rsquo;s way</b> &mdash; a separate process with
+shared memory, or the C++ SDK behind a thin extension. Definitive, and the most work.</li>
+<li><b>Stop conflating two clocks.</b> <code>age</code> is measured from when the
+callback ran, not from the timestamp in the message. The twin publishes a
+<code>tick</code>; deriving age from it measures the data&rsquo;s age instead of the
+thread&rsquo;s scheduling, which is what the watchdog is actually for.</li>
+</ul>
+
+<h2>3. Wrist roll, and the palm that carries nothing</h2>
+
+<p>This is worth exploring, and there is a specific reason to think it will pay.</p>
+
+<p>The corrected gripper moved the palm site onto the real <code>_gripper_collision</code>
+face, and certification went from <b>0 of 26</b> cells admitting a palm contact to
+<b>19 of 26</b>. But the MPC does not use it: in the replay the palm carries
+<b>0.0&nbsp;N</b> while the elbow takes 175.5&nbsp;N. A contact the static QP certifies
+and the dynamic plan declines to load is either unreachable in the pose the plan picks,
+or unhelpful once the cost function has its say &mdash; and those two have different
+fixes.</p>
+
+<p>The observation that wrist <em>roll</em> can drive the gripper down into the table is
+the right axis to suspect. Wrist pitch is limited to &plusmn;0.4625&nbsp;rad, which is
+what caps top-down travel elsewhere in this study; roll is the free axis, and with the
+jaws now in their true orientation a roll is what puts the palm flat rather than edge-on.</p>
+
+<div class="note"><b>The first measurement is cheap and decisive.</b> Before changing any
+cost: at the certified braced pose, sweep wrist roll and record the angle between the
+palm normal and the table normal, and the palm site&rsquo;s clearance. If some roll makes
+the palm flat and reachable within limits, the palm is a <em>reachability</em> problem
+and the plan needs a wrist-roll term. If no roll does, it is a <em>geometry</em> problem
+and no cost weight will produce palm force. <code>studies/brace_surfaces.py</code> and
+<code>contact_select.py</code>&rsquo;s <code>palm_align_rows</code> already compute the
+alignment; this is a sweep over one joint, not new machinery.</div>
+
+<p>Only if the sweep says &ldquo;reachable&rdquo; is the second half worth doing: add the
+palm to the prescribed contact schedule with a nonzero normal-force floor
+(<code>min_nforce</code> already exists) and re-certify. The payoff is worth the
+detour &mdash; the elbow currently carries the whole brace, and a loaded palm is a
+second support that shortens the moment arm the torso is holding.</p>
+
+<h2>4. Plan: recovery from the brace back to a stable stand</h2>
+
+<p><b>Most of this is already written and has never been switched on.</b>
+<code>croco_plan.py</code> has a RETURN phase &mdash; brace released, feet only, state
+regulariser flipped from q* back to the start pose, CoM barrier restored, terminal
+contact set following the last running phase. Every S18 plan runs with
+<code>n_return: 0</code>. There are also three unused <code>standback_r*</code>
+keyframes in the MJCF.</p>
+
+<p>So this is validation of existing code, not new modelling, and the phases are:</p>
+
+<ul>
+<li><b>Turn it on and see what breaks.</b> Re-plan one certified cell with
+<code>n_return</code> at 60&ndash;120 nodes. A release is a contact <em>removal</em>,
+which a prescribed-schedule DDP handles without impulse or complementarity &mdash; this
+is the one mode transition that is free, and it is why recovery is tractable at all.</li>
+<li><b>Expect the failure to be backward.</b> The planned CoP already rides the heel edge
+during the brace; <code>croco_replay</code>&rsquo;s push default is &minus;x precisely
+because that is the direction the plant already falls. Unloading the arm removes a
+forward support, so the CoM must transfer back over the feet <em>before</em> the brace
+force goes to zero. If the return fails, the first thing to measure is the support
+margin through the release, not the joint tracking.</li>
+<li><b>Make the release rate a variable, not a constant.</b> The interesting knob is how
+many nodes the unloading takes. Too fast is a step disturbance at the worst moment; too
+slow and the arm holds a load the legs are already carrying. Sweep it the way the horizon
+was swept.</li>
+<li><b>Score it on the same axes as the brace.</b> Survival, support margin, worst
+penetration, and torque saturation &mdash; through the release and for a settle window
+after it, so &ldquo;recovered&rdquo; means still standing seconds later and not merely
+upright at the last node.</li>
+<li><b>Then the twin.</b> Recovery is where deployment gets harder, not easier: the
+release is the moment the controller most needs a current state, and it is exactly when
+the watchdog above is most likely to fire.</li>
+</ul>
+
+<p>One design note worth settling early: the loop currently signs off with a damping stop
+when the plan retires, which is why the twin robot collapses five seconds after a
+successful run. With a return phase the maneuver should end in a <em>held stand</em>, and
+that hold is a controller, not a <code>None</code> return. It is the natural place for
+the FAME stand policy or a simple posture PD to take over, and the handoff between them
+belongs in <code>ControlLoop</code> alongside the bring-up phases it already owns.</p>
+
+<h2>5. Plan: a live GUI, without the MJPC bloat</h2>
+
+<p>Not too ambitious, if the MVP is scoped to the three things actually wanted: watch the
+planner live, change cost weights live, plot costs. The first and third are display; the
+second is the one that could have been hard, and it is not.</p>
+
+<div class="note ok"><b>Live weights are free.</b> Verified against this environment:
+<code>costs.costs["reg"].weight = 7.5</code> mutates in place on a built
+<code>CostModelSum</code>, and <code>changeCostStatus</code> switches a term off
+entirely. The OCP does not need rebuilding to retune it, which is what makes a slider
+meaningful rather than a restart button.</div>
+
+<h3>Where it taps in</h3>
+
+<p><code>ControlLoop</code> already takes an <code>on_step(row, state, cmd)</code>
+callback and is already called once per control period with everything a display needs.
+That is the whole integration surface &mdash; the GUI is a consumer of a hook that
+exists, not a rewrite of the loop.</p>
+
+<h3>Browser, not a GL toolkit</h3>
+
+<p>MJPC&rsquo;s GUI is GLFW plus ImGui compiled into the agent, and inheriting that is
+inheriting the bloat the request explicitly excludes. A small HTTP plus WebSocket server
+in the controller process, with a plain HTML page, wins on four counts: no GL dependency
+to fight, it works headless and over SSH, it composes with the twin already running in
+another process, and the plotting is a few dozen lines of canvas rather than an ImGui
+port. The cost is that the 3D view is not free the way it is in a native viewer.</p>
+
+<p>For the 3D view, the MVP answer is to not build one: run
+<code>mujoco.viewer.launch_passive</code> in the twin process, which already exists and
+already shows the robot, and let the browser own the numbers and the sliders. Overlaying
+the predicted trajectory is the one thing worth adding on top &mdash; the MPC returns
+<code>solver.xs</code> every period, and drawing that horizon as a line in
+<code>user_scn</code> is what &ldquo;watching the planner&rdquo; actually means.</p>
+
+<h3>MVP, in the order it should be built</h3>
+
+<ul>
+<li><b>Telemetry out.</b> <code>on_step</code> pushes solve time, phase, per-term cost,
+step length, saturation counts and state age over a WebSocket. Ship this alone first
+&mdash; it replaces the JSON-at-the-end workflow every run currently uses, and it is
+useful before any UI exists.</li>
+<li><b>Plots in.</b> Rolling traces of solve time against the period, cost per term, and
+support margin. The per-term breakdown is the one that pays: it is currently only
+visible by running <code>croco_speed.py terms</code> offline.</li>
+<li><b>Weights back.</b> Sliders posting to a queue the loop drains between periods
+&mdash; never mid-solve. Show the value and the default, and log every change into the
+run JSON, or a retuned run becomes unreproducible.</li>
+<li><b>Horizon overlay</b> in the passive viewer, from <code>solver.xs</code>.</li>
+<li><b>Not in the MVP:</b> editing the task, saving configurations, a scene tree, a
+built-in profiler. That is where MJPC&rsquo;s GUI became something to maintain rather
+than something to use.</li>
+</ul>
+
+<div class="note warn"><b>One hazard worth naming.</b> A GUI that retunes weights live
+makes it easy to produce a run nobody can reproduce. Every weight change must land in the
+run artifact, and a run whose weights differ from the plan&rsquo;s should say so in its
+summary &mdash; the same discipline that makes <code>--base truth</code> something you
+have to type.</div>
+
+<h2>6. Housekeeping: the media links</h2>
+
+<p>Every video in every docpage in this series was a broken element. The pages reference
+<code>media/&lt;name&gt;</code> relative to <code>docs/lean/</code>, and that directory
+did not survive the move out of the pre-rename checkout and the <code>studies/</code>
+reorg. It was silent because a missing <code>&lt;video&gt;</code> renders as blank space
+rather than as an error.</p>
+
+<p><code>docs/lean/fix_media.py</code> resolves it: it scans every page for references,
+searches all four places media has lived, newest mtime wins, and copies what it finds.
+<b>33 of 46 restored.</b> The directory is gitignored, so the script is the deliverable
+&mdash; on a fresh checkout <code>fix_media.py --copy</code> is what makes the pages
+viewable.</p>
+
+<p>The remaining 13 exist nowhere on this machine. They are S13 and S14 replay videos, and
+they are not worth regenerating: both sessions predate the gripper correction, so
+re-rendering them would produce videos of a model this series has since established was
+90&deg; out. The script names them rather than leaving blank rectangles.</p>
+
+<h2>7. What to do first</h2>
+
+<ol>
+<li>Check whether crocoddyl&rsquo;s bindings release the GIL. It is a ten-minute question
+that decides how much the watchdog fix costs.</li>
+<li>Sweep wrist roll at the braced pose. One joint, no new machinery, and it decides
+whether the palm is worth pursuing at all.</li>
+<li>Turn on <code>n_return</code> on one cell and look at the support margin through the
+release.</li>
+<li>Then the 260-run twin grid &mdash; after 1, so it measures the controller.</li>
+</ol>
+
+<p class="meta">The GUI is the odd one out: nothing above depends on it, and it makes
+everything above easier to debug. It is the right thing to build while a three-hour grid
+is running.</p>
+
+</div>
+
+</body>
+</html>
