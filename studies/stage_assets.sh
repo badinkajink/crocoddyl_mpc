@@ -21,7 +21,17 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/mjpc/tasks"
+# WHERE THE TASK SOURCES ARE, which depends on which repo this is. Inside the
+# mujoco_mpc fork they are `mjpc/tasks`; in the standalone package only the
+# lean include closure is carried, as `assets/tasks`. The subtree keeps its
+# original SHAPE in both, because the models include each other by relative
+# path (`../assets/floor.xml`, `../../common.xml`) -- so one resolver covers
+# both layouts and no MJCF ever needed editing to move house.
+if [ -n "${CROCO_TASKS_DIR:-}" ]; then SRC="$CROCO_TASKS_DIR"
+elif [ -d "$ROOT/assets/tasks" ];   then SRC="$ROOT/assets/tasks"
+else                                     SRC="$ROOT/mjpc/tasks"; fi
+[ -d "$SRC/humanoid_bench/lean" ] || {
+  echo "no lean task sources at $SRC (set CROCO_TASKS_DIR)" >&2; exit 1; }
 # STAGE_ROOT relocates the staged tree. Default is this checkout's own build/,
 # but that directory is often root-owned (docker creates it as a bind-mount
 # target), so the study needs to be able to stage somewhere writable. Point
