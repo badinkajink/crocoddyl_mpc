@@ -27,10 +27,14 @@ dependencies = [
 [project.optional-dependencies]
 # The DDS twin only. The in-process plant needs none of this.
 twin = ["cyclonedds", "unitree_sdk2py"]
+# --safety only. It reads h12_safety_layer's YAML rather than carrying a copy
+# of 27 joint limits; that package is found by path (see croco/safety), so the
+# only thing pip can supply here is the parser.
+safety = ["pyyaml"]
 
 [tool.setuptools]
 packages = ["croco", "croco.control", "croco.gui", "croco.model",
-            "croco.plant", "croco.runtime", "croco.twin"]
+            "croco.plant", "croco.runtime", "croco.safety", "croco.twin"]
 
 [tool.setuptools.package-data]
 "croco.gui" = ["page.html"]
