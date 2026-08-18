@@ -15,6 +15,10 @@
 # croco_modes.py produced -- an S18 grid cell, or the one run_session.sh makes.
 #
 # Cost: three offline solves, measured 2.6 s + 0.6 s + 1.0 s on the S20 cell.
+# It SKIPS any task whose plan already exists, so on a certified cell it adds
+# `stand` and `recover` and leaves the certified maneuver alone (FORCE=1 to
+# re-solve everything). It also takes dt from the cell rather than from
+# croco_run's default -- see the note by DT below.
 #
 #   studies/solve_tasks.sh runs/2026-08-16_session18/grid/x1050_y-235_z1098_dy+000
 #   studies/croco_twin.py --dir <that cell> --tag elbow_palm --plant mujoco --gui
@@ -29,6 +33,7 @@ ROOT="$(cd "$HERE/.." && pwd)"
 CELL="${1:?usage: solve_tasks.sh <cell-dir> [brace-tag] [mode]}"
 TAG="${2:-elbow_palm}"
 MODE="${3:-elbow+palm}"
+FORCE="${FORCE:-0}"
 
 [ -f "$CELL/modes.json" ] || {
   echo "no $CELL/modes.json -- this is not a cell. Cells come from" >&2
@@ -58,27 +63,47 @@ export STAGE_ROOT="${STAGE_ROOT:-$HERE/runs/_stage}"
 export LEAN_TASK_DIR="${LEAN_TASK_DIR:-$STAGE_ROOT/mjpc/tasks/humanoid_bench/lean}"
 export MUJOCO_GL="${MUJOCO_GL:-egl}"
 
-run() { echo; echo "=== $1 ==="; shift; "$PY" "$HERE/croco_run.py" --dir "$CELL" "$@"; }
+# THE CELL'S OWN dt, NOT croco_run's DEFAULT. croco_run defaults to dt = 0.01
+# and every cell in this study is 0.02, so solving "the missing tasks" with the
+# default silently produces a HALF-LENGTH maneuver: the same 200 nodes over 2 s
+# instead of 4, which doubles the joint velocities and torques and is a
+# different problem wearing the same tag. Caught by re-solving a certified cell
+# and finding its cost had moved from 24.733 to 23.717.
+DT="$("$PY" "$HERE/../croco/_cell_dt.py" "$CELL" 2>/dev/null || echo 0.02)"
+echo "dt = $DT (from this cell's existing plan)"
+
+# NEVER OVERWRITE A SOLVED PLAN. The point of this script is to ADD the tasks a
+# cell is missing; silently re-solving one it already has is how a certified
+# grid cell stops being the thing it was certified as. FORCE=1 to re-solve.
+run() {
+  local what="$1" tag="$2"; shift 2
+  if [ "$FORCE" != "1" ] && [ -f "$CELL/plan_$tag.json" ]; then
+    echo; echo "=== $what -- SKIP, plan_$tag.json exists (FORCE=1 to re-solve) ==="
+    return 0
+  fi
+  echo; echo "=== $what ==="
+  "$PY" "$HERE/croco_run.py" --dir "$CELL" --tag "$tag" --dt "$DT" "$@"
+}
 
 # brace+reach -- the certified maneuver. --reach-rot auto is the default in
 # croco_run now; naming it here is what makes the reachRot slider and the roll
 # knob exist in the panel, at a weight small enough not to move the plan.
-run "brace+reach -> plan_$TAG" \
-    --mode "$MODE" --start stand --tag "$TAG" \
+run "brace+reach -> plan_$TAG" "$TAG" \
+    --mode "$MODE" --start stand \
     --n-approach 120 --n-braced 80 --reach-rot auto --w-reach-rot 1e-2
 
 # stand -- legs only. An empty contact subset is a DIFFERENT problem, not the
 # same one with the arm costs turned down.
-run "stand -> plan_stand" \
-    --mode legs_only --start stand --tag stand \
+run "stand -> plan_stand" stand \
+    --mode legs_only --start stand \
     --n-approach 120 --n-braced 80 --reach-rot auto --w-reach-rot 1e-2
 
 # recover -- starts braced and returns. n_approach 0 because there is nothing
 # to approach: the robot is already on the table. --return-start is what makes
 # the return phase regulate to the STAND pose rather than back to the brace.
-run "recover -> plan_recover" \
+run "recover -> plan_recover" recover \
     --mode "$MODE" --start forearm_brace_reach --return-start stand \
-    --tag recover --n-approach 0 --n-braced 20 --n-return 120 \
+    --n-approach 0 --n-braced 20 --n-return 120 \
     --reach-rot auto --w-reach-rot 1e-2
 
 echo
