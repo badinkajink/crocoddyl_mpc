@@ -119,6 +119,7 @@ button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
         <label><span>about local axis</span><b id="rot_val">0°</b></label>
         <input id="rot" type="range" min="-180" max="180" step="1" value="0">
       </div>
+      <div id="rot_hint" class="note" hidden></div>
       <div class="d" id="rot_note">Rotates the commanded orientation away from
         the one q* already reaches. Carried at a token weight by default — raise
         <code>reachRot</code> in the weights below to give it authority.</div>
@@ -356,6 +357,19 @@ const SUBMODE_NOTE = {
   "automode": "Loop the available tasks back to back. Rendering is skipped between them.",
 };
 
+function rotHint(){
+  const el = $("rot_hint");
+  if (!el) return;
+  const w = base && base.reachRot;
+  const deg = sess ? Math.abs(sess.rot_deg || 0) : 0;
+  const on = w != null && w > 0.02 && deg < 1 && sess && sess.rot_nodes > 0;
+  el.hidden = !on;
+  if (on) el.textContent =
+    "reachRot is raised (" + (+w).toPrecision(2) + ") but the commanded roll " +
+    "is 0\u00b0, so there is nothing for it to track \u2014 it is only " +
+    "holding the gripper where the plan already put it. Move the roll slider.";
+}
+
 function applySession(s){
   sess = s;
   $("b_play").textContent = s.paused ? "▶ play" : "⏸ pause";
@@ -386,6 +400,7 @@ function applySession(s){
     sm.appendChild(o); });
   sm.value = s.submode;
   $("submode_note").textContent = SUBMODE_NOTE[s.submode] || "";
+  rotHint();
   [...$("rt_row").children].forEach(b=>b.classList.toggle(
     "on", b.dataset.rt === String(s.realtime)));
   if (s.target){
@@ -443,6 +458,14 @@ ws.onmessage = ev => {
     return;
   }
   if (m.type === "weights"){
+    // THE WEIGHT ALONE DOES NOTHING VISIBLE. reachRot decides how hard the
+    // COMMANDED orientation is tracked; with the roll knob at 0 the commanded
+    // orientation is the one q* already reaches, so raising the weight just
+    // pins the gripper harder to where it was going anyway. Measured: at
+    // weight 1.0 (the slider's ceiling) a commanded 45 deg is tracked to
+    // 44.3 deg, and at the default 1e-2 only to 5.7 deg -- so the knob works,
+    // but only once there is something to track.
+    rotHint();
     base = m.weights; const box = $("ws"); box.innerHTML = "";
     for (const [n,w] of Object.entries(base||{}).sort()) box.appendChild(slider(n,w));
     // A term that is not in the OCP has no slider and no explanation, which

@@ -48,6 +48,9 @@ _GUARD = "_CROCO_REEXEC"
 #: would otherwise print the diagnosis twice.
 _CALLED = False
 
+#: Set alongside LD_PRELOAD so the child knows the preload was ours to scrub.
+_PRELOAD_FLAG = "_CROCO_PRELOADED"
+
 #: Where an OpenMP-enabled libcrocoddyl is looked for, after $CROCO_CROCODDYL_LIB.
 OMP_LIB_CANDIDATES = (
     "~/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1",
@@ -132,6 +135,39 @@ def diagnose(stream=sys.stderr):
               % origin, file=stream)
 
 
+def _scrub_preload(stream=sys.stderr):
+    """Drop our LD_PRELOAD from the environment CHILDREN will inherit.
+
+    THE BUG THIS PREVENTS, which this repo had already paid for once. The
+    dynamic loader reads LD_PRELOAD at exec time and is done with it; the
+    library stays mapped for the life of the process no matter what happens to
+    the variable afterwards. But `os.environ` is what `subprocess` hands to
+    every child, so a preload that made THIS process fast also gets forced
+    into every unrelated binary it shells out to -- and libcrocoddyl drags in
+    libpinocchio, which is not on the system loader path:
+
+        git: error while loading shared libraries: libpinocchio_default.so.4.1.0
+
+    `croco_run.py` records provenance with `git rev-parse HEAD` inside a
+    try/except, so this does not crash anything. It writes `commit: unknown`
+    into the plan and says nothing -- which is how a whole session of plans
+    silently lost their provenance, and how this one did again: every plan
+    solved today recorded `commit: unknown` until this function existed.
+
+    Deleting the variable here keeps the speed and loses the contamination:
+    measured, nthreads still reports 4 after the scrub.
+    """
+    lib = os.environ.pop(_PRELOAD_FLAG, None)
+    if not lib:
+        return
+    pre = os.environ.get("LD_PRELOAD", "")
+    rest = [x for x in pre.split(":") if x and x != lib]
+    if rest:
+        os.environ["LD_PRELOAD"] = ":".join(rest)
+    else:
+        os.environ.pop("LD_PRELOAD", None)
+
+
 def ensure_runtime(need_omp=False, stream=sys.stderr):
     """Re-exec into the pinned interpreter if this is not already it.
 
@@ -144,6 +180,7 @@ def ensure_runtime(need_omp=False, stream=sys.stderr):
     if _CALLED:
         return
     _CALLED = True
+    _scrub_preload(stream)
     if os.environ.get(_GUARD) or os.environ.get("CROCO_NO_REEXEC"):
         diagnose(stream)
         return
@@ -159,6 +196,15 @@ def ensure_runtime(need_omp=False, stream=sys.stderr):
     want_preload = bool(lib) and lib not in os.environ.get("LD_PRELOAD", "")
     if same and not (need_omp and want_preload):
         return
+    # ONLY A SCRIPT CAN BE RE-EXEC'D. Under `python -c "..."` sys.argv is just
+    # ['-c'] -- the code itself is nowhere in argv -- so rebuilding the command
+    # line silently drops the program and the interpreter starts up with
+    # nothing to do ("Argument expected for the -c option"). Same for `-m` and
+    # for an interactive session. Diagnose instead: the caller chose the
+    # interpreter explicitly here, and telling them beats mangling it.
+    if not (sys.argv and sys.argv[0] and os.path.isfile(sys.argv[0])):
+        diagnose(stream)
+        return
     env = dict(os.environ, **{_GUARD: "1"})
     why = []
     if not same:
@@ -166,6 +212,7 @@ def ensure_runtime(need_omp=False, stream=sys.stderr):
     if want_preload:
         pre = os.environ.get("LD_PRELOAD", "")
         env["LD_PRELOAD"] = lib + (":" + pre if pre else "")
+        env[_PRELOAD_FLAG] = lib
         why.append("OpenMP libcrocoddyl")
     print("[croco] re-exec into %s (%s). CROCO_NO_REEXEC=1 to disable, "
           "CROCO_PY=<python> to choose." % (target, ", ".join(why)),
