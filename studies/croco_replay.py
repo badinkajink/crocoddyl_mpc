@@ -465,8 +465,23 @@ def certified_sites(plan, run_dir, m, d):
     return ref
 
 
-def build_ocp(plan, run_dir):
-    """Rebuild the OCP the plan came from, for the MPC and the Riccati state map."""
+def build_ocp(plan, run_dir, overrides=None):
+    """Rebuild the OCP the plan came from, for the MPC and the Riccati state map.
+
+    `overrides` replaces plan fields BEFORE the rebuild, so the OCP can differ
+    from the one the plan was solved with -- which is how `croco_twin
+    --reach-rot` adds an orientation cost to a cell that was certified without
+    one. It is a real divergence, not a display option: the warm start still
+    comes from that plan's xs/us but the cost landscape is no longer the one
+    that produced them, so whoever uses this must record it (croco_twin puts
+    `ocp_overrides` in the run artifact). Measured for the case it was added
+    for: re-solving brace+reach with reach_rot="auto" at w=1e-2 moved the cost
+    from 24.733003 to 24.733046, because "auto" points the reference at the
+    orientation q* already reaches. A larger weight, or any other reference,
+    is a different plan.
+    """
+    if overrides:
+        plan = dict(plan, **overrides)
     modes = json.load(open(os.path.join(run_dir, "modes.json")))
     entry = next(e for e in modes["modes"] if e["name"] == plan["mode"])
     q_star = np.loadtxt(os.path.join(run_dir, entry["qpos_file"]))
