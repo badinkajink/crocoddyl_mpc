@@ -23,7 +23,10 @@ anything here needs `libmjpc`.
 | `croco/gui/` | the live panel: plots, weight sliders, session controls |
 | `croco/twin/lean_twin.py` | the digital twin — physics behind Unitree DDS |
 | `studies/` | the scripts that plan, replay, score, sweep and document |
+| `croco/safety/` | the H1-2 safety layer's limits, evaluated without giving it the actuators |
 | `assets/tasks/` | the lean model and its include closure |
+| `docs/index.html` | **documentation index** — start here |
+| `docs/RUN_MATRIX.md` | which command goes with which plant |
 | `docs/lean/` | session writeups, in date order |
 
 ## Install
@@ -31,10 +34,17 @@ anything here needs `libmjpc`.
 crocoddyl and pinocchio are conda-forge packages with compiled Boost.Python
 bindings. There are no usable wheels, so the environment is conda, not pip.
 
-> **Do not use conda's `base` environment.** The crocoddyl it ships segfaults
-> in contact dynamics — every cell dies with `rc=-11` and no traceback, which
-> reads exactly like an asset regression and is not. This cost a session to
-> find.
+> **Do not use conda's `base` environment.** Its pip/cmeel crocoddyl wheel
+> **SIGSEGVs inside `ShootingProblem`** — measured 3/3 on this machine, twice
+> as a segfault and once as a `MemoryError`, always with no traceback. Both
+> environments report crocoddyl 3.2.1 and pinocchio 4.1.0, so a version check
+> clears it; the difference is which pinocchio's C++ ABI crocoddyl was linked
+> against. This cost a session to find.
+>
+> The entry points now defend themselves: `croco/env.py` re-execs into the
+> pinned interpreter before anything native is loaded and prints one line
+> saying so. `CROCO_PY=<python>` chooses it, `CROCO_NO_REEXEC=1` turns it off.
+> Name the env `croco` and it is found automatically.
 
 ```bash
 conda create -n croco -c conda-forge python=3.12 crocoddyl pinocchio mujoco \
@@ -49,6 +59,17 @@ sibling checkout or pointed at explicitly:
 
 ```bash
 export CL_ASSETS_DIR=/path/to/CL_Assets
+```
+
+**h12_safety_layer is optional, and resolved the same way.** `--safety` reads
+that ROS package's YAML and its limit tables rather than carrying a copy of 27
+joint limits that would go stale silently. It is found at
+`$H12_SAFETY_LAYER`, else `../core_ws/src/h12_safety_layer` relative to this
+repo. Nothing else here needs ROS, a colcon workspace, or the robot, so
+without it you simply do not get that flag. It needs PyYAML:
+
+```bash
+pip install pyyaml
 ```
 
 ## Build
@@ -89,6 +110,15 @@ Everything needs a **cell**: a directory holding a solved plan
 studies/croco_run.py --dir runs/mycell --mode elbow+palm --tag elbow_palm \
     --dt 0.02 --n-approach 120 --n-braced 80
 ```
+
+That gives the cell **one** task. The panel offers three, and the other two
+will be greyed out until they exist — a task is a solved plan, not a weight
+preset. `studies/solve_tasks.sh <cell>` solves all three in about five
+seconds.
+
+**`docs/RUN_MATRIX.md` is the page to keep open**: which command goes with
+which plant, what each one can tell you, and the two symptoms that look like
+missing features but are missing artifacts.
 
 ### The panel (interactive)
 
@@ -145,10 +175,47 @@ estimator instead, which is what the robot would use.
 
 `ROS_DOMAIN_ID=0` is the real robot's command bus. The twin scripts refuse it.
 
+### Through the safety layer
+
+`h12_safety_layer` is the relay that sits between any controller and the real
+H1-2. It clips commands and e-stops on out-of-range state. Two levels, and
+they are not the same thing:
+
+```bash
+# MONITOR — no authority, safe on every plant, this is the one to start with
+studies/croco_twin.py --dir runs/mycell --tag elbow_palm --plant mujoco \
+    --gui --safety default_safety_full
+
+# IN THE PATH — publishes to rt/safety/lowcmd_in instead of rt/lowcmd,
+# so a RUNNING layer clips and forwards. --plant dds only.
+studies/croco_twin.py ... --plant dds --safety --via-safety
+```
+
+`--safety` computes the layer's own predicates on the state the loop already
+read and marks the periods it *would* have tripped — red rules on the panel's
+period plot, `safety_*` fields in the artifact. It never touches a command.
+
+`--via-safety` gives the layer authority, and **its e-stop latches**: on the
+first violation it emits `mode 0, kp = kd = tau = 0` forever, so the robot goes
+limp mid-maneuver and stays limp. That is correct for hardware and ruinous for
+a study run, which is why it is opt-in and why the monitor exists.
+
+Measured on the certified brace+reach against `default_safety_full`: **0
+e-stop trips**, but 16–18 of 198 periods would be **clipped** — `tau` (the
+layer derates the URDF torque limits to 60%, below what the MPC clamps to) and
+`dq` (a 10% velocity band, under the maneuver's own joint speeds). Clipping
+stops nothing and is silent, but a clipped command is not the command the plan
+describes.
+
 ## Gotchas
 
-- **A fresh clone has no cells.** `studies/runs/` is untracked by design.
-- **`base` conda env segfaults.** See Install.
+- **A fresh clone has no cells.** `studies/runs/` is untracked by design, and
+  the panel's `stand`/`recover` entries stay greyed out until you solve them
+  (`studies/solve_tasks.sh <cell>`).
+- **`base` conda env segfaults.** Now caught and re-exec'd around. See Install.
+- **No `reachRot` slider** means the cell was solved with `w_reach_rot = 0`,
+  not that the feature is missing. `--reach-rot auto` adds it without
+  re-solving anything.
 - **`deps` before `check` before anything.** Both extensions must say native.
 - **Task ≠ weights.** A cost that is not in the built models cannot be added to
   them — that is why plans are solved with `--reach-rot auto` at a token

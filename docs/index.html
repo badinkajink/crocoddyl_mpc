@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>crocoddyl-mpc — documentation index</title>
+<style>
+:root{--bg:#0e1116;--panel:#161b22;--line:#272d36;--ink:#d7dde5;--ink2:#8b95a3;
+      --acc:#6ea8fe;--warn:#e6a35c}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:52rem;padding:2.5rem 1.25rem 5rem;background:var(--bg);
+     color:var(--ink);font:15px/1.65 ui-sans-serif,system-ui,-apple-system,sans-serif}
+h1{font-size:1.5rem;margin:0 0 .3rem;letter-spacing:-.01em}
+.sub{color:var(--ink2);margin:0 0 2.5rem}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);
+   margin:2.5rem 0 .9rem;font-weight:600;border-bottom:1px solid var(--line);
+   padding-bottom:.45rem}
+ol{list-style:none;padding:0;margin:0;counter-reset:s}
+li{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+   padding:.75rem .95rem;margin-bottom:.55rem;display:grid;
+   grid-template-columns:5.5rem 1fr;gap:.2rem .95rem;align-items:baseline}
+@media(max-width:34rem){li{grid-template-columns:1fr}}
+.d{color:var(--ink2);font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+   white-space:nowrap}
+a{color:var(--acc);text-decoration:none;font-weight:600}
+a:hover{text-decoration:underline}
+.n{color:var(--ink2);font-size:.83rem;grid-column:2}
+@media(max-width:34rem){.n{grid-column:1}}
+p.lead{color:var(--ink2);font-size:.9rem;margin:.2rem 0 1.4rem}
+code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--warn)}
+</style>
+
+<h1>crocoddyl-mpc</h1>
+<p class="sub">A whole-body crocoddyl MPC for the Unitree H1-2's braced lean —
+planned offline, flown in a receding horizon, against MuJoCo in process or a
+digital twin over Unitree DDS.</p>
+
+<h2>Start here</h2>
+<p class="lead">Installation, build, and the first run are in the README. The
+run matrix is the one to keep open: it says which command goes with which
+plant, and what each one can and cannot tell you.</p>
+<ol>
+<li><span class="d">README</span><a href="../README.md">Install, build, run</a>
+  <span class="n">Layout, the pinned interpreter, staging the model, and the
+  first solve. A fresh clone carries no cells — you solve one.</span></li>
+<li><span class="d">matrix</span><a href="RUN_MATRIX.md">Run matrix</a>
+  <span class="n">mujoco / dds / dds+safety, side by side: what each needs,
+  what each answers, and the two failure modes that look like bugs
+  (<code>stand</code> greyed out, no <code>reachRot</code> slider).</span></li>
+<li><span class="d">panel</span><a href="GUI.md">The browser panel</a>
+  <span class="n">Plots, the controls, the cost-weight sliders, and what the
+  red e-stop rules mean.</span></li>
+</ol>
+
+<h2>Session docpages</h2>
+<p class="lead">One per working session, oldest first. Each is a standalone
+page with its own figures and the measurements it is claiming. They are the
+record of how the thing came to work, including the parts that did not.</p>
+<ol>
+<li><span class="d">08-04 · S11</span>
+  <a href="lean/2026-08-04_contact_selection.html">Contact selection for the H12 braced lean</a>
+  <span class="n">Which contacts to make, chosen by certification rather than
+  by intuition.</span></li>
+<li><span class="d">08-04 · S11</span>
+  <a href="lean/2026-08-04_mjpc_handoff.html">The reach envelope was censored, and MJPC does not brace</a>
+  <span class="n">Why the baseline planner could not do this, measured rather
+  than asserted.</span></li>
+<li><span class="d">08-04 · S11</span>
+  <a href="lean/2026-08-04_allen_parity.html">Allen parity, and what the real table broke</a>
+  <span class="n">Parity against the reference implementation, and the
+  assumption the real table geometry invalidated.</span></li>
+<li><span class="d">08-05 · S12</span>
+  <a href="lean/2026-08-05_mjpc_chain.html">MJPC braces, and does not reach</a>
+  <span class="n">The chained-task attempt, and where it stalls.</span></li>
+<li><span class="d">08-05 · S12</span>
+  <a href="lean/2026-08-05_crocoddyl.html">A crocoddyl MVP for the braced lean</a>
+  <span class="n">The first working formulation: contacts as constraints, not
+  as costs.</span></li>
+<li><span class="d">08-06 · S13</span>
+  <a href="lean/2026-08-06_lean_simple.html">An 11-term lean, and a contact mode you can ask for</a>
+  <span class="n">Cutting the cost stack down to what is load-bearing.</span></li>
+<li><span class="d">08-06 · S13</span>
+  <a href="lean/2026-08-06_croco_loop.html">The lean survives MuJoCo, and the loop is what does it</a>
+  <span class="n">Open loop to closed loop: the plan was never the hard
+  part.</span></li>
+<li><span class="d">08-06 · S14</span>
+  <a href="lean/2026-08-06_delassus.html">The matrix-free Delassus, measured inside a crocoddyl MPC</a>
+  <span class="n">A contact-solver idea, tested where it would have to pay
+  off.</span></li>
+<li><span class="d">08-07 · S14</span>
+  <a href="lean/2026-08-07_croco_why.html">Why the closed loop fails</a>
+  <span class="n">The diagnosis session. Most of what came after follows from
+  this one.</span></li>
+<li><span class="d">08-13 · S15</span>
+  <a href="lean/2026-08-13_mpc_speed.html">Making the crocoddyl MPC real-time</a>
+  <span class="n">The cost stack was the wrong axis — where the milliseconds
+  actually were.</span></li>
+<li><span class="d">08-13 · S16</span>
+  <a href="lean/2026-08-13_mpc_threads.html">Multithreading the crocoddyl MPC</a>
+  <span class="n">One of three solver stages is parallel, which caps the
+  speed-up; and why the OpenMP build has to be LD_PRELOADed.</span></li>
+<li><span class="d">08-14 · S17</span>
+  <a href="lean/2026-08-14_robustness.html">The lean was never robust, and the noise was not why</a>
+  <span class="n">A robustness result that turned out to be about initial
+  conditions.</span></li>
+<li><span class="d">08-16 · S18</span>
+  <a href="lean/2026-08-16_assets.html">The gripper was 90° out, and everything downstream believed it</a>
+  <span class="n">An asset bug that invalidated four sessions of
+  geometry.</span></li>
+<li><span class="d">08-17 · S19</span>
+  <a href="lean/2026-08-17_next.html">One twin run is not 260, and the two things worth building next</a>
+  <span class="n">Where the study stands, and what it is short of.</span></li>
+</ol>
+
+<h2>Reference</h2>
+<ol>
+<li><span class="d">plan</span>
+  <a href="lean/LEAN_CONTACT_PLAN.md">Lean contact plan</a>
+  <span class="n">The contact-mode ladder and the certification each rung has
+  to pass.</span></li>
+</ol>
