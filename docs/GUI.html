@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The browser panel</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     Ported from the S11 handoff page so the whole series types maths the same
+     way.  A fenced block gets a rule on the left so a derivation reads as one
+     unit.  Anything written as hand-rolled <sub>/<sup> before this existed is
+     still fine for a lone symbol; it is equations that need the real thing. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+  .eq .lbl{color:var(--ink3);font-size:.8rem;text-transform:uppercase;
+           letter-spacing:.04em;margin:0 0 .45rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>The browser panel</h1>
+<p class="sub">Plots, controls, cost weights, and what the red rules mean.</p>
+<p class="meta">Reference &middot; croco_twin --gui</p>
+
+<p><code>croco_twin --gui [PORT]</code> serves a panel on <code>http://127.0.0.1:8770/</code> and turns
+the script into a <strong>session</strong>: it runs episodes until told to stop, so reset,
+pause, the viewer and the task dropdown all have something to be relative to.
+Without <code>--gui</code> it is still the one-shot script <code>twin_grid.sh</code> drives 26 times
+in a row, and that batch behaviour is the default on purpose.</p>
+<p>No dependencies. The WebSocket server is ~260 lines of socket code in
+<code>croco/gui/ws.py</code>; the page is one static file.</p>
+<h2>The three plots</h2>
+<p><strong>solve time vs the control period.</strong> The dashed red line is the period. Marks
+on the trace are the periods that crossed it. This is the plot that decides
+whether the controller is deployable at all.</p>
+<p><strong>cost, per term.</strong> One trace per cost term in the <em>current</em> OCP, with a
+checkbox each. The scale is the largest shown term, so hiding the big ones is
+how you see the small ones move. Cost families are collapsed to one entry:
+a keep-out set is per sampled point (<code>ko_&lt;geom&gt;_&lt;point&gt;</code>, 90 of them on a
+keepout cell) and they are one physical intent, so they arrive as a single
+<code>keepout</code> trace and a single slider. Left expanded they were 90 of 104
+sliders, and the fifteen terms anyone reasons about were unfindable.</p>
+<p><strong>wall period vs deadline.</strong> What the loop actually achieved, against what it
+owed. State age is the faint green second series. Free-running in process
+there IS no deadline — which is why a free-run overrun count of zero means
+nothing, and <code>--realtime 1.0</code> is what makes the number real.</p>
+<p>Red vertical rules appear here when <code>--safety</code> is on: the periods the
+h12_safety_layer's e-stop predicate held. <strong>The first one is drawn solid and
+the rest translucent</strong>, because the layer's e-stop latches — everything to the
+right of the first rule is a trajectory the layer would never have allowed.</p>
+<h2>Controls</h2>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>play / pause</strong></td>
+<td>Freezes the loop and writes a damping hold. Paused periods leave <strong>no video frames</strong> — the recorder is an <code>on_step</code> hook and a paused period never calls it — so the render is the trajectory, not the wall-clock session.</td>
+</tr>
+<tr>
+<td><strong>reset</strong></td>
+<td>Puts the plant back at the plan's start <strong>and rewinds the MPC</strong> (<code>MPC.reset()</code>, 8.8 ms). Rewinding only one of the two was measured to drop the pelvis to 0.069 m: the window stays parked at the end of the plan while the robot is back at the beginning. In-process only — the twin owns its physics and has no reset channel.</td>
+</tr>
+<tr>
+<td><strong>render</strong></td>
+<td>Renders the last episode to mp4 and shows it in the panel. Off the control thread, after the run.</td>
+</tr>
+<tr>
+<td><strong>viewer</strong></td>
+<td>Opens/closes MuJoCo's passive viewer mid-session. Disabled when <code>MUJOCO_GL</code> is an offscreen backend (<code>egl</code>, <code>osmesa</code>) — the button says so rather than failing.</td>
+</tr>
+<tr>
+<td><strong>task</strong></td>
+<td><code>brace+reach</code> / <code>stand</code> / <code>recover</code>. A task is a <strong>solved plan</strong> in the cell, not a set of weights: the phases differ by contact set and no weight can add a contact. Unsolved tasks are offered-but-disabled with the command that solves them.</td>
+</tr>
+<tr>
+<td><strong>submode</strong></td>
+<td><code>single-shot</code> runs the plan once and idles. <code>hold</code> freezes the plan index at the last node and keeps solving — the brace stays braced. <code>automode</code> loops the available tasks back to back, chained.</td>
+</tr>
+<tr>
+<td><strong>speed</strong></td>
+<td>Sim seconds per wall second. Below 1× the solver gets wall clock the robot would not give it, so the overrun count stops being a deployment result — and the panel says so.</td>
+</tr>
+<tr>
+<td><strong>reach target</strong></td>
+<td>xyz entry boxes with nudge arrows. Applied <strong>in place</strong> to every node carrying the reach cost — no rebuild, and it survives a reset. The warm start still descends toward the original target, so small moves track and large ones want a re-solve.</td>
+</tr>
+<tr>
+<td><strong>gripper roll</strong></td>
+<td>Rotates the commanded orientation about a local axis, away from the one q* already reaches. Needs the <code>reachRot</code> cost to exist — see below.</td>
+</tr>
+</tbody>
+</table></div>
+<h2>Cost weights</h2>
+<p>Log-scaled sliders, 1/100× to 100× the value the run started with. Edits are
+applied <strong>between periods</strong> on the control thread (writing a weight into a
+model the solver is reading is a data race whose symptom is a bad step, not a
+crash), and every change is recorded in the run artifact — a retuned run that
+does not say so is not reproducible. The header shows a warning while any
+weight differs from the plan's.</p>
+<p>Edits made while the session is idle are queued and applied at the next
+episode's first period.</p>
+<h3>Why <code>reachRot</code> may be missing</h3>
+<p>It is a cost, and a cost that does not exist in the built models cannot be
+added to one — crocoddyl allocates per-cost data at construction. Every cell
+in the certified S18 grid was solved with <code>w_reach_rot = 0</code>, so
+<code>_reach_orientation</code> returned early and there is nothing to point anywhere.
+Two fixes, both stated in the panel itself:</p>
+<pre><code class="language-bash">croco_twin ... --reach-rot auto      # rebuild with it, re-solves nothing
+studies/solve_tasks.sh &lt;cell&gt;        # re-solve the cell with it
+</code></pre>
+<p><code>auto</code> points the reference at the orientation q* already reaches, so at the
+default token weight of 1e-2 it changes the plan by ~4e-5 in cost — it exists
+in order to be steerable, and the weight slider is what gives it authority.</p>
+<h2>Late arrivals see the whole run</h2>
+<p>The panel keeps a backlog and replays it on connect, so opening the browser
+after the maneuver has finished shows the maneuver rather than an empty page.
+This was the first thing the panel got wrong: <code>broadcast</code> is push-only, and a
+4 s run against a page opened at t≈0 left nothing to look at.</p>
+
+</div>
+
+</body>
+</html>

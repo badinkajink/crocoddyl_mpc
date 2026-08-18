@@ -35,7 +35,9 @@ usage:
   studies/croco_twin.py --dir runs/.../grid/<cell> --tag elbow_palm --base truth
 """
 import argparse
+import contextlib
 import ctypes
+import faulthandler
 import json
 import os
 import sys
@@ -327,6 +329,36 @@ def _windowed_gl():
     return os.environ.get("MUJOCO_GL", "").lower() not in ("egl", "osmesa")
 
 
+def _viewer_thread_of(mjv):
+    """The thread `launch_passive` just started, found by its TARGET.
+
+    WHY NOT A `threading.enumerate()` DIFF, which is what this used to do.
+    The diff assumes that between the two snapshots the only thread that
+    appeared is the viewer's. That holds in the `--viewer` CLI path, where
+    launch happens on the main thread before anything else is running. It does
+    NOT hold for the panel's viewer button: that arrives on a WebSocket socket
+    thread, and the server creates and retires threads as browsers connect and
+    reconnect, so the diff can just as easily hand back a socket thread.
+
+    The consequence is not a wrong log line. `close_viewer` joins whatever it
+    was given, so a mis-capture means the REAL render thread is never joined
+    -- and mujoco keeps it daemonic, so the interpreter then exits while C++
+    is still tearing down a GL context. Measured in isolation: unjoined, that
+    is a core dump in 2 of 3 runs; joined, 8 of 8 clean. It is the one crash
+    in this area that reproduces on demand.
+
+    `launch_passive` builds an unnamed `threading.Thread(target=
+    _launch_internal, ...)`, so the target is the identity. Fall back to a
+    daemon-thread guess only if mujoco renames it.
+    """
+    target = getattr(mjv, "_launch_internal", None)
+    if target is not None:
+        for t in threading.enumerate():
+            if getattr(t, "_target", None) is target:
+                return t
+    return None
+
+
 # ---------------------------------------------------------------- tasks --- #
 # WHAT A "TASK" IS HERE, AND WHY IT IS NOT A SET OF WEIGHTS. The panel's
 # sliders mutate `costs[name].weight` on a BUILT model, which is why retuning
@@ -343,6 +375,8 @@ def _windowed_gl():
 # task with no artifacts is OFFERED BUT DISABLED rather than hidden -- a
 # dropdown that silently omits `recover` looks like the feature was never
 # built, when in fact nobody has ever solved a plan with `n_return > 0`.
+_nullcontext = contextlib.nullcontext
+
 TASKS = [
     ("brace+reach", "the certified maneuver: approach, brace, reach"),
     ("stand",       "legs only, no brace (subset=[])"),
@@ -652,10 +686,24 @@ class Session:
             if self.args.plant != "mujoco" or not _windowed_gl():
                 return
             import mujoco.viewer as _mjv
-            before = set(threading.enumerate())
-            self.viewer = _mjv.launch_passive(self.plant.m, self.plant.d)
-            self._viewer_thread = next(
-                iter(set(threading.enumerate()) - before), None)
+            # LAUNCH UNDER THE PLANT'S DATA LOCK. `launch_passive` runs
+            # mj_forward on this mjData before it hands back a handle, and
+            # this call is on a socket thread while the control thread is in
+            # mj_step. There is no viewer lock yet -- it does not exist until
+            # the handle does -- so the plant's own lock is the only thing
+            # that can close the window. This is the crash the panel's viewer
+            # button produced; faulthandler put the control thread in
+            # mujoco_plant.step and this thread in viewer.py launch_passive.
+            with self.plant.data_lock:
+                self.viewer = _mjv.launch_passive(self.plant.m, self.plant.d)
+            self._viewer_thread = _viewer_thread_of(_mjv)
+            # HAND THE PLANT THE VIEWER'S LOCK. Everything that mutates mjData
+            # -- mj_step, d.ctrl, the reset -- must hold it while a render
+            # thread is reading, or the process dies intermittently with no
+            # traceback. Attaching it here rather than at construction keeps
+            # the cost at exactly zero for the runs with no viewer, which is
+            # all of the batch grid.
+            self.plant.viewer_lock = self.viewer.lock
         elif not on and self.viewer is not None:
             self.close_viewer()
         self.push()
@@ -665,8 +713,15 @@ class Session:
             return
         v, th = self.viewer, self._viewer_thread
         self.viewer, self._viewer_thread = None, None
+        # Detach BEFORE closing: a lock belonging to a torn-down viewer is not
+        # a lock the control thread should still be taking.
         try:
-            v.close()
+            self.plant.viewer_lock = None
+        except Exception:                                        # noqa: BLE001
+            pass
+        try:
+            with self.plant.data_lock:   # teardown touches mjData too
+                v.close()
             if th is not None:
                 th.join(timeout=5.0)     # see the note at first launch
         except Exception:                                        # noqa: BLE001
@@ -694,10 +749,13 @@ class Session:
         import mujoco as _mj
         q0 = cb.pin_to_mj(task.xs[0][:cb.NQ_ROBOT],
                           cs.start_qpos(self.m, task.plan["start"]))
-        self.plant.d.qpos[:] = q0
-        self.plant.d.qvel[:] = 0.0
-        self.plant.d.ctrl[:] = 0.0
-        _mj.mj_forward(self.plant.m, self.plant.d)
+        guard = getattr(self.plant, "_guard", None)
+        lk = getattr(self.plant, "data_lock", None) or _nullcontext()
+        with lk, (guard() if guard else _nullcontext()):
+            self.plant.d.qpos[:] = q0
+            self.plant.d.qvel[:] = 0.0
+            self.plant.d.ctrl[:] = 0.0
+            _mj.mj_forward(self.plant.m, self.plant.d)
         if self.viewer is not None:
             try:
                 self.viewer.sync()
@@ -1218,6 +1276,14 @@ def main():
                          "where the plan begins, and no keyframe is that pose.")
     args = ap.parse_args()
 
+    # A SEGFAULT SHOULD NAME ITSELF. This process links crocoddyl, pinocchio,
+    # MuJoCo and a GL driver; when one of them faults, the default is a bare
+    # "Segmentation fault (core dumped)" and a guessing game. faulthandler
+    # costs nothing until then and prints the Python stack of every thread,
+    # which is what says whether the control thread was in mj_step, the render
+    # thread was in the viewer, or the solve was in crocoddyl.
+    faulthandler.enable()
+
     # VALIDATE BEFORE BUILDING. `build` spends ~25 s on the OCP and the DDS
     # plant then waits 15 s for a twin, so a guard placed next to the code it
     # guards told you about an unusable flag combination forty seconds after
@@ -1422,9 +1488,10 @@ def main():
         # what makes it worth fixing rather than living with: a study tool
         # that core-dumps at exit turns every wrapper script's `|| true` into
         # a place a real failure can hide.
-        _before = set(threading.enumerate())
-        viewer = _mjv.launch_passive(plant.m, plant.d)
-        viewer_thread = next(iter(set(threading.enumerate()) - _before), None)
+        with plant.data_lock:
+            viewer = _mjv.launch_passive(plant.m, plant.d)
+        viewer_thread = _viewer_thread_of(_mjv)
+        plant.viewer_lock = viewer.lock      # every mjData write goes under it
         print("[croco_twin] passive viewer open. At %s the maneuver is %.1f s "
               "of wall clock -- pass --realtime 0.25 to watch it."
               % ("free-run" if args.realtime is None

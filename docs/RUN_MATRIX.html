@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run matrix</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.82rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.4rem 0}
+  video{width:100%;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:1.2rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+  .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+  /* ---- math ---------------------------------------------------------- */
+  /* Native MathML: no library, no network, renders offline and in both themes.
+     Ported from the S11 handoff page so the whole series types maths the same
+     way.  A fenced block gets a rule on the left so a derivation reads as one
+     unit.  Anything written as hand-rolled <sub>/<sup> before this existed is
+     still fine for a lone symbol; it is equations that need the real thing. */
+  math{font-size:1.02em;color:var(--ink)}
+  .eq{background:var(--panel);border-left:3px solid var(--line);
+      border-radius:0 8px 8px 0;padding:.7rem 1rem;margin:1rem 0;overflow-x:auto}
+  .eq math{display:block;margin:.25rem 0}
+  .eq .where{color:var(--ink3);font-size:.84rem;margin:.5rem 0 0}
+  .eq .where math{display:inline;margin:0}
+  .eq .lbl{color:var(--ink3);font-size:.8rem;text-transform:uppercase;
+           letter-spacing:.04em;margin:0 0 .45rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Run matrix</h1>
+<p class="sub">Which command goes with which plant, and what each one can tell you.</p>
+<p class="meta">Reference &middot; kept current with the code</p>
+
+<p>Three plants, and they are not interchangeable: each answers a different
+question, costs a different amount of setup, and reports a different kind of
+number. Pick by what you are trying to find out.</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th></th>
+<th><code>--plant mujoco</code></th>
+<th><code>--plant dds</code></th>
+<th><code>--plant dds --via-safety</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>physics</strong></td>
+<td>in this process</td>
+<td><code>lean_twin</code>, another process</td>
+<td>same</td>
+</tr>
+<tr>
+<td><strong>command path</strong></td>
+<td><code>d.ctrl</code></td>
+<td><code>rt/lowcmd</code></td>
+<td><code>rt/safety/lowcmd_in</code> → <strong>h12_safety_layer</strong> → <code>rt/lowcmd</code></td>
+</tr>
+<tr>
+<td><strong>answers</strong></td>
+<td>is the controller right</td>
+<td>does it survive the wire</td>
+<td>would the robot's own relay let it happen</td>
+</tr>
+<tr>
+<td><strong>needs</strong></td>
+<td>nothing</td>
+<td>a twin on the same DDS domain</td>
+<td>a twin <strong>and</strong> the safety layer running</td>
+</tr>
+<tr>
+<td><strong>reset button</strong></td>
+<td>yes</td>
+<td>no — the twin owns its physics</td>
+<td>no</td>
+</tr>
+<tr>
+<td><strong>viewer button</strong></td>
+<td>yes</td>
+<td>no — run <code>lean_twin --viewer</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><strong>can go limp on you</strong></td>
+<td>no</td>
+<td>no</td>
+<td><strong>yes</strong> — the e-stop latches</td>
+</tr>
+<tr>
+<td><strong>measured pelvis z</strong></td>
+<td>0.955</td>
+<td>0.741 @1×, 0.890 @0.5×</td>
+<td>not yet measured</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>--safety</code> is orthogonal to all three: it MONITORS the layer's limits and never
+touches a command, so it is safe on every plant including the first. Turn it on
+before you turn on <code>--via-safety</code>.</p>
+<h2>1. In-process — the default, and where to start</h2>
+<pre><code class="language-bash">studies/croco_twin.py \
+    --dir studies/runs/2026-08-17_session20_gui/cell \
+    --tag elbow_palm --plant mujoco --gui
+</code></pre>
+<p>Panel on <a href="http://127.0.0.1:8770/">http://127.0.0.1:8770/</a>. Add <code>--viewer</code> for MuJoCo's window (needs a
+windowing GL backend — <code>MUJOCO_GL=egl</code> is offscreen and the button disables
+itself), and <code>--realtime 0.25</code> to make it watchable.</p>
+<p>Free-running by default, which means <strong>there is no deadline and therefore no
+overruns</strong>. That is not a pass. Pin it to real time to find out:</p>
+<pre><code class="language-bash">... --plant mujoco --gui --realtime 1.0     # 22/199 periods over, measured
+</code></pre>
+<h2>2. Over DDS — the twin, one wire away from the robot</h2>
+<p>Two processes. The twin owns the clock, so its <code>--realtime</code> and the
+controller's must match; the controller cannot reach across and set it.</p>
+<pre><code class="language-bash"># terminal 1 — the twin
+studies/croco_twin.py --dir &lt;cell&gt; --tag elbow_palm --emit-qpos0 /tmp/q0.txt
+python -m croco.twin.lean_twin --qpos0 /tmp/q0.txt --realtime 1.0
+
+# terminal 2 — the controller
+studies/croco_twin.py --dir &lt;cell&gt; --tag elbow_palm --plant dds \
+    --base truth --gui --realtime 1.0
+</code></pre>
+<p><code>--base truth</code> reads <code>rt/sim_state</code>, which is ground truth and exists only in
+simulation. <code>--base estimator</code> is the honest one and needs the estimator node
+running.</p>
+<h2>3. Through the safety layer — what the robot's relay would allow</h2>
+<p><strong>Read this before running it.</strong> The layer's e-stop LATCHES: on the first
+violation <code>_publisher_loop</code> starts emitting <code>make_estop_cmd</code> (mode 0,
+kp = kd = tau = 0) and never stops until the process is restarted. On the twin
+that is a robot that goes limp mid-maneuver. Find out whether it would trip
+<em>before</em> giving it authority:</p>
+<pre><code class="language-bash"># step 1 — monitor only. No authority, any plant, always safe.
+studies/croco_twin.py --dir &lt;cell&gt; --tag elbow_palm --plant mujoco \
+    --gui --safety default_safety_full
+</code></pre>
+<p>Red rules on the period plot mark the periods it would have tripped; the first
+one is solid because it is the only one that would really have happened. The
+run artifact carries <code>safety_estop_periods</code>, <code>safety_first_estop_why</code> and
+<code>safety_clip_kinds</code>.</p>
+<p>Measured on the certified brace+reach against <code>default_safety_full</code>:
+<strong>0 e-stop trips</strong>, but <strong>16–18 of 198 periods clipped</strong> — <code>tau</code> (the layer's
+<code>torque_ratio: 0.60</code> derates the URDF limits below what the MPC clamps to) and
+<code>dq</code> (<code>velocity_ratio: 0.10</code> puts the band as low as 0.9 rad/s, under the
+maneuver's own joint speeds). Clipping is silent and stops nothing, but a
+clipped command is not the command the plan describes.</p>
+<pre><code class="language-bash"># step 2 — the layer in the path, for real.
+python -m h12_safety_layer.script.safety_layer_main \
+    --config default_safety_full.yaml            # terminal 3
+
+studies/croco_twin.py --dir &lt;cell&gt; --tag elbow_palm --plant dds \
+    --base truth --gui --safety --via-safety     # terminal 2
+</code></pre>
+<p><code>--via-safety</code> only changes the topic commands are published to. If the layer
+is not running, nothing reaches <code>rt/lowcmd</code> at all and the robot receives
+nothing — that is the failure mode to expect, not a fall.</p>
+<p>The safety layer is found the same way <code>CL_Assets</code> is: <code>$H12_SAFETY_LAYER</code>,
+else <code>../core_ws/src/h12_safety_layer</code> relative to this repo. A sourced ROS
+workspace's <em>installed</em> copy is used only as a last resort, because it is a
+build of some past state of that source.</p>
+<h2>Tasks, and why two of the three are usually greyed out</h2>
+<p>A task is a <strong>solved plan</strong> in the cell directory, not a set of weights: the
+phases differ by contact set and no weight can add a contact. The certified
+S18 grid only ever solved the braced maneuver, so <code>stand</code> and <code>recover</code> are
+offered-but-disabled on every cell in it. Five seconds fixes that:</p>
+<pre><code class="language-bash">studies/solve_tasks.sh studies/runs/2026-08-16_session18/grid/x1050_y-235_z1098_dy+000
+</code></pre>
+<h2><code>reachRot</code> is missing from the sliders</h2>
+<p>Those same cells were solved with <code>w_reach_rot = 0</code>, so the orientation cost
+does not exist in the built models and cannot be added to one. Either rebuild
+with the flag, which costs nothing and re-solves nothing:</p>
+<pre><code class="language-bash">studies/croco_twin.py --dir &lt;cell&gt; --tag elbow_palm --plant mujoco --gui \
+    --reach-rot auto
+</code></pre>
+<p>or re-solve the cell with <code>solve_tasks.sh</code>. The override is recorded in the
+run artifact as <code>ocp_overrides</code>, because the warm start still comes from a
+plan solved without it.</p>
+<h2>The interpreter is pinned</h2>
+<p>Running under the wrong crocoddyl build is a <strong>SIGSEGV inside
+<code>ShootingProblem</code></strong> with no traceback — measured 3/3 on this machine's conda
+<code>(base)</code>, whose pip/cmeel wheels report the same versions as the working
+conda-forge ones. The entry points therefore re-exec themselves into the
+pinned interpreter and print one line saying so. <code>CROCO_PY=&lt;python&gt;</code> chooses
+it; <code>CROCO_NO_REEXEC=1</code> turns it off.</p>
+<h2>Solve time: which knob buys milliseconds</h2>
+<p>Measured on the certified cell, in process, 199 periods, all native extensions
+built. <code>--realtime 1.0</code> so the deadline is real.</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>horizon</th>
+<th>mean</th>
+<th>p95</th>
+<th>overruns</th>
+<th>tau saturated</th>
+<th>pelvis z</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td>4.91 ms</td>
+<td>7.82</td>
+<td>2/200</td>
+<td>116</td>
+<td>0.9391</td>
+</tr>
+<tr>
+<td>15</td>
+<td>6.75</td>
+<td>10.00</td>
+<td>1/199</td>
+<td>78</td>
+<td>0.9372</td>
+</tr>
+<tr>
+<td>20</td>
+<td>7.96</td>
+<td>12.55</td>
+<td>2/199</td>
+<td>69</td>
+<td>0.9402</td>
+</tr>
+<tr>
+<td><strong>25</strong></td>
+<td><strong>8.86</strong></td>
+<td><strong>13.53</strong></td>
+<td><strong>2/199</strong></td>
+<td><strong>42</strong></td>
+<td><strong>0.9470</strong></td>
+</tr>
+<tr>
+<td>30</td>
+<td>12.72</td>
+<td>21.04</td>
+<td>22/199</td>
+<td>7</td>
+<td>0.9539</td>
+</tr>
+<tr>
+<td>35 (default)</td>
+<td>14.42</td>
+<td>24.55</td>
+<td><strong>52/199</strong></td>
+<td>12</td>
+<td>0.9555</td>
+</tr>
+</tbody>
+</table></div>
+<p>Solve time is <strong>near-linear in the horizon</strong>, and so is the deadline story:
+the default 35 misses 52 of 199 periods at 1×, while 25 misses 2. What you pay
+is posture — the pelvis sits ~9 mm lower at 25 and ~18 mm lower at 15, and
+torque saturation climbs steeply as the horizon shortens (42 events at 25,
+116 at 10). A short horizon does not see the brace coming, so it arrives late
+and pushes harder.</p>
+<p><strong><code>--horizon 25</code> is the recommended operating point</strong>: p95 comfortably inside
+the 20 ms period, 26× fewer overruns, and a centimetre of posture.</p>
+<p>The other two knobs:</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>threads</th>
+<th>mean</th>
+<th></th>
+<th>iters</th>
+<th>mean</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>15.79 ms</td>
+<td></td>
+<td>1 (default)</td>
+<td>12.55 ms</td>
+</tr>
+<tr>
+<td>4</td>
+<td>13.48</td>
+<td></td>
+<td>2</td>
+<td>23.32</td>
+</tr>
+<tr>
+<td>12</td>
+<td>11.38</td>
+<td></td>
+<td>3</td>
+<td>33.79</td>
+</tr>
+<tr>
+<td>20</td>
+<td>11.21</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Threading gives only <strong>1.4× for 20 threads</strong> and is flat past 12 — one of the
+solver's three stages is parallel, so Amdahl caps it. Iterations are linear and
+already at the floor. Neither is a lever; the horizon is.</p>
+
+</div>
+
+</body>
+</html>

@@ -21,7 +21,13 @@ TWO THINGS IT REFUSES TO DO, both of which the study got wrong before.
 """
 from __future__ import annotations
 
+import contextlib
+
 import numpy as np
+
+#: One shared no-op context: `_guard` is called every control period and a
+#: fresh nullcontext per period is pure garbage.
+_NULL = contextlib.nullcontext()
 
 from .base import Plant, State
 
@@ -33,7 +39,9 @@ class MuJoCoPlant(Plant):
 
     def __init__(self, model, data, sense=None, tau_limit=None, nu=None):
         import mujoco
+        import threading
 
+        self.data_lock = threading.Lock()
         self._mj = mujoco
         self.m, self.d = model, data
         self.nu = int(nu if nu is not None else model.nu)
@@ -95,12 +103,57 @@ class MuJoCoPlant(Plant):
                 "MuJoCo <position> inversion would not reproduce the commanded "
                 "torque. Re-issue the command with plant.kp / plant.kd, or use "
                 "a torque-actuated model.")
-        self.d.ctrl[:self.nu] = cmd.to_mujoco_ctrl()
+        with self.data_lock, self._guard():     # a write to mjData
+            self.d.ctrl[:self.nu] = cmd.to_mujoco_ctrl()
+
+    #: Set to `viewer.lock` (the BOUND METHOD, not an acquired lock) while a
+    #: passive viewer is attached; None otherwise. See `_guard`.
+    viewer_lock = None
+
+    #: OUR lock over mjData, as opposed to mujoco's. Two different races need
+    #: two different locks and they are not interchangeable:
+    #:
+    #:   viewer_lock  guards us against MUJOCO'S render thread, which lives in
+    #:                C++ and honours only mujoco's own lock.
+    #:   data_lock    guards us against OURSELVES -- the control thread inside
+    #:                mj_step versus a socket thread inside launch_passive.
+    #:                `launch_passive` calls mj_forward on this same mjData
+    #:                before it returns a handle, so there is a window during
+    #:                which the viewer is being created and no viewer_lock
+    #:                exists yet to take. That window is where the panel's
+    #:                viewer button crashed: measured, 2 of 3 sessions died
+    #:                with the control thread in mujoco_plant.step and a
+    #:                socket thread in viewer.py launch_passive.
+    #:
+    #: Always take data_lock OUTSIDE viewer_lock so the order is total.
+
+    def _guard(self):
+        """The passive viewer's lock, or a no-op context.
+
+        WHY THIS EXISTS. `mujoco.viewer.launch_passive` runs its render loop on
+        its OWN thread, reading the same `mjData` this process is stepping. The
+        documented contract is that every mutation of the model or data happens
+        under `viewer.lock()`:
+
+            with viewer.lock():
+                mj_step(m, d)
+            viewer.sync()
+
+        croco_twin stepped outside it. The result is a genuine data race, and
+        it presents the way data races do -- an intermittent SIGSEGV with no
+        traceback, only when a viewer happens to be open, which is why it
+        survived every deterministic test and still killed real sessions. The
+        cost is one uncontended lock acquire per control period when a viewer
+        is attached, and exactly nothing when it is not.
+        """
+        lk = self.viewer_lock
+        return lk() if lk is not None else _NULL
 
     def step(self, dt: float) -> None:
         n = max(1, int(round(dt / self.m.opt.timestep)))
-        for _ in range(n):
-            self._mj.mj_step(self.m, self.d)
+        with self.data_lock, self._guard():
+            for _ in range(n):
+                self._mj.mj_step(self.m, self.d)
 
     def safe_hold(self, kd=2.0):
         """The closest thing a POSITION servo can do to a damping stop.

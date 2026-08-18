@@ -26,7 +26,7 @@ anything here needs `libmjpc`.
 | `croco/safety/` | the H1-2 safety layer's limits, evaluated without giving it the actuators |
 | `assets/tasks/` | the lean model and its include closure |
 | `docs/index.html` | **documentation index** — start here |
-| `docs/RUN_MATRIX.md` | which command goes with which plant |
+| `docs/RUN_MATRIX.html` | which command goes with which plant |
 | `docs/lean/` | session writeups, in date order |
 
 ## Install
@@ -132,7 +132,7 @@ studies/croco_twin.py --dir studies/runs/mycell --tag elbow_palm \
 Measured on a cell built exactly this way: plan cost 24.73, reach error
 0.32 mm, and the loop holds the pelvis at 0.955 m through all 198 periods.
 
-**`docs/RUN_MATRIX.md` is the page to keep open**: which command goes with
+**`docs/RUN_MATRIX.html` is the page to keep open**: which command goes with
 which plant, what each one can tell you, and the two symptoms that look like
 missing features but are missing artifacts.
 
