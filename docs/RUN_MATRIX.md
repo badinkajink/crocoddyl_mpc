@@ -135,3 +135,40 @@ Running under the wrong crocoddyl build is a **SIGSEGV inside
 conda-forge ones. The entry points therefore re-exec themselves into the
 pinned interpreter and print one line saying so. `CROCO_PY=<python>` chooses
 it; `CROCO_NO_REEXEC=1` turns it off.
+
+## Solve time: which knob buys milliseconds
+
+Measured on the certified cell, in process, 199 periods, all native extensions
+built. `--realtime 1.0` so the deadline is real.
+
+| horizon | mean | p95 | overruns | tau saturated | pelvis z |
+|---|---|---|---|---|---|
+| 10 | 4.91 ms | 7.82 | 2/200 | 116 | 0.9391 |
+| 15 | 6.75 | 10.00 | 1/199 | 78 | 0.9372 |
+| 20 | 7.96 | 12.55 | 2/199 | 69 | 0.9402 |
+| **25** | **8.86** | **13.53** | **2/199** | **42** | **0.9470** |
+| 30 | 12.72 | 21.04 | 22/199 | 7 | 0.9539 |
+| 35 (default) | 14.42 | 24.55 | **52/199** | 12 | 0.9555 |
+
+Solve time is **near-linear in the horizon**, and so is the deadline story:
+the default 35 misses 52 of 199 periods at 1×, while 25 misses 2. What you pay
+is posture — the pelvis sits ~9 mm lower at 25 and ~18 mm lower at 15, and
+torque saturation climbs steeply as the horizon shortens (42 events at 25,
+116 at 10). A short horizon does not see the brace coming, so it arrives late
+and pushes harder.
+
+**`--horizon 25` is the recommended operating point**: p95 comfortably inside
+the 20 ms period, 26× fewer overruns, and a centimetre of posture.
+
+The other two knobs:
+
+| threads | mean | | iters | mean |
+|---|---|---|---|---|
+| 1 | 15.79 ms | | 1 (default) | 12.55 ms |
+| 4 | 13.48 | | 2 | 23.32 |
+| 12 | 11.38 | | 3 | 33.79 |
+| 20 | 11.21 | | | |
+
+Threading gives only **1.4× for 20 threads** and is flat past 12 — one of the
+solver's three stages is parallel, so Amdahl caps it. Iterations are linear and
+already at the floor. Neither is a lever; the horizon is.
