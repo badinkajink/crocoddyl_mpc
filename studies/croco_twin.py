@@ -42,14 +42,22 @@ import sys
 import threading
 import time
 
-sys.setdlopenflags(sys.getdlopenflags() | ctypes.RTLD_GLOBAL)
-
-import numpy as np                                              # noqa: E402
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "croco_ext"))
 sys.path.insert(0, os.path.join(HERE, ".."))
+
+# BEFORE ANYTHING NATIVE IS LOADED. `ensure_runtime` may replace this process
+# with the pinned interpreter, and everything imported above that point is
+# work thrown away -- but more importantly, running the wrong crocoddyl to the
+# point of building a ShootingProblem is a SIGSEGV with no traceback, which is
+# precisely the failure it exists to convert into a sentence. See croco/env.py.
+from croco.env import ensure_runtime                             # noqa: E402
+ensure_runtime()
+
+sys.setdlopenflags(sys.getdlopenflags() | ctypes.RTLD_GLOBAL)
+
+import numpy as np                                              # noqa: E402
 
 import croco_bridge as cb                                       # noqa: E402
 import contact_select as cs                                     # noqa: E402
@@ -59,6 +67,7 @@ from croco.control.mpc import MPC                               # noqa: E402
 from croco.plant.dds_plant import (DDSPlant, PollingReceiver,   # noqa: E402
                                    assert_joint_order)
 from croco.runtime.loop import ControlLoop, LoopConfig          # noqa: E402
+from croco.plant.dds_plant import TOPIC_SAFETY_LOWCMD_IN        # noqa: E402
 
 
 # --------------------------------------------------------------- base --- #
@@ -209,10 +218,32 @@ class EstimatorBase:
 
 
 # ---------------------------------------------------------------- run --- #
+def ocp_overrides(args):
+    """Plan fields the CLI replaces before the OCP is rebuilt, or {}.
+
+    Deliberately narrow. This is not a general "retune the plan from argv"
+    hatch -- the sliders already retune weights on a built model, live and for
+    free. It exists for the one thing sliders cannot do: make a cost EXIST.
+    `reachRot` is absent from every certified cell because those plans were
+    solved with w_reach_rot = 0 and `_reach_orientation` returns early, so
+    the panel has no slider and the roll knob is dead. Adding it needs a
+    rebuild, and a rebuild needs a flag.
+    """
+    ov = {}
+    if args.reach_rot is not None:
+        ov["reach_rot"] = None if args.reach_rot == "none" else args.reach_rot
+        ov["w_reach_rot"] = (0.0 if args.reach_rot == "none"
+                             else (1e-2 if args.w_reach_rot is None
+                                   else args.w_reach_rot))
+    elif args.w_reach_rot is not None:
+        ov["w_reach_rot"] = args.w_reach_rot
+    return ov
+
+
 def build(args):
     """The MPC and the reference plan, exactly as croco_replay builds them."""
     plan = json.load(open(os.path.join(args.dir, "plan_%s.json" % args.tag)))
-    ocp, _ = cr.build_ocp(plan, args.dir)
+    ocp, _ = cr.build_ocp(plan, args.dir, overrides=ocp_overrides(args))
     problem = ocp.build(dt=plan["dt"], n_approach=plan["n_approach"],
                         n_braced=plan["n_braced"],
                         n_return=plan.get("n_return", 0),
@@ -354,9 +385,19 @@ class Task:
         return self.mpc is not None
 
     def why_unavailable(self):
+        """Why it is greyed out AND the one command that ungreys it.
+
+        A disabled dropdown entry with only a diagnosis reads as a feature
+        that was never finished. It is a missing artifact, and the artifact
+        takes a few seconds to make, so the note says so.
+        """
         if self.ready:
             return None
-        return ("no %s in %s -- this task has never been solved for this cell"
+        return ("no %s in this cell -- a task is a SOLVED PLAN (its phases "
+                "differ by contact set, so no weight can substitute), and "
+                "the certified grid only ever solved the braced maneuver. "
+                "Solve the missing ones, ~5 s total:  "
+                "studies/solve_tasks.sh %s"
                 % (os.path.basename(self.plan_path), self.run_dir))
 
     def build(self, args):
@@ -391,6 +432,7 @@ class Session:
         self.args, self.tasks, self.plant = args, tasks, plant
         self.m, self.kp, self.kd, self.tau_lim = m, kp, kd, tau_lim
         self.hooks = hooks              # extra on_step consumers (panel, video)
+        self.monitor = None             # croco.safety.SafetyMonitor, or None
         self.lock = threading.Lock()
         self.paused = False
         self.quit = False
@@ -761,6 +803,12 @@ class Session:
             realtime_note=(None if rt is None or rt >= 1.0 else
                            "SLOWED to %.3gx: overruns are NOT a deployment "
                            "result" % rt),
+            # Per EPISODE, unlike the monitor's own session counters: a chain
+            # that trips on its third behaviour and not its first is a
+            # different finding from one that trips throughout.
+            estop_periods=sum(1 for r in log if r.get("estop")),
+            estop_first_why=next((r["estop_why"] for r in log
+                                  if r.get("estop")), None),
             pelvis_z=(float(self.plant.d.qpos[2]) if a.plant == "mujoco"
                       else None))
 
@@ -776,6 +824,16 @@ class Session:
             with self.lock:
                 if self._reset or self._skip:
                     return
+            # WEIGHTS MOVED WHILE IDLE MUST STILL LAND. `Panel.drain` is
+            # otherwise only called from `on_step`, so between episodes a
+            # slider queued an edit and then showed the old value back --
+            # which reads as a dead control on exactly the screen where
+            # someone is retuning before hitting reset.
+            if self.panel is not None:
+                try:
+                    self.panel.drain()
+                except Exception:                                # noqa: BLE001
+                    pass
             try:
                 self.plant.write(self.plant.safe_hold(2.0))
             except Exception:                                    # noqa: BLE001
@@ -867,6 +925,23 @@ class Session:
 
 
 
+def make_monitor(args):
+    """The safety monitor, or None. Failure to build one is fatal on purpose.
+
+    A monitor that quietly did not load would be worse than no monitor: the
+    panel would show no red rules and you would read that as "the limits were
+    never crossed" rather than "nobody looked".
+    """
+    if not args.safety:
+        return None
+    from croco.safety import SafetyMonitor
+    from croco.plant.dds_plant import JOINT_NAMES
+    mon = SafetyMonitor(args.safety, joint_names=JOINT_NAMES)
+    print("[croco_twin] safety monitor: %s (%s). Observing only -- it never "
+          "touches a command." % (mon.config_path, mon.mode))
+    return mon
+
+
 def _make_plant(args, m, tau_lim):
     """The plant and (for DDS) its base source. Shared by both entry points."""
     if args.plant == "mujoco":
@@ -878,6 +953,8 @@ def _make_plant(args, m, tau_lim):
         return MuJoCoPlant(m2, d2, sense=None, tau_limit=tau_lim, nu=27), None
     plant = DDSPlant(network_interface=args.iface, domain_id=args.domain,
                      twin_dt=float(m.opt.timestep), base_source=None,
+                     cmd_topic=(TOPIC_SAFETY_LOWCMD_IN if args.via_safety
+                                else "rt/lowcmd"),
                      tau_limit=tau_lim,
                      q_range=(m.jnt_range[1:28, 0].copy(),
                               m.jnt_range[1:28, 1].copy()),
@@ -922,11 +999,13 @@ def run_session(args):
                ", ".join(ready) or "none"))
 
     # dt comes off the plan JSON, which is cheap to read -- the panel must
-    # exist BEFORE the ~20 s OCP build, not after it, or the twenty seconds
-    # look exactly like a hung page.
+    # exist BEFORE the OCP build (measured 1.2 s for 200 models), not after
+    # it, or the wait looks exactly like a hung page.
     dt_plan = json.load(open(tasks[args.task].plan_path))["dt"]
 
+    monitor = make_monitor(args)
     plant, _base = _make_plant(args, m, tau_lim)
+    ov = ocp_overrides(args)
     panel = Panel(None, port=args.gui, period_ms=1e3 * dt_plan,
                   config=dict(
                       plant=args.plant, base=args.base, cell=args.dir,
@@ -934,10 +1013,19 @@ def run_session(args):
                       threads=args.threads,
                       dds=(None if args.plant == "mujoco"
                            else "domain %d / %s" % (args.domain, args.iface)),
+                      cmd_topic=getattr(plant, "cmd_topic", "(in process)"),
+                      safety=(None if monitor is None
+                              else os.path.basename(monitor.config_path)),
+                      ocp_overrides=(None if not ov else
+                                     ", ".join("%s=%s" % kv for kv in
+                                               sorted(ov.items()))),
                       video=args.video,
                       gl=os.environ.get("MUJOCO_GL", "(default)")))
-    session = Session(args, tasks, plant, m, kp, kd, tau_lim,
-                      hooks=[panel.on_step])
+    # ORDER: the monitor annotates the row, the panel serialises it. Reversed,
+    # the browser would get every row one period before its verdict.
+    hooks = ([] if monitor is None else [monitor]) + [panel.on_step]
+    session = Session(args, tasks, plant, m, kp, kd, tau_lim, hooks=hooks)
+    session.monitor = monitor
     session.panel = panel
     panel.on_command = session.command
     session.push()
@@ -1069,6 +1157,46 @@ def main():
     ap.add_argument("--video-cam", default="wide",  # noqa: E128
                     choices=sorted(cr.CAMERAS), help="croco_replay camera preset")
     ap.add_argument("--video-fps", type=int, default=30)
+    # -- the OCP, overridden ------------------------------------------------
+    ap.add_argument("--reach-rot", default=None,
+                    choices=["auto", "flat", "down", "side", "none"],
+                    help="REBUILD the OCP with this gripper-orientation "
+                         "reference instead of the plan's. The certified grid "
+                         "was solved with w_reach_rot = 0, so those cells have "
+                         "no `reachRot` cost at all -- no slider, and the "
+                         "roll knob disabled, because a cost cannot be added "
+                         "to a model that is already built. `auto` points the "
+                         "reference at the orientation q* already reaches, "
+                         "which at a token weight changes the plan by ~4e-5 "
+                         "in cost while making the term EXIST and therefore "
+                         "steerable. The run artifact records the override: "
+                         "the warm start still comes from a plan solved "
+                         "without it.")
+    ap.add_argument("--w-reach-rot", type=float, default=None, metavar="W",
+                    help="weight for --reach-rot (default 1e-2, the token "
+                         "weight the term is meant to be steered up from)")
+
+    # -- the safety layer ---------------------------------------------------
+    ap.add_argument("--safety", nargs="?", const="default_safety_full",
+                    default=None, metavar="CONFIG",
+                    help="MONITOR the h12_safety_layer's limits every period "
+                         "and mark the periods its e-stop would have tripped "
+                         "-- red rules on the panel's period plot, "
+                         "`safety_*` fields in --out. Takes a path or a bare "
+                         "name from that package's config/ (default "
+                         "default_safety_full). This is an OBSERVER: it never "
+                         "touches a command. Off by default because the "
+                         "limits are the robot's and a study run on the twin "
+                         "legitimately explores past them.")
+    ap.add_argument("--via-safety", action="store_true",
+                    help="publish commands to %s instead of rt/lowcmd, so a "
+                         "RUNNING h12_safety_layer clips them and forwards to "
+                         "rt/lowcmd. --plant dds only. This one has "
+                         "authority: the layer's e-stop LATCHES, so the first "
+                         "trip zeroes kp/kd/tau for the rest of the session "
+                         "and the robot goes limp. Start with --safety alone "
+                         "to find out whether it would trip." % TOPIC_SAFETY_LOWCMD_IN)
+
     ap.add_argument("--max-seconds", type=float, default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--emit-qpos0", default=None,
@@ -1094,6 +1222,16 @@ def main():
                 "window -- launch_passive would fail or draw nothing. Unset "
                 "it (or set MUJOCO_GL=glfw) for --viewer. Note run_session.sh "
                 "exports egl, so a shell that sourced it carries this." % gl)
+
+    if args.via_safety and args.plant != "dds":
+        raise SystemExit(
+            "--via-safety is a DDS topic change (%s instead of rt/lowcmd) and "
+            "means nothing to the in-process plant, which has no wire and no "
+            "safety layer on it. Use --plant dds, and start the layer:\n"
+            "  python -m h12_safety_layer.script.safety_layer_main "
+            "--config default_safety_full.yaml\n"
+            "For the in-process plant, --safety monitors the same limits "
+            "without needing the layer to run." % TOPIC_SAFETY_LOWCMD_IN)
 
     # VIDEO IS ON BY DEFAULT IN THE SESSION, next to the replay mp4 the cell
     # already carries (`replay_<tag>_mpc.mp4`) -- the two are the same kind of
@@ -1135,6 +1273,7 @@ def main():
             "testing something else -- and say which in whatever you report.")
 
     truth_probe = None
+    monitor = make_monitor(args)      # before the build: a bad config is argv
     plan, mpc, xs, us = build(args)
     dt_plan = plan["dt"]
     nq = cb.NQ_ROBOT
@@ -1179,7 +1318,13 @@ def main():
                          base_source=None, tau_limit=tau_lim,
                          q_range=(m.jnt_range[1:28, 0].copy(),
                                   m.jnt_range[1:28, 1].copy()),
+                         cmd_topic=(TOPIC_SAFETY_LOWCMD_IN if args.via_safety
+                                    else "rt/lowcmd"),
                          recv=args.recv)
+        if args.via_safety:
+            print("[croco_twin] commands go to %s -- the h12_safety_layer must "
+                  "be RUNNING and republishing to rt/lowcmd, or the robot "
+                  "receives nothing at all." % TOPIC_SAFETY_LOWCMD_IN)
         base = (TruthBase(recv=args.recv) if args.base == "truth"
                 else EstimatorBase(args.est_topic, recv=args.recv))
         plant.base_source = base
@@ -1303,6 +1448,8 @@ def main():
     # One hook, several consumers. Each is individually optional and none of
     # them may raise into the control thread.
     hooks = []
+    if monitor is not None:
+        hooks.append(monitor)         # first: it annotates what the rest read
     if panel is not None:
         hooks.append(panel.on_step)
     if args.video:
@@ -1356,6 +1503,12 @@ def main():
         stale_ms=args.stale_ms,
         nthreads_effective=int(mpc.problem.nthreads),
         recv=args.recv,
+        cmd_topic=getattr(plant, "cmd_topic", None),
+        via_safety=bool(args.via_safety),
+        # A run whose OCP is not the one the plan was solved with says so in
+        # its own artifact, or the grid quietly stops being comparable.
+        ocp_overrides=(ocp_overrides(args) or None),
+        **({} if monitor is None else monitor.summary()),
         **({} if panel is None else panel.summary()),
         recv_samples_per_poll=(
             None if getattr(plant, "recv_polls", 0) == 0
