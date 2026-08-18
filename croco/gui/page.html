@@ -47,6 +47,9 @@ select:disabled{opacity:.5}
 .terms input{accent-color:var(--acc);margin:0}
 .sw{width:.6rem;height:.6rem;border-radius:2px;flex:none}
 .note{color:var(--warn);font-size:.72rem;margin-top:.3rem}
+/* .bad alone loses to .note on source order -- both are one class. */
+.note.bad{color:var(--bad)}
+.note code{color:var(--ink);opacity:.9}
 .trow{display:grid;grid-template-columns:1rem 1fr auto auto;gap:.3rem;
       align-items:center;margin:.25rem 0}
 .trow span{color:var(--ink2)}
@@ -77,6 +80,7 @@ button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
       <h2>wall period vs deadline</h2>
       <canvas id="c_period" height="120"></canvas>
       <div class="cap" id="cap_period">&nbsp;</div>
+      <div id="estop_note" class="note" hidden></div>
     </section>
     <section id="vid_sec" hidden>
       <h2>the run</h2>
@@ -142,9 +146,10 @@ button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
 <script>
 const N = 300, colors =
   ["#6ea8fe","#4ec9a0","#e6a35c","#e06c6c","#b48ead","#88c0d0","#d0b070","#a3be8c"];
-const hist = {solve:[], age:[], period:[], terms:{}};
+const hist = {solve:[], age:[], period:[], estop:[], terms:{}};
 let base = null, period = null, live = false, deadline = null;
 let pending = 0, replayed = 0, sess = null, hidden = {};
+let estopSeen = false, estopWhy = "", safetyOn = false;
 
 function push(a, v){ a.push(v); if (a.length > N) a.shift(); }
 function dpi(c){ const r = c.getBoundingClientRect(), s = devicePixelRatio||1;
@@ -183,6 +188,21 @@ function plot(id, series, opts){
     const y = H - 6 - (H-12)*opts.ref/hi;
     g.strokeStyle="#e06c6c"; g.setLineDash([4,3]);
     g.beginPath(); g.moveTo(x0,y); g.lineTo(W,y); g.stroke(); g.setLineDash([]);
+  }
+  // Vertical rules for flagged samples -- drawn UNDER the traces so a mark
+  // never hides the value that earned it. `flags[j]` truthy means "the safety
+  // layer's e-stop predicate held at sample j": the first one is the run the
+  // layer would have ended, so it is drawn solid and the rest translucent.
+  if (opts.flags){
+    let first = true;
+    opts.flags.forEach((f,j)=>{
+      if (!f) return;
+      const x = x0 + plotW*j/(N-1);
+      g.strokeStyle = "#ff4d4d"; g.globalAlpha = first ? 0.95 : 0.30;
+      g.lineWidth = first ? 2 : 1;
+      g.beginPath(); g.moveTo(x, 2); g.lineTo(x, H-4); g.stroke();
+      g.globalAlpha = 1; first = false;
+    });
   }
   series.forEach((s,i)=>{
     g.strokeStyle = s.color || colors[i%colors.length];
@@ -223,12 +243,28 @@ function redraw(){
   plot("c_period", [
       {data:hist.period, color:"#6ea8fe", markOver:true},
       {data:hist.age, color:"#4ec9a0", alpha:.45, width:1}],
-      {ref:deadline, min:1, unit:"ms"});
+      {ref:deadline, min:1, unit:"ms", flags:safetyOn ? hist.estop : null});
   const lastP = hist.period[hist.period.length-1] || 0;
   const lastA = hist.age[hist.age.length-1] || 0;
   document.getElementById("cap_period").innerHTML = deadline
     ? `period <b>${lastP.toFixed(1)} ms</b> vs deadline <span class="bad">${deadline.toFixed(0)} ms</span> &middot; <span class="${over?'bad':'good'}">${over} overrun${over===1?'':'s'}</span> in view &middot; <span style="color:#4ec9a0">state age ${lastA.toFixed(3)} ms</span>`
     : `free-run: no deadline &middot; period <b>${lastP.toFixed(1)} ms</b> &middot; <span style="color:#4ec9a0">state age ${lastA.toFixed(3)} ms</span>`;
+  const es = $("estop_note");
+  if (!safetyOn){ es.hidden = true; }
+  else {
+    es.hidden = false;
+    const n = hist.estop.filter(Boolean).length;
+    es.className = estopSeen ? "note bad" : "note";
+    es.innerHTML = estopSeen
+      ? `<b>e-stop would have tripped</b> — the red rule is the first period the ` +
+        `h12_safety_layer's limits were crossed. Its e-stop <b>latches</b>, so the ` +
+        `robot would have gone limp there and everything to the right of that line ` +
+        `is a trajectory the layer would never have allowed. ${n} flagged in view. ` +
+        `<br>First reason: <code>${estopWhy||"—"}</code>`
+      : "Safety monitor on, no trip: the run stays inside the layer's e-stop " +
+        "limits. Nothing is being clipped or stopped — the layer is not in the " +
+        "command path unless you started with --via-safety.";
+  }
 }
 
 function syncBoxes(names){
@@ -379,7 +415,7 @@ function applySession(s){
     $("rot").disabled = true;
     $("rot_note").innerHTML = "<b>No reachRot cost in this OCP.</b> The plan " +
       "was solved with w_reach_rot = 0, so the term does not exist and cannot " +
-      "be added to a built model. Re-solve with --reach-rot auto.";
+      "be added to a built model. " + "Either rebuild with the flag &mdash; <code>croco_twin --reach-rot auto</code> &mdash; which adds the term at a token weight without re-solving anything, or re-solve the cell: <code>studies/solve_tasks.sh &lt;cell&gt;</code>.";
   } else {
     $("rot").disabled = false;
     if (document.activeElement !== $("rot")){
@@ -414,9 +450,10 @@ ws.onmessage = ev => {
     // only next to the roll knob -- this is the panel people look at.
     const miss = !(base && "reachRot" in base);
     $("ws_note").hidden = !miss;
-    if (miss) $("ws_note").textContent =
+    if (miss) $("ws_note").innerHTML =
       "No reachRot slider: this plan was solved with w_reach_rot = 0, so the " +
-      "term is absent from the built models. Re-solve with --reach-rot auto.";
+      "term is absent from the built models and cannot be added to one. " +
+      "Either rebuild with the flag &mdash; <code>croco_twin --reach-rot auto</code> &mdash; which adds the term at a token weight without re-solving anything, or re-solve the cell: <code>studies/solve_tasks.sh &lt;cell&gt;</code>.";
     return;
   }
   if (m.type === "video"){
@@ -428,6 +465,11 @@ ws.onmessage = ev => {
   push(hist.solve, m.solve_ms || 0);
   push(hist.age, m.age_ms || 0);
   push(hist.period, m.period_ms_actual || 0);
+  if (m.estop !== undefined && m.estop !== null){
+    safetyOn = true;
+    if (m.estop && !estopSeen){ estopSeen = true; estopWhy = m.estop_why || ""; }
+  }
+  push(hist.estop, m.estop ? 1 : 0);
   if (m.deadline_ms != null) deadline = m.deadline_ms; 
   for (const [k,v] of Object.entries(m.terms||{})){
     if (!hist.terms[k]) hist.terms[k] = new Array(hist.solve.length-1).fill(0);
@@ -443,7 +485,10 @@ ws.onmessage = ev => {
     ["latency comp", (m.latency_ms||0).toFixed(1)+" ms"],
     ["step length", m.step_length==null?"--":m.step_length.toFixed(4)],
     ["tau saturated", m.tau_sat], ["q clipped", m.q_clip],
-  ].map(([k,v])=>`<span>${k}</span><b class="num">${v}</b>`).join("");
+  ].concat(safetyOn ? [
+    ["safety e-stop", m.estop ? "TRIPPED" : "clear"],
+    ["safety clipped", m.safety_clip],
+  ] : []).map(([k,v])=>`<span>${k}</span><b class="num">${v}</b>`).join("");
   $("dirty").textContent = m.dirty ? "weights modified — this run is not the plan's" : "";
   if (!base && m.weights){ base = m.weights; const box = $("ws");
     for (const [n,w] of Object.entries(base).sort()) box.appendChild(slider(n,w)); }

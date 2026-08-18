@@ -141,13 +141,29 @@ class Panel:
 
     # -- weights -----------------------------------------------------------
 
-    def weights(self):
-        """{name: weight} over the running models, from the FIRST model that
-        has each term. The horizon's models share cost structure by
-        construction (the MPC slides over the plan's own models), so one is
-        representative; a term that exists only in some phase still appears."""
+    #: Cost families collapsed to ONE control. A keep-out set is per sampled
+    #: POINT -- `ko_<geom>_<point>`, 89 of them on a keepout cell -- and they
+    #: are one physical intent ("do not put the gripper through the table"),
+    #: never tuned individually. Left expanded they are 89 of the panel's 104
+    #: sliders and 89 of its cost traces, and the fifteen terms someone
+    #: actually reasons about become unfindable: this is why `reachRot` looked
+    #: absent on an S18 cell when it was present and third from the bottom.
+    GROUPS = (("ko_", "keepout"),)
+
+    def _group_of(self, name):
+        for pre, label in self.GROUPS:
+            if name.startswith(pre):
+                return label
+        return None
+
+    def _members(self, label):
+        """Raw cost names behind a group label, in the built models."""
+        return sorted(n for n in self._raw_weights()
+                      if self._group_of(n) == label)
+
+    def _raw_weights(self):
         if self.mpc is None:
-            return {}          # no task built yet; the panel exists first
+            return {}
         out = {}
         for mdl in list(self.mpc.models) + [self.mpc.terminal]:
             cs = _cost_sum(mdl)
@@ -155,6 +171,33 @@ class Panel:
                 continue
             for name in cs.costs.todict():
                 out.setdefault(name, float(cs.costs[name].weight))
+        return out
+
+    def weights(self):
+        """{name: weight} over the running models, from the FIRST model that
+        has each term. The horizon's models share cost structure by
+        construction (the MPC slides over the plan's own models), so one is
+        representative; a term that exists only in some phase still appears.
+
+        Grouped families collapse to one entry named for the family, carrying
+        the weight its members share. If they ever DISAGREE the group is not
+        offered and the members are shown individually -- a single slider over
+        a set with two different weights would silently flatten them.
+        """
+        raw = self._raw_weights()
+        out, grouped = {}, {}
+        for name, w in raw.items():
+            label = self._group_of(name)
+            if label is None:
+                out[name] = w
+            else:
+                grouped.setdefault(label, []).append(w)
+        for label, ws in grouped.items():
+            if len(set(ws)) == 1:
+                out[label] = ws[0]
+            else:
+                out.update({n: raw[n] for n in raw
+                            if self._group_of(n) == label})
         return out
 
     def _apply(self, name, value):        # guarded by `weights()` returning {}
@@ -166,20 +209,32 @@ class Panel:
         """
         if self.mpc is None:
             return 0
-        old, n = None, 0
+        # A group label is not a cost. Expand it to its members and set them
+        # all, which is what "one intent, one knob" has to mean.
+        members = ({name} if not any(name == lbl for _, lbl in self.GROUPS)
+                   else set(self._members(name)))
+        old, n_models, n_terms = None, 0, 0
         for mdl in list(self.mpc.models) + [self.mpc.terminal]:
             cs = _cost_sum(mdl)
-            if cs is None or name not in cs.costs.todict():
+            if cs is None:
                 continue
-            if old is None:
-                old = float(cs.costs[name].weight)
-            cs.costs[name].weight = float(value)
-            n += 1
-        if n:
+            have = cs.costs.todict()
+            hit = [nm for nm in members if nm in have]
+            for nm in hit:
+                if old is None:
+                    old = float(cs.costs[nm].weight)
+                cs.costs[nm].weight = float(value)
+            n_terms += len(hit)
+            n_models += bool(hit)
+        if n_models:
+            # `name` is what the operator moved -- the group label when they
+            # moved a group. Recording a member's name instead would make the
+            # artifact describe an edit nobody made.
             self.changes.append(dict(t=time.monotonic() - self._t0, name=name,
-                                     old=old, new=float(value), models=n))
+                                     old=old, new=float(value),
+                                     models=n_models, terms=n_terms))
             self.dirty = True
-        return n
+        return n_models
 
     def _on_message(self, msg):
         """Browser -> here. This runs on a SOCKET thread.
@@ -224,7 +279,15 @@ class Panel:
             cs = getattr(getattr(data, "differential", None), "costs", None)
             if cs is None:
                 return {}
-            return {k: float(cs.costs[k].cost) for k in cs.costs.todict()}
+            out = {}
+            for k in cs.costs.todict():
+                label = self._group_of(k)
+                # SUM, not mean: the grouped trace has to be the contribution
+                # of the family to the total cost, or the cost plot's series
+                # no longer add up to the number above it.
+                key = label or k
+                out[key] = out.get(key, 0.0) + float(cs.costs[k].cost)
+            return out
         except Exception:                                        # noqa: BLE001
             return {}
 
@@ -243,6 +306,12 @@ class Panel:
                 deadline_ms=row.get("deadline_ms"),
                 latency_ms=row.get("latency_ms"),
                 tau_sat=row.get("tau_sat"), q_clip=row.get("q_clip"),
+                # Present only when --safety is on. The panel draws a red mark
+                # per tripping period and calls out the FIRST one, because the
+                # layer's e-stop latches: everything after it would have been
+                # measured against a robot already going limp.
+                estop=row.get("estop"), estop_why=row.get("estop_why"),
+                safety_clip=row.get("safety_clip"),
                 step_length=(self.mpc.step_lengths[-1]
                              if getattr(self.mpc, "step_lengths", None) else None),
                 terms=self._terms(), weights=self.weights(),

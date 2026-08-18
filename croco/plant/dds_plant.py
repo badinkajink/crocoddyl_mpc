@@ -7,12 +7,14 @@ file changes between sim and real.
 
 WHAT IT DELIBERATELY DOES NOT DO.
 
-  * NO SAFETY LAYER. `h12_safety_layer` already sits between this and the robot
-    and owns the position/velocity/torque clipping and the e-stop. Re-clipping
-    here would mean two authorities with two copies of the limits, and the one
-    that is wrong would be this one. The plant reports its limits
-    (`tau_limit`, `q_range`) so a controller can plan inside them, and then
-    sends what it was given.
+  * NO CLIPPING OF ITS OWN. `h12_safety_layer` owns the position/velocity/
+    torque clipping and the e-stop. Re-clipping here would mean two
+    authorities with two copies of the limits, and the one that is wrong would
+    be this one. The plant reports its limits (`tau_limit`, `q_range`) so a
+    controller can plan inside them, and then sends what it was given.
+    To put the layer in the path, publish to it: `cmd_topic=
+    TOPIC_SAFETY_LOWCMD_IN`. That is the whole integration -- one topic name --
+    and it is opt-in because the layer's e-stop latches (croco/safety).
   * NO BASE ESTIMATION. `rt/lowstate` carries IMU and joint encoders, not a
     world pose. The base estimate arrives from whatever is running upstream --
     `h12_deploy_mjpc`'s estimator_node, FAST-LIO, or the tag anchor -- through
@@ -56,6 +58,14 @@ from .base import Plant, State
 
 TOPIC_LOWSTATE = "rt/lowstate"
 TOPIC_LOWCMD = "rt/lowcmd"
+
+#: What the h12_safety_layer subscribes to in full_body_mode. Publishing here
+#: instead of TOPIC_LOWCMD puts the layer in the command path: it clips, it
+#: watches rt/lowstate, and it republishes to rt/lowcmd. Nothing else about
+#: this plant changes -- which is the point, and is why it is a topic name
+#: rather than a mode. See croco.safety for what the layer will do once it is
+#: there (its e-stop latches).
+TOPIC_SAFETY_LOWCMD_IN = "rt/safety/lowcmd_in"
 
 # MJCF/CL_Assets joint order == h12_safety_layer JOINT_NAMES order == the Unitree
 # hg motor index order for the H1-2. Kept explicit so the assertion below has
@@ -152,7 +162,7 @@ class DDSPlant(Plant):
 
     def __init__(self, network_interface=None, domain_id=None, twin_dt=None,
                  base_source=None, tau_limit=None, q_range=None,
-                 stale_after=0.05, recv="poll"):
+                 stale_after=0.05, recv="poll", cmd_topic=TOPIC_LOWCMD):
         self.nu = len(JOINT_NAMES)
         self.tau_limit = None if tau_limit is None else np.asarray(tau_limit, float)
         self.q_range = q_range
@@ -181,7 +191,8 @@ class DDSPlant(Plant):
             ChannelFactoryInitialize(domain_id or 0, network_interface or "")
         self._crc = CRC()
         self._cmd_msg = unitree_hg_msg_dds__LowCmd_()
-        self._pub = ChannelPublisher(TOPIC_LOWCMD, LowCmd_)
+        self.cmd_topic = cmd_topic
+        self._pub = ChannelPublisher(cmd_topic, LowCmd_)
         self._pub.Init()
         self.recv = recv
         if recv == "poll":
