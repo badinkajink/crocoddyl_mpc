@@ -35,6 +35,19 @@ min-norm regularizer that makes load distribution across redundant contacts
 well-posed (and is what should make triple contact emerge).
 """
 
+# THE INTERPRETER IS PART OF NATIVE SETUP. This module already exists to be
+# imported before pinocchio/crocoddyl; the interpreter has to be settled even
+# earlier, because the wrong crocoddyl build does not raise -- it SIGSEGVs
+# inside ShootingProblem with no traceback (see croco/env.py). Every study
+# script reaches the model through this module or contact_select, so hooking
+# both is what makes `studies/anything.py` safe to run directly from any shell.
+import os as _os
+import sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from croco.env import ensure_runtime as _ensure_runtime   # noqa: E402
+_ensure_runtime()
+
+
 import itertools
 import json
 import sys

@@ -102,19 +102,35 @@ whole session.
 
 ## Run
 
-Everything needs a **cell**: a directory holding a solved plan
-(`plan_<tag>.json`, `xs_<tag>.npy`, `us_<tag>.npy`). A fresh clone has none —
-`studies/runs/` is not tracked. Solve one:
+Everything needs a **cell**, and a fresh clone has none — `studies/runs/` is
+not tracked. A cell is built in two steps, and the first is not optional:
 
 ```bash
-studies/croco_run.py --dir runs/mycell --mode elbow+palm --tag elbow_palm \
-    --dt 0.02 --n-approach 120 --n-braced 80
+# 1. make the cell: certify a contact mode at a reach target. Writes
+#    modes.json (the target) and q_<mode>.txt (the pose each mode holds).
+#    ~10 s. Without this, croco_run has nothing to plan toward.
+studies/croco_modes.py --out studies/runs/mycell --target 1.05 -0.2348 1.0982
+
+# 2. solve a plan in it. --dt 0.02 is this study's timestep; croco_run's own
+#    default is 0.01, which is half the maneuver.
+studies/croco_run.py --dir studies/runs/mycell --mode elbow+palm \
+    --tag elbow_palm --dt 0.02 --n-approach 120 --n-braced 80
 ```
 
 That gives the cell **one** task. The panel offers three, and the other two
-will be greyed out until they exist — a task is a solved plan, not a weight
-preset. `studies/solve_tasks.sh <cell>` solves all three in about five
-seconds.
+are greyed out until they exist — a task is a solved plan, not a weight
+preset. `studies/solve_tasks.sh studies/runs/mycell` solves whichever are
+missing, in about five seconds, and skips any that already exist.
+
+Then fly it:
+
+```bash
+studies/croco_twin.py --dir studies/runs/mycell --tag elbow_palm \
+    --plant mujoco --gui
+```
+
+Measured on a cell built exactly this way: plan cost 24.73, reach error
+0.32 mm, and the loop holds the pelvis at 0.955 m through all 198 periods.
 
 **`docs/RUN_MATRIX.md` is the page to keep open**: which command goes with
 which plant, what each one can tell you, and the two symptoms that look like
@@ -123,7 +139,8 @@ missing features but are missing artifacts.
 ### The panel (interactive)
 
 ```bash
-studies/croco_twin.py --dir runs/mycell --tag elbow_palm --plant mujoco --gui
+studies/croco_twin.py --dir studies/runs/mycell --tag elbow_palm \
+    --plant mujoco --gui
 ```
 
 Opens `http://127.0.0.1:8770/` in about two seconds — before the OCP build, so
@@ -151,7 +168,7 @@ exit. That is what every recorded result came from, and what `twin_grid.sh`
 drives 26 times.
 
 ```bash
-studies/croco_twin.py --dir runs/mycell --tag elbow_palm --plant mujoco --out r.json
+studies/croco_twin.py --dir studies/runs/mycell --tag elbow_palm --plant mujoco --out r.json
 studies/run_session.sh grid          # certify, plan, stress, collect
 ```
 
@@ -165,7 +182,7 @@ far clock, so `croco_twin --realtime` cannot reach it:
 python -m croco.twin.lean_twin --model $LEAN_TASK_DIR/Lean_H12_Magpie.xml \
     --key stand --publish-truth --realtime 1.0
 # terminal 2
-studies/croco_twin.py --dir runs/mycell --tag elbow_palm --plant dds --base truth
+studies/croco_twin.py --dir studies/runs/mycell --tag elbow_palm --plant dds --base truth
 ```
 
 `--base truth` reads the twin's **ground truth** base pose. It has to be typed
@@ -183,7 +200,7 @@ they are not the same thing:
 
 ```bash
 # MONITOR — no authority, safe on every plant, this is the one to start with
-studies/croco_twin.py --dir runs/mycell --tag elbow_palm --plant mujoco \
+studies/croco_twin.py --dir studies/runs/mycell --tag elbow_palm --plant mujoco \
     --gui --safety default_safety_full
 
 # IN THE PATH — publishes to rt/safety/lowcmd_in instead of rt/lowcmd,

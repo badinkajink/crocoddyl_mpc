@@ -43,6 +43,11 @@ import sys
 #: Set in the child so a re-exec can never loop.
 _GUARD = "_CROCO_REEXEC"
 
+#: Once per process. `ensure_runtime` is called from the two modules that own
+#: native setup (croco_bridge, contact_select), so a script importing both
+#: would otherwise print the diagnosis twice.
+_CALLED = False
+
 #: Where an OpenMP-enabled libcrocoddyl is looked for, after $CROCO_CROCODDYL_LIB.
 OMP_LIB_CANDIDATES = (
     "~/opt/crocoddyl-omp/lib/libcrocoddyl.so.3.2.1",
@@ -135,6 +140,10 @@ def ensure_runtime(need_omp=False, stream=sys.stderr):
     (having possibly warned) when there is nothing to switch to; never returns
     when it execs.
     """
+    global _CALLED
+    if _CALLED:
+        return
+    _CALLED = True
     if os.environ.get(_GUARD) or os.environ.get("CROCO_NO_REEXEC"):
         diagnose(stream)
         return

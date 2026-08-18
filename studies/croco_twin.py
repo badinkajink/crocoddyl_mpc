@@ -389,10 +389,23 @@ class Task:
 
         A disabled dropdown entry with only a diagnosis reads as a feature
         that was never finished. It is a missing artifact, and the artifact
-        takes a few seconds to make, so the note says so.
+        takes seconds to make, so the note says so.
+
+        TWO DIFFERENT MISSING THINGS, and pointing at the wrong fix wastes a
+        round trip. A directory with no `modes.json` is not a cell at all --
+        it has no reach target and no certified q* per contact mode, so
+        `solve_tasks.sh` would bounce it straight back. Only a real cell that
+        is merely missing this task gets sent there.
         """
         if self.ready:
             return None
+        if not os.path.exists(os.path.join(self.run_dir, "modes.json")):
+            return ("%s is not a cell yet -- no modes.json, so there is no "
+                    "reach target and no certified pose per contact mode to "
+                    "plan toward. Make one first (~10 s), then solve into "
+                    "it:  studies/croco_modes.py --out %s --target 1.05 "
+                    "-0.2348 1.0982  &&  studies/solve_tasks.sh %s"
+                    % (self.run_dir, self.run_dir, self.run_dir))
         return ("no %s in this cell -- a task is a SOLVED PLAN (its phases "
                 "differ by contact set, so no weight can substitute), and "
                 "the certified grid only ever solved the braced maneuver. "

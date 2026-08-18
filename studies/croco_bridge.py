@@ -32,6 +32,19 @@ leg 6, torso, left arm 7, right arm 7), which is verified rather than assumed.
 Run `python3 croco_bridge.py` for the parity report.
 """
 
+# THE INTERPRETER IS PART OF NATIVE SETUP. This module already exists to be
+# imported before pinocchio/crocoddyl; the interpreter has to be settled even
+# earlier, because the wrong crocoddyl build does not raise -- it SIGSEGVs
+# inside ShootingProblem with no traceback (see croco/env.py). Every study
+# script reaches the model through this module or contact_select, so hooking
+# both is what makes `studies/anything.py` safe to run directly from any shell.
+import os as _os
+import sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from croco.env import ensure_runtime as _ensure_runtime   # noqa: E402
+_ensure_runtime()
+
+
 import ctypes
 import os
 import sys
