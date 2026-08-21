@@ -126,13 +126,22 @@ def main():
                                  baseline=0.0)))
 
     # -- Kp ladder: brace drift --------------------------------------------
+    # FROM t = 4 s ONLY, and zeroed there. `drift_<site>_mm` is measured from
+    # the site's CERTIFIED spot, so during the approach -- when the arm is
+    # still in the air on its way to the table -- it is legitimately hundreds
+    # of millimetres. Plotting that puts the approach at the top of the axis
+    # and squashes the thing the figure is about, the creep during the hold,
+    # into the bottom two pixels. The first version of this figure did exactly
+    # that and read as though drift DECREASED at Kp = 0.
     tr = []
     for i, (stem, lab) in enumerate(kps):
         _, rows, t = load(find(args.dir, stem))
         y = series(rows, "drift_elbow_mm")
-        tr.append((lab, t, y, STROKES[i]))
-    parts.append(("kp_drift", svg(tr, "elbow drift [mm]",
-                                  "brace drift against time, per contact Kp")))
+        k = int(np.argmax(t >= 4.0))
+        tr.append((lab, t[k:], y[k:] - y[k], STROKES[i]))
+    parts.append(("kp_drift", svg(tr, "elbow drift from t=4 s [mm]",
+                                  "brace drift during the hold, per contact Kp",
+                                  baseline=0.0)))
 
     # -- modes at Kp=50 ----------------------------------------------------
     modes = [("mode_elbow", "elbow"), ("kp050", "elbow+forearm"),
