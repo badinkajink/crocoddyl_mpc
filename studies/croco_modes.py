@@ -233,6 +233,17 @@ def main():
     ap.add_argument("--stance-dy", type=float, default=None,
                     help="rigid y offset of the whole robot [m] before the IK")
     ap.add_argument("--stance-dx", type=float, default=None)
+    ap.add_argument("--sites", default=None, metavar="A,B,C",
+                    help="enumerate subsets of THESE sites instead of SITES5. "
+                         "SITES5 is left alone deliberately -- every certified "
+                         "cell and every ranking in this study was computed "
+                         "over it, so changing its default would rewrite what "
+                         "existing records mean. This is how the `wrist` site "
+                         "gets certified: it is the body that actually carries "
+                         "the brace's second contact in every mode (19.8 N at "
+                         "the elbow+forearm pose, against 0.0 N through the "
+                         "forearm's own body) and no mode named it. "
+                         "e.g. --sites elbow,forearm,palm,wrist")
     args = ap.parse_args()
     if args.stance_dx is not None:
         cs.STANCE_DX = args.stance_dx
@@ -240,8 +251,14 @@ def main():
         cs.STANCE_DY = args.stance_dy
 
     os.makedirs(args.out, exist_ok=True)
-    print(f"target {args.target}   sites {SITES5}   ({2**len(SITES5)} subsets)\n")
-    recs = enumerate_modes(args.target)
+    sites = (SITES5 if not args.sites
+             else tuple(v.strip() for v in args.sites.split(",") if v.strip()))
+    unknown = [v for v in sites if v not in cs.SITES]
+    if unknown:
+        raise SystemExit("--sites: no such site(s): %s. Known: %s"
+                         % (", ".join(unknown), ", ".join(cs.SITES)))
+    print(f"target {args.target}   sites {sites}   ({2**len(sites)} subsets)\n")
+    recs = enumerate_modes(args.target, sites=sites)
     order = rank(recs)
 
     print(f"\n{len(order)} admissible of {len(recs)}")
@@ -251,7 +268,7 @@ def main():
 
     manifest = {"target": list(map(float, args.target)),
                 "stance_dx": cs.STANCE_DX, "stance_dy": cs.STANCE_DY,
-                "sites": list(SITES5),
+                "sites": list(sites),
                 "model": os.path.basename(cs.MODEL),
                 "brace_arm": cs.BRACE_ARM, "site_set": cs.SITE_SET,
                 "seed_key": cs.SEED_KEY, "tau_basis": cs.TAU_BASIS,

@@ -11,3 +11,4 @@ build/
 *.so
 __pycache__/
 *.py[cod]
+paper/

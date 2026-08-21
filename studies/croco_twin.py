@@ -38,6 +38,7 @@ import argparse
 import contextlib
 import ctypes
 import faulthandler
+import glob
 import json
 import os
 import sys
@@ -64,6 +65,7 @@ import numpy as np                                              # noqa: E402
 import croco_bridge as cb                                       # noqa: E402
 import contact_select as cs                                     # noqa: E402
 import croco_replay as cr                                       # noqa: E402
+import croco_plan as cp                                         # noqa: E402
 
 from croco.control.mpc import MPC                               # noqa: E402
 from croco.plant.dds_plant import (DDSPlant, PollingReceiver,   # noqa: E402
@@ -239,6 +241,17 @@ def ocp_overrides(args):
                                    else args.w_reach_rot))
     elif args.w_reach_rot is not None:
         ov["w_reach_rot"] = args.w_reach_rot
+    # CONTACT STABILISATION. Unlike the weights above this changes the
+    # DYNAMICS, not a cost: `gains` is a read-only property on a built
+    # ContactModel3D (checked -- there is no setter), so a Kp change cannot be
+    # a slider and has to be a rebuild. The rebuild is 1.2 s for 200 models,
+    # which is why the panel can still offer it as a control.
+    if args.contact_kp is not None:
+        ov["contact_kp"] = args.contact_kp
+    if args.contact_kd is not None:
+        ov["contact_kd"] = args.contact_kd
+    if args.foot_kp is not None:
+        ov["foot_kp"] = args.foot_kp
     return ov
 
 
@@ -377,12 +390,213 @@ def _viewer_thread_of(mjv):
 # built, when in fact nobody has ever solved a plan with `n_return > 0`.
 _nullcontext = contextlib.nullcontext
 
-TASKS = [
+# TASK AND MODE ARE TWO DIFFERENT AXES, and collapsing them into one dropdown
+# is what made the study run `elbow+palm` for weeks without once comparing it.
+#
+#   KIND   what the robot is doing:  approach and brace / stand / come back off
+#   MODE   which links are on the table: elbow, elbow+forearm, elbow+palm, ...
+#
+# Both are properties of a SOLVED PLAN -- the phases differ by contact set, so
+# no weight can turn one mode into another -- but they are independent choices,
+# and a UI that offers only their product makes "hold the same brace, in a
+# different mode" unsayable. Split, it is one dropdown change, live, with the
+# robot left where it is (see Session.command "mode").
+KINDS = [
     ("brace+reach", "the certified maneuver: approach, brace, reach"),
     ("stand",       "legs only, no brace (subset=[])"),
     ("recover",     "brace released, back to the start pose (n_return>0)"),
 ]
+TASKS = KINDS                       # the old name, for anything still using it
+
+#: `stand` has no contact mode -- legs_only is the absence of one. Registry
+#: entries for it are keyed with mode None so selecting it does not silently
+#: change which mode the braced tasks will come back to.
+NO_MODE = None
+
+
+def mode_tag(mode):
+    """The filename form of a contact mode: `elbow+forearm` -> `elbow_forearm`."""
+    return mode.replace("+", "_")
+
+
+def discover_plans(run_dir):
+    """Read the cell and report what it can actually do, as (kind, mode) -> tag.
+
+    A CELL IS THE SOURCE OF TRUTH, not this file. Which modes exist is a
+    property of what has been solved into the directory; `mycell` certifies 17
+    admissible subsets at its target and holds plans for whichever of them
+    someone has run croco_run on. So the dropdowns are built by reading the
+    plans and asking each one what it is, rather than from a table here that
+    would go stale the first time anybody solved a new mode.
+
+    Classification is off the plan's own fields, never off the filename:
+
+      n_return > 0            -> `recover`  (it ends somewhere else)
+      empty subset            -> `stand`    (nothing on the table)
+      otherwise               -> `brace+reach`
+
+    Filenames are still a CONVENTION worth keeping (`plan_<mode>.json`,
+    `plan_recover_<mode>.json`) because that is what solve_tasks.sh writes and
+    what a human greps for -- but a plan that disagrees with its own name is
+    believed, not the name.
+    """
+    found, bad = {}, {}
+    for path in sorted(glob.glob(os.path.join(run_dir, "plan_*.json"))):
+        tag = os.path.basename(path)[len("plan_"):-len(".json")]
+        try:
+            plan = json.load(open(path))
+        except Exception as exc:                                 # noqa: BLE001
+            bad[tag] = str(exc)
+            continue
+        subset = plan.get("subset") or []
+        mode = plan.get("mode") or tag
+        if not subset:
+            key = ("stand", NO_MODE)
+        elif plan.get("n_return"):
+            key = ("recover", mode)
+        else:
+            key = ("brace+reach", mode)
+        # TWO PLANS CLAIMING THE SAME SLOT IS A REAL STATE and it must be
+        # loud. It happens the moment anyone solves a variant alongside the
+        # original -- `plan_elbow_palm.json` next to `plan_elbow_palm_kp50.json`
+        # -- and the loser is chosen by ALPHABETICAL ORDER, which is not a
+        # decision anybody made. Reported rather than resolved: which one is
+        # wanted is not knowable from here, and quietly running the other is
+        # how a session measures a plan nobody thinks is loaded.
+        if key in found:
+            bad[tag] = ("%s/%s is already served by plan_%s.json -- both "
+                        "claim it, the alphabetically first one wins. Rename "
+                        "or delete one." % (key[0], key[1] or "-", found[key]))
+            continue
+        found[key] = tag
+    return found, bad
 SUBMODES = ["single-shot", "hold", "automode"]
+
+# THE AUTOMODE RING IS NOT `TASKS`, and the difference is a category error that
+# cost a lurch. `stand` is the sweep ladder's `legs_only` row -- the CONTROL
+# CONDITION, "reach the same target with no brace at all", which exists to say
+# whether the brace is doing anything. It is not a step in a sequence, and
+# chaining it after a braced robot is the largest seam in the cell: measured on
+# the S20 cell's plan endpoints, brace_end -> stand_start is 55.5 mm of base
+# and 1.126 rad of joint, against 24.0 mm / 0.499 rad for brace_end ->
+# recover_start. Worse, it left `recover` to be entered from a STANDING pose,
+# so a plan that begins braced had to drive forward into the brace before it
+# could recover from it -- which is what the lurch looked like from outside.
+# The ring is the round trip; `stand` stays selectable, on its own.
+AUTO_RING = ["brace+reach", "recover"]
+
+
+def mujoco_id(m, name):
+    import mujoco
+    return mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, name)
+
+
+def _tilt_deg(quat):
+    """Angle between the pelvis z-axis and world up [deg], from a wxyz quat."""
+    w, x, y, z = (float(v) for v in quat)
+    # third column of R(q): where the body's own +z points in world.
+    zz = 1.0 - 2.0 * (x * x + y * y)
+    return float(np.degrees(np.arccos(np.clip(zz, -1.0, 1.0))))
+
+
+# THE BRACING ARM'S SEVEN ACTUATORS, in `assert_joint_order`'s order (27
+# joints: 0-5 left leg, 6-11 right leg, 12 torso, 13-19 left arm, 20-26 right).
+# Kept as an index range rather than looked up by name because the loop already
+# asserts that order every episode and a second, softer lookup could disagree
+# with it.
+BRACE_ACTUATORS = [(13, "sh_pitch"), (14, "sh_roll"), (15, "sh_yaw"),
+                   (16, "elbow"), (17, "wr_roll"), (18, "wr_pitch"),
+                   (19, "wr_yaw")]
+
+
+# BAUMGARTE Kp VALUES THE PANEL OFFERS. Not a slider: the gain lives in the
+# contact model's dynamics and `ContactModel3D.gains` is a read-only property
+# (checked -- there is no setter), so every value here costs a 1.2 s OCP
+# rebuild. A short ladder of measured points is more useful than a continuous
+# control that rebuilds on every drag.
+#
+# `None` means "whatever the plan was solved at", which is the honest default:
+# a plan re-solved at Kp=50 should be RUN at 50 without anyone selecting it.
+# The measured sweep behind these numbers is in docs/lean/2026-08-21_brace_hold.html -- briefly,
+# on a 40 s elbow+forearm hold: Kp=0 sinks 33 mm and is still sinking at
+# 0.87 mm/s when the clock runs out; Kp=50 sinks 17 mm and has stopped
+# (-0.03 mm/s), with brace drift down from 38 mm to 5 mm. It is NOT monotonic
+# -- 10 and 20 are worse than 0 -- so the ladder includes them.
+CONTACT_KPS = [None, 0.0, 10.0, 20.0, 30.0, 50.0, 100.0]
+
+
+def telem_views(subset):
+    """Which telemetry series share a y-axis, declared where the units are known.
+
+    The page cannot work this out for itself and should not try. Newtons and
+    millimetres obviously do not share an axis, but neither do two series in
+    the SAME unit at different scales -- support margin lives at tens of mm and
+    a pelvis height at 950, so plotting them together turns the one that moves
+    into a flat line. So the grouping is authored here, next to the code that
+    produces the numbers, and shipped to the browser as data.
+
+    `brace drift` is the view this was built for: how far each bracing site has
+    slid from the spot the static QP certified, live, while the brace is held.
+    """
+    F = ["F_%s" % s for s in subset] + ["F_other", "F_brace_total", "F_feet"]
+    drift = ["drift_%s_mm" % s for s in subset] + ["penetration_mm"]
+    return [
+        dict(name="brace forces", unit="N", signed=False, keys=F),
+        dict(name="brace drift", unit="mm", signed=True, keys=drift),
+        dict(name="stability", unit="mm", signed=True,
+             keys=["support_mm", "pelvis_drop_mm", "com_x_mm"]),
+        # The bracing arm drifts ROTATIONALLY as well as translationally, and
+        # the two are separate failures: sliding is friction, turning is the
+        # brace pivoting about whichever contact is actually carrying it. A mm
+        # trace cannot show the second one.
+        dict(name="attitude", unit="deg", signed=True,
+             keys=["pelvis_tilt_deg", "brace_rot_deg"]),
+        # MOTOR EFFORT, which is a DIFFERENT QUANTITY from the F_ series and
+        # is worth having next to them precisely because they are so easy to
+        # confuse. F_<site> is the table pushing on a LINK; tau_<joint> is a
+        # motor pushing on the robot's own skeleton. A brace can be carrying
+        # 170 N through the elbow pad while the shoulder motor sits at 20% of
+        # its limit, or the reverse. Normalised by the clamp basis so seven
+        # joints with limits from 5 to 18 N.m share one axis; 1.0 is the limit.
+        dict(name="brace motors", unit="|tau|/limit", signed=False,
+             keys=["tau_%s" % n for _, n in BRACE_ACTUATORS] + ["tau_max"]),
+    ]
+
+
+def _lurch(qtrace, dt, window_s=0.5):
+    """Measure the LURCH directly, rather than inferring it from the seam.
+
+    `chain_dq_max_rad` says how far the plan's assumed pose is from the real
+    one; it does NOT say what the robot did about it, and those are different
+    questions -- a large seam that the MPC absorbs over two seconds is not a
+    lurch, and a small one it closes in three periods is. So:
+
+      pelvis_x_lurch_mm  how far FORWARD of its own starting x the pelvis ever
+                         went. For `recover`, whose whole job is to come back
+                         off the table, any positive number is the robot going
+                         the wrong way first -- which is the thing you can see.
+      dq_peak_rad_s      peak joint speed over the first `window_s`, where a
+                         seam correction lands if there is one.
+
+    Both are read off `qtrace`, which is recorded every period regardless of
+    --video, so this costs nothing that was not already being paid.
+    """
+    if not qtrace:
+        return {}
+    Q = np.asarray(qtrace, float)
+    out = dict(pelvis_x_lurch_mm=float(1e3 * (Q[:, 0].max() - Q[0, 0])))
+    # A ONE-PERIOD EPISODE IS A REAL OUTCOME, not an impossible one: a task
+    # selected while the robot is already at that plan's end has nothing left
+    # to run, and `--seam project` can put it there deliberately. `max(2, ...)`
+    # does not save a single-row trace -- `Q[:2]` of one row is one row, whose
+    # diff is empty, and `.max()` of an empty array raises. Degenerate episodes
+    # report the position metric and omit the velocity one rather than killing
+    # the session on the way to the summary.
+    if len(Q) >= 2:
+        n = min(len(Q), int(round(window_s / dt)) + 1)
+        dq = np.diff(Q[:max(2, n), 7:34], axis=0) / dt
+        out["dq_peak_rad_s"] = float(np.abs(dq).max())
+    return out
 
 
 class Task:
@@ -400,8 +614,14 @@ class Task:
     still worth not spending three times at startup.
     """
 
-    def __init__(self, name, run_dir, tag, note=""):
+    def __init__(self, name, run_dir, tag, note="", mode=None, kp=None):
         self.name, self.run_dir, self.tag, self.note = name, run_dir, tag, note
+        # WHAT THIS TASK IS, as opposed to what it is called. `mode` is the
+        # contact set; `kp` is the Baumgarte position gain the OCP is built
+        # with, which is None for "whatever the plan was solved at". Both are
+        # part of the CACHE KEY in Session._key, because both change the built
+        # models and neither can be changed on a model that is already built.
+        self.mode, self.kp = mode, kp
         self.plan = self.mpc = self.xs = self.us = None
         self.error = None
 
@@ -455,8 +675,25 @@ class Task:
             raise FileNotFoundError(self.why_unavailable())
         ns = argparse.Namespace(**vars(args))
         ns.dir, ns.tag = self.run_dir, self.tag
+        if self.kp is not None:
+            ns.contact_kp = self.kp
         self.plan, self.mpc, self.xs, self.us = build(ns)
         return self
+
+    @property
+    def contact_kp(self):
+        """The Baumgarte position gain this task's OCP was actually built with.
+
+        Not `self.kp`: that is the OVERRIDE, and None there means "the plan's
+        own", which is the number a reader actually wants. Available only once
+        built, for the same reason -- before that, the plan JSON has not been
+        opened.
+        """
+        if self.kp is not None:
+            return float(self.kp)
+        if self.plan is not None:
+            return float(self.plan.get("contact_kp", cp.CONTACT_GAINS[0]))
+        return None
 
 
 # -------------------------------------------------------------- session --- #
@@ -476,7 +713,17 @@ class Session:
     """
 
     def __init__(self, args, tasks, plant, m, kp, kd, tau_lim, hooks):
-        self.args, self.tasks, self.plant = args, tasks, plant
+        self.args, self.plant = args, plant
+        # THE REGISTRY IS KEYED BY (kind, mode, contact_kp), NOT BY NAME. All
+        # three change the built models -- the contact SET is structure, and
+        # `gains` is a read-only property on a built ContactModel3D -- so all
+        # three have to be part of the identity of a built OCP. Keying on them
+        # is also what makes switching back FREE: the 1.2 s build is paid once
+        # per combination, and a mode you have already visited comes back in
+        # the 8.8 ms it takes to rewind the MPC window.
+        self.reg = dict(tasks)          # {(kind, mode, kp): Task}
+        self._plans = {(k, m): t.tag for (k, m, _), t in self.reg.items()}
+        self._notes = {(k, m): t.note for (k, m, _), t in self.reg.items()}
         self.m, self.kp, self.kd, self.tau_lim = m, kp, kd, tau_lim
         self.hooks = hooks              # extra on_step consumers (panel, video)
         self.monitor = None             # croco.safety.SafetyMonitor, or None
@@ -494,17 +741,107 @@ class Session:
         self.runs = []                  # one summary dict per episode
         self.viewer = None
         self._viewer_thread = None
+        self._ov_key, self._ov, self._ov_ids = None, (None, {}), None
+        self._ov_m = None               # private model for certified_sites
+        # MARKER CLASSES, toggled from the panel. Four independent things get
+        # drawn on top of the robot and they answer different questions: where
+        # it was TOLD to reach, where the QP said the brace WOULD land, where
+        # it is ACTUALLY touching, and how hard. Wanting the contacts without
+        # the ghosts (or vice versa) is the normal case once you know which
+        # question you are asking, and a scene with all four on is unreadable
+        # in the one framing where the brace is legible.
+        self.markers = dict(target=True, ghosts=True,
+                            contacts=True, forces=True)
+        # The magpie's jaws and wrist pad are class="collision", i.e. group 3,
+        # which MuJoCo hides. `_make_plant` promotes them to group 2 so the arm
+        # does not end in a stub 100 mm short of the hardware that is bracing.
+        # That is right for a video and merely in the way once you know where
+        # they are, so it is a toggle rather than a decision.
+        self.show_gripper_geoms = True
+        self._grip_geoms = None
+        self._tel_ids = self._tel_z0 = self._tel_R0 = None
+        self._tel_wrist = None
+        self.telem = []                 # per-period telemetry, THIS episode
         self.panel = None
         self.q0 = None                  # in-process reset pose
         self.target = self.target0 = None      # reach target, live-editable
         self.target_nodes = 0
         self.rot_base = None            # the plan's own gripper orientation
         self.rot_deg, self.rot_axis, self.rot_nodes = 0.0, "x", 0
-        self._auto = [t for t, _ in TASKS]
+        self._auto = list(AUTO_RING)
+        self.task_order = [n for n, _ in KINDS]
+        self.mode = args.mode                  # current contact mode, or None
+        self.modes = []                        # filled by run_session
+        self.contact_kp = args.contact_kp      # None = each plan's own
+        self._building = None                  # key currently being built
+
+    # -- which plan is selected -------------------------------------------
+    def _key(self, name=None, mode=None):
+        """The registry key for a kind at the current mode and Kp.
+
+        `stand` is keyed at NO_MODE deliberately: legs_only is the ABSENCE of a
+        contact mode, so standing must not be able to consume or reset the
+        mode the braced tasks will come back to.
+        """
+        name = self.task_name if name is None else name
+        mode = self.mode if mode is None else mode
+        return (name, NO_MODE if name == "stand" else mode, self.contact_kp)
+
+    def get(self, name=None, mode=None):
+        """The Task for a kind at a mode and the session's Kp, materialised.
+
+        MATERIALISED LAZILY, because the Kp axis is unbounded: the registry is
+        seeded with one entry per (kind, mode) at the starting gain, and any
+        other gain the panel asks for gets its entries made here. Making a Task
+        is free (it is a filename and two properties); BUILDING one is the 1.2 s,
+        and that still happens once, in `run`, on the control thread.
+
+        Dict insertion is atomic under the GIL and each key is written with the
+        same value by whichever thread gets there first, so this needs no lock
+        of its own -- which matters because `state()` calls it from sockets.
+        """
+        key = self._key(name, mode)
+        t = self.reg.get(key)
+        if t is None:
+            kind, m, kp = key
+            tag = self._plans.get((kind, m))
+            if tag is not None:
+                t = Task(kind, self.args.dir, tag,
+                         self._notes.get((kind, m), ""), mode=m, kp=kp)
+                self.reg[key] = t
+        return t
+
+    @property
+    def tasks(self):
+        """The three kinds at the CURRENT mode, keyed by name.
+
+        Kept as a mapping because everything downstream -- the automode ring,
+        the panel's task list, `run()` -- asks the same question it always did
+        ("what is selected, and is it ready"). What changed is that the answer
+        now depends on the mode, which is the entire point.
+        """
+        return {n: t for n, _ in KINDS
+                for t in [self.get(n)] if t is not None}
+
+    def modes_state(self):
+        """Modes offered in the dropdown, with whether this cell can run them.
+
+        `ready` is about the BRACE plan only. A mode with no `recover` plan is
+        still perfectly selectable -- you just cannot recover out of it, which
+        the task dropdown says on its own when you get there.
+        """
+        out = []
+        for mode in self.modes:
+            t = self.reg.get(("brace+reach", mode, self.contact_kp))
+            out.append(dict(name=mode, ready=bool(t and t.ready),
+                            recover=bool(self.reg.get(
+                                ("recover", mode, self.contact_kp))),
+                            built=bool(t and t.built)))
+        return out
 
     # -- state the browser sees -------------------------------------------
     def state(self):
-        cur = self.tasks.get(self.task_name)
+        cur = self.get()
         return dict(
             type="session", paused=self.paused, status=self.status,
             episode=self.episode, submode=self.submode, task=self.task_name,
@@ -516,11 +853,60 @@ class Session:
             can_viewer=self.args.plant == "mujoco" and _windowed_gl(),
             can_reset=self.args.plant == "mujoco",
             submodes=SUBMODES,
-            tasks=[dict(name=n, note=note,
-                        ready=bool(self.tasks[n].ready),
-                        why=self.tasks[n].why_unavailable())
-                   for n, note in TASKS if n in self.tasks],
+            # THE VIEWS FOLLOW THE TASK, so they ride on the session state
+            # (pushed on every change) rather than the config (sent once): a
+            # `stand` plan has an EMPTY contact subset, so its brace-force and
+            # drift views have no series in them and the page must be told
+            # that rather than keep drawing the previous task's.
+            markers=dict(self.markers),
+            gripper_geoms=bool(self.show_gripper_geoms),
+            telem_views=(telem_views(cur.plan["subset"])
+                         if (self.args.telemetry
+                             and self.args.plant == "mujoco"
+                             and cur is not None and cur.plan is not None)
+                         else None),
+            # ORDER COMES FROM THE SESSION, not from TASKS: discovered modes
+            # are not in that table and would silently vanish from the
+            # dropdown, which is the same "looks like the feature was never
+            # built" failure the disabled-but-offered entries exist to avoid.
+            tasks=[dict(name=n, note=(t.note if t is not None else note),
+                        ready=bool(t is not None and t.ready),
+                        why=(t.why_unavailable() if t is not None
+                             else self._why_no_plan(n)))
+                   for n, note in KINDS for t in [self.get(n)]],
+            # THE CONTACT MODE, as its own axis. `modes` is what the cell has
+            # solved, not what it certifies -- 17 subsets are admissible at
+            # mycell's target and any of them can be added with one croco_run.
+            mode=self.mode, modes=self.modes_state(),
+            # BAUMGARTE Kp. Live, but a REBUILD rather than a slider: the gain
+            # lives in the dynamics, and `ContactModel3D.gains` has no setter.
+            contact_kp=self.contact_kp,
+            contact_kp_plan=(cur.contact_kp if cur is not None else None),
+            contact_kps=CONTACT_KPS,
+            building=self._building is not None,
             built=bool(cur and cur.built))
+
+    def _why_no_plan(self, kind):
+        """Why a kind is missing AT THIS MODE, and the command that solves it.
+
+        Distinct from Task.why_unavailable, which answers the same question for
+        a task that at least EXISTS as a registry entry. A kind with no entry
+        at all is the normal case for `recover` on a freshly added mode, and
+        the fix is one croco_run -- so it says which one, rather than greying
+        out an entry with no explanation.
+        """
+        if kind == "stand":
+            return ("no plan_stand.json in this cell -- solve it with:  "
+                    "studies/solve_tasks.sh %s" % self.run_dir_hint())
+        return ("no %s plan for the %s mode in this cell. A task is a SOLVED "
+                "PLAN and its phases differ by CONTACT SET, so this cannot be "
+                "reached by retuning: solve it, ~3 s, with  "
+                "studies/solve_tasks.sh %s %s %s"
+                % (kind, self.mode, self.run_dir_hint(),
+                   mode_tag(self.mode or ""), self.mode or ""))
+
+    def run_dir_hint(self):
+        return self.args.dir
 
     def push(self):
         st = self.state()
@@ -544,7 +930,7 @@ class Session:
     # warm start. Small moves track; big ones are a different plan and should
     # be re-solved offline.
     def apply_target(self, xyz, task=None):
-        task = task or self.tasks.get(self.task_name)
+        task = task or self.get()
         if task is None or task.mpc is None:
             return 0
         xyz = np.asarray(xyz, float)
@@ -578,7 +964,7 @@ class Session:
 
     def apply_rot(self, deg, axis="x", task=None):
         """Rotate the commanded gripper orientation about its own local axis."""
-        task = task or self.tasks.get(self.task_name)
+        task = task or self.get()
         if task is None or task.mpc is None:
             return 0
         a = self.ROT_AXES.get(axis, 0)
@@ -628,9 +1014,34 @@ class Session:
                     self.submode = payload["value"]
             elif name == "task":
                 v = payload.get("value")
-                if v in self.tasks:
+                if self.get(v) is not None:
                     self.task_name = v
                     self._skip = True     # take effect at the episode boundary
+            elif name == "mode":
+                # SWITCHING CONTACT MODE MID-SESSION, which is the whole point
+                # of splitting this axis out. It ends the episode (`_skip`) and
+                # does NOT reset the plant, so the next episode is CHAINED:
+                # the robot stays exactly where it is, braced, and the new
+                # mode's plan is joined at the node nearest the measured pose
+                # (`--seam project`). What that cannot do is move a limb onto
+                # the table that is not already there -- switching from `elbow`
+                # to `elbow+forearm` while braced asks the new plan's contact
+                # set to be satisfied from a pose where the forearm is in the
+                # air, and the seam metrics in the run artifact are what say
+                # whether it was.
+                v = payload.get("value")
+                if v in self.modes and v != self.mode:
+                    self.mode = v
+                    self._skip = True
+            elif name == "contact_kp":
+                # Baumgarte Kp. Rebuilds (1.2 s) rather than retuning, and the
+                # rebuild happens on the control thread at the next episode
+                # boundary like any other task build.
+                v = payload.get("value")
+                v = None if v in (None, "", "plan") else float(v)
+                if v != self.contact_kp:
+                    self.contact_kp = v
+                    self._skip = True
             elif name == "viewer":
                 self._viewer_req = bool(payload.get("on"))
                 return self._toggle_viewer(self._viewer_req)
@@ -639,6 +1050,15 @@ class Session:
                 self._skip = True
             elif name == "render":
                 threading.Thread(target=self.render, daemon=True).start()
+            elif name == "dump":
+                threading.Thread(target=self.dump_telemetry,
+                                 daemon=True).start()
+            elif name == "markers":
+                k = payload.get("name")
+                if k in self.markers:
+                    self.markers[k] = bool(payload.get("on"))
+            elif name == "gripper_geoms":
+                self.set_gripper_geoms(bool(payload.get("on")))
             elif name == "target":
                 v = payload.get("value")
                 if payload.get("reset") and self.target0:
@@ -650,6 +1070,54 @@ class Session:
                                payload.get("axis", self.rot_axis))
         self.push()
 
+    def dump_telemetry(self, path=None):
+        """Write this episode's telemetry to JSON. Returns the path, or None.
+
+        A LIVE PLOT THAT CANNOT BE SAVED IS A DEMO. Every question this section
+        was built for -- is the brace sliding, how fast, does it stop -- is
+        answered by comparing two runs, and a canvas that scrolls 4000 samples
+        and forgets them cannot be compared to anything. The file is the same
+        per-period records the panel is drawing, so a plot in the browser and a
+        plot made afterwards are of the same numbers.
+        """
+        cur = self.get()
+        if not self.telem or cur is None or cur.plan is None:
+            return None
+        # NEXT TO `--out`, NOT IN THE CELL, when there is an --out to be next
+        # to. A batch that sweeps one knob writes one artifact per setting but
+        # every episode is still `brace+reach` episode 1, so a cell-relative
+        # name collides on the second run and the first result is gone. It has
+        # happened once already, mid-sweep, silently.
+        if path is None and self.args.out:
+            stem = os.path.splitext(self.args.out)[0]
+            path = "%s_telemetry_%s_ep%d.json" % (
+                stem, self.task_name.replace("+", "_"), self.episode)
+        # THE TAG IS IN THE NAME because the mode is now a dropdown: two holds
+        # of `brace+reach` in one session can be two different contact modes,
+        # and a name that cannot tell them apart is a name that overwrites the
+        # comparison you just made.
+        path = path or os.path.join(
+            self.args.dir, "telemetry_%s_%s_ep%d.json"
+            % (cur.tag, self.task_name.replace("+", "_"), self.episode))
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(path)) or ".",
+                        exist_ok=True)
+            with open(path, "w") as fh:
+                json.dump(dict(task=self.task_name, episode=self.episode,
+                               cell=self.args.dir, tag=self.args.tag,
+                               dt=cur.plan["dt"], mode=cur.mode,
+                               contact_kp=cur.contact_kp,
+                               seam_mode=self.args.seam,
+                               submode=self.submode,
+                               views=telem_views(cur.plan["subset"]),
+                               rows=self.telem), fh, indent=1)
+        except Exception as exc:                                 # noqa: BLE001
+            self.set_status("telemetry dump failed: %s" % exc)
+            return None
+        self.set_status("wrote %s (%d periods)"
+                        % (os.path.basename(path), len(self.telem)))
+        return path
+
     def render(self):
         """Render the last episode to the panel. Off the control thread.
 
@@ -659,12 +1127,27 @@ class Session:
         of identical ones. A video of a run someone paused halfway is still a
         video of the trajectory, which is what makes it comparable to a replay.
         """
-        q, task = list(self.qtrace), self.tasks.get(self.task_name)
+        q, task = list(self.qtrace), self.get()
+        # THE TELEMETRY GOES WITH THE VIDEO. Rendering is the point at which
+        # someone decides this episode was worth keeping; the numbers behind
+        # the picture are worth keeping at the same moment, and asking for them
+        # separately means remembering to. Dumped BEFORE the early return, so a
+        # session with --no-video still gets them from the render button.
+        self.dump_telemetry()
         if not q or task is None or task.plan is None or not self.args.video:
             return
+        # ONE VIDEO PER MODE, not one per session. The default path is derived
+        # from `--tag`, which was the only mode a session could run; now that
+        # the mode is a dropdown, keeping that name means the second mode you
+        # try silently overwrites the first -- and the whole reason to switch
+        # modes live is to put the two next to each other. An explicit --video
+        # is still taken literally: someone who named the file meant it.
+        path = self.args.video
+        if getattr(self.args, "video_auto", False):
+            path = os.path.join(self.args.dir, "twin_%s.mp4" % task.tag)
         self.set_status("rendering %d states ..." % len(q))
         try:
-            got = render_run(q, task.plan, task.run_dir, self.args.video,
+            got = render_run(q, task.plan, task.run_dir, path,
                              cam=self.args.video_cam, fps=self.args.video_fps,
                              dt_plan=task.plan["dt"])
             if got and self.panel is not None:
@@ -672,7 +1155,7 @@ class Session:
         except Exception as exc:                                 # noqa: BLE001
             self.set_status("render failed: %s" % exc)
             return
-        self.set_status("rendered %s" % os.path.basename(self.args.video))
+        self.set_status("rendered %s" % os.path.basename(path))
 
     # -- the viewer --------------------------------------------------------
     def _toggle_viewer(self, on):
@@ -707,6 +1190,164 @@ class Session:
         elif not on and self.viewer is not None:
             self.close_viewer()
         self.push()
+
+    # -- telemetry ---------------------------------------------------------
+    # WHY THIS IS NOT THE COST PLOT. The cost traces say what the OPTIMISER
+    # thinks, in units of its own weights; they move when a weight moves and
+    # they say nothing at all about newtons. The questions this study keeps
+    # asking are physical -- which link is carrying the brace, how far it has
+    # slid from the spot the QP certified, whether the CoM is still over the
+    # feet -- and every one of them is a MuJoCo query, not a crocoddyl one.
+    # `croco_replay` has computed exactly these numbers per period for a long
+    # time, offline, after the run. This is the same computation on the live
+    # plant, through the same `cr.table_forces` so the attribution cannot
+    # diverge between what the panel shows and what the replay scores.
+    #
+    # IN-PROCESS PLANT ONLY. Over DDS there is no local mjData to query -- the
+    # forces are on the far side of the wire and the twin does not publish
+    # them -- so the section is absent rather than zero-filled.
+    def _telemetry(self, task):
+        m, d = self.plant.m, self.plant.d
+        _, site_ref = self._overlay_refs(task)
+        subset = task.plan["subset"] if task.plan else []
+        if self._tel_ids is None:
+            self._tel_ids = (
+                {s: cs.bid(m, cs.SITES[s][0]) for s in subset},
+                [cs.bid(m, f) for f in cs.FEET],
+                cs.bid(m, "table"))
+        brace_bodies, feet, tbl = self._tel_ids
+        out = cr.table_forces(m, d, subset, brace_bodies, feet, tbl)
+        # `penetration` is the deepest (most negative) table gap in metres;
+        # everything else on this axis is mm, so it converts rather than
+        # forcing the plot to span six orders of magnitude.
+        out["penetration_mm"] = 1e3 * float(out.pop("penetration", 0.0))
+        out["support_mm"] = 1e3 * cr.support_margin(m, d)
+        if self._tel_z0 is None:
+            self._tel_z0 = float(d.qpos[2])
+        out["pelvis_drop_mm"] = 1e3 * (self._tel_z0 - float(d.qpos[2]))
+        out["pelvis_tilt_deg"] = _tilt_deg(d.qpos[3:7])
+        out["com_x_mm"] = 1e3 * float(d.subtree_com[1][0])
+        # DRIFT, the reason this exists: distance from each bracing site to the
+        # spot the static QP certified and the OCP's hold_ cost is written
+        # against. A brace that is holding reads flat; one that is sliding does
+        # not, and the trace says so while it is still happening.
+        for st_name, ref in site_ref.items():
+            p_now = cs.point_world(m, d, *cs.SITES[st_name])
+            out["drift_%s_mm" % st_name] = 1e3 * float(
+                np.linalg.norm(p_now - ref))
+        # Rotational drift of the bracing arm, as the angle of its wrist frame
+        # from the orientation it held at the first telemetry sample of this
+        # episode. Referenced to the episode and not to q* on purpose: q*'s
+        # wrist orientation is an IK by-product, while "has it turned since it
+        # landed" is the question being asked.
+        # Motor effort. `d.actuator_force` is the torque the position servo is
+        # actually applying, i.e. what the joint is doing about the load --
+        # NOT what the table is doing to the link.
+        tau = d.actuator_force[:len(self.tau_lim)]
+        ratio = np.abs(tau) / self.tau_lim
+        for i, nm in BRACE_ACTUATORS:
+            if i < len(ratio):
+                out["tau_%s" % nm] = float(ratio[i])
+        out["tau_max"] = float(ratio.max())
+        out["tau_max_joint"] = int(np.argmax(ratio))
+        R = d.xmat[self._tel_wrist].reshape(3, 3).copy()
+        if self._tel_R0 is None:
+            self._tel_R0 = R
+        c = 0.5 * (float(np.trace(self._tel_R0.T @ R)) - 1.0)
+        out["brace_rot_deg"] = float(np.degrees(np.arccos(np.clip(c, -1, 1))))
+        return out
+
+    # -- viewer overlay ----------------------------------------------------
+    # THE SAME MARKERS THE VIDEO DRAWS, LIVE. `render_run` has always drawn the
+    # reach target, the certified landing spots as ghosts, and the live table
+    # contacts coloured by which link is making them -- but only into the mp4,
+    # i.e. only AFTER the episode, which is the one time you cannot act on
+    # them. The viewer showed a robot leaning on nothing.
+    #
+    # `user_scn` is the passive viewer's own scene, drawn on top of the model
+    # and owned by us: it is refilled from ngeom = 0 every period, so nothing
+    # accumulates and no geom outlives the contact it marks. The draw helpers
+    # are croco_replay's unchanged, which is what makes a frozen frame of the
+    # viewer and a frame of the video mean the same thing.
+    def _overlay_refs(self, task):
+        """Cache the per-task reference markers. Cheap, but not free: the
+        certified sites are read by posing the model at q* and restoring."""
+        key = task.name
+        if getattr(self, "_ov_key", None) == key:
+            return self._ov
+        target = np.array(task.plan["target"]) if task.plan else None
+        try:
+            # NOT THE PLANT'S mjData. `certified_sites` poses the model at q*,
+            # runs mj_forward, and restores -- correct in a replay, where it
+            # owns the model, and a hazard here, where the control thread is
+            # mid-episode on that same mjData and the viewer thread may be
+            # reading it. It restores what it wrote, so the damage would be
+            # intermittent rather than reproducible, which is the worst kind.
+            # A private model costs one `cs.load` per session.
+            if self._ov_m is None:
+                self._ov_m = cs.load(ik_margin=0.0)
+            site_ref = cr.certified_sites(task.plan, task.run_dir,
+                                          *self._ov_m)
+        except Exception:                                        # noqa: BLE001
+            site_ref = {}      # a missing artifact costs the ghosts, not the run
+        self._ov_key, self._ov = key, (target, site_ref)
+        return self._ov
+
+    def draw_overlay(self, task):
+        """Refill `viewer.user_scn` with the reference and contact markers."""
+        if self.viewer is None or self.args.plant != "mujoco":
+            return
+        scn = getattr(self.viewer, "user_scn", None)
+        if scn is None:                       # older mujoco: no user scene
+            return
+        target, site_ref = self._overlay_refs(task)
+        m, d = self.plant.m, self.plant.d
+        if self._ov_ids is None:
+            self._ov_ids = (
+                {s: cs.bid(m, cs.SITES[s][0]) for s in cr.SITE_RGBA
+                 if s in cs.SITES},
+                cs.bid(m, "table"),
+                [cs.bid(m, f) for f in cs.FEET])
+        site_bodies, tbl, feet = self._ov_ids
+        scn.ngeom = 0
+        mk = self.markers
+        try:
+            if target is not None and (mk["target"] or mk["ghosts"]):
+                cr.draw_refs(scn, target, site_ref,
+                             show_target=mk["target"], show_ghosts=mk["ghosts"])
+            if mk["contacts"] or mk["forces"]:
+                cr.draw_contacts(scn, m, d, site_bodies, tbl, feet,
+                                 show_points=mk["contacts"],
+                                 show_forces=mk["forces"])
+        except Exception:                                        # noqa: BLE001
+            scn.ngeom = 0     # a bad frame must not kill the control thread
+
+    def set_gripper_geoms(self, on):
+        """Show or hide the magpie's collision jaws, wrist pad and flange.
+
+        GROUP, NOT COLLISION. This moves `geom_group` between 2 (drawn) and 3
+        (the collision group MuJoCo's renderer hides) and touches nothing the
+        integrator reads -- not contype, not conaffinity, not mass. Worth being
+        explicit about, because "the palm carries 0 N" invites the conclusion
+        that its collision was switched off, and it was not: the jaws sit 33 mm
+        above the wood and the gripper box 22 mm above it, with contype 1 and
+        conaffinity 1 the whole time. They report no force because they are in
+        the air, and hiding them changes only whether you can see that.
+        """
+        if self.args.plant != "mujoco":
+            return
+        m = self.plant.m
+        if self._grip_geoms is None:
+            names = []
+            for arm in ("left", "right"):
+                names += ["%s_%s" % (arm, s) for s in
+                          ("gripper_collision", "gripper_jaw_a",
+                           "gripper_jaw_b", "gripper_flange", "wrist_pad")]
+            self._grip_geoms = [g for g in
+                                (mujoco_id(m, n) for n in names) if g >= 0]
+        for g in self._grip_geoms:
+            m.geom_group[g] = 2 if on else 3
+        self.show_gripper_geoms = bool(on)
 
     def close_viewer(self):
         if self.viewer is None:
@@ -778,6 +1419,12 @@ class Session:
         k_hold = len(us) - 1
         q0_plan = cb.pin_to_mj(xs[0][:nq], cs.start_qpos(self.m,
                                                         task.plan["start"]))
+        # The plan as a POSE TABLE, for the seam projection below. Built once
+        # per episode, not per period: 201 x 27 is nothing, but it is nothing
+        # inside a 20 ms budget only if it is not rebuilt 200 times.
+        qj_plan = np.asarray(xs, float)[:, 7:34]
+        base_plan = np.asarray(xs, float)[:, 0:3]
+        seam = {"k0": 0}
 
         def policy(t, st):
             if not stats.get("seam"):
@@ -790,7 +1437,58 @@ class Session:
                     np.max(np.abs(st.q - q0_plan[7:34])))
                 stats["chain_dbase_mm"] = float(
                     1e3 * np.linalg.norm(st.base_pos - q0_plan[0:3]))
-            k = int(round(t / dt_plan))
+                # JOIN THE PLAN WHERE THE ROBOT ALREADY IS, rather than at
+                # node 0. The MPC has always solved from the measured state
+                # (`problem.x0 = x_meas`, every period) -- what was seeded
+                # offline is not x0 but the REFERENCE TAPE: the index k
+                # selects which node's landing spots, hold costs, contact set
+                # and state regulariser the window carries, and `k =
+                # round(t/dt)` with t restarting at 0 makes that node 0 of the
+                # plan no matter where the robot is standing. The costs then
+                # pull it onto node 0 at the tape's speed, which is the lurch.
+                # Projecting picks the node whose pose the robot is nearest
+                # and runs the tape from there, so a chained behaviour starts
+                # from truth without re-solving anything.
+                #
+                # THE METRIC IS DELIBERATELY CRUDE: joint L2 in rad plus base
+                # translation at W_BASE rad/m, no velocity. Velocity at a seam
+                # is small and noisy and would only make the choice jitter.
+                # It CAN alias on a plan that passes through the same pose
+                # twice (an out-and-back), so the residual distance is
+                # reported rather than assumed small -- read `chain_k0_dist`
+                # before trusting `chain_k0` on a new maneuver.
+                if self.args.seam == "project":
+                    W_BASE = 3.0        # 0.1 m of base ~ 0.3 rad of joint
+                    d = (np.linalg.norm(qj_plan - st.q, axis=1)
+                         + W_BASE * np.linalg.norm(base_plan - st.base_pos,
+                                                   axis=1))
+                    # LEAVE A HORIZON OF RUNWAY. Projecting is meant to skip
+                    # the part of a behaviour the robot has effectively already
+                    # done -- never to skip the behaviour. Uncapped it can land
+                    # on the last node of a plan whose end pose the robot is
+                    # already in (select `stand` while standing and every node
+                    # of a lean is further away than the last one), which runs
+                    # an episode of ZERO periods: the ring advances instantly,
+                    # nothing moves, and the summary has no trajectory to
+                    # measure. Capped, the worst case is a short episode that
+                    # holds the final window, which is a hold and is harmless.
+                    k_cap = max(0, len(us) - 1 - self.args.horizon)
+                    k_raw = int(np.argmin(d))
+                    seam["k0"] = int(np.clip(k_raw, 0, k_cap))
+                    stats["chain_k0_dist"] = float(d[seam["k0"]])
+                    if k_raw != seam["k0"]:
+                        # The cap binding means the projection wanted to start
+                        # inside the last window: the robot is at (or past) the
+                        # end of this behaviour. Worth seeing, not worth
+                        # failing on.
+                        stats["chain_k0_capped_from"] = k_raw
+                stats["chain_k0"] = seam["k0"]
+                k0 = seam["k0"]
+                stats["chain_dq_max_rad_at_k0"] = float(
+                    np.max(np.abs(st.q - qj_plan[k0])))
+                stats["chain_dbase_mm_at_k0"] = float(
+                    1e3 * np.linalg.norm(st.base_pos - base_plan[k0]))
+            k = seam["k0"] + int(round(t / dt_plan))
             if k >= len(us):
                 if self.submode == "hold":
                     k = k_hold
@@ -816,6 +1514,14 @@ class Session:
         stats = dict(steps=0, mpc_none=0)
         submode0 = self.submode         # the policy still reads it live
         self.qtrace = []                # the video is THIS episode, not a pile
+        # PER-EPISODE BASELINES. `pelvis_drop_mm` and `brace_rot_deg` are both
+        # measured FROM the start of the episode, so carrying them across one
+        # would report the previous behaviour's drift as this one's.
+        self.telem = []
+        self._tel_ids = self._tel_z0 = self._tel_R0 = None
+        if a.plant == "mujoco" and self._tel_wrist is None:
+            self._tel_wrist = cs.bid(self.plant.m,
+                                     "%s_wrist_yaw_link" % cs.BRACE_ARM)
 
         def record(row, st, cmd):
             if a.plant == "mujoco":
@@ -827,6 +1533,18 @@ class Session:
                 self.qtrace.append(q)
 
         def on_step(row, st, cmd):
+            # ANNOTATE BEFORE THE HOOKS RUN, which is the same order the safety
+            # monitor already relies on: the panel serialises `row`, so a field
+            # added after it has been broadcast arrives one period late.
+            if self.args.telemetry and a.plant == "mujoco":
+                try:
+                    tel = self._telemetry(task)
+                    tel["t"] = row.get("t")
+                    tel["k"] = len(self.telem)
+                    row["telem"] = tel
+                    self.telem.append(tel)
+                except Exception:                                # noqa: BLE001
+                    pass      # telemetry is never a reason to miss a period
             for h in self.hooks:
                 try:
                     h(row, st, cmd)
@@ -835,6 +1553,7 @@ class Session:
             record(row, st, cmd)
             if self.viewer is not None:
                 try:
+                    self.draw_overlay(task)
                     self.viewer.sync()
                 except Exception:                                # noqa: BLE001
                     pass
@@ -857,9 +1576,23 @@ class Session:
         ages = [1e3 * r["age"] for r in log if "age" in r]
         return dict(
             episode=self.episode, task=task.name, submode=submode0,
+            # WHICH PLAN THIS WAS. A session can now change contact mode and
+            # Baumgarte gain between episodes, so an artifact that records
+            # only the task name no longer identifies what ran.
+            mode=task.mode, tag=task.tag, contact_kp=task.contact_kp,
             chained=bool(getattr(self, "_chained", False)),
             chain_dq_max_rad=stats.get("chain_dq_max_rad"),
             chain_dbase_mm=stats.get("chain_dbase_mm"),
+            # The seam the CONTROLLER actually faces, which is the one that
+            # decides whether the transition is smooth. The two above stay
+            # keyed on node 0 so a `--seam project` run is comparable against
+            # every `--seam node0` run already on disk.
+            seam_mode=self.args.seam,
+            chain_k0=stats.get("chain_k0"),
+            chain_k0_dist=stats.get("chain_k0_dist"),
+            chain_k0_capped_from=stats.get("chain_k0_capped_from"),
+            chain_dq_max_rad_at_k0=stats.get("chain_dq_max_rad_at_k0"),
+            chain_dbase_mm_at_k0=stats.get("chain_dbase_mm_at_k0"),
             wall_s=time.monotonic() - t0, periods=len(log),
             mpc_steps=stats["steps"], overruns=loop.overruns,
             worst_overrun_ms=1e3 * loop.worst_overrun_s,
@@ -881,7 +1614,8 @@ class Session:
             estop_first_why=next((r["estop_why"] for r in log
                                   if r.get("estop")), None),
             pelvis_z=(float(self.plant.d.qpos[2]) if a.plant == "mujoco"
-                      else None))
+                      else None),
+            **_lurch(self.qtrace, dt_plan))
 
     def idle(self):
         """Hold the pose and stay alive, waiting for the panel.
@@ -911,6 +1645,14 @@ class Session:
                 pass
             if self.viewer is not None:
                 try:
+                    # THE MARKERS MUST OUTLIVE THE EPISODE, for the same reason
+                    # the viewer does: the frame you want to read is the one
+                    # after the motion stopped, and a scene that drops its
+                    # contact dots at the last node hides exactly the state you
+                    # paused to look at.
+                    t = self.get()
+                    if t is not None and t.plan is not None:
+                        self.draw_overlay(t)
                     self.viewer.sync()
                 except Exception:                                # noqa: BLE001
                     pass
@@ -921,7 +1663,7 @@ class Session:
         if self.args.plant != "mujoco":
             self._qtmpl = cs.load(ik_margin=0.0)[1].qpos.copy()
         while not self.quit:
-            task = self.tasks.get(self.task_name)
+            task = self.get()
             if task is None or not task.ready:
                 self.set_status("%s is not available -- %s"
                                 % (self.task_name,
@@ -929,15 +1671,26 @@ class Session:
                 self.idle()
                 continue
             if not task.built:
-                self.set_status("building the %s OCP ..." % task.name)
+                # THE BUILD IS ANNOUNCED WITH WHAT IT IS BUILDING. A mode or Kp
+                # switch is a rebuild, and 1.2 s of a silent panel after a
+                # dropdown change reads as a dead control.
+                self._building = self._key()
+                self.set_status(
+                    "building the %s OCP (%s%s) ..."
+                    % (task.name, task.mode or "legs only",
+                       "" if self.contact_kp is None
+                       else ", Kp=%g" % self.contact_kp))
                 try:
                     task.build(self.args)
                 except Exception as exc:                         # noqa: BLE001
                     task.error = str(exc)
+                    self._building = None
                     self.set_status("%s failed to build: %s"
                                     % (task.name, exc))
                     self.idle()
                     continue
+                finally:
+                    self._building = None
                 if self.panel is not None:
                     self.panel.set_mpc(task.mpc)   # sliders follow the OCP
             if task.plan is not None:
@@ -969,18 +1722,45 @@ class Session:
                 self._reset_plant(task)
             self._chained = chained
             self.episode += 1
-            self.set_status("running %s / %s (episode %d)"
-                            % (task.name, self.submode, self.episode))
+            self.set_status("running %s / %s / %s (episode %d)"
+                            % (task.name, task.mode or "legs only",
+                               self.submode, self.episode))
             self.runs.append(self.run_episode(task))
+            # A RUN ARTIFACT SHOULD CARRY ITS OWN TELEMETRY. The dump button is
+            # for a session someone is watching; a batch run has nobody to
+            # press it, and "re-run it and press the button this time" is not a
+            # thing you can do to a stochastic failure.
+            if self.args.out and self.args.telemetry:
+                self.dump_telemetry()
             self.push()
             if self.quit:
+                break
+            if (self.args.episodes is not None
+                    and self.episode >= self.args.episodes):
+                # Checked AFTER the episode is recorded, so `--episodes 4`
+                # writes four episodes and not three plus a truncated one.
+                #
+                # AND IT RENDERS ON THE WAY OUT. This used to `break` straight
+                # past the render below, so `--episodes N` with video on
+                # produced a run artifact, a telemetry dump and NO mp4 -- the
+                # one artifact you cannot reconstruct afterwards, because the
+                # qpos trace lives only in this process. Silent, because
+                # nothing failed: the video was simply never asked for.
+                self.set_status("stopping: --episodes %d reached"
+                                % self.args.episodes)
+                self.render()
+                self.quit = True
                 break
             with self.lock:
                 skipped, reset = self._skip, self._reset
                 self._skip = False
             if self.submode == "automode" and not (skipped or reset):
+                # THE RING STAYS IN THE CURRENT MODE. Cycling brace ->
+                # recover in `elbow+forearm` is a round trip; cycling across
+                # modes would silently change the experiment between laps.
+                cur_tasks = self.tasks
                 nxt = [n for n in self._auto
-                       if n in self.tasks and self.tasks[n].ready]
+                       if n in cur_tasks and cur_tasks[n].ready]
                 if len(nxt) > 1:
                     i = (nxt.index(self.task_name) + 1) % len(nxt)
                     self.task_name = nxt[i]
@@ -1058,21 +1838,57 @@ def run_session(args):
     kp, kd = cr.servo_gains(m)
     tau_lim = cs.torque_limits(m)
 
-    tasks = {}
-    for name, note in TASKS:
-        tag = args.tag if name == "brace+reach" else name
-        tasks[name] = Task(name, args.dir, tag, note)
-    if not tasks[args.task].ready:
-        ready = [n for n in tasks if tasks[n].ready]
+    # THE CELL DECIDES WHAT IS ON OFFER. Every (kind, mode) it has a plan for
+    # becomes a registry entry; the dropdowns are a view of this, not a table.
+    found, bad = discover_plans(args.dir)
+    for tag, why in sorted(bad.items()):
+        print("[croco_twin] ignoring plan_%s.json: %s" % (tag, why))
+    modes = sorted({mode for (kind, mode) in found
+                    if kind == "brace+reach" and mode})
+    if not modes:
         raise SystemExit(
-            "--task %s: %s\nAvailable in this cell: %s"
-            % (args.task, tasks[args.task].why_unavailable(),
-               ", ".join(ready) or "none"))
+            "%s holds no braced plan -- there is nothing to run. A task is a "
+            "SOLVED PLAN; solve one with:  studies/solve_tasks.sh %s"
+            % (args.dir, args.dir))
+
+    # WHICH MODE THE SESSION STARTS ON. --mode wins; otherwise --tag names a
+    # plan file and that plan's own mode is the answer, which keeps every
+    # existing `--tag elbow_palm` command line meaning exactly what it did.
+    mode0 = args.mode
+    if mode0 is None:
+        by_tag = {t: k for k, t in found.items()}
+        key = by_tag.get(args.tag)
+        mode0 = key[1] if key and key[1] else modes[0]
+    if mode0 not in modes:
+        raise SystemExit("--mode %s: this cell has %s"
+                         % (mode0, ", ".join(modes)))
+    args.mode = mode0
+
+    # ONE Task PER (kind, mode), AT THE SESSION'S Kp. Other Kp values get
+    # their own entries lazily, when the panel asks for them -- see
+    # Session._ensure.
+    tasks = {}
+    for (kind, mode), tag in sorted(found.items(), key=lambda kv: str(kv[0])):
+        note = dict(KINDS).get(kind, "")
+        if mode:
+            note = "%s -- %s (plan_%s.json)" % (note, mode, tag)
+        tasks[(kind, mode, args.contact_kp)] = Task(
+            kind, args.dir, tag, note, mode=mode, kp=args.contact_kp)
+    task_order = [n for n, _ in KINDS]
+
+    start = tasks.get((args.task, NO_MODE if args.task == "stand" else mode0,
+                       args.contact_kp))
+    if start is None or not start.ready:
+        raise SystemExit(
+            "--task %s --mode %s is not solved in this cell.\nThis cell holds: "
+            "%s" % (args.task, mode0,
+                    ", ".join("%s/%s" % (k, m or "-")
+                              for (k, m) in sorted(found, key=str))))
 
     # dt comes off the plan JSON, which is cheap to read -- the panel must
     # exist BEFORE the OCP build (measured 1.2 s for 200 models), not after
     # it, or the wait looks exactly like a hung page.
-    dt_plan = json.load(open(tasks[args.task].plan_path))["dt"]
+    dt_plan = json.load(open(start.plan_path))["dt"]
 
     monitor = make_monitor(args)
     plant, _base = _make_plant(args, m, tau_lim)
@@ -1096,6 +1912,8 @@ def run_session(args):
     # the browser would get every row one period before its verdict.
     hooks = ([] if monitor is None else [monitor]) + [panel.on_step]
     session = Session(args, tasks, plant, m, kp, kd, tau_lim, hooks=hooks)
+    session.task_order = task_order
+    session.modes = modes
     session.monitor = monitor
     session.panel = panel
     panel.on_command = session.command
@@ -1129,7 +1947,15 @@ def run_session(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True, help="grid cell / run directory")
-    ap.add_argument("--tag", default="elbow_palm")
+    ap.add_argument("--tag", default="elbow_forearm",
+                    help="which brace plan file the session starts on "
+                         "(plan_<tag>.json). elbow+palm was the default for "
+                         "most of this study and is no longer: its palm "
+                         "carries 0.0 N for an entire hold (the gripper is "
+                         "9-33 mm above the wood at q*), and elbow+forearm "
+                         "beats it on sink, drift, second-contact force and "
+                         "peak torque. Prefer --mode, which names the contact "
+                         "set rather than a filename.")
     ap.add_argument("--horizon", type=int, default=35)
     ap.add_argument("--iters", type=int, default=1)
     ap.add_argument("--alphas", type=int, default=0)
@@ -1203,7 +2029,11 @@ def main():
                          "few ms per period, so a viewer run is recorded as "
                          "one.")
     ap.add_argument("--task", default="brace+reach",
-                    choices=[t for t, _ in TASKS],
+                    # NOT `choices=`: a cell's extra plans are discovered at
+                    # startup and their mode names are not knowable from argv.
+                    # An unknown task is rejected by run_session with the list
+                    # the cell actually holds, which is the more useful error.
+                    metavar="NAME",
                     help="which maneuver the session starts on. A task is a "
                          "SOLVED PLAN in the cell directory, not a set of "
                          "weights: the phases differ by contact set, so "
@@ -1211,6 +2041,14 @@ def main():
                          "need plan_stand/plan_recover artifacts, which the "
                          "certified grid does not carry (every cell has "
                          "n_return=0).")
+    ap.add_argument("--mode", default=None, metavar="MODE",
+                    help="which CONTACT MODE the session starts on -- "
+                         "`elbow+forearm`, `elbow+palm`, `elbow`, ... A mode "
+                         "is available when the cell holds a solved plan for "
+                         "it; the panel switches between them live, with the "
+                         "robot left braced where it is. Default: the mode of "
+                         "the plan --tag names, which keeps every existing "
+                         "command line meaning what it did.")
     ap.add_argument("--submode", default="single-shot", choices=SUBMODES,
                     help="single-shot: run the plan once, then hold position "
                          "and wait for reset. hold: run it, then FREEZE the "
@@ -1246,6 +2084,24 @@ def main():
     ap.add_argument("--w-reach-rot", type=float, default=None, metavar="W",
                     help="weight for --reach-rot (default 1e-2, the token "
                          "weight the term is meant to be steered up from)")
+    ap.add_argument("--contact-kp", type=float, default=None, metavar="KP",
+                    help="REBUILD the OCP with this Baumgarte position gain on "
+                         "the brace contacts, instead of the plan's. This is "
+                         "the knob that decides whether a hold is indefinite: "
+                         "at the study's long-standing Kp=0 a contact "
+                         "constrains velocity only, so the site keeps whatever "
+                         "position error it accumulated and the brace creeps "
+                         "in every contact mode. The warm start still comes "
+                         "from a plan solved at the plan's own Kp, so a large "
+                         "override is a divergence and is recorded as one in "
+                         "--out. Also live in the panel (it rebuilds).")
+    ap.add_argument("--contact-kd", type=float, default=None, metavar="KD",
+                    help="Baumgarte velocity gain (plan default 50). Kd = "
+                         "2*sqrt(Kp) is critical damping for the contact "
+                         "error's second-order response.")
+    ap.add_argument("--foot-kp", type=float, default=None, metavar="KP",
+                    help="the same position gain on the FEET (default 0). "
+                         "Opt-in separately -- see croco_run --foot-kp.")
 
     # -- the safety layer ---------------------------------------------------
     ap.add_argument("--safety", nargs="?", const="default_safety_full",
@@ -1268,6 +2124,28 @@ def main():
                          "and the robot goes limp. Start with --safety alone "
                          "to find out whether it would trip." % TOPIC_SAFETY_LOWCMD_IN)
 
+    ap.add_argument("--no-telemetry", dest="telemetry", action="store_false",
+                    help="do not compute the per-period physics telemetry "
+                         "(brace forces, drift, support margin, attitude). It "
+                         "is a handful of MuJoCo queries on the control "
+                         "thread -- cheap, but it IS on the control thread, "
+                         "so it is switchable. In-process plant only; over "
+                         "DDS there is no local mjData to query and the "
+                         "section is absent either way.")
+    ap.add_argument("--seam", default="project", choices=["project", "node0"],
+                    help="how a CHAINED behaviour picks its starting plan "
+                         "index. `project`: the node whose pose the measured "
+                         "state is nearest, so the reference tape is joined "
+                         "where the robot already is. `node0`: always node 0, "
+                         "which is what every run before this flag did -- "
+                         "kept so the A/B is one flag and not one checkout. "
+                         "Irrelevant on a reset, where the plant is put at "
+                         "node 0 by construction.")
+    ap.add_argument("--episodes", type=int, default=None, metavar="N",
+                    help="stop the session after N episodes (--gui sessions "
+                         "otherwise run until the browser or Ctrl-C says "
+                         "stop, which is not a thing a batch measurement can "
+                         "do). --out is still written.")
     ap.add_argument("--max-seconds", type=float, default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--emit-qpos0", default=None,
@@ -1321,10 +2199,12 @@ def main():
     # a default there would silently add 26 renders and 26 files to a
     # certified grid, changing what a batch run produces as a side effect of a
     # GUI convenience. Batch keeps --video opt-in, as it was.
+    args.video_auto = False
     if args.no_video:
         args.video = None
     elif args.video is None and args.gui:
         args.video = os.path.join(args.dir, "twin_%s.mp4" % args.tag)
+        args.video_auto = True      # Session.render re-derives it per mode
 
     if args.emit_qpos0:
         plan = json.load(open(os.path.join(args.dir, "plan_%s.json" % args.tag)))

@@ -143,6 +143,25 @@ SITES = {
                  np.array([0.0965, _MY * 0.0315, 0.000])) if SITE_SET == "v2"
                 else ("%s_wrist_yaw_link" % BRACE_ARM,
                       np.array([0.130,  0.000,  0.000]))),
+    # WRIST (added 2026-08-21).  MEASURED, not proposed: this is where the arm
+    # has been bracing all along, in every mode, without any of them saying so.
+    #
+    # `left_wrist_pad` is a 83 x 56 x 85 mm box on `*_wrist_yaw_link` with an
+    # explicit <contact><pair> against the table (contype/conaffinity are 0, so
+    # it collides ONLY through that pair -- which is why it looks disabled and
+    # is not).  At the certified elbow+forearm pose it carries 19.76 N while
+    # `forearm`'s own body carries 0.00 N through three contacts, one of them
+    # 1.44 mm INSIDE the wood; at the certified elbow+palm pose it carries the
+    # brace's entire second contact while `palm` sits 22 mm in the air.  The
+    # contact points sit on the pad's local -z face (measured: z = -0.0415
+    # against a half-extent of 0.0425), so the site is the centre of that face.
+    #
+    # Additive on purpose.  SITES5 in croco_modes.py / sweep5*.py is a fixed
+    # 5-tuple and is NOT changed, so every existing enumeration, every
+    # certified grid cell and every ranking stays exactly what it was; the
+    # wrist enters only when someone asks for it with `croco_modes --sites`.
+    "wrist":   ("%s_wrist_yaw_link" % BRACE_ARM,
+                np.array([0.0215, 0.000, -0.0425])),
     # Trunk sites (added S10).  The pose audit found the hips touching the table
     # edge in ~80% of solved poses and the torso in ~60%, all unmodelled -- so
     # they are promoted to first-class candidates.  Both anchors are taken from
@@ -210,6 +229,9 @@ def _resolve_palm(m):
     return off, axis
 
 
+# `wrist` is deliberately NOT in ARM_SITES: that tuple feeds `n_arm` in the
+# mode records and the ranking built on them, and silently changing what an
+# existing record counts would rewrite the meaning of every certified cell.
 ARM_SITES = ("elbow", "forearm", "palm")
 TRUNK_SITES = ("hip", "torso")
 REACH_BODY = "%s_wrist_yaw_link" % _OTHER

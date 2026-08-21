@@ -315,6 +315,12 @@ class Panel:
                 step_length=(self.mpc.step_lengths[-1]
                              if getattr(self.mpc, "step_lengths", None) else None),
                 terms=self._terms(), weights=self.weights(),
+                # PHYSICS, not cost. Put on the row by the session before the
+                # hooks run (see croco_twin's on_step) because the numbers come
+                # from the plant's mjData, which the panel has no handle on and
+                # should not grow one -- a panel that reaches into the plant is
+                # a panel that can crash a control period.
+                telem=row.get("telem"),
                 dirty=self.dirty)
             self.hist.append(msg)
             self.server.broadcast(msg)

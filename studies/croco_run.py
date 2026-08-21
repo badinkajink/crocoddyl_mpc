@@ -26,6 +26,21 @@ def main():
     ap.add_argument("--mode", default="elbow+forearm",
                     help="'+'-joined contact subset, must exist in modes.json")
     ap.add_argument("--start", default="stand", help="MJCF keyframe to start from")
+    ap.add_argument("--start-q", default=None, metavar="qstar|FILE",
+                    help="OVERRIDE the robot's 34 start qpos with a solved "
+                         "pose -- `qstar` for this mode's certified pose, or "
+                         "a path to a qpos text file. The KEYFRAME named by "
+                         "--start still supplies the rest of the scene (the "
+                         "table) and the stance offset, so the two are not "
+                         "alternatives. THIS IS WHAT A RECOVERY WANTS. A "
+                         "recovery is chained onto the end of `brace+reach`, "
+                         "which terminates 0.115 rad from q*; seeded from the "
+                         "`forearm_brace_reach` KEYFRAME instead it begins "
+                         "0.493 rad away, and the worst joint is the bracing "
+                         "wrist pitch -- a joint that is LOADED at the seam "
+                         "and has only +-0.4625 rad of travel. The controller "
+                         "spends the first nodes driving there, which is the "
+                         "lurch.")
     ap.add_argument("--dt", type=float, default=0.01)
     ap.add_argument("--n-approach", type=int, default=120)
     ap.add_argument("--n-braced", type=int, default=80)
@@ -95,6 +110,34 @@ def main():
                          "built models, which is what lets the panel rotate "
                          "the gripper live. Raise it to actually command an "
                          "orientation.")
+    # -- contact stabilisation (Baumgarte) ---------------------------------
+    ap.add_argument("--contact-kp", type=float, default=None, metavar="KP",
+                    help="BAUMGARTE POSITION GAIN on the BRACE contacts "
+                         "[1/s^2]. The default is 0, which is why a brace "
+                         "drifts: crocoddyl constrains a_c + Kd*v_c + Kp*"
+                         "p_err = 0, so Kp=0 says 'do not move from here' and "
+                         "leaves the error between where the site IS and the "
+                         "spot the static QP certified with nothing pulling "
+                         "on it. Measured, 40 s hold: the loaded elbow slides "
+                         "~0.8 mm/s and the pelvis sinks ~2.3 mm/s in every "
+                         "contact mode. Kp>0 makes the brace RETURN to its "
+                         "certified spot, i.e. makes an indefinite hold "
+                         "possible at all. Swept in docs/lean/2026-08-21_brace_hold.html.")
+    ap.add_argument("--contact-kd", type=float, default=None, metavar="KD",
+                    help="Baumgarte velocity gain on the brace contacts "
+                         "(default 50). Raise it with Kp to keep the "
+                         "second-order response from ringing: the contact "
+                         "error behaves like a spring-damper with natural "
+                         "frequency sqrt(Kp) and damping Kd/(2*sqrt(Kp)), so "
+                         "Kd = 2*sqrt(Kp) is critical damping.")
+    ap.add_argument("--foot-kp", type=float, default=None, metavar="KP",
+                    help="the same gain on the FEET (default 0). Separate "
+                         "from --contact-kp because the references are not "
+                         "the same kind of thing: a brace site's reference is "
+                         "a CERTIFIED spot, a foot's is wherever it happened "
+                         "to stand at q0. Anchoring the feet to that fights "
+                         "every legitimate weight shift, so this is opt-in "
+                         "even when the brace gain is on.")
     ap.add_argument("--drop", default="",
                     help="comma-separated cost groups to leave out: stateReg, "
                          "ctrlReg, jointLim, cones, keepout, comSupport, land, "
@@ -145,6 +188,23 @@ def main():
 
     m_mj, d_mj = cs.load()
     q0 = cs.start_qpos(m_mj, args.start)
+    if args.start_q:
+        # ONLY THE ROBOT. `q0[34:41]` is the table's free joint and comes from
+        # the keyframe either way; `pin_to_mj` reads it back out of exactly
+        # this slice when the plan is replayed, so overwriting the whole array
+        # would move the table by whatever the pose file happened to carry.
+        # The stance offset is already in a certified q* (cs.load applies it
+        # before the IK runs), which is why it is not re-applied here.
+        q_src = (q_star if args.start_q == "qstar"
+                 else np.loadtxt(args.start_q))
+        q_src = np.asarray(q_src, float).ravel()
+        if q_src.size < 34:
+            raise SystemExit("--start-q %s has %d values, need at least 34"
+                             % (args.start_q, q_src.size))
+        print("start-q   %s: %.4f rad from the %s keyframe (worst joint)"
+              % (args.start_q, np.abs(q_src[7:34] - q0[7:34]).max(),
+                 args.start))
+        q0[:34] = q_src[:34]
     if args.start_settled:
         # Plan from where the plant WILL BE when the controller hands over,
         # not from where the keyframe says it is.  See croco_replay.
@@ -176,6 +236,8 @@ def main():
                      n_hold=args.n_hold, w_hold_state=args.w_hold_state,
                      w_jlim=args.w_jlim, w_vel=args.w_vel,
                      reach_rot=args.reach_rot, w_reach_rot=args.w_reach_rot,
+                     contact_kp=args.contact_kp, contact_kd=args.contact_kd,
+                     foot_kp=args.foot_kp,
                      return_q_mj=(None if not args.return_start
                                   else cs.start_qpos(m_mj, args.return_start)),
                      drop=[v for v in args.drop.split(",") if v])
@@ -196,6 +258,7 @@ def main():
         impulse=args.impulse, n_return=args.n_return, dwell=args.dwell)
     rep = cp.report(solver, ocp)
     rep.update(mode=args.mode, subset=subset, start=args.start,
+               start_q=args.start_q,
                return_start=args.return_start, dt=args.dt,
                impulse=args.impulse, cones=not args.no_cones,
                n_approach=args.n_approach, n_braced=args.n_braced,
@@ -210,6 +273,13 @@ def main():
                drop=args.drop, w_jlim=args.w_jlim, w_vel=args.w_vel,
                reach_rot=args.reach_rot, w_reach_rot=args.w_reach_rot,
                com_margin=args.com_margin,
+               # RECORDED, NOT DEFAULTED, so a cell says which contact
+               # stabilisation it was solved with. croco_replay.build_ocp
+               # reads these back, so a plan solved at Kp=30 rebuilds at
+               # Kp=30 in the twin without anyone passing a flag.
+               contact_kp=float(ocp.contact_gains[0]),
+               contact_kd=float(ocp.contact_gains[1]),
+               foot_kp=float(ocp.foot_gains[0]),
                converged=bool(ok), solve_seconds=secs, commit=git_head(),
                stage1=({"converged": stage1[0], "cost": stage1[1]}
                        if stage1 else None),

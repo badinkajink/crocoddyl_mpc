@@ -82,6 +82,22 @@ button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
       <div class="cap" id="cap_period">&nbsp;</div>
       <div id="estop_note" class="note" hidden></div>
     </section>
+    <section id="tel_sec" hidden>
+      <h2>telemetry</h2>
+      <div class="row" id="tel_views"></div>
+      <canvas id="c_telem" height="200"></canvas>
+      <div class="cap" id="cap_telem">&nbsp;</div>
+      <div class="terms" id="tel_boxes"></div>
+      <div class="row" style="margin-top:.4rem">
+        <button id="b_dump">⭳ dump telemetry</button>
+      </div>
+      <div class="note">Physics, not cost: read off the plant's mjData every
+        period through the same <code>table_forces</code> the replay scores
+        with, so the panel and the artifact cannot disagree about which link is
+        carrying the brace. Views do not share a y-axis — newtons, millimetres
+        and degrees are separate scales, and so are two millimetre series that
+        live at different magnitudes. <b>Render also dumps.</b></div>
+    </section>
     <section id="vid_sec" hidden>
       <h2>the run</h2>
       <video id="vid" controls loop muted playsinline></video>
@@ -99,10 +115,23 @@ button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
         <button id="b_render">● render</button>
       </div>
       <div class="row"><button id="b_viewer">⊞ viewer</button></div>
+      <div class="terms" id="mk_boxes" style="margin-top:.35rem"></div>
+      <div class="d" id="mk_note">Marker classes drawn over the robot in the
+        viewer. <b>target</b> is where the hand was told to go, <b>ghosts</b>
+        where the static QP said the brace would land, <b>contacts</b> where it
+        is actually touching, <b>forces</b> the normal-force arrows.
+        <b>gripper geoms</b> shows the magpie jaws and wrist pad — visual group
+        only, their collision was never off.</div>
       <div id="ctl_note" class="note" hidden></div>
       <h2 style="margin-top:.9rem">task</h2>
       <select id="s_task"></select>
       <div id="task_note" class="note" hidden></div>
+      <h2 style="margin-top:.9rem">contact mode</h2>
+      <select id="s_mode"></select>
+      <div class="d" id="mode_note">&nbsp;</div>
+      <h2 style="margin-top:.9rem">contact Kp <span class="d">(Baumgarte)</span></h2>
+      <select id="s_kp"></select>
+      <div class="d" id="kp_note">&nbsp;</div>
       <h2 style="margin-top:.9rem">submode</h2>
       <select id="s_submode"></select>
       <div class="d" id="submode_note">&nbsp;</div>
@@ -147,7 +176,8 @@ button.nudge{padding:.15rem .4rem;line-height:1;font-size:.7rem}
 <script>
 const N = 300, colors =
   ["#6ea8fe","#4ec9a0","#e6a35c","#e06c6c","#b48ead","#88c0d0","#d0b070","#a3be8c"];
-const hist = {solve:[], age:[], period:[], estop:[], terms:{}};
+const hist = {solve:[], age:[], period:[], estop:[], terms:{}, telem:{}};
+let telViews = null, telView = 0, telHidden = {};
 let base = null, period = null, live = false, deadline = null;
 let pending = 0, replayed = 0, sess = null, hidden = {};
 let estopSeen = false, estopWhy = "", safetyOn = false;
@@ -176,17 +206,34 @@ function plot(id, series, opts){
   for (const s of series) for (const v of s.data) if (isFinite(v)) hi = Math.max(hi, v);
   if (opts.ref) hi = Math.max(hi, opts.ref*1.15);
   hi = hi * 1.05;
+  // SIGNED AXES. Support margin goes negative exactly when the interesting
+  // thing happens -- the CoM leaves the foot polygon -- and an axis pinned to
+  // zero draws that as a flat line along the bottom, i.e. hides the one sample
+  // anyone is looking for. `lo` stays 0 for every unsigned caller, so their
+  // mapping is unchanged to the pixel.
+  let lo = 0;
+  if (opts.signed){
+    for (const s of series) for (const v of s.data) if (isFinite(v)) lo = Math.min(lo, v);
+    lo = lo * 1.05;
+  }
+  const span = Math.max(hi - lo, 1e-9);
+  const Y = v => H - 6 - (H-12)*((isFinite(v)?v:0) - lo)/span;
   g.strokeStyle = "#272d36"; g.lineWidth = 1;
   g.fillStyle = "#8b95a3"; g.font = "10px ui-monospace,monospace";
   g.textAlign = "right"; g.textBaseline = "middle";
   for (let i=0;i<=4;i++){
     const y = H - (H-12)*i/4 - 6;
     g.beginPath(); g.moveTo(x0,y+.5); g.lineTo(W,y+.5); g.stroke();
-    g.fillText(fmt(hi*i/4), x0-6, y);
+    g.fillText(fmt(lo + span*i/4), x0-6, y);
+  }
+  if (lo < 0){                       // the zero line, where sign changes read
+    const y = Y(0);
+    g.strokeStyle = "#5a6472"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0,y+.5); g.lineTo(W,y+.5); g.stroke();
   }
   if (opts.unit){ g.textAlign="left"; g.fillText(opts.unit, 2, 6); }
   if (opts.ref){
-    const y = H - 6 - (H-12)*opts.ref/hi;
+    const y = Y(opts.ref);
     g.strokeStyle="#e06c6c"; g.setLineDash([4,3]);
     g.beginPath(); g.moveTo(x0,y); g.lineTo(W,y); g.stroke(); g.setLineDash([]);
   }
@@ -210,13 +257,13 @@ function plot(id, series, opts){
     g.lineWidth = s.width || 1.5; g.globalAlpha = s.alpha == null ? 1 : s.alpha;
     g.beginPath();
     s.data.forEach((v,j)=>{ const x = x0 + plotW*j/(N-1),
-      y = H - 6 - (H-12)*(isFinite(v)?v:0)/hi; j ? g.lineTo(x,y) : g.moveTo(x,y); });
+      y = Y(v); j ? g.lineTo(x,y) : g.moveTo(x,y); });
     g.stroke(); g.globalAlpha = 1;
     // Overrun marks: the periods the deadline line was crossed, drawn ON the
     // series that crossed it rather than reported only as a count.
     if (s.markOver && opts.ref) s.data.forEach((v,j)=>{
       if (!(v > opts.ref)) return;
-      const x = x0 + plotW*j/(N-1), y = H - 6 - (H-12)*v/hi;
+      const x = x0 + plotW*j/(N-1), y = Y(v);
       g.fillStyle = "#e06c6c"; g.fillRect(x-1.5, y-1.5, 3, 3);
     });
   });
@@ -250,6 +297,7 @@ function redraw(){
   document.getElementById("cap_period").innerHTML = deadline
     ? `period <b>${lastP.toFixed(1)} ms</b> vs deadline <span class="bad">${deadline.toFixed(0)} ms</span> &middot; <span class="${over?'bad':'good'}">${over} overrun${over===1?'':'s'}</span> in view &middot; <span style="color:#4ec9a0">state age ${lastA.toFixed(3)} ms</span>`
     : `free-run: no deadline &middot; period <b>${lastP.toFixed(1)} ms</b> &middot; <span style="color:#4ec9a0">state age ${lastA.toFixed(3)} ms</span>`;
+  drawTelem();
   const es = $("estop_note");
   if (!safetyOn){ es.hidden = true; }
   else {
@@ -266,6 +314,65 @@ function redraw(){
         "limits. Nothing is being clipped or stopped — the layer is not in the " +
         "command path unless you started with --via-safety.";
   }
+}
+
+// TELEMETRY. One view at a time, because the series in different views do not
+// share a scale and overlaying them makes every trace but the largest flat.
+function drawTelem(){
+  const sec = $("tel_sec");
+  if (!telViews || !telViews.length){ sec.hidden = true; return; }
+  sec.hidden = false;
+  const v = telViews[Math.min(telView, telViews.length-1)];
+  // Series present in the DATA, not merely declared: a view whose keys never
+  // arrive (an empty contact subset has no F_elbow) draws nothing and says so,
+  // rather than plotting a row of zeros that reads as "no force".
+  const have = v.keys.filter(k => hist.telem[k]);
+  const shown = have.filter(k => !telHidden[k]);
+  plot("c_telem", shown.map(k=>({data:hist.telem[k],
+        color:colors[v.keys.indexOf(k)%colors.length]})),
+       {unit:v.unit, signed:!!v.signed});
+  const last = k => { const a = hist.telem[k]; return a ? a[a.length-1] : null; };
+  $("cap_telem").innerHTML = have.length
+    ? have.map(k=>`<span style="color:${colors[v.keys.indexOf(k)%colors.length]}">`
+        + `${k} <b>${(last(k)??0).toFixed(1)}</b></span>`).join(" &middot; ")
+    : `<span class="bad">no series in this view</span> — `
+      + `${v.keys.join(", ")} are not being reported. An empty contact subset `
+      + `(the <code>stand</code> task) has no brace to measure.`;
+  syncTelBoxes(v, have);
+}
+
+function syncTelBoxes(v, have){
+  const box = $("tel_boxes");
+  const key = v.name + "|" + have.join(",");
+  if (box.dataset.k === key) return;
+  box.dataset.k = key;
+  box.innerHTML = "";
+  have.forEach(n=>{
+    const l = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !telHidden[n];
+    cb.onchange = () => { telHidden[n] = !cb.checked; drawTelem(); };
+    const sw = document.createElement("span");
+    sw.className = "sw"; sw.style.background = colors[v.keys.indexOf(n)%colors.length];
+    l.append(cb, sw, document.createTextNode(n));
+    box.appendChild(l);
+  });
+}
+
+function syncTelViews(){
+  const row = $("tel_views");
+  const key = (telViews||[]).map(v=>v.name).join(",");
+  if (row.dataset.k === key && row.children.length) {
+    [...row.children].forEach((b,i)=>b.className = i===telView ? "on" : "");
+    return;
+  }
+  row.dataset.k = key; row.innerHTML = "";
+  (telViews||[]).forEach((v,i)=>{
+    const b = document.createElement("button");
+    b.textContent = v.name; b.className = i===telView ? "on" : "";
+    b.onclick = () => { telView = i; syncTelViews(); drawTelem(); };
+    row.appendChild(b);
+  });
 }
 
 function syncBoxes(names){
@@ -315,8 +422,39 @@ RT.forEach(([label,v])=>{
 $("b_play").onclick   = () => send({cmd:"pause", on: !(sess && sess.paused) ? true : false});
 $("b_reset").onclick  = () => send({cmd:"reset"});
 $("b_render").onclick = () => send({cmd:"render"});
+$("b_dump").onclick   = () => send({cmd:"dump"});
+
+// Marker-class checkboxes. Rebuilt only when the SET changes, like the cost
+// term boxes -- rebuilding every session push would fight the pointer.
+function syncMarkers(s){
+  const mk = s.markers || {};
+  const items = Object.keys(mk).concat(["gripper geoms"]);
+  const box = $("mk_boxes");
+  const key = items.join(",");
+  if (box.dataset.k !== key){
+    box.dataset.k = key; box.innerHTML = "";
+    items.forEach(n=>{
+      const l = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.id = "mk_" + n.replace(" ","_");
+      cb.onchange = () => send(n === "gripper geoms"
+        ? {cmd:"gripper_geoms", on: cb.checked}
+        : {cmd:"markers", name:n, on: cb.checked});
+      l.append(cb, document.createTextNode(n));
+      box.appendChild(l);
+    });
+  }
+  for (const [n,v] of Object.entries(mk)){
+    const cb = $("mk_" + n); if (cb) cb.checked = !!v;
+  }
+  const gg = $("mk_gripper_geoms");
+  if (gg) gg.checked = !!s.gripper_geoms;
+  box.hidden = !s.can_viewer && !s.viewer;
+}
 $("b_viewer").onclick = () => send({cmd:"viewer", on: !(sess && sess.viewer)});
 $("s_task").onchange     = e => send({cmd:"task", value:e.target.value});
+$("s_mode").onchange     = e => send({cmd:"mode", value:e.target.value});
+$("s_kp").onchange       = e => send({cmd:"contact_kp", value:e.target.value});
 $("s_submode").onchange  = e => send({cmd:"submode", value:e.target.value});
 
 // -- reach target: three nudgeable boxes -----------------------------------
@@ -370,10 +508,76 @@ function rotHint(){
     "holding the gripper where the plan already put it. Move the roll slider.";
 }
 
+// CONTACT MODE. Its own dropdown, not folded into the task list: a mode is
+// which links are on the table, a task is what the robot is doing with them,
+// and only the product of the two names a plan file. Switching mode here ends
+// the episode and CHAINS -- the robot is left braced where it is and the new
+// mode's plan is joined at the node nearest its measured pose.
+function syncModes(s){
+  const sel = $("s_mode"), ms = s.modes || [];
+  const key = ms.map(m=>m.name + (m.ready?"":"!") + (m.built?"*":"")).join("|");
+  if (sel.dataset.k !== key){
+    sel.dataset.k = key; sel.innerHTML = "";
+    ms.forEach(m=>{
+      const o = document.createElement("option");
+      o.value = m.name;
+      o.textContent = m.name + (m.ready ? "" : "  (no plan)")
+                    + (m.built ? "  ·built" : "");
+      o.disabled = !m.ready; sel.appendChild(o);
+    });
+  }
+  if (s.mode) sel.value = s.mode;
+  const cur = ms.find(m=>m.name===s.mode);
+  $("mode_note").innerHTML = !ms.length
+    ? "This cell holds no braced plan."
+    : ((cur && !cur.recover)
+        ? "No <code>recover</code> plan for this mode &mdash; the brace can be "
+          + "held but not released. Solve one: <code>studies/solve_tasks.sh "
+          + "&lt;cell&gt;</code>."
+        : "Switching mode chains: the robot stays braced where it is and the "
+          + "new plan is joined at the nearest node. <b>·built</b> means the "
+          + "OCP is cached, so the switch is instant.");
+}
+
+// BAUMGARTE Kp. A rebuild, not a slider -- `ContactModel3D.gains` is read-only
+// on a built model -- so it is a short ladder of measured values.
+function syncKp(s){
+  const sel = $("s_kp"), kps = s.contact_kps || [];
+  if (sel.dataset.k !== String(kps.length)){
+    sel.dataset.k = String(kps.length); sel.innerHTML = "";
+    kps.forEach(v=>{
+      const o = document.createElement("option");
+      o.value = (v === null ? "plan" : String(v));
+      o.textContent = (v === null ? "plan's own" : "Kp = " + v);
+      sel.appendChild(o);
+    });
+  }
+  sel.value = (s.contact_kp === null || s.contact_kp === undefined)
+            ? "plan" : String(s.contact_kp);
+  const eff = s.contact_kp_plan;
+  $("kp_note").innerHTML = s.building
+    ? "rebuilding the OCP &hellip;"
+    : "Position gain on the brace contacts: <code>a + Kd·v + Kp·p_err = 0</code>. "
+      + "At <b>Kp = 0</b> the contact constrains velocity only, so drift is "
+      + "permanent and the brace creeps in every mode. "
+      + (eff === null || eff === undefined ? ""
+         : "Running at <b>Kp = " + eff + "</b>. ")
+      + "Changing it rebuilds the OCP (~1.2 s).";
+}
+
 function applySession(s){
+  const nv = JSON.stringify(s.telem_views||null);
+  if (nv !== JSON.stringify(telViews)){
+    telViews = s.telem_views || null;
+    telView = 0;
+    $("tel_views").dataset.k = "";      // force the buttons to rebuild
+    $("tel_boxes").dataset.k = "";
+    syncTelViews(); drawTelem();
+  }
   sess = s;
   $("b_play").textContent = s.paused ? "▶ play" : "⏸ pause";
   $("b_play").classList.toggle("on", !!s.paused);
+  syncMarkers(s);
   $("b_viewer").classList.toggle("on", !!s.viewer);
   $("b_viewer").disabled = !s.can_viewer;
   $("b_reset").disabled = !s.can_reset;
@@ -400,6 +604,8 @@ function applySession(s){
     sm.appendChild(o); });
   sm.value = s.submode;
   $("submode_note").textContent = SUBMODE_NOTE[s.submode] || "";
+  syncModes(s);
+  syncKp(s);
   rotHint();
   [...$("rt_row").children].forEach(b=>b.classList.toggle(
     "on", b.dataset.rt === String(s.realtime)));
@@ -497,6 +703,14 @@ ws.onmessage = ev => {
   for (const [k,v] of Object.entries(m.terms||{})){
     if (!hist.terms[k]) hist.terms[k] = new Array(hist.solve.length-1).fill(0);
     push(hist.terms[k], v);
+  }
+  for (const [k,v] of Object.entries(m.telem||{})){
+    // `F_other_bodies` is a list of body names, not a series -- it is the
+    // answer to "which link is that force going through", and it belongs in
+    // the caption rather than on an axis.
+    if (typeof v !== "number") continue;
+    if (!hist.telem[k]) hist.telem[k] = new Array(hist.solve.length-1).fill(0);
+    push(hist.telem[k], v);
   }
   if (m.period_ms) period = m.period_ms;
   if (pending > 0 && --pending > 0) return;   // still catching up: data only

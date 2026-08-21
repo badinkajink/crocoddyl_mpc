@@ -102,6 +102,25 @@ nothing, and <code>--realtime 1.0</code> is what makes the number real.</p>
 h12_safety_layer's e-stop predicate held. <strong>The first one is drawn solid and
 the rest translucent</strong>, because the layer's e-stop latches — everything to the
 right of the first rule is a trajectory the layer would never have allowed.</p>
+<p><strong>telemetry.</strong> Physics rather than cost, and the distinction is the point:
+the cost traces are in units of the optimiser's own weights and move when a
+weight moves, while these are MuJoCo queries — which link is carrying the
+brace, in newtons; how far each bracing site has slid from the spot the static
+QP certified; the CoM's signed margin inside the foot polygon; pelvis attitude.
+They go through the same <code>croco_replay.table_forces</code> the offline replay
+scores with, so the panel and the run artifact cannot disagree about
+attribution.</p>
+<p>Views do <strong>not</strong> share a y-axis and switch with the buttons above the plot —
+newtons, millimetres and degrees are separate scales, and so are two millimetre
+series at different magnitudes (a support margin lives at tens of mm, a pelvis
+height at 950). The grouping is authored server-side in <code>telem_views</code>,
+next to the code that produces the numbers, and shipped to the page as data.
+Axes here are <strong>signed</strong>: a support margin pinned to zero would draw the one
+sample anyone is looking for — the CoM leaving the polygon — as a flat line
+along the bottom.</p>
+<p>In-process plant only. Over DDS there is no local mjData to query and the
+section is absent rather than zero-filled. <code>--no-telemetry</code> switches it
+off; it is a handful of queries per period, but they are on the control thread.</p>
 <h2>Controls</h2>
 <div class="scroll"><table>
 <thead>
@@ -121,23 +140,35 @@ right of the first rule is a trajectory the layer would never have allowed.</p>
 </tr>
 <tr>
 <td><strong>render</strong></td>
-<td>Renders the last episode to mp4 and shows it in the panel. Off the control thread, after the run.</td>
+<td>Renders the last episode to mp4 and shows it in the panel. Off the control thread, after the run. <strong>Also dumps the telemetry</strong> — rendering is the moment someone decides an episode was worth keeping, and the numbers behind the picture are worth keeping then too.</td>
 </tr>
 <tr>
 <td><strong>viewer</strong></td>
-<td>Opens/closes MuJoCo's passive viewer mid-session. Disabled when <code>MUJOCO_GL</code> is an offscreen backend (<code>egl</code>, <code>osmesa</code>) — the button says so rather than failing.</td>
+<td>Opens/closes MuJoCo's passive viewer mid-session. Disabled when <code>MUJOCO_GL</code> is an offscreen backend (<code>egl</code>, <code>osmesa</code>) — the button says so rather than failing. Draws <strong>the same markers the video does</strong>: the reach target, the certified landing spots as ghosts, and the live table contacts coloured by which link is making them, with an arrow per contact scaled by normal force. They survive the end of an episode, because the frame worth reading is the one after the motion stopped.</td>
 </tr>
 <tr>
 <td><strong>task</strong></td>
-<td><code>brace+reach</code> / <code>stand</code> / <code>recover</code>. A task is a <strong>solved plan</strong> in the cell, not a set of weights: the phases differ by contact set and no weight can add a contact. Unsolved tasks are offered-but-disabled with the command that solves them.</td>
+<td><code>brace+reach</code> / <code>stand</code> / <code>recover</code> &mdash; what the robot is <em>doing</em>, with <strong>contact mode</strong> below choosing which links it does it on. A task is a <strong>solved plan</strong> in the cell, not a set of weights: the phases differ by contact set and no weight can add a contact. Unsolved combinations are offered-but-disabled with the exact command that solves them.</td>
+</tr>
+<tr>
+<td><strong>contact mode</strong></td>
+<td>Which links are on the table: <code>elbow+forearm</code>, <code>elbow+wrist</code>, <code>elbow+palm</code>, <code>elbow</code>, &hellip; A separate axis from the task, because only the <em>product</em> of the two names a plan file &mdash; folding them into one dropdown is what let this study run <code>elbow+palm</code> for weeks without once comparing it. Switching <strong>chains</strong>: the episode ends, the robot is left braced exactly where it is, and the new mode's plan is joined at the node nearest its measured pose. <code>&middot;built</code> marks a mode whose OCP is cached, so the switch costs the 8.8 ms of an <code>MPC.reset()</code> rather than a 1.2 s build. A mode with no <code>recover</code> plan says so &mdash; you can hold that brace but not release it.</td>
+</tr>
+<tr>
+<td><strong>contact Kp</strong></td>
+<td>The Baumgarte position gain on the brace contacts. crocoddyl constrains <code>a + Kd&middot;v + Kp&middot;p_err = 0</code>, so at <strong>Kp&nbsp;=&nbsp;0</strong> &mdash; this study's default for its whole life &mdash; a contact constrains <em>velocity</em> and position error has no restoring term at all: the brace creeps, in every contact mode, and the hold never settles. At Kp&nbsp;=&nbsp;50 it does. A <strong>rebuild, not a slider</strong> (<code>ContactModel3D.gains</code> has no setter), so it is a ladder of measured values rather than a continuous control; <code>plan's own</code> uses whatever the plan was solved at. <strong>Not monotonic</strong> &mdash; 10 and 20 are worse than 0. See <a href="lean/2026-08-21_brace_hold.html">the brace-hold page</a>.</td>
 </tr>
 <tr>
 <td><strong>submode</strong></td>
-<td><code>single-shot</code> runs the plan once and idles. <code>hold</code> freezes the plan index at the last node and keeps solving — the brace stays braced. <code>automode</code> loops the available tasks back to back, chained.</td>
+<td><code>single-shot</code> runs the plan once and idles. <code>hold</code> freezes the plan index at the last node and keeps solving — the brace stays braced. <code>automode</code> loops <code>brace+reach</code> ↔ <code>recover</code> back to back, chained. <code>stand</code> is deliberately <strong>not</strong> in the ring: it is the sweep ladder's <code>legs_only</code> control condition, not a step in a sequence, and chaining it after a braced robot was the largest seam in the cell (1.060 rad against 0.148 for the round trip).</td>
 </tr>
 <tr>
 <td><strong>speed</strong></td>
 <td>Sim seconds per wall second. Below 1× the solver gets wall clock the robot would not give it, so the overrun count stops being a deployment result — and the panel says so.</td>
+</tr>
+<tr>
+<td><strong>dump telemetry</strong></td>
+<td>Writes this episode's per-period telemetry to <code>telemetry_&lt;tag&gt;_&lt;task&gt;_ep&lt;n&gt;.json</code> in the cell &mdash; the tag is in the name because two holds of <code>brace+reach</code> in one session can now be two different contact modes. A live plot that cannot be saved is a demo: every question this section exists for is answered by comparing two runs. Batch runs with <code>--out</code> dump automatically — a stochastic failure cannot be re-run with someone standing by to press the button.</td>
 </tr>
 <tr>
 <td><strong>reach target</strong></td>

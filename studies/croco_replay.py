@@ -168,7 +168,7 @@ def _marker(scene, pos, rgba, size=0.02, gtype=mujoco.mjtGeom.mjGEOM_SPHERE):
     return 1
 
 
-def draw_refs(scene, target, site_ref):
+def draw_refs(scene, target, site_ref, show_target=True, show_ghosts=True):
     """The reach target and the certified brace landing spots, as ghost markers.
 
     Without these a viewer can see the hand move but not whether it arrived, and
@@ -176,15 +176,17 @@ def draw_refs(scene, target, site_ref):
     whole session turns on -- is invisible in a render that draws only what the
     robot is doing and not what it was aiming at.
     """
-    n = _marker(scene, target, TARGET_RGBA, 0.022)
-    for s, p in site_ref.items():
-        rgba = list(SITE_RGBA.get(s, FOOT_RGBA))
-        rgba[3] = 0.55                       # ghost: this is a reference, not a fact
-        n += _marker(scene, p, rgba, 0.012)
+    n = _marker(scene, target, TARGET_RGBA, 0.022) if show_target else 0
+    if show_ghosts:
+        for s, p in site_ref.items():
+            rgba = list(SITE_RGBA.get(s, FOOT_RGBA))
+            rgba[3] = 0.55                   # ghost: this is a reference, not a fact
+            n += _marker(scene, p, rgba, 0.012)
     return n
 
 
-def draw_contacts(scene, m, d, site_body, tbl, feet):
+def draw_contacts(scene, m, d, site_body, tbl, feet,
+                  show_points=True, show_forces=True):
     """Mark the live table contacts on the rendered scene, coloured by identity.
 
     MuJoCo's own mjVIS_CONTACTPOINT/CONTACTFORCE flags draw every contact in one
@@ -227,8 +229,9 @@ def draw_contacts(scene, m, d, site_body, tbl, feet):
         mujoco.mj_contactForce(m, d, c, buf)
         fn = abs(float(buf[0]))
         p = con.pos.copy()
-        added += _marker(scene, p, rgba, 0.018)
-        if fn > 1.0:
+        if show_points:
+            added += _marker(scene, p, rgba, 0.018)
+        if show_forces and fn > 1.0:
             # frame[0] is the contact NORMAL, pointing from geom[0] into geom[1]
             # (checked against a resting contact: table/object reads +z).  The
             # arrow shows the force ON THE ROBOT, so it runs along +normal when
@@ -432,6 +435,61 @@ def support_margin(m, d, contacts_only=True):
     return float(dist if inside else -abs(dist))
 
 
+def table_forces(m, d, subset, brace_bodies, feet, tbl):
+    """Every robot-table normal force, attributed. One copy, two callers.
+
+    EVERY FORCE GETS COUNTED SOMEWHERE. `f_brace` used to be keyed on the
+    plan's subset, so any contact on a body that is not a named site's body and
+    not a foot was summed nowhere and the total silently under-reported the
+    brace. It is not hypothetical: in `elbow+palm` the arm rests on
+    `left_wrist_pad`, which lives on `left_wrist_yaw_link` -- a body no site
+    names -- while the "palm" site lives on the gripper, which a 90 mm keepout
+    holds clear of the table. So the plan reported 175 N through the elbow and
+    0 N through the palm and neither number was the whole brace. `F_other` and
+    `F_other_bodies` are where that force is now visible.
+
+    Lifted out of the replay loop unchanged (verified against a saved replay,
+    field for field) so the live panel reports the SAME attribution the replay
+    scores. A second implementation of this would be a second chance to make
+    the same attribution bug.
+    """
+    f_brace = {s: 0.0 for s in subset}
+    f_feet = 0.0
+    f_other = 0.0
+    other_bodies = set()
+    deepest = 0.0
+    buf = np.zeros(6)
+    for c in range(d.ncon):
+        con = d.contact[c]
+        b1, b2 = m.geom_bodyid[con.geom[0]], m.geom_bodyid[con.geom[1]]
+        mujoco.mj_contactForce(m, d, c, buf)
+        fn = abs(float(buf[0]))
+        if tbl in (b1, b2):
+            rb = b2 if b1 == tbl else b1
+            if _under(m, rb, 1):
+                deepest = min(deepest, float(con.dist))
+        if tbl in (b1, b2):
+            rb = b2 if b1 == tbl else b1
+            hit = [s for s, bid_ in brace_bodies.items() if bid_ == rb]
+            if hit:
+                for s in hit:
+                    f_brace[s] += fn
+            elif rb not in feet and _under(m, rb, 1):
+                f_other += fn
+                other_bodies.add(rb)
+        if b1 in feet or b2 in feet:
+            f_feet += fn
+    out = {f"F_{s}": f_brace[s] for s in subset}
+    out["F_feet"] = f_feet
+    out["F_other"] = f_other
+    out["F_other_bodies"] = sorted(
+        mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) or str(b)
+        for b in other_bodies)
+    out["F_brace_total"] = float(sum(f_brace.values()) + f_other)
+    out["penetration"] = deepest
+    return out
+
+
 # The MPC controller now lives in croco.control.mpc -- it is the only part of
 # this file that would run on a robot, and it was unreachable at line 434 of a
 # replay/scoring/rendering script. Imported rather than duplicated so there is
@@ -512,6 +570,17 @@ def build_ocp(plan, run_dir, overrides=None):
                      w_vel=plan.get("w_vel", 0.0),
                      reach_rot=plan.get("reach_rot"),
                      w_reach_rot=plan.get("w_reach_rot", 0.0),
+                     # CONTACT STABILISATION FROM THE PLAN. `None` (a plan
+                     # solved before these were recorded) means the module
+                     # default, so every certified cell rebuilds unchanged.
+                     # This is also the one override that changes the DYNAMICS
+                     # rather than a cost -- `croco_twin --contact-kp` reruns a
+                     # certified plan under a different Baumgarte gain without
+                     # re-solving it, which is the cheap half of that
+                     # experiment; the honest half is re-solving.
+                     contact_kp=plan.get("contact_kp"),
+                     contact_kd=plan.get("contact_kd"),
+                     foot_kp=plan.get("foot_kp"),
                      # Reconstructed from the plan, not defaulted: a recovery
                      # that begins braced returns to a DIFFERENT pose than it
                      # started from, and rebuilding it without this silently
@@ -880,49 +949,7 @@ def replay(tag, ctrl_mode="riccati", dt_plan=0.02, run_dir=".", video=None,
                    tau_argmax=int(np.argmax(np.abs(d.actuator_force[:m.nu]) / tau_lim)),
                    ctrl_clip=clip_max, ctrl_clip_n=clip_n,
                    cmd_ratio=float(np.max(np.abs(tau_cmd) / tau_lim)))
-        f_brace = {s: 0.0 for s in subset}
-        f_feet = 0.0
-        # EVERY robot-table normal force gets counted SOMEWHERE. Until now
-        # `f_brace` was keyed on the plan's subset, so any contact on a body
-        # that is not a named site's body and not a foot was summed nowhere and
-        # the total silently under-reported the brace. It is not hypothetical:
-        # in `elbow+palm` the arm rests on `left_wrist_pad`, which lives on
-        # `left_wrist_yaw_link` -- a body no site names -- while the "palm"
-        # site lives on the gripper, which a 90 mm keepout holds clear of the
-        # table. So the plan reported 175 N through the elbow and 0 N through
-        # the palm and neither number was the whole brace.
-        f_other = 0.0
-        other_bodies = set()
-        deepest = 0.0
-        buf = np.zeros(6)
-        for c in range(d.ncon):
-            con = d.contact[c]
-            b1, b2 = m.geom_bodyid[con.geom[0]], m.geom_bodyid[con.geom[1]]
-            mujoco.mj_contactForce(m, d, c, buf)
-            fn = abs(float(buf[0]))
-            if tbl in (b1, b2):
-                rb = b2 if b1 == tbl else b1
-                if _under(m, rb, 1):
-                    deepest = min(deepest, float(con.dist))
-            if tbl in (b1, b2):
-                rb = b2 if b1 == tbl else b1
-                hit = [s for s, bid_ in brace_bodies.items() if bid_ == rb]
-                if hit:
-                    for s in hit:
-                        f_brace[s] += fn
-                elif rb not in feet and _under(m, rb, 1):
-                    f_other += fn
-                    other_bodies.add(rb)
-            if b1 in feet or b2 in feet:
-                f_feet += fn
-        rec.update({f"F_{s}": f_brace[s] for s in subset})
-        rec["F_feet"] = f_feet
-        rec["F_other"] = f_other
-        rec["F_other_bodies"] = sorted(
-            mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, b) or str(b)
-            for b in other_bodies)
-        rec["F_brace_total"] = float(sum(f_brace.values()) + f_other)
-        rec["penetration"] = deepest
+        rec.update(table_forces(m, d, subset, brace_bodies, feet, tbl))
         log.append(rec)
         qtrace.append(d.qpos.copy())
 

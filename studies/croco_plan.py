@@ -105,6 +105,29 @@ FEET = ["sole_left", "sole_right"]
 
 # Baumgarte contact stabilisation gains (Kp, Kd) and the KKT inverse-damping used
 # by the contact forward dynamics.  Module-level so they can be swept.
+#
+# WHAT Kp = 0 ACTUALLY MEANS, because it is the single most consequential number
+# in this file and it reads like a tuning default.  crocoddyl's contact model
+# constrains the ACCELERATION of the contact point:
+#
+#     a_c + Kd * v_c + Kp * p_err = 0
+#
+# With Kp = 0 the constraint is on VELOCITY only -- "the site does not move from
+# here on" -- and the position error `p_err` between where the site is and where
+# `site_ref` says it should be has NO restoring term at all.  So once the braced
+# phase starts the site stays wherever it arrived, and any position error that
+# accumulates (from the servo, from the plant/model gap, from the seam of a
+# chained behaviour) is permanent.  Measured on the twin: a 40 s hold slides the
+# loaded elbow ~0.8 mm/s and sinks the pelvis ~2.3 mm/s, in EVERY contact mode,
+# and the sink does not settle.  Contact-mode choice moves that by ~35%; this
+# number is the rest of it.
+#
+# Kp > 0 turns the brace from "do not move" into "return to the certified spot",
+# which is what a hold has to be to be indefinite.  It is not free: the same
+# term that pulls a drifted site back also fights the approach that puts it
+# there, and a large Kp makes the KKT system stiff.  See CONTACT_KP_SWEEP in
+# docs/lean/2026-08-21_brace_hold.html for the measured trade; the plan JSON records the gains it
+# was solved with, so a cell is self-describing.
 CONTACT_GAINS = np.array([0.0, 50.0])
 
 # INV_DAMPING is not a nuisance parameter -- it is what makes the braced phase
@@ -234,11 +257,30 @@ class LeanOCP:
                  cop_shrink=1.0, min_nforce=1.0, w_com_track=0.0,
                  w_ctrl=1e-3, n_hold=0, w_hold_state=1e2, w_com_damp=0.0,
                  w_jlim=1e3, w_vel=0.0, reach_rot=None, w_reach_rot=0.0,
-                 return_q_mj=None, drop=()):
+                 return_q_mj=None, drop=(),
+                 contact_kp=None, contact_kd=None, foot_kp=None):
         self.rmodel = cb.build_pin(reconcile_passive=not legacy)
         self.sites = cb.mj_site_frames(self.rmodel)
         self.subset = list(subset)
         self.legacy = legacy
+
+        # PER-OCP CONTACT GAINS, defaulting to the module constant so every
+        # plan solved before this existed rebuilds to exactly what it was.
+        # The brace and the feet are separated on purpose: they are the same
+        # kind of constraint answering different questions.  The brace's
+        # reference is a spot the static QP CERTIFIED, so pulling back to it is
+        # pulling toward a pose that is known good.  A foot's reference is
+        # wherever it happened to be standing at q0, so a nonzero foot_kp
+        # anchors the stance to an arbitrary point and will fight any
+        # legitimate weight shift.  Hence foot_kp defaults to the brace value
+        # only when it is explicitly asked for.
+        kp0, kd0 = float(CONTACT_GAINS[0]), float(CONTACT_GAINS[1])
+        self.contact_gains = np.array(
+            [kp0 if contact_kp is None else float(contact_kp),
+             kd0 if contact_kd is None else float(contact_kd)])
+        self.foot_gains = np.array(
+            [kp0 if foot_kp is None else float(foot_kp),
+             self.contact_gains[1]])
         m_mj, d_mj = cb.mj_model()
 
         # Keep-out points get their Pinocchio frames HERE, before StateMultibody
@@ -422,12 +464,12 @@ class LeanOCP:
         for f in FEET:
             contacts.addContact(f, crocoddyl.ContactModel6D(
                 self.state, self.sites[f], self.foot_ref[f],
-                pin.LOCAL_WORLD_ALIGNED, self.nu, CONTACT_GAINS))
+                pin.LOCAL_WORLD_ALIGNED, self.nu, self.foot_gains))
         if braced:
             for s in self.subset:
                 contacts.addContact(f"brace_{s}", crocoddyl.ContactModel3D(
                     self.state, self.sites[s], self.site_ref[s],
-                    pin.LOCAL_WORLD_ALIGNED, self.nu, CONTACT_GAINS))
+                    pin.LOCAL_WORLD_ALIGNED, self.nu, self.contact_gains))
         return contacts
 
     def _base_costs(self, braced, w_state=1e-1, w_ctrl=None, cones=None,

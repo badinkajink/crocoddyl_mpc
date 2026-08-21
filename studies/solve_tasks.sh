@@ -31,8 +31,32 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
 CELL="${1:?usage: solve_tasks.sh <cell-dir> [brace-tag] [mode]}"
-TAG="${2:-elbow_palm}"
-MODE="${3:-elbow+palm}"
+# elbow+forearm IS THE DEFAULT MODE NOW, and elbow+palm is not. Measured on
+# the twin, 40 s holds of the same cell (docs/lean/2026-08-21_brace_hold.html):
+#
+#   mode                 pelvis sink 4->40 s   drift_elbow   2nd contact   tau/lim
+#   elbow+forearm        +43 mm, steady        17 mm         18.7 N        0.49
+#   elbow+palm           +65 mm, worsening     48 mm          0.0 N        0.75
+#   elbow                +218 mm               149 mm         --           0.89
+#   elbow+forearm+palm   FALLS OVER            --             --           --
+#
+# elbow+palm's palm carries EXACTLY ZERO newtons for the whole hold -- the
+# gripper geoms sit 9-33 mm above the wood at q*, fully collision-enabled, so
+# there is no contact to carry anything. The static QP's effort ranking put
+# elbow+palm first; that ranking credited a palm force that does not exist, and
+# the dynamic hold inverts it. See croco_forces.py for the site/body map.
+TAG="${2:-elbow_forearm}"
+MODE="${3:-elbow+forearm}"
+
+# BAUMGARTE POSITION GAIN on the brace contacts. 0 was the study's default and
+# is the reason a brace creeps in EVERY mode: crocoddyl constrains
+# a_c + Kd*v_c + Kp*p_err = 0, so Kp = 0 constrains velocity and leaves
+# position error with nothing pulling on it. Swept on a 40 s hold
+# (docs/lean/2026-08-21_brace_hold.html): Kp=0 sinks 33 mm and is STILL sinking at 0.87 mm/s at
+# t=40; Kp=50 sinks 17 mm and has stopped (-0.03 mm/s), with brace drift down
+# from 38 mm to 5 mm. Not monotonic -- 10 and 20 are worse than 0 -- so do not
+# read this as "more is better" and interpolate.
+CONTACT_KP="${CONTACT_KP:-50}"
 FORCE="${FORCE:-0}"
 
 [ -f "$CELL/modes.json" ] || {
@@ -82,7 +106,8 @@ run() {
     return 0
   fi
   echo; echo "=== $what ==="
-  "$PY" "$HERE/croco_run.py" --dir "$CELL" --tag "$tag" --dt "$DT" "$@"
+  "$PY" "$HERE/croco_run.py" --dir "$CELL" --tag "$tag" --dt "$DT" \
+      --contact-kp "$CONTACT_KP" "$@"
 }
 
 # brace+reach -- the certified maneuver. --reach-rot auto is the default in
@@ -101,8 +126,25 @@ run "stand -> plan_stand" stand \
 # recover -- starts braced and returns. n_approach 0 because there is nothing
 # to approach: the robot is already on the table. --return-start is what makes
 # the return phase regulate to the STAND pose rather than back to the brace.
-run "recover -> plan_recover" recover \
-    --mode "$MODE" --start forearm_brace_reach --return-start stand \
+#
+# --start-q qstar IS THE POINT OF THE TASK. This was `--start
+# forearm_brace_reach`, the raw keyframe, and the keyframe is not where the
+# maneuver this is chained onto ENDS: measured on the S20 cell, brace+reach
+# terminates 0.115 rad from q* while the keyframe sits 0.493 rad away, and the
+# worst joint is left_wrist_pitch -- the bracing wrist, loaded, with +-0.4625
+# rad of total travel. So the recovery's first job was to drive half a radian
+# of wrist pitch INTO the brace before it could leave it. The keyframe stays
+# as --start because it is still what supplies the table pose and the stance
+# offset; only the robot's 34 qpos move to the certified pose.
+# ONE RECOVERY PER MODE. `plan_recover.json` was fine while there was exactly
+# one contact mode; with the mode a live dropdown, a single recovery plan means
+# releasing an elbow+forearm brace with an elbow+palm contact schedule, which
+# is a different problem wearing the same name. croco_twin reads each plan's
+# own `mode` field, so the suffix is a convention for humans and the classifier
+# does not depend on it.
+run "recover -> plan_recover_$TAG" "recover_$TAG" \
+    --mode "$MODE" --start forearm_brace_reach --start-q qstar \
+    --return-start stand \
     --n-approach 0 --n-braced 20 --n-return 120 \
     --reach-rot auto --w-reach-rot 1e-2
 
@@ -110,5 +152,10 @@ echo
 echo "=== $CELL now carries ==="
 ls -1 "$CELL"/plan_*.json
 echo
-echo "All three are selectable in the panel's task dropdown:"
+echo "All three are selectable in the panel's task dropdown, and every mode"
+echo "solved into this cell is selectable in the CONTACT MODE dropdown next"
+echo "to it -- switching modes chains, it does not reset the robot:"
 echo "  studies/croco_twin.py --dir $CELL --tag $TAG --plant mujoco --gui"
+echo
+echo "To add another mode to the same cell (~4 s):"
+echo "  studies/solve_tasks.sh $CELL elbow_palm elbow+palm"
