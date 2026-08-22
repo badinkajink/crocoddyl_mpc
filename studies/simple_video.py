@@ -16,6 +16,7 @@ usage:
 """
 import argparse
 import os
+import shutil
 import subprocess
 
 import numpy as np
@@ -24,8 +25,26 @@ from PIL import Image, ImageDraw
 
 import simple_lean as sl
 
-FFMPEG = os.path.join(sl.ROOT, "build/tools/imageio_ffmpeg/binaries/"
-                               "ffmpeg-linux-x86_64-v7.0.2")
+# The bundled imageio binary lived in the MJPC fork's build tree, which is no
+# longer this checkout's parent (repo split). Prefer $FFMPEG, then that old path
+# if it still happens to exist, then whatever is on PATH -- resolved rather than
+# assumed, so a missing encoder fails loudly here instead of producing a 0-byte
+# mp4 forty frames later.
+def _ffmpeg():
+    cand = os.environ.get("FFMPEG")
+    if cand and os.path.exists(cand):
+        return cand
+    bundled = os.path.join(sl.ROOT, "build/tools/imageio_ffmpeg/binaries/"
+                                    "ffmpeg-linux-x86_64-v7.0.2")
+    if os.path.exists(bundled):
+        return bundled
+    found = shutil.which("ffmpeg")
+    if not found:
+        raise SystemExit("no ffmpeg: set $FFMPEG or install one on PATH")
+    return found
+
+
+FFMPEG = _ffmpeg()
 W, H = 900, 700
 DOT = {"elbow": (40, 120, 215), "forearm": (235, 105, 50),
        "palm": (28, 176, 122), "trunk": (232, 125, 166)}

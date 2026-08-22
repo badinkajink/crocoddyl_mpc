@@ -36,10 +36,17 @@ import numpy as np
 import mujoco
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BIN = os.path.join(ROOT, "build/bin/testspeed")
+# The MJPC fork is no longer this checkout's parent (the repo split, 2026-08-17),
+# so ROOT/build holds neither the binary nor the staged task. Both resolve from
+# the environment, with the pre-split layout as the fallback: MJPC_BIN for
+# testspeed, LEAN_TASK_DIR for the task tree -- the same variable
+# contact_select.py already uses, so one export configures the whole study.
+BIN = os.environ.get("MJPC_BIN", os.path.join(ROOT, "build/bin/testspeed"))
 TASK = "Lean Simple H12 Magpie"
-MODEL = os.path.join(ROOT, "build/mjpc/tasks/humanoid_bench/lean/"
-                           "Lean_Simple_H12_Magpie.xml")
+MODEL = os.path.join(
+    os.environ.get("LEAN_TASK_DIR",
+                   os.path.join(ROOT, "build/mjpc/tasks/humanoid_bench/lean")),
+    "Lean_Simple_H12_Magpie.xml")
 
 # Candidate brace links: cost-term name -> the body whose contacts count.
 LINKS = {
