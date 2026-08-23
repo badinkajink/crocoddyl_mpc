@@ -123,6 +123,14 @@ record of how the thing came to work, including the parts that did not.</p>
   paper's MJPC baselines — same plant, same targets, same scorer, one set of
   figures. A seven-target sweep on both, and the two ways a held plan falls
   over.</span></li>
+<li><span class="d">08-23 · S23b</span>
+  <a href="lean/2026-08-22_cmpc_vs_mjpc.html#">Trunk rests are arrivals, and the certifier bounds a pose</a>
+  <span class="n">Same page, three revisions. Chest-on-table rollouts are
+  pooled instead of dropped, so both planners get an arrival band as well as a
+  clean one. <code>legs_only</code> is rejected past 1.14 m on base residual,
+  not reach — the closed loop hinges the pelvis 30 mm behind the ankles and
+  holds 1.30 m anyway. And choosing the contact mode per target buys margin at
+  less arm force but fixes neither end.</span></li>
 </ol>
 
 <h2>Reference</h2>

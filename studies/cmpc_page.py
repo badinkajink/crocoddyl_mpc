@@ -93,9 +93,20 @@ def outcome(r, tol=0.05):
     return "arrived" if r.get("reach_err_settled", 9) <= tol else "missed"
 
 
-def clean_band(rows, arm, tol=0.05):
-    """The longest contiguous run of targets where EVERY replicate arrived
-    cleanly -- upright, no trunk on the slab, inside `tol`.
+PASS_CLEAN = ("arrived",)
+PASS_ANY = ("arrived", "trunk")
+
+
+def clean_band(rows, arm, tol=0.05, allow=PASS_CLEAN):
+    """The longest contiguous run of targets where EVERY replicate arrived.
+
+    TWO BANDS ARE REPORTED, not one, and the pair is the finding. `allow`
+    decides whether a rollout that arrived on target while resting its chest on
+    the slab counts: the ARRIVAL band says yes (it is upright, it is on target,
+    it braced with a body the mode did not name), the CLEAN band says no. The
+    sampling planner's commanded brace has a wide arrival band and no clean
+    band at all, and reporting either number alone tells a different and
+    incomplete story about it.
 
     A BAND, NOT A MAXIMUM, because a maximum cannot express what the data
     does.
@@ -103,12 +114,15 @@ def clean_band(rows, arm, tol=0.05):
     THREE THINGS HAD TO CHANGE from the obvious version, and each was a way of
     reporting a controller as better than it is:
 
-      * it was computed over `BP.by(...)`, which drops the torso-rest
-        degenerates -- so a target where every replicate finished with its
-        chest on the slab contributed NO rollouts and was skipped rather than
-        failed. Measured here: three of the sampling planner's seven braced
-        targets have zero clean replicates, and its envelope was being read off
-        the four that survived.
+      * it was computed over `BP.by(...)`, which USED TO drop the torso-rest
+        rollouts -- so a target where every replicate finished with its chest
+        on the slab contributed NO rollouts and was skipped rather than scored.
+        Three of the sampling planner's seven braced targets had zero surviving
+        replicates, and its envelope was read off the four that remained. Since
+        2026-08-23 those rollouts are pooled (a trunk rest is an upright,
+        on-target posture bracing with a body the mode did not name), so the
+        band below is computed over every rollout and the trunk-assisted count
+        is reported beside it.
       * a fall was likewise invisible.
       * it took `max` over passing targets, so a pass at 1.30 outranked a
         failure at 1.22.
@@ -127,7 +141,7 @@ def clean_band(rows, arm, tol=0.05):
     best = (None, None)
     run = None
     for x in sorted(d):
-        if all(outcome(r, tol) == "arrived" for r in d[x]):
+        if all(outcome(r, tol) in allow for r in d[x]):
             run = x if run is None else run
             if best[0] is None or (x - run) >= (best[1] - best[0]):
                 best = (run, x)
@@ -136,8 +150,8 @@ def clean_band(rows, arm, tol=0.05):
     return best
 
 
-def band_str(rows, arm):
-    lo, hi = clean_band(rows, arm)
+def band_str(rows, arm, allow=PASS_CLEAN):
+    lo, hi = clean_band(rows, arm, allow=allow)
     if lo is None:
         return "none"
     return "%.2f m" % lo if lo == hi else "%.2f&ndash;%.2f m" % (lo, hi)
@@ -238,16 +252,21 @@ def build(mjpc, cmpc, figs, out, cmpc_run, mjpc_run):
              '<code>brace_vs_stand.py analyze</code>, <code>bvs_plots.py</code>'
              ' and <code>bvs_strips.py</code> run on it unchanged. The target '
              'sweep was extended to seven targets and run on both.</p>'
-             '<p><b>Clean-arrival band</b> &mdash; the contiguous run of '
-             'targets where every replicate lands within 5&nbsp;cm, upright, '
-             'without resting its trunk on the slab: '
+             '<p><b>Arrival band</b> &mdash; the contiguous run of targets '
+             'where every replicate lands within 5&nbsp;cm, upright: '
              'MJPC <b>%s</b> no-brace, <b>%s</b> braced; '
-             'CMPC <b>%s</b> no-brace, <b>%s</b> braced. '
-             'The braced arms of both planners leave that band by resting the '
-             'trunk, not by failing to reach &mdash; which is a cost-function '
-             'result and is why the band is reported instead of a maximum.'
-             '</p></div>'
-             % (band_str(mjpc, "stand"), band_str(mjpc, "brace"),
+             'CMPC <b>%s</b> no-brace, <b>%s</b> braced. Requiring in addition '
+             'that no rollout rests its trunk on the slab &mdash; the '
+             '<b>clean</b> band &mdash; cuts those to '
+             'MJPC <b>%s</b> / <b>%s</b> and CMPC <b>%s</b> / <b>%s</b>. '
+             'The gap between the two rows is the whole story of the braced '
+             'arms: they keep arriving, they just stop arriving on the arm '
+             'they were told to use.</p></div>'
+             % (band_str(mjpc, "stand", PASS_ANY),
+                band_str(mjpc, "brace", PASS_ANY),
+                band_str(cmpc, "stand", PASS_ANY),
+                band_str(cmpc, "brace", PASS_ANY),
+                band_str(mjpc, "stand"), band_str(mjpc, "brace"),
                 band_str(cmpc, "stand"), band_str(cmpc, "brace")))
 
     # ---- protocol -------------------------------------------------------- #
@@ -324,15 +343,19 @@ def build(mjpc, cmpc, figs, out, cmpc_run, mjpc_run):
     o.append("<h2>3. The target sweep</h2>")
     o.append("<p>Seven targets, 0.90&ndash;1.38&nbsp;m along +x at fixed "
              "y,&nbsp;z; two replicates per point per arm per planner. The "
-             "clean-arrival band is the contiguous run of targets at which "
+             "arrival band is the contiguous run of targets at which "
              "<i>every</i> replicate settles within 5&nbsp;cm of the target it "
-             "was given, upright, without the trunk on the slab:</p>")
+             "was given and stays upright; the clean band additionally "
+             "requires that none of them rests the trunk on the slab:</p>")
     o.append('<div class="scroll"><table><thead><tr><th>planner</th>'
              "<th>no brace cost</th><th>commanded brace</th>"
+             "<th>no brace, clean</th><th>braced, clean</th>"
              "</tr></thead><tbody>")
     for name, rows in (("MJPC (sampling)", mjpc), ("CMPC (gradient)", cmpc)):
-        o.append("<tr><td>%s</td><td>%s</td><td>%s</td></tr>"
-                 % (name, band_str(rows, "stand"), band_str(rows, "brace")))
+        o.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+                 % (name, band_str(rows, "stand", PASS_ANY),
+                    band_str(rows, "brace", PASS_ANY),
+                    band_str(rows, "stand"), band_str(rows, "brace")))
     o.append("</tbody></table></div>")
 
     # PER TARGET, PER ARM, WHAT ACTUALLY HAPPENED. The single envelope number
@@ -373,6 +396,33 @@ def build(mjpc, cmpc, figs, out, cmpc_run, mjpc_run):
              "1.60&nbsp;m max-reach target, which is why the max-reach cell "
              "carries a best-effort pose marked <code>admissible: false</code> "
              "rather than a certified one.</p>")
+    o.append('<div class="note"><p><b>That certification is about a pose, not '
+             "about the target, and the closed loop beats it.</b> "
+             "<code>legs_only</code> is rejected at 1.22 and 1.30&nbsp;m on "
+             "<b>base residual</b> &mdash; 14.4 and 14.6&nbsp;N &mdash; not on "
+             "reach (5.1 and 19.9&nbsp;mm) and not on torque (0.99, 0.96). "
+             "The pose being rejected is the one <code>solve_ik</code> "
+             "produces: feet pinned at the seed stance, hand driven to target, "
+             "nothing in the objective about balance. It puts the CoM "
+             "<b>165&nbsp;mm</b> ahead of the ankle midpoint, and the static "
+             "LP calls it infeasible. The MPC, given the same target and no "
+             "brace, settles somewhere else entirely &mdash; CoM "
+             "<b>60&nbsp;mm</b> ahead, feasible, with 8.5 and 7.4&nbsp;cm of "
+             "actuated support margin &mdash; and holds it for the full "
+             "16&nbsp;s with 21 and 32&nbsp;mm of reach error. The difference "
+             "is a counterweight: at 1.30&nbsp;m the MPC hinges at the hip and "
+             "puts the pelvis <b>30&nbsp;mm behind</b> the ankle midpoint "
+             "where the IK pose has it 76&nbsp;mm in front, and that "
+             "106&nbsp;mm of hip travel costs only 61&nbsp;mm of reach. Read "
+             "the "
+             "enumeration as what it is: a chooser of contact modes, and a "
+             "conservative screen on the workspace, not a bound on it.</p>"
+             "<p>At 1.38&nbsp;m the verdict is different in kind. All 16 "
+             "arm+wrist subsets fail there, and every one of them fails on "
+             "<b>reach</b> (56&ndash;98&nbsp;mm short) or on a site that will "
+             "not seat &mdash; with torque ratios of 0.48&ndash;0.63 and base "
+             "residuals of zero. The far end is a kinematic limit of the arm. "
+             "No contact schedule buys it back.</p></div>")
 
     # ---- the near-target failure ----------------------------------------- #
     o.append("<h2>4. Where the declared brace stops working</h2>")
@@ -406,10 +456,62 @@ def build(mjpc, cmpc, figs, out, cmpc_run, mjpc_run):
         o.append('<figure><img src="media/%s" alt=""><figcaption>%s'
                  "</figcaption></figure>" % (dst, cap))
 
+    # ---- mode selection --------------------------------------------------- #
+    o.append("<h2>5. Choosing the contact mode instead of fixing it</h2>")
+    o.append("<p>Failing at <i>both</i> ends is the signature of a schedule "
+             "that is right in the middle, so the sweep was repeated with the "
+             "mode chosen per target. The policy is "
+             "<code>croco_modes</code>' own ranking applied mechanically: "
+             "enumerate all 16 subsets of {elbow, forearm, palm, wrist}, keep "
+             "the admissible ones, take the least normalized actuator effort, "
+             "and decline where nothing certifies. No hand-picking &mdash; "
+             "otherwise the comparison is a search over 16 modes dressed up as "
+             "a controller. It selects <code>elbow+wrist</code> at 0.90, "
+             "<code>forearm+palm</code> at 0.98, <code>forearm+wrist</code> at "
+             "1.06&ndash;1.30, and nothing at 1.38. "
+             "<b><code>elbow+forearm</code>, the mode used everywhere else in "
+             "this study, is never the ranked choice at any target.</b></p>")
+    mp = os.path.join(figs, "table_mode_select.txt")
+    if os.path.exists(mp):
+        o.append("<div class=\"scroll\"><pre>%s</pre></div>"
+                 % open(mp).read().replace("&", "&amp;").replace("<", "&lt;"))
+    msrc = os.path.join(figs, "fig_mode_select.png")
+    if os.path.exists(msrc):
+        # copied here and not through FIGS: `have` is index-sliced by the
+        # sections above (have[:2], have[2:]), so appending to it would render
+        # this figure a second time under the wrong heading
+        shutil.copyfile(msrc, os.path.join(media, "s23_mode_select.png"))
+        o.append('<figure><img src="media/s23_mode_select.png" alt="">'
+                 "<figcaption>Fixed versus chosen contact mode. Hue is the "
+                 "schedule; a cross marks a target where a replicate fell. "
+                 "Curves are over upright rollouts &mdash; a fallen robot's "
+                 "settled reach error is 262&nbsp;cm and plotting it flattens "
+                 "everything else into the bottom of the axis."
+                 "</figcaption></figure>")
+    o.append('<div class="note"><p><b>A real but partial improvement, and the '
+             "two ends fail for different reasons.</b> Through the middle the "
+             "selected mode holds <i>more</i> margin &mdash; +0.4 to "
+             "+6.5&nbsp;cm of actuated support margin, against 8&ndash;10&nbsp;cm "
+             "for <code>legs_only</code> at the same targets &mdash; while "
+             "pushing 25&ndash;30% <i>less</i> force through the bracing arm "
+             "(102&ndash;110&nbsp;N against 131&ndash;146&nbsp;N), at reach "
+             "error within 1.2&nbsp;cm of the fixed mode. That is the effort "
+             "ranking doing exactly what it claims.</p>"
+             "<p>At the near target it halves the fall rate (2/2 &rarr; 1/2) "
+             "without eliminating it. <code>legs_only</code> holds 0.90&nbsp;m "
+             "with 8.7&nbsp;cm of margin and never falls, so bracing there is "
+             "harmful <i>regardless of which mode is chosen</i> &mdash; which "
+             "points back at the light-touch diagnosis above and not at mode "
+             "selection. At the far target the policy declines, correctly: "
+             "nothing certifies at 1.38&nbsp;m, and the fixed mode only "
+             "&ldquo;reaches&rdquo; it by missing by 6.3&nbsp;cm with "
+             "89&nbsp;N through the trunk. Automatic mode selection is worth "
+             "having and is not the missing piece.</p></div>")
+
     # ---- generated tables ------------------------------------------------ #
-    o.append("<h2>5. The generated tables, verbatim</h2>")
+    o.append("<h2>6. The generated tables, verbatim</h2>")
     for name in ("table_mjpc_vs_cmpc.txt", "table_brace_vs_stand.txt",
-                 "table_disturbance.txt"):
+                 "table_disturbance.txt", "table_mode_select.txt"):
         p = os.path.join(figs, name)
         if not os.path.exists(p):
             continue
@@ -418,7 +520,7 @@ def build(mjpc, cmpc, figs, out, cmpc_run, mjpc_run):
                     .replace("<", "&lt;")))
 
     # ---- reproduce -------------------------------------------------------- #
-    o.append("<h2>6. Reproduce</h2>")
+    o.append("<h2>7. Reproduce</h2>")
     o.append("<pre>%s</pre>" % (
         "export CL_ASSETS_DIR=... LEAN_TASK_DIR=... MUJOCO_GL=egl\n"
         "export MJPC_BIN=&lt;mujoco_mpc&gt;/build_cmake/bin/testspeed\n"

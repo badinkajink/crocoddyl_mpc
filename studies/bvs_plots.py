@@ -84,10 +84,20 @@ def _ms(v):
 # with the trunk becomes the cheaper trade. The task's own comment calls 398 N
 # through the trunk "not something to deploy".
 #
-# Those runs are not a brace and must not be averaged into one. They are kept,
-# labelled, and drawn separately -- deleting them would hide a real failure mode
-# of the cost function, and pooling them would credit the brace with a margin
-# that a chest-on-table pose earned.
+# HOW THEY ARE COUNTED (revised 2026-08-23).  They used to be dropped from every
+# aggregate.  They are now POOLED, because "the trunk is on the table" is a
+# statement about which body carries the load and not about whether the rollout
+# is valid: the robot is upright (pelvis 0.97-1.03 m), it holds the target to
+# 4-16 mm, and nothing in the stack trips on a torso contact.  Excluding them
+# left the commanded brace with no clean-arrival band at all -- an artifact of
+# the filter, not a property of the planner.
+#
+# What is NOT hidden by pooling: `trunk load` and `peak contact load` are
+# reported as their own rows, the trunk-assisted count stays in the table, and
+# every scatter still draws them as rings.  The number that qualifies the whole
+# decision is the PEAK, not the settled mean -- the settled trunk load is
+# 75-472 N but the transient that puts the chest there reaches 1107 N, 1.6x body
+# weight, in the max-reach rollouts.  A reader can see that and disagree.
 TRUNK_N = 15.0
 
 
@@ -117,16 +127,27 @@ def brace_arm_load(r):
     return sum(v for k, v in b.items() if k.startswith(BRACE_SIDE))
 
 
+def peak_load(r):
+    """The LARGEST non-foot contact load anywhere in the run, not the settled
+    mean. Pooling trunk-rest rollouts is defensible on the settled number and
+    only on that: the chest arriving on the slab is a transient that the mean
+    over the last two fifths of the episode never sees."""
+    bl = r.get("brace_load_t")
+    return float(np.max(bl)) if bl else float("nan")
+
+
 def contact_class(r):
     if trunk_load(r) > TRUNK_N:
         return "torso"
     return "brace" if arm_load(r) >= TRUNK_N else "free"
 
 
-def by(rows, stage, clean=True, upright=True):
+def by(rows, stage, clean=False, upright=True):
     """Rollouts of a stage.
 
-    `clean` drops the torso-rest degenerates. `upright` drops rollouts that
+    `clean` drops the torso-rest rollouts; it defaults OFF since 2026-08-23 --
+    see the TRUNK_N block for why they are pooled and what is reported instead.
+    `upright` drops rollouts that
     FELL, and it defaults on for the same reason: a settled metric read off a
     robot lying on the floor is not that posture's number. It was implicit
     while nothing fell -- the sampling planner's settled conditions are all
@@ -135,6 +156,11 @@ def by(rows, stage, clean=True, upright=True):
     force` of 363 N that is the weight of a collapsed robot resting on its own
     arm. The disturbance figures pass `upright=False`: there, whether a run
     fell IS the measurement, and they count and annotate it.
+
+    A FALL AND A TRUNK REST ARE NOT THE SAME EVENT and that is why only one of
+    them is still filtered. A fallen robot is not in the posture the metric
+    names; a robot resting its chest on the table is -- it is upright, on
+    target, and merely bracing with a body the mode did not ask for.
     """
     out = [r for r in rows if r.get("stage") == stage and "error" not in r]
     if upright:
@@ -143,6 +169,17 @@ def by(rows, stage, clean=True, upright=True):
 
 
 # --------------------------------------------------------------------------- #
+def arm_braced(r):
+    """Did this rollout brace with the arm it was told to use?
+
+    The ring predicate, split out on 2026-08-23. It used to be implicit: `by()`
+    dropped trunk rests, so "was this point dropped" and "did it brace with the
+    commanded arm" were the same question and the figures asked the first one.
+    Pooling separated them, and the figures want the second -- a trunk rest is
+    in the mean now, and the ring is what says it got there another way."""
+    return not r.get("fell") and contact_class(r) != "torso"
+
+
 def sweep_all(rows, arm):
     """Every swept rollout of one arm, UNFILTERED, keyed by target x."""
     d = defaultdict(list)
@@ -156,15 +193,15 @@ def sweep_all(rows, arm):
 def fig_envelope(rows, out):
     """The headline: how far out each arm still ARRIVES.
 
-    THE DROPPED REPLICATES ARE MARKED. The curves average clean rollouts only
-    -- upright, no trunk on the slab -- which is right, because a settled reach
-    error read off a chest resting on the table is not that posture's number.
-    But an unmarked mean over one surviving replicate looks exactly like a mean
-    over two, and measured here the sampling planner's braced arm has ZERO
-    clean replicates at three of seven targets and one at three more. So every
-    point whose replicates were not all clean gets a ring, and a target with
-    none left gets a cross on the axis: the curve says how well the clean runs
-    did, and the rings say how many there were.
+    TRUNK RESTS ARE MARKED, NOT DROPPED (revised 2026-08-23). The curves
+    average every upright rollout. A chest on the table is a real arrival --
+    the robot is upright and on target -- so its reach error is that posture's
+    number and belongs in the mean; what it is NOT is the arm the mode asked
+    for. So every point whose replicates did not all brace with the commanded
+    arm gets a ring, and a target where none did gets a cross on the axis: the
+    curve says how well the runs arrived, the rings say what they arrived on.
+    Measured here, the sampling planner's braced arm rests its trunk at three
+    of seven targets outright and at three more in one replicate of two.
     """
     d = defaultdict(lambda: defaultdict(list))
     for r in by(rows, "sweep"):
@@ -191,11 +228,12 @@ def fig_envelope(rows, out):
     for arm in ORDER:
         allx = sweep_all(rows, arm)
         for x in sorted(allx):
-            n_all, n_ok = len(allx[x]), len(d[arm].get(x, []))
+            n_all = len(allx[x])
+            n_ok = sum(1 for r in allx[x] if arm_braced(r))
             if n_ok == n_all:
                 continue
             marked = True
-            if n_ok:
+            if d[arm].get(x):
                 v = _ms([r["reach_err_settled"] for r in d[arm][x]])[0] * 100
                 ax[0].plot([x], [v], marker="o", ms=11, mfc="none",
                            mec=C[arm], mew=1.4, zorder=5)
@@ -401,7 +439,11 @@ def fig_load_vs_margin(rows, out):
     allp = [r for r in rows if r.get("brace_load_N") is not None
             and np.isfinite(r.get("brace_load_N", np.nan))
             and r.get("margin_actuated_settled") is not None]
-    pts = [r for r in allp if contact_class(r) != "torso"]
+    # Every point is in the fit since 2026-08-23. The ring still marks a
+    # trunk rest, but it marks it -- it no longer removes it. If leaning on the
+    # table buys margin, a chest is a lean like any other and belongs on the
+    # trend; keeping it off was what made the trend look cleaner than it is.
+    pts = allp
     degen = [r for r in allp if contact_class(r) == "torso"]
     if len(pts) < 4:
         return
@@ -538,9 +580,14 @@ def fig_success(rows, out):
     the sim number worth reporting is the same one: of N attempts, how many
     produced a legitimate braced reach rather than a chest on the table.
 
-    Failure here is not a fall -- nothing fell. It is the planner buying reach
-    with the trunk, which is a cost-function failure and would be a very
-    different thing on a real table."""
+    TWO BARS PER ARM since 2026-08-23, because "success" got two meanings when
+    trunk rests stopped being excluded. The full bar is UPRIGHT attempts: the
+    robot is standing and on target, however it got there. The hatched part of
+    it is the share that arrived on the trunk rather than on the commanded arm
+    -- still an arrival, still not the behaviour that was asked for, and on a
+    real table a very different thing. Reporting only the outer bar credits the
+    planner with a brace it did not perform; reporting only the inner one hides
+    that the robot did the task."""
     mr = [r for r in rows if r.get("stage") == "maxreach" and "error" not in r]
     if not mr:
         return
@@ -551,20 +598,24 @@ def fig_success(rows, out):
         if not g:
             continue
         n = len(g)
-        # A run that FELL is not a success either, and until the gradient
-        # planner's max-reach rollouts started falling nothing in this study
-        # produced one, so the rate counted only the torso-rest degenerate.
-        clean = sum(1 for r in g
-                    if contact_class(r) != "torso" and not r.get("fell"))
-        ax[0].bar(ai, 100.0 * clean / n, width=0.55, color=C[arm], zorder=3,
+        up = [r for r in g if not r.get("fell")]
+        clean = sum(1 for r in up if contact_class(r) != "torso")
+        ax[0].bar(ai, 100.0 * len(up) / n, width=0.55, color=C[arm], zorder=3,
+                  edgecolor="white", linewidth=1.2, alpha=0.35)
+        ax[0].bar(ai, 100.0 * clean / n, width=0.55, color=C[arm], zorder=4,
                   edgecolor="white", linewidth=1.2)
         ax[0].annotate("%d/%d" % (clean, n), xy=(ai, 100.0 * clean / n),
                        xytext=(0, 3), textcoords="offset points",
-                       ha="center", va="bottom", fontsize=8, color=INK)
-        # reach achieved, clean attempts only
-        v = [r["func_reach_settled"] * 100 for r in g
-             if contact_class(r) != "torso" and not r.get("fell")
-             and r.get("func_reach_settled") is not None]
+                       ha="center", va="bottom", fontsize=8, color=INK,
+                       zorder=6)
+        if len(up) > clean:
+            ax[0].annotate("%d/%d upright" % (len(up), n),
+                           xy=(ai, 100.0 * len(up) / n), xytext=(0, 3),
+                           textcoords="offset points", ha="center",
+                           va="bottom", fontsize=7, color=INK2, zorder=6)
+        # reach achieved, upright attempts -- a trunk rest reached that far
+        v = [r["func_reach_settled"] * 100 for r in up
+             if r.get("func_reach_settled") is not None]
         mu, hr = _ms(v)
         if np.isfinite(mu):
             ax[1].bar(ai, mu, width=0.55, color=C[arm], zorder=3,
@@ -576,8 +627,8 @@ def fig_success(rows, out):
                            textcoords="offset points", ha="center",
                            va="bottom", fontsize=8, color=INK)
     for i, (ylab, title) in enumerate([
-            ("% of attempts   (higher better)", "Max-reach success rate"),
-            ("Functional reach  [cm]", "Reach (successes only)")]):
+            ("% of attempts   (higher better)", "Max-reach outcome"),
+            ("Functional reach  [cm]", "Reach (upright attempts)")]):
         ax[i].set_xticks(range(len(ORDER)))
         ax[i].set_xticklabels(["No brace\ncost", "Commanded\nbrace"])
         ax[i].set_ylabel(ylab)
@@ -603,6 +654,8 @@ def write_table(rows, out):
         ("settled reach error", "reach_err_settled", 100.0, "cm", "%.1f"),
         ("brace load, all contacts", "brace_load_N", 1.0, "N", "%.0f"),
         ("bracing-arm force", brace_arm_load, 1.0, "N", "%.0f"),
+        ("trunk load", trunk_load, 1.0, "N", "%.0f"),
+        ("peak contact load", peak_load, 1.0, "N", "%.0f"),
         ("support margin (contact)", "margin_contact_settled", 100.0, "cm", "%.1f"),
         ("support margin (actuated)", "margin_actuated_settled", 100.0, "cm", "%.1f"),
         ("forward margin (contact)", "fwd_contact_settled", 100.0, "cm", "%.1f"),
@@ -654,16 +707,26 @@ def write_table(rows, out):
                                     len(rs)))
     txt.append(" ".join(["%-24s" % "runs bracing (>15 N)"]
                         + ["%13s" % c for c in cells] + ["%6s" % "--"]))
-    dcells = []
+    # TRUNK-ASSISTED IS COUNTED OVER UPRIGHT ROLLOUTS ONLY. A robot on the
+    # floor has its torso in contact by definition, so counting falls here read
+    # "4/4 trunk-assisted" for a condition in which nothing braced and
+    # everything collapsed. Falls get their own row.
+    dcells, fcells = [], []
     for g, _ in conds:
         for arm in ORDER:
             allr = [r for r in rows if r.get("stage") == g
                     and r.get("arm") == arm and "error" not in r]
+            up = [r for r in allr if not r.get("fell")]
             dcells.append("%d/%d" % (sum(contact_class(r) == "torso"
-                                         for r in allr), len(allr)))
-    txt.append(" ".join(["%-24s" % "torso-rest (excluded)"]
+                                         for r in up), len(up))
+                          if up else "n/a")
+            fcells.append("%d/%d" % (len(allr) - len(up), len(allr)))
+    txt.append(" ".join(["%-24s" % "trunk-assisted (pooled)"]
                         + ["%13s" % c for c in dcells] + ["%6s" % "--"]))
-    tex.append("torso-rest (excluded) & %s & -- \\\\" % " & ".join(dcells))
+    txt.append(" ".join(["%-24s" % "fell (excluded)"]
+                        + ["%13s" % c for c in fcells] + ["%6s" % "--"]))
+    tex.append("trunk-assisted (pooled) & %s & -- \\\\" % " & ".join(dcells))
+    tex.append("fell (excluded) & %s & -- \\\\" % " & ".join(fcells))
     tex.append("runs bracing ($>$15\\,N) & %s & -- \\\\" % " & ".join(cells))
     tex += [r"\bottomrule", r"\end{tabular}"]
     with open(os.path.join(out, "table_brace_vs_stand.tex"), "w") as f:
@@ -753,7 +816,14 @@ def write_disturb_table(rows, out, stage="disturb", name="table_disturbance"):
 # The targeted-reach condition is empty on purpose: hardware has only been run
 # at max reach so far. Adding it later is one dict entry, and every group in
 # every panel picks up the bar without further edits.
-REAL_LABEL = "Commanded brace (real)"
+# Legend labels for the hardware comparison ONLY. Every other figure in this set
+# still reads "Commanded brace"; renaming in `LABEL` would silently retitle nine
+# figures whose captions are already written against that wording, so the
+# override is scoped here and the rename propagates when it is decided to.
+# (Case is as requested and deliberately not "fixed": "Brace Encouraged" beside
+# "No brace cost" is a mixed-case legend pair -- worth a look before print.)
+REAL_ARM_LABEL = {"stand": "No brace cost", "brace": "Brace Encouraged"}
+REAL_LABEL = "Brace Encouraged (real)"
 # Categorical slot 3 (aqua) of the documented reference palette, not an
 # arbitrary green. Slots 1-3 are the validated all-pairs opening -- worst pair
 # CVD dE 9.2, normal-vision 24.0 on a light surface -- which is the gate that
@@ -872,7 +942,7 @@ def fig_stability_real(rows, out, which="support"):
                             and np.isfinite(r.get(k, np.nan))]
                 mu, hr = _ms([v * sc for v in vals])
                 if np.isfinite(mu):
-                    series.append((C[arm], LABEL[arm], mu, hr))
+                    series.append((C[arm], REAL_ARM_LABEL[arm], mu, hr))
             rv = _real_value(g, key, which)
             if rv is not None:
                 series.append((C_REAL, REAL_LABEL, rv[0], rv[1]))
@@ -911,7 +981,7 @@ def fig_stability_real(rows, out, which="support"):
         ax.grid(axis="x", visible=False)
 
     h = [plt.Rectangle((0, 0), 1, 1, color=C[a]) for a in ORDER]
-    lab = [LABEL[a] for a in ORDER]
+    lab = [REAL_ARM_LABEL[a] for a in ORDER]
     if any(_real_value(g, k[0], which) is not None
            for g, _ in groups for k in REAL_PANELS):
         h.append(plt.Rectangle((0, 0), 1, 1, color=C_REAL))

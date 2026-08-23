@@ -176,13 +176,15 @@ def pick_rows(res, run_dir):
         if g:
             out.append((lab, sorted(
                 g, key=lambda r: r["brace_load_N"])[len(g) // 2]))
-    # The degenerate the cost function actually prefers at long range. Shown on
+    # The strategy the cost function actually prefers at long range. Shown on
     # purpose: 3 of 4 commanded-brace max-reach runs end up here, and a reader
-    # comparing only the clean rows would not know that.
+    # comparing only the arm-braced rows would not know that. It is a row and
+    # not an exclusion because the robot is upright and on target -- it is
+    # bracing, just not with the arm it was told to use.
     degen = [r for r in res if _BP.contact_class(r) == "torso"
              and r.get("stage") == "maxreach" and not r.get("fell")]
     if degen:
-        out.append(("Degenerate\ntorso on table",
+        out.append(("Trunk-assisted\nchest on table",
                     max(degen, key=lambda r: _BP.trunk_load(r))))
     return [(lab, os.path.join(run_dir, r["tag"] + ".csv"), r) for lab, r in out]
 

@@ -58,31 +58,31 @@
 
 <h1>The gradient planner on the sampling planner's figures</h1>
 <p class="sub">Crocoddyl-MPC run through the braced-reach protocol that produced the paper's MJPC baselines &mdash; same plant, same targets, same scorer, same plotting code &mdash; so the two controllers can be read off one axis.</p>
-<p class="meta">2026-08-22 &middot; S23 &middot; in-process MuJoCo, closed loop, 86 CMPC and 108 MJPC scored rollouts</p>
-<div class="note ok"><p><b>What this produced.</b> Every figure in the MJPC baseline set now has a CMPC counterpart and a two-planner overlay, from one code path: the CMPC harness writes testspeed's <code>--dump_traj</code> CSV, so <code>brace_vs_stand.py analyze</code>, <code>bvs_plots.py</code> and <code>bvs_strips.py</code> run on it unchanged. The target sweep was extended to seven targets and run on both.</p><p><b>Clean-arrival band</b> &mdash; the contiguous run of targets where every replicate lands within 5&nbsp;cm, upright, without resting its trunk on the slab: MJPC <b>0.90&ndash;1.22 m</b> no-brace, <b>none</b> braced; CMPC <b>0.90&ndash;1.30 m</b> no-brace, <b>0.98&ndash;1.22 m</b> braced. The braced arms of both planners leave that band by resting the trunk, not by failing to reach &mdash; which is a cost-function result and is why the band is reported instead of a maximum.</p></div>
+<p class="meta">2026-08-22 &middot; S23 &middot; in-process MuJoCo, closed loop, 86 CMPC and 116 MJPC scored rollouts</p>
+<div class="note ok"><p><b>What this produced.</b> Every figure in the MJPC baseline set now has a CMPC counterpart and a two-planner overlay, from one code path: the CMPC harness writes testspeed's <code>--dump_traj</code> CSV, so <code>brace_vs_stand.py analyze</code>, <code>bvs_plots.py</code> and <code>bvs_strips.py</code> run on it unchanged. The target sweep was extended to seven targets and run on both.</p><p><b>Arrival band</b> &mdash; the contiguous run of targets where every replicate lands within 5&nbsp;cm, upright: MJPC <b>0.90&ndash;1.22 m</b> no-brace, <b>0.90&ndash;1.30 m</b> braced; CMPC <b>0.90&ndash;1.38 m</b> no-brace, <b>0.98&ndash;1.38 m</b> braced. Requiring in addition that no rollout rests its trunk on the slab &mdash; the <b>clean</b> band &mdash; cuts those to MJPC <b>0.90&ndash;1.22 m</b> / <b>none</b> and CMPC <b>0.90&ndash;1.30 m</b> / <b>0.98&ndash;1.22 m</b>. The gap between the two rows is the whole story of the braced arms: they keep arriving, they just stop arriving on the arm they were told to use.</p></div>
 <h2>1. What was held, and what could not be</h2>
 <p>The two controllers were given the same plant (<code>Lean_H12_Magpie.xml</code> and <code>Lean_Simple_H12_Magpie.xml</code> are the same rigid body &mdash; identical nq/nv/nu, body, site, geom and actuator lists in the same order, identical masses, gains, force ranges, friction, <code>solref/solimp</code>, contact pairs and exclusions; they differ only in MJPC task metadata), the same targets, the same durations and the same scorer. Three things could not be held, and all three are visible in the numbers rather than hidden in them:</p>
 <ul><li><b>What &ldquo;no brace cost&rdquo; means.</b> For MJPC it is three weights at zero and the planner may still find the table &mdash; and does. For CMPC it is the <code>legs_only</code> plan, a contact schedule with nothing on the table, which no weight can override. The difference is not that one makes table contacts and the other cannot: a <code>legs_only</code> rollout at x = 1.38 m settles with the gripper seated anyway, because the physics puts it there. The difference is that the gradient planner never MODELLED that contact, so it is an unmodelled disturbance rather than support being exploited. That is the result, not a confound.</li><li><b>The start pose.</b> MJPC begins at the <code>home</code> keyframe, CMPC at <code>stand</code> (knees 0.55&nbsp;rad). Each is its own pipeline's start. Functional reach &mdash; hand to ankle-midpoint &mdash; is posture-intrinsic and references neither.</li><li><b>Where the spread comes from.</b> MJPC replicates differ because it samples; CMPC is a deterministic descent, so its replicates start from a seeded 3&nbsp;mrad / 3&nbsp;mm perturbation. Both are spreads over repeated attempts; they are not the same random variable.</li></ul>
 <h2>2. The extended-reach condition, side by side</h2>
 <p>x = 1.06&nbsp;m, 20&nbsp;s, four replicates per arm per planner. This condition exists because the paper's default target is 0.905&nbsp;m, where both arms arrive to within a centimetre &mdash; good for isolating a stability difference, useless for a reach one &mdash; and because it is the one target at which CMPC's declared brace does not survive the hold (&sect;4).</p>
 <div class="scroll"><table><thead><tr><th>metric</th><th>MJPC no&nbsp;brace</th><th>MJPC brace</th><th>CMPC no&nbsp;brace</th><th>CMPC brace</th><th>unit</th></tr></thead><tbody>
-<tr><td>Functional reach</td><td>89.7 &plusmn; 1.4</td><td>90.3 &plusmn; 0.2</td><td>83.8 &plusmn; 0.9</td><td>87.0 &plusmn; 1.1</td><td>cm</td></tr>
-<tr><td>Settled reach error</td><td>1.0 &plusmn; 0.5</td><td>0.7 &plusmn; 0.5</td><td>1.0 &plusmn; 0.1</td><td>3.7 &plusmn; 0.3</td><td>cm</td></tr>
-<tr><td>Bracing-arm force</td><td>42 &plusmn; 22</td><td>64 &plusmn; 21</td><td>0</td><td>141 &plusmn; 9</td><td>N</td></tr>
-<tr><td>Support margin (actuated)</td><td>13.9 &plusmn; 7.9</td><td>20.3 &plusmn; 5.8</td><td>9.1 &plusmn; 0.3</td><td>20.5 &plusmn; 1.1</td><td>cm</td></tr>
-<tr><td>Forward margin (actuated)</td><td>24.7 &plusmn; 19.5</td><td>37.2 &plusmn; 13.8</td><td>9.3 &plusmn; 0.3</td><td>28.2 &plusmn; 2.7</td><td>cm</td></tr>
-<tr><td>Smoothness SPARC</td><td>-3.13 &plusmn; 0.95</td><td>-3.68 &plusmn; 1.30</td><td>-2.91 &plusmn; 0.03</td><td>-3.35 &plusmn; 0.11</td><td>&mdash;</td></tr>
-<tr><td>Hand jitter</td><td>7.5 &plusmn; 3.8</td><td>5.8 &plusmn; 5.1</td><td>0.1 &plusmn; 0.0</td><td>2.9 &plusmn; 4.1</td><td>mm</td></tr>
-<tr><td>Worst-case push at hand</td><td>82 &plusmn; 64</td><td>119 &plusmn; 39</td><td>57 &plusmn; 2</td><td>125 &plusmn; 4</td><td>N</td></tr>
-<tr><td>Peak torque ratio</td><td>1.00</td><td>1.00</td><td>0.99 &plusmn; 0.01</td><td>0.98 &plusmn; 0.00</td><td>&mdash;</td></tr>
+<tr><td>Functional reach</td><td>89.7 &plusmn; 1.4</td><td>88.7 &plusmn; 3.0</td><td>83.8 &plusmn; 0.9</td><td>87.0 &plusmn; 1.1</td><td>cm</td></tr>
+<tr><td>Settled reach error</td><td>1.0 &plusmn; 0.5</td><td>0.8 &plusmn; 0.5</td><td>1.0 &plusmn; 0.1</td><td>3.7 &plusmn; 0.3</td><td>cm</td></tr>
+<tr><td>Bracing-arm force</td><td>42 &plusmn; 22</td><td>59 &plusmn; 67</td><td>0</td><td>141 &plusmn; 9</td><td>N</td></tr>
+<tr><td>Support margin (actuated)</td><td>13.9 &plusmn; 7.9</td><td>23.7 &plusmn; 9.6</td><td>9.1 &plusmn; 0.3</td><td>20.5 &plusmn; 1.1</td><td>cm</td></tr>
+<tr><td>Forward margin (actuated)</td><td>24.7 &plusmn; 19.5</td><td>39.9 &plusmn; 15.6</td><td>9.3 &plusmn; 0.3</td><td>28.2 &plusmn; 2.7</td><td>cm</td></tr>
+<tr><td>Smoothness SPARC</td><td>-3.13 &plusmn; 0.95</td><td>-3.32 &plusmn; 1.30</td><td>-2.91 &plusmn; 0.03</td><td>-3.35 &plusmn; 0.11</td><td>&mdash;</td></tr>
+<tr><td>Hand jitter</td><td>7.5 &plusmn; 3.8</td><td>5.1 &plusmn; 5.1</td><td>0.1 &plusmn; 0.0</td><td>2.9 &plusmn; 4.1</td><td>mm</td></tr>
+<tr><td>Worst-case push at hand</td><td>82 &plusmn; 64</td><td>132 &plusmn; 47</td><td>57 &plusmn; 2</td><td>125 &plusmn; 4</td><td>N</td></tr>
+<tr><td>Peak torque ratio</td><td>1.00</td><td>0.98 &plusmn; 0.09</td><td>0.99 &plusmn; 0.01</td><td>0.98 &plusmn; 0.00</td><td>&mdash;</td></tr>
 </tbody></table></div>
 <figure><img src="media/s23_envelope.png" alt=""><figcaption>The target sweep, both planners. Hue is the arm, marker and linestyle the planner. Left: does the hand arrive. Right: how far it gets, measured from the ankles so the two planners' different start poses cannot flatter either.</figcaption></figure>
 <figure><img src="media/s23_panels.png" alt=""><figcaption>What the brace buys and costs, at the extended-reach condition (x = 1.06 m). Solid fill MJPC, hatched CMPC.</figcaption></figure>
 <h2>3. The target sweep</h2>
-<p>Seven targets, 0.90&ndash;1.38&nbsp;m along +x at fixed y,&nbsp;z; two replicates per point per arm per planner. The clean-arrival band is the contiguous run of targets at which <i>every</i> replicate settles within 5&nbsp;cm of the target it was given, upright, without the trunk on the slab:</p>
-<div class="scroll"><table><thead><tr><th>planner</th><th>no brace cost</th><th>commanded brace</th></tr></thead><tbody>
-<tr><td>MJPC (sampling)</td><td>0.90&ndash;1.22 m</td><td>none</td></tr>
-<tr><td>CMPC (gradient)</td><td>0.90&ndash;1.30 m</td><td>0.98&ndash;1.22 m</td></tr>
+<p>Seven targets, 0.90&ndash;1.38&nbsp;m along +x at fixed y,&nbsp;z; two replicates per point per arm per planner. The arrival band is the contiguous run of targets at which <i>every</i> replicate settles within 5&nbsp;cm of the target it was given and stays upright; the clean band additionally requires that none of them rests the trunk on the slab:</p>
+<div class="scroll"><table><thead><tr><th>planner</th><th>no brace cost</th><th>commanded brace</th><th>no brace, clean</th><th>braced, clean</th></tr></thead><tbody>
+<tr><td>MJPC (sampling)</td><td>0.90&ndash;1.22 m</td><td>0.90&ndash;1.30 m</td><td>0.90&ndash;1.22 m</td><td>none</td></tr>
+<tr><td>CMPC (gradient)</td><td>0.90&ndash;1.38 m</td><td>0.98&ndash;1.38 m</td><td>0.90&ndash;1.30 m</td><td>0.98&ndash;1.22 m</td></tr>
 </tbody></table></div>
 <p>What ended each walk, per target &mdash; <b>a</b>rrived / <b>m</b>issed by more than 5&nbsp;cm / rested the <b>t</b>runk / <b>f</b>ell:</p>
 <div class="scroll"><table><thead><tr><th>planner / arm</th><th>0.90</th><th>0.98</th><th>1.06</th><th>1.14</th><th>1.22</th><th>1.30</th><th>1.38</th></tr></thead><tbody>
@@ -92,52 +92,80 @@
 <tr><td>CMPC commanded brace</td><td class="bad">ff</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="bad">tt</td><td class="bad">tt</td></tr>
 </tbody></table></div>
 <p>The static side of the same question, from <code>croco_modes</code>'s IK+QP certification: <code>legs_only</code> stops being admissible past x&nbsp;=&nbsp;1.14&nbsp;m while <code>elbow+forearm</code> still certifies at 1.30&nbsp;m; neither certifies at 1.38 or at the 1.60&nbsp;m max-reach target, which is why the max-reach cell carries a best-effort pose marked <code>admissible: false</code> rather than a certified one.</p>
+<div class="note"><p><b>That certification is about a pose, not about the target, and the closed loop beats it.</b> <code>legs_only</code> is rejected at 1.22 and 1.30&nbsp;m on <b>base residual</b> &mdash; 14.4 and 14.6&nbsp;N &mdash; not on reach (5.1 and 19.9&nbsp;mm) and not on torque (0.99, 0.96). The pose being rejected is the one <code>solve_ik</code> produces: feet pinned at the seed stance, hand driven to target, nothing in the objective about balance. It puts the CoM <b>165&nbsp;mm</b> ahead of the ankle midpoint, and the static LP calls it infeasible. The MPC, given the same target and no brace, settles somewhere else entirely &mdash; CoM <b>60&nbsp;mm</b> ahead, feasible, with 8.5 and 7.4&nbsp;cm of actuated support margin &mdash; and holds it for the full 16&nbsp;s with 21 and 32&nbsp;mm of reach error. The difference is a counterweight: at 1.30&nbsp;m the MPC hinges at the hip and puts the pelvis <b>30&nbsp;mm behind</b> the ankle midpoint where the IK pose has it 76&nbsp;mm in front, and that 106&nbsp;mm of hip travel costs only 61&nbsp;mm of reach. Read the enumeration as what it is: a chooser of contact modes, and a conservative screen on the workspace, not a bound on it.</p><p>At 1.38&nbsp;m the verdict is different in kind. All 16 arm+wrist subsets fail there, and every one of them fails on <b>reach</b> (56&ndash;98&nbsp;mm short) or on a site that will not seat &mdash; with torque ratios of 0.48&ndash;0.63 and base residuals of zero. The far end is a kinematic limit of the arm. No contact schedule buys it back.</p></div>
 <h2>4. Where the declared brace stops working</h2>
 <div class="note warn"><p><b>CMPC's elbow+forearm brace does not survive a 20&nbsp;s hold at the paper's default target.</b> 4 of 4 nominal braced replicates fell (x&nbsp;=&nbsp;0.905). At x&nbsp;&ge;&nbsp;0.98 the same plan, the same gains and the same loop hold for the full 20&nbsp;s in every cell measured (0.98, 1.06, 1.14, 1.22). The certified static brace force at 0.9047 is 51.5&nbsp;N against 80.9&nbsp;N at 1.05 &mdash; at the near target the declared contact is a light touch, and a rigid bilateral constraint on a light touch is the configuration this formulation is least able to defend.</p></div>
 <p>This is not the horizon trap that produced the first version of these runs, and the two are worth telling apart because they look identical from outside. Clamping the held plan index to <code>len(us)-1</code> makes <code>MPC.__call__</code> take its tail branch and rebuild a <b>one-node</b> problem: mean solve collapses 18.9&nbsp;&rarr;&nbsp;2.5&nbsp;ms and the robot is on the floor by t&nbsp;=&nbsp;15&nbsp;s <i>in every cell</i>. Holding at <code>len(us)&nbsp;&minus;&nbsp;H</code> keeps the window full, and then only the two nearest targets fail. <b><code>croco_twin.py</code>'s own <code>hold</code> submode still uses <code>len(us)-1</code></b> &mdash; left alone because recorded results depend on it, but S19's &ldquo;8&nbsp;s hold&rdquo; should be read as a hold that was degrading.</p>
 <figure><img src="media/s23_stages.png" alt=""><figcaption>The maneuver end to end under CMPC: one trajectory, brace+reach held and then chained into the recovery.</figcaption></figure>
 <figure><img src="media/s23_strip.png" alt=""><figcaption>CMPC strategies, chosen by measured load rather than by commanded weights.</figcaption></figure>
 <figure><img src="media/s23_disturb.png" alt=""><figcaption>Push rejection: three 0.3 s pulses of 30-90 N at the reaching wrist, invisible to both planners.</figcaption></figure>
-<h2>5. The generated tables, verbatim</h2>
+<h2>5. Choosing the contact mode instead of fixing it</h2>
+<p>Failing at <i>both</i> ends is the signature of a schedule that is right in the middle, so the sweep was repeated with the mode chosen per target. The policy is <code>croco_modes</code>' own ranking applied mechanically: enumerate all 16 subsets of {elbow, forearm, palm, wrist}, keep the admissible ones, take the least normalized actuator effort, and decline where nothing certifies. No hand-picking &mdash; otherwise the comparison is a search over 16 modes dressed up as a controller. It selects <code>elbow+wrist</code> at 0.90, <code>forearm+palm</code> at 0.98, <code>forearm+wrist</code> at 1.06&ndash;1.30, and nothing at 1.38. <b><code>elbow+forearm</code>, the mode used everywhere else in this study, is never the ranked choice at any target.</b></p>
+<div class="scroll"><pre>x [m]  selected mode          outcome    err[cm]     armN   margin    fell
+0.90   elbow+wrist            fell          39.2       53      7.6 1/2 vs 2/2
+0.98   forearm+palm           held           4.3      102     18.2 0/2 vs 0/2
+1.06   forearm+wrist          held           4.5      106     21.8 0/2 vs 0/2
+1.14   forearm+wrist          held           5.1      110     23.9 0/2 vs 0/2
+1.22   forearm+wrist          held           3.2      106     27.0 0/2 vs 0/2
+1.30   forearm+wrist          held           2.0      108     26.5 0/2 vs 0/2
+1.38   (none certifies)       declined        --       --       --     0/2
+</pre></div>
+<figure><img src="media/s23_mode_select.png" alt=""><figcaption>Fixed versus chosen contact mode. Hue is the schedule; a cross marks a target where a replicate fell. Curves are over upright rollouts &mdash; a fallen robot's settled reach error is 262&nbsp;cm and plotting it flattens everything else into the bottom of the axis.</figcaption></figure>
+<div class="note"><p><b>A real but partial improvement, and the two ends fail for different reasons.</b> Through the middle the selected mode holds <i>more</i> margin &mdash; +0.4 to +6.5&nbsp;cm of actuated support margin, against 8&ndash;10&nbsp;cm for <code>legs_only</code> at the same targets &mdash; while pushing 25&ndash;30% <i>less</i> force through the bracing arm (102&ndash;110&nbsp;N against 131&ndash;146&nbsp;N), at reach error within 1.2&nbsp;cm of the fixed mode. That is the effort ranking doing exactly what it claims.</p><p>At the near target it halves the fall rate (2/2 &rarr; 1/2) without eliminating it. <code>legs_only</code> holds 0.90&nbsp;m with 8.7&nbsp;cm of margin and never falls, so bracing there is harmful <i>regardless of which mode is chosen</i> &mdash; which points back at the light-touch diagnosis above and not at mode selection. At the far target the policy declines, correctly: nothing certifies at 1.38&nbsp;m, and the fixed mode only &ldquo;reaches&rdquo; it by missing by 6.3&nbsp;cm with 89&nbsp;N through the trunk. Automatic mode selection is worth having and is not the missing piece.</p></div>
+<h2>6. The generated tables, verbatim</h2>
 <h3>table_mjpc_vs_cmpc.txt</h3><pre>metric                            MJPC/stand      MJPC/brace      CMPC/stand      CMPC/brace   unit
-functional reach                  89.7 ± 1.4      90.3 ± 0.2      83.8 ± 0.9      87.0 ± 1.1   cm
-settled reach error                1.0 ± 0.5       0.7 ± 0.5       1.0 ± 0.1       3.7 ± 0.3   cm
-brace load, all contacts             61 ± 64        109 ± 37               0        161 ± 16   N
-bracing-arm force                    42 ± 22         64 ± 21               0         141 ± 9   N
-support margin (actuated)         13.9 ± 7.9      20.3 ± 5.8       9.1 ± 0.3      20.5 ± 1.1   cm
-forward margin (actuated)        24.7 ± 19.5     37.2 ± 13.8       9.3 ± 0.3      28.2 ± 2.7   cm
-smoothness SPARC                -3.13 ± 0.95    -3.68 ± 1.30    -2.91 ± 0.03    -3.35 ± 0.11   --
-hand jitter                      7.46 ± 3.75     5.80 ± 5.11     0.14 ± 0.04     2.86 ± 4.11   mm
-worst-case push at hand              82 ± 64        119 ± 39          57 ± 2         125 ± 4   N
-settling time                      6.3 ± 3.7       5.7 ± 0.8       2.3 ± 0.0       2.4 ± 0.1   s
-peak torque ratio                       1.00            1.00     0.99 ± 0.01     0.98 ± 0.00   --
-runs bracing (>15 N)                     8/8             3/3             0/8             8/8   --
-torso-rest (excluded)                    0/8             5/8             0/8             0/8   --
+functional reach                  89.7 ± 1.4      88.7 ± 3.0      83.8 ± 0.9      87.0 ± 1.1   cm
+settled reach error                1.0 ± 0.5       0.8 ± 0.5       1.0 ± 0.1       3.7 ± 0.3   cm
+brace load, all contacts             61 ± 64       219 ± 158               0        161 ± 16   N
+bracing-arm force                    42 ± 22         59 ± 67               0         141 ± 9   N
+trunk load                                 0       121 ± 212               0               0   N
+peak contact load                    86 ± 63       368 ± 320               0         180 ± 5   N
+support margin (actuated)         13.9 ± 7.9      23.7 ± 9.6       9.1 ± 0.3      20.5 ± 1.1   cm
+forward margin (actuated)        24.7 ± 19.5     39.9 ± 15.6       9.3 ± 0.3      28.2 ± 2.7   cm
+smoothness SPARC                -3.13 ± 0.95    -3.32 ± 1.30    -2.91 ± 0.03    -3.35 ± 0.11   --
+hand jitter                      7.46 ± 3.75     5.05 ± 5.11     0.14 ± 0.04     2.86 ± 4.11   mm
+worst-case push at hand              82 ± 64        132 ± 47          57 ± 2         125 ± 4   N
+settling time                      6.3 ± 3.7       3.9 ± 2.6       2.3 ± 0.0       2.4 ± 0.1   s
+peak torque ratio                       1.00     0.98 ± 0.09     0.99 ± 0.01     0.98 ± 0.00   --
+runs bracing (>15 N)                     8/8             8/8             0/8             8/8   --
+trunk-assisted (pooled)                  0/8             5/8             0/8             0/8   --
 </pre>
 <h3>table_brace_vs_stand.txt</h3><pre>metric                   stand/Targeted brace/Targeted stand/Extended brace/Extended     stand/Max     brace/Max   unit
-functional reach            71.5 ± 0.6           n/a    83.8 ± 0.9    87.0 ± 1.1         116.7           n/a     cm
-settled reach error          3.4 ± 0.1           n/a     1.0 ± 0.1     3.7 ± 0.3          19.2           n/a     cm
-brace load, all contacts             0           n/a             0      161 ± 16            25           n/a      N
+functional reach            71.5 ± 0.6           n/a    83.8 ± 0.9    87.0 ± 1.1   118.5 ± 1.6           n/a     cm
+settled reach error          3.4 ± 0.1           n/a     1.0 ± 0.1     3.7 ± 0.3    17.8 ± 1.0           n/a     cm
+brace load, all contacts             0           n/a             0      161 ± 16        24 ± 6           n/a      N
 bracing-arm force                    0           n/a             0       141 ± 9             0           n/a      N
-support margin (contact)     8.7 ± 0.3           n/a    10.4 ± 0.4    31.6 ± 2.2          14.0           n/a     cm
-support margin (actuated)     8.6 ± 0.3           n/a     9.1 ± 0.3    20.5 ± 1.1          13.8           n/a     cm
-forward margin (contact)    12.1 ± 0.8           n/a    10.4 ± 0.4    45.0 ± 3.2          69.9           n/a     cm
-forward margin (actuated)    12.0 ± 0.7           n/a     9.3 ± 0.3    28.2 ± 2.7          33.0           n/a     cm
-smoothness SPARC          -3.03 ± 0.03           n/a  -2.91 ± 0.03  -3.35 ± 0.11         -4.07           n/a     --
-hand jitter                0.17 ± 0.01           n/a   0.14 ± 0.04   2.86 ± 4.11         33.59           n/a     mm
-reach error spread         0.10 ± 0.01           n/a   0.04 ± 0.02   1.60 ± 1.57         29.82           n/a     mm
-worst-case push at hand         55 ± 1           n/a        57 ± 2       125 ± 4            67           n/a      N
-settling time (initial)      2.3 ± 0.0           n/a     2.3 ± 0.0     2.4 ± 0.1          19.2           n/a      s
+trunk load                           0           n/a             0             0        20 ± 9           n/a      N
+peak contact load                    0           n/a             0       180 ± 5       75 ± 24           n/a      N
+support margin (contact)     8.7 ± 0.3           n/a    10.4 ± 0.4    31.6 ± 2.2    15.4 ± 1.2           n/a     cm
+support margin (actuated)     8.6 ± 0.3           n/a     9.1 ± 0.3    20.5 ± 1.1    15.1 ± 1.3           n/a     cm
+forward margin (contact)    12.1 ± 0.8           n/a    10.4 ± 0.4    45.0 ± 3.2    67.0 ± 6.2           n/a     cm
+forward margin (actuated)    12.0 ± 0.7           n/a     9.3 ± 0.3    28.2 ± 2.7    36.1 ± 4.0           n/a     cm
+smoothness SPARC          -3.03 ± 0.03           n/a  -2.91 ± 0.03  -3.35 ± 0.11  -3.40 ± 1.03           n/a     --
+hand jitter                0.17 ± 0.01           n/a   0.14 ± 0.04   2.86 ± 4.11 11.61 ± 16.55           n/a     mm
+reach error spread         0.10 ± 0.01           n/a   0.04 ± 0.02   1.60 ± 1.57  8.62 ± 14.80           n/a     mm
+worst-case push at hand         55 ± 1           n/a        57 ± 2       125 ± 4       68 ± 17           n/a      N
+settling time (initial)      2.3 ± 0.0           n/a     2.3 ± 0.0     2.4 ± 0.1     6.5 ± 8.6           n/a      s
 peak torque ratio          0.98 ± 0.00           n/a   0.99 ± 0.01   0.98 ± 0.00          1.00           n/a     --
-runs bracing (>15 N)               0/4           n/a           0/8           8/8           1/1           n/a     --
-torso-rest (excluded)              0/4           4/4           0/8           0/8           3/4           3/4     --
+runs bracing (>15 N)               0/4           n/a           0/8           8/8           4/4           n/a     --
+trunk-assisted (pooled)            0/4           n/a           0/8           0/8           3/4           n/a     --
+fell (excluded)                    0/4           4/4           0/8           0/8           0/4           4/4     --
 </pre>
 <h3>table_disturbance.txt</h3><pre>push [N]   stand peak[mm] brace peak[mm]   stand rec[s]   brace rec[s]     fell s/b
-30                 37 ± 0            n/a    1.11 ± 0.04            n/a          0/0
-60                 81 ± 1            n/a    1.30 ± 0.04            n/a          0/0
-90                147 ± 3            n/a    1.53 ± 0.03            n/a          0/0
+30                 37 ± 0      510 ± 570    1.11 ± 0.04    1.25 ± 0.76          0/2
+60                 81 ± 1      313 ± 467    1.30 ± 0.04           3.99          0/2
+90                147 ± 3     582 ± 1208    1.53 ± 0.03    1.88 ± 1.96          0/2
 </pre>
-<h2>6. Reproduce</h2>
+<h3>table_mode_select.txt</h3><pre>x [m]  selected mode          outcome    err[cm]     armN   margin    fell
+0.90   elbow+wrist            fell          39.2       53      7.6 1/2 vs 2/2
+0.98   forearm+palm           held           4.3      102     18.2 0/2 vs 0/2
+1.06   forearm+wrist          held           4.5      106     21.8 0/2 vs 0/2
+1.14   forearm+wrist          held           5.1      110     23.9 0/2 vs 0/2
+1.22   forearm+wrist          held           3.2      106     27.0 0/2 vs 0/2
+1.30   forearm+wrist          held           2.0      108     26.5 0/2 vs 0/2
+1.38   (none certifies)       declined        --       --       --     0/2
+</pre>
+<h2>7. Reproduce</h2>
 <pre>export CL_ASSETS_DIR=... LEAN_TASK_DIR=... MUJOCO_GL=egl
 export MJPC_BIN=&lt;mujoco_mpc&gt;/build_cmake/bin/testspeed
 export BVS_SWEEP_X="0.90,0.98,1.06,1.14,1.22,1.30,1.38"
