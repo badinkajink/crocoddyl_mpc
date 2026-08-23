@@ -102,21 +102,70 @@ def arm_load(r):
                if "torso" not in k and "pelvis" not in k)
 
 
+# lean_simple.cc: brace_arm = 0 means the LEFT arm braces and the right reaches.
+BRACE_SIDE = "left_"
+
+
+def brace_arm_load(r):
+    """Newtons through the BRACING arm only.
+
+    Not the same as `brace_load_N`, which is every non-foot contact and so also
+    counts the reaching arm resting on the slab (8.9 N right gripper in one
+    commanded-brace run) and the trunk in the degenerate ones. This is the
+    number that says how hard the brace is actually working."""
+    b = r.get("brace_load_bodies") or {}
+    return sum(v for k, v in b.items() if k.startswith(BRACE_SIDE))
+
+
 def contact_class(r):
     if trunk_load(r) > TRUNK_N:
         return "torso"
     return "brace" if arm_load(r) >= TRUNK_N else "free"
 
 
-def by(rows, stage, clean=True):
-    """Rollouts of a stage. clean=True drops the torso-rest degenerates."""
+def by(rows, stage, clean=True, upright=True):
+    """Rollouts of a stage.
+
+    `clean` drops the torso-rest degenerates. `upright` drops rollouts that
+    FELL, and it defaults on for the same reason: a settled metric read off a
+    robot lying on the floor is not that posture's number. It was implicit
+    while nothing fell -- the sampling planner's settled conditions are all
+    upright -- and stopped being implicit with the gradient planner, whose
+    braced max-reach rollouts fall in 4 of 4 and contributed a `bracing-arm
+    force` of 363 N that is the weight of a collapsed robot resting on its own
+    arm. The disturbance figures pass `upright=False`: there, whether a run
+    fell IS the measurement, and they count and annotate it.
+    """
     out = [r for r in rows if r.get("stage") == stage and "error" not in r]
+    if upright:
+        out = [r for r in out if not r.get("fell")]
     return [r for r in out if contact_class(r) != "torso"] if clean else out
 
 
 # --------------------------------------------------------------------------- #
+def sweep_all(rows, arm):
+    """Every swept rollout of one arm, UNFILTERED, keyed by target x."""
+    d = defaultdict(list)
+    for r in rows:
+        if (r.get("stage") == "sweep" and r.get("arm") == arm
+                and "error" not in r):
+            d[round(r["target"][0], 3)].append(r)
+    return d
+
+
 def fig_envelope(rows, out):
-    """The headline: how far out each arm still ARRIVES."""
+    """The headline: how far out each arm still ARRIVES.
+
+    THE DROPPED REPLICATES ARE MARKED. The curves average clean rollouts only
+    -- upright, no trunk on the slab -- which is right, because a settled reach
+    error read off a chest resting on the table is not that posture's number.
+    But an unmarked mean over one surviving replicate looks exactly like a mean
+    over two, and measured here the sampling planner's braced arm has ZERO
+    clean replicates at three of seven targets and one at three more. So every
+    point whose replicates were not all clean gets a ring, and a target with
+    none left gets a cross on the axis: the curve says how well the clean runs
+    did, and the rings say how many there were.
+    """
     d = defaultdict(lambda: defaultdict(list))
     for r in by(rows, "sweep"):
         d[r["arm"]][round(r["target"][0], 3)].append(r)
@@ -138,21 +187,68 @@ def fig_envelope(rows, out):
                        color=C[arm], marker="o", ms=4.5, lw=1.8, capsize=2.5,
                        elinewidth=1.0, label=LABEL[arm], zorder=3)
 
+    marked = False
+    for arm in ORDER:
+        allx = sweep_all(rows, arm)
+        for x in sorted(allx):
+            n_all, n_ok = len(allx[x]), len(d[arm].get(x, []))
+            if n_ok == n_all:
+                continue
+            marked = True
+            if n_ok:
+                v = _ms([r["reach_err_settled"] for r in d[arm][x]])[0] * 100
+                ax[0].plot([x], [v], marker="o", ms=11, mfc="none",
+                           mec=C[arm], mew=1.4, zorder=5)
+                v2 = _ms([r.get("func_reach_settled")
+                          for r in d[arm][x]])[0] * 100
+                ax[1].plot([x], [v2], marker="o", ms=11, mfc="none",
+                           mec=C[arm], mew=1.4, zorder=5)
+            else:
+                for a_ in ax:
+                    a_.plot([x], [a_.get_ylim()[0]], marker="x", ms=7,
+                            color=C[arm], mew=1.6, zorder=5, clip_on=False)
     ax[0].axhline(5.0, color=INK2, lw=1.0, ls=(0, (4, 3)), zorder=2)
     ax[0].annotate("5 cm arrival tolerance", xy=(0.02, 5.0),
                    xycoords=("axes fraction", "data"), xytext=(0, 3),
                    textcoords="offset points", color=INK2, fontsize=7.5)
-    ax[0].set_xlabel("commanded target $x$  [m]")
-    ax[0].set_ylabel("settled reach error  [cm]")
+    ax[0].set_xlabel("Commanded target $x$  [m]")
+    ax[0].set_ylabel("Settled reach error  [cm]")
     ax[0].set_title("Does the hand arrive?", loc="left")
-    ax[1].set_xlabel("commanded target $x$  [m]")
-    ax[1].set_ylabel("functional reach  [cm]")
+    ax[1].set_xlabel("Commanded target $x$  [m]")
+    ax[1].set_ylabel("Functional reach  [cm]")
     ax[1].set_title("How far the hand actually gets", loc="left")
-    ax[0].legend(loc="upper left")
+    h, l = ax[0].get_legend_handles_labels()
+    if marked:
+        h += [plt.Line2D([], [], ls="", marker="o", ms=9, mfc="none",
+                         mec=INK2, mew=1.4),
+              plt.Line2D([], [], ls="", marker="x", ms=7, color=INK2, mew=1.6)]
+        l += ["some replicates degenerate", "all degenerate"]
+    ax[0].legend(h, l, loc="upper left", fontsize=7.2)
     _save(fig, out, "fig_reach_envelope")
 
 
-def fig_stability(rows, out):
+# The two margins answer different questions (see simple_stability.margins), so
+# they get one panel set each rather than sharing a figure: side by side in one
+# row they invite reading a 3 cm gap between them as a result, when the gap is
+# just the difference between "any direction" and "toward the target".
+# The qualifier rides in the title, not in a subtitle line: at ~1.7 in per panel
+# a second line under the title lands on the neighbour's title every time.
+MARGIN_VARIANTS = {
+    "support": ("margin_actuated_settled", "Support margin (any dir.)"),
+    "forward": ("fwd_actuated_settled", "Forward margin ($+x$)"),
+}
+
+
+# The settled conditions, in reach order, filtered at draw time by which ones
+# the analysis actually holds. `nominal2` is a later addition (see
+# brace_vs_stand.NOMINAL2_X) and every figure degrades to two groups without it,
+# which is what makes older analysis.json files still plot.
+CONDITIONS = [("nominal", "Targeted\nreach"),
+              ("nominal2", "Extended\nreach"),
+              ("maxreach", "Max\nreach")]
+
+
+def fig_stability(rows, out, which="support"):
     """Small multiples, each metric grouped by CONDITION and coloured by arm.
 
     Two conditions, because they answer different halves of the question. At the
@@ -161,7 +257,8 @@ def fig_stability(rows, out):
     target is unreachable and each posture stretches as far as it can, so that
     group is where the reach difference lives -- and its stability numbers are
     the ones that say what the extra reach cost."""
-    groups = [("nominal", "targeted\nreach"), ("maxreach", "max\nreach")]
+    mkey, mlabel = MARGIN_VARIANTS[which]
+    groups = CONDITIONS
     have = [(g, lab) for g, lab in groups if by(rows, g)]
     if not have:
         return
@@ -171,20 +268,24 @@ def fig_stability(rows, out):
             d[g][r["arm"]].append(r)
 
     panels = [
-        ("func_reach_settled", "m   (higher better)", 100.0,
-         "Functional reach", "%.0f", 100.0),
-        ("margin_actuated_settled", "cm   (higher better)", 100.0,
-         "CoM margin", "%.1f", 1.0),
-        ("hand_jitter_mm", "mm   (lower better)", 1.0, "Hand jitter", "%.1f", 1.0),
-        ("push_min_N", "N   (higher better)", 1.0, "Push at hand", "%.0f", 1.0),
+        ("func_reach_settled", "cm   (higher better)", 100.0,
+         "Functional reach", "%.0f"),
+        (mkey, "cm   (higher better)", 100.0, mlabel, "%.1f"),
+        ("sparc_reach", "SPARC   (higher better)", 1.0, "Smoothness", "%.2f"),
+        (brace_arm_load, "N", 1.0, "Bracing-arm force", "%.0f"),
     ]
     fig, axs = plt.subplots(1, len(panels), figsize=(TEXT, 2.7),
                             layout="constrained")
     W = 0.36
-    for ax, (key, ylab, sc, title, fmt, _u) in zip(axs, panels):
+    for ax, (key, ylab, sc, title, fmt) in zip(axs, panels):
         for gi, (g, lab) in enumerate(have):
             for ai, arm in enumerate(ORDER):
-                vals = [r.get(key) for r in d[g][arm] if r.get(key) is not None]
+                if callable(key):
+                    vals = [key(r) for r in d[g][arm]]
+                else:
+                    vals = [r.get(key) for r in d[g][arm]
+                            if r.get(key) is not None
+                            and np.isfinite(r.get(key, np.nan))]
                 mu, hr = _ms([v * sc for v in vals])
                 if not np.isfinite(mu):
                     continue
@@ -195,24 +296,27 @@ def fig_stability(rows, out):
                 if hr > 0:
                     ax.errorbar(x, mu, yerr=hr, color=INK2, lw=1.0, capsize=2.5,
                                 zorder=4)
-                ax.annotate(fmt % mu, xy=(x, mu + hr), xytext=(0, 2.5),
+                neg = mu < 0
+                ax.annotate(fmt % mu, xy=(x, mu - hr if neg else mu + hr),
+                            xytext=(0, -3 if neg else 2.5),
                             textcoords="offset points", ha="center",
-                            va="bottom", fontsize=7.2, color=INK, zorder=5)
+                            va="top" if neg else "bottom", fontsize=7.2,
+                            color=INK, zorder=5)
         ax.set_xticks(range(len(have)))
-        ax.set_xticklabels([lab for _, lab in have])
+        # Three two-line condition labels across a quarter of the text width
+        # collide; the size steps down rather than the labels being abbreviated,
+        # because "Ext." and "Tgt." are not words a reader should have to
+        # decode from a caption.
+        ax.set_xticklabels([lab for _, lab in have],
+                           fontsize=6.8 if len(have) > 2 else 8)
         ax.set_ylabel(ylab)
-        ax.set_title(title, loc="left")
+        ax.set_title(title, loc="left", fontsize=8.5)
         ax.margins(y=0.26)
         ax.grid(axis="x", visible=False)
-    # ylabel of panel 0 is cm for functional reach -- relabel it honestly
-    axs[0].set_ylabel("cm   (higher better)")
-    # One figure-level legend outside the axes: inside panel 0 it lands on top
-    # of the bars, and there is no headroom in any panel that is not already
-    # carrying a value label.
     h = [plt.Rectangle((0, 0), 1, 1, color=C[a]) for a in ORDER]
     fig.legend(h, [LABEL[a] for a in ORDER], loc="outside lower center",
                ncol=2, fontsize=8)
-    _save(fig, out, "fig_stability_panels")
+    _save(fig, out, "fig_stability_panels_" + which)
 
 
 def fig_margin_series(rows, out):
@@ -226,7 +330,7 @@ def fig_margin_series(rows, out):
         if not rs:
             continue
         t = np.array(rs[0]["stab_t"])
-        for key, ls, lw, a in (("margin_contact", "-", 1.9, 1.0),
+        for key, ls, lw, a in (("fwd_actuated", "-", 1.9, 1.0),
                                ("margin_actuated", (0, (4, 2.5)), 1.5, 0.95)):
             M = np.array([r[key] for r in rs if len(r[key]) == len(t)],
                          dtype=float)
@@ -238,13 +342,13 @@ def fig_margin_series(rows, out):
                 lo, hi = np.nanmin(M, axis=0) * 100, np.nanmax(M, axis=0) * 100
                 ax.fill_between(t, lo, hi, color=C[arm], alpha=0.13, lw=0,
                                 zorder=2)
-    ax.set_xlabel("time  [s]")
+    ax.set_xlabel("Time  [s]")
     ax.set_ylabel("CoM margin  [cm]")
-    ax.set_title("Static-equilibrium margin over the reach", loc="left")
+    ax.set_title("Equilibrium margin over the reach", loc="left")
     h = [plt.Line2D([], [], color=C[a], lw=1.9, label=LABEL[a]) for a in ORDER]
-    h += [plt.Line2D([], [], color=INK2, lw=1.9, label="contact set only"),
+    h += [plt.Line2D([], [], color=INK2, lw=1.9, label="forward margin"),
           plt.Line2D([], [], color=INK2, lw=1.5, ls=(0, (4, 2.5)),
-                     label="with torque limits")]
+                     label="support margin")]
     ax.legend(handles=h, loc="lower right", ncol=2, columnspacing=1.2)
     ax.margins(y=0.18)
     _save(fig, out, "fig_margin_series")
@@ -262,7 +366,7 @@ def fig_maxreach(rows, out):
 
     # (a) how far it got, and what the margin was there
     for i, (key, ylab, title, fmt, sc) in enumerate([
-            ("func_reach_settled", "functional reach  [cm]",
+            ("func_reach_settled", "Functional reach  [cm]",
              "How far the hand gets", "%.0f", 100.0),
             ("margin_actuated_settled", "CoM margin  [cm]",
              "Margin at full stretch", "%.1f", 100.0)]):
@@ -278,7 +382,7 @@ def fig_maxreach(rows, out):
                            textcoords="offset points", ha="center",
                            va="bottom", fontsize=8, color=INK, zorder=5)
         ax[i].set_xticks(range(len(ORDER)))
-        ax[i].set_xticklabels(["stand", "brace"])
+        ax[i].set_xticklabels(["No brace\ncost", "Commanded\nbrace"])
         ax[i].set_ylabel(ylab)
         ax[i].set_title(title, loc="left")
         ax[i].margins(y=0.24)
@@ -328,7 +432,7 @@ def fig_load_vs_margin(rows, out):
         ax.text(0.03, 0.95, "slope %.3f cm/N,  $r$ = %.2f" % (b, r),
                 transform=ax.transAxes, va="top", fontsize=7.5, color=INK2)
     ax.axvline(15.0, color=GRID, lw=1.0, zorder=1)
-    ax.set_xlabel("measured brace load  [N]")
+    ax.set_xlabel("Measured brace load  [N]")
     ax.set_ylabel("CoM margin  [cm]")
     ax.set_title("Margin follows load, not labels", loc="left")
     h = [plt.Line2D([], [], ls="", marker="o", ms=6, color=C[a],
@@ -340,9 +444,17 @@ def fig_load_vs_margin(rows, out):
     _save(fig, out, "fig_load_vs_margin")
 
 
-def fig_disturb(rows, out):
+# The two push conditions, same ladder at two targets. `disturb2` is a later
+# addition (see brace_vs_stand.NOMINAL2_X) and the figure simply does not appear
+# when an analysis holds no such rollouts.
+DISTURB_STAGES = [("disturb", "fig_disturbance", "targeted reach"),
+                  ("disturb2", "fig_disturbance_ext", "extended reach")]
+
+
+def fig_disturb(rows, out, stage="disturb", name="fig_disturbance",
+                where="targeted reach"):
     """Push rejection: peak deviation and recovery time vs push magnitude."""
-    dis = by(rows, "disturb")
+    dis = by(rows, stage, upright=False)
     if not dis:
         return
     d = defaultdict(lambda: defaultdict(list))
@@ -376,14 +488,15 @@ def fig_disturb(rows, out):
                                xy=(f, v[0]), xytext=(0, 11),
                                textcoords="offset points", ha="center",
                                fontsize=7, color=INK2, zorder=6)
-    ax[0].set_xlabel("push at the reaching hand  [N]")
-    ax[0].set_ylabel("peak hand deflection  [mm]")
-    ax[0].set_title("How far the push moves the hand", loc="left")
-    ax[1].set_xlabel("push at the reaching hand  [N]")
-    ax[1].set_ylabel("recovery time  [s]")
+    ax[0].set_xlabel("Push at the reaching hand  [N]")
+    ax[0].set_ylabel("Peak hand deflection  [mm]")
+    ax[0].set_title("How far the push moves the hand (%s)" % where,
+                    loc="left", fontsize=8.5)
+    ax[1].set_xlabel("Push at the reaching hand  [N]")
+    ax[1].set_ylabel("Recovery time  [s]")
     ax[1].set_title("Post-disruption recovery", loc="left")
     ax[0].legend(loc="upper left")
-    _save(fig, out, "fig_disturbance")
+    _save(fig, out, name)
 
 
 def fig_region(rows, out):
@@ -413,17 +526,71 @@ def fig_region(rows, out):
         ax.scatter(CP[:, 0], CP[:, 1], s=13, color=C[arm], alpha=0.85,
                    marker="x", linewidths=1.1, zorder=4)
     ax.set_aspect("equal")
-    ax.set_xlabel("world $x$  [m]")
-    ax.set_ylabel("world $y$  [m]")
+    ax.set_xlabel("World $x$  [m]")
+    ax.set_ylabel("World $y$  [m]")
     ax.set_title("Admissible CoM region", loc="left")
     ax.legend(loc="lower left", fontsize=7.2)
     _save(fig, out, "fig_equilibrium_region")
 
 
+def fig_success(rows, out):
+    """Max-reach outcome rate. On hardware the braced max reach worked 11/15, so
+    the sim number worth reporting is the same one: of N attempts, how many
+    produced a legitimate braced reach rather than a chest on the table.
+
+    Failure here is not a fall -- nothing fell. It is the planner buying reach
+    with the trunk, which is a cost-function failure and would be a very
+    different thing on a real table."""
+    mr = [r for r in rows if r.get("stage") == "maxreach" and "error" not in r]
+    if not mr:
+        return
+    fig, ax = plt.subplots(1, 2, figsize=(TEXT * 0.66, 2.6),
+                           layout="constrained")
+    for ai, arm in enumerate(ORDER):
+        g = [r for r in mr if r["arm"] == arm]
+        if not g:
+            continue
+        n = len(g)
+        # A run that FELL is not a success either, and until the gradient
+        # planner's max-reach rollouts started falling nothing in this study
+        # produced one, so the rate counted only the torso-rest degenerate.
+        clean = sum(1 for r in g
+                    if contact_class(r) != "torso" and not r.get("fell"))
+        ax[0].bar(ai, 100.0 * clean / n, width=0.55, color=C[arm], zorder=3,
+                  edgecolor="white", linewidth=1.2)
+        ax[0].annotate("%d/%d" % (clean, n), xy=(ai, 100.0 * clean / n),
+                       xytext=(0, 3), textcoords="offset points",
+                       ha="center", va="bottom", fontsize=8, color=INK)
+        # reach achieved, clean attempts only
+        v = [r["func_reach_settled"] * 100 for r in g
+             if contact_class(r) != "torso" and not r.get("fell")
+             and r.get("func_reach_settled") is not None]
+        mu, hr = _ms(v)
+        if np.isfinite(mu):
+            ax[1].bar(ai, mu, width=0.55, color=C[arm], zorder=3,
+                      edgecolor="white", linewidth=1.2)
+            if hr > 0:
+                ax[1].errorbar(ai, mu, yerr=hr, color=INK2, lw=1.0, capsize=3,
+                               zorder=4)
+            ax[1].annotate("%.0f" % mu, xy=(ai, mu + hr), xytext=(0, 3),
+                           textcoords="offset points", ha="center",
+                           va="bottom", fontsize=8, color=INK)
+    for i, (ylab, title) in enumerate([
+            ("% of attempts   (higher better)", "Max-reach success rate"),
+            ("Functional reach  [cm]", "Reach (successes only)")]):
+        ax[i].set_xticks(range(len(ORDER)))
+        ax[i].set_xticklabels(["No brace\ncost", "Commanded\nbrace"])
+        ax[i].set_ylabel(ylab)
+        ax[i].set_title(title, loc="left")
+        ax[i].margins(y=0.24)
+        ax[i].grid(axis="x", visible=False)
+    ax[0].set_ylim(0, 105)
+    _save(fig, out, "fig_maxreach_success")
+
+
 def write_table(rows, out):
     """The numbers behind the figures, at BOTH conditions, as LaTeX and text."""
-    conds = [(g, lab) for g, lab in (("nominal", "targeted reach"),
-                                     ("maxreach", "max reach"))
+    conds = [(g, lab.replace("\n", " ")) for g, lab in CONDITIONS
              if by(rows, g)]
     if not conds:
         return
@@ -434,9 +601,13 @@ def write_table(rows, out):
     metrics = [
         ("functional reach", "func_reach_settled", 100.0, "cm", "%.1f"),
         ("settled reach error", "reach_err_settled", 100.0, "cm", "%.1f"),
-        ("measured brace load", "brace_load_N", 1.0, "N", "%.0f"),
-        ("CoM margin (contact)", "margin_contact_settled", 100.0, "cm", "%.1f"),
-        ("CoM margin (actuated)", "margin_actuated_settled", 100.0, "cm", "%.1f"),
+        ("brace load, all contacts", "brace_load_N", 1.0, "N", "%.0f"),
+        ("bracing-arm force", brace_arm_load, 1.0, "N", "%.0f"),
+        ("support margin (contact)", "margin_contact_settled", 100.0, "cm", "%.1f"),
+        ("support margin (actuated)", "margin_actuated_settled", 100.0, "cm", "%.1f"),
+        ("forward margin (contact)", "fwd_contact_settled", 100.0, "cm", "%.1f"),
+        ("forward margin (actuated)", "fwd_actuated_settled", 100.0, "cm", "%.1f"),
+        ("smoothness SPARC", "sparc_reach", 1.0, "--", "%.2f"),
         ("hand jitter", "hand_jitter_mm", 1.0, "mm", "%.2f"),
         ("reach error spread", "reach_err_std_mm", 1.0, "mm", "%.2f"),
         ("worst-case push at hand", "push_min_N", 1.0, "N", "%.0f"),
@@ -445,7 +616,9 @@ def write_table(rows, out):
     ]
 
     def cell(g, arm, key, sc, fmt):
-        mu, hr = _ms([r.get(key) for r in d[g][arm] if r.get(key) is not None])
+        vals = ([key(r) for r in d[g][arm]] if callable(key)
+                else [r.get(key) for r in d[g][arm] if r.get(key) is not None])
+        mu, hr = _ms(vals)
         if not np.isfinite(mu):
             return "n/a"
         return (fmt % (mu * sc)) + ((" ± " + fmt % (hr * sc)) if hr else "")
@@ -502,7 +675,7 @@ def write_table(rows, out):
     print("  wrote table_brace_vs_stand.tex / .txt")
 
 
-def write_disturb_table(rows, out):
+def write_disturb_table(rows, out, stage="disturb", name="table_disturbance"):
     """Post-disruption response, per push magnitude.
 
     Kept separate from the main table on purpose: `settling time (initial)`
@@ -511,7 +684,7 @@ def write_disturb_table(rows, out):
     after being shoved. Conflating them was a misreading worth designing out --
     the brace is SLOWER to establish (the arm must seat first) and the claim
     under test is that it is FASTER to recover."""
-    dis = by(rows, "disturb")
+    dis = by(rows, stage, upright=False)
     if not dis:
         return
     d = defaultdict(lambda: defaultdict(list))
@@ -547,13 +720,13 @@ def write_disturb_table(rows, out):
                       c[2].replace("±", r"$\pm$"),
                       c[3].replace("±", r"$\pm$"), nf))
     tex += [r"\bottomrule", r"\end{tabular}"]
-    with open(os.path.join(out, "table_disturbance.tex"), "w") as f_:
+    with open(os.path.join(out, name + ".tex"), "w") as f_:
         f_.write("\n".join(tex) + "\n")
     body = "\n".join(txt)
-    with open(os.path.join(out, "table_disturbance.txt"), "w") as f_:
+    with open(os.path.join(out, name + ".txt"), "w") as f_:
         f_.write(body + "\n")
     print("\n" + body + "\n")
-    print("  wrote table_disturbance.tex / .txt")
+    print("  wrote %s.tex / .txt" % name)
 
 
 def make_all(json_path, out):
@@ -563,9 +736,14 @@ def make_all(json_path, out):
     fig_envelope(rows, out)
     fig_maxreach(rows, out)
     fig_load_vs_margin(rows, out)
-    fig_stability(rows, out)
+    fig_success(rows, out)
+    for _w in MARGIN_VARIANTS:
+        fig_stability(rows, out, _w)
     fig_margin_series(rows, out)
-    fig_disturb(rows, out)
+    for _s, _n, _w in DISTURB_STAGES:
+        fig_disturb(rows, out, _s, _n, _w)
     fig_region(rows, out)
     write_table(rows, out)
-    write_disturb_table(rows, out)
+    for _s, _n, _w in DISTURB_STAGES:
+        write_disturb_table(rows, out, _s, _n.replace("fig_disturbance",
+                                                      "table_disturbance"))

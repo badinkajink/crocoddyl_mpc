@@ -52,6 +52,7 @@ import mujoco
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import simple_lean as S
 import simple_stability as ST
+from sparc import sparc, movement_window
 
 ARMS = {
     "stand": "Brace Elbow=0,Brace Forearm=0,Brace Palm=0",
@@ -69,7 +70,33 @@ HAND_BODY = "right_wrist_yaw_link"
 # approach, not the hold.
 NOMINAL_SECONDS = 20.0
 NOMINAL_REPS = 4
-SWEEP_X = [0.90, 0.98, 1.06, 1.14, 1.22]
+# The x ladder. Env-overridable (BVS_SWEEP_X="0.90,0.98,...") so the CMPC
+# harness can be handed the SAME targets -- a cross-planner comparison is
+# only a comparison if both sides were asked for the same thing, and the
+# ladder was a literal here until that question came up.
+SWEEP_X = [float(v) for v in os.environ.get(
+    "BVS_SWEEP_X", "0.90,0.98,1.06,1.14,1.22").split(",")]
+# A SECOND SETTLED CONDITION, at a target that is genuinely far.
+# `nominal` is the task XML's own target, x = 0.9047, and both arms arrive there
+# to within a centimetre -- which makes it the right place to isolate a
+# STABILITY difference at equal task success, and the wrong place to see a reach
+# difference. It is also, measured, inside the narrow band where the
+# contact-EXPLICIT planner's brace does not survive a 20 s hold -- 0.90 and
+# 0.905 fall, 0.98 and beyond hold; the brace at 0.9047 is a 51 N touch,
+# against 81 N at 1.05. So the comparison carries a second settled condition at
+# x = 1.06 -- inside both planners' certified envelope, far enough that the lean
+# is real -- and the panel figures show all three.
+NOMINAL2_X = float(os.environ.get("BVS_NOMINAL2_X", "1.06"))
+NOMINAL2_SECONDS = 20.0
+# EIGHT, NOT FOUR. At this target 3 of the first 4 commanded-brace rollouts
+# finished with the trunk on the slab (>15 N through torso/pelvis) -- the
+# degenerate the Trunk Clear term is supposed to forbid and whose residual
+# saturates once the chest is down. Those are labelled and excluded from the
+# clean statistics, which left the braced column resting on a single run and no
+# spread at all. Doubling the replicates is the cheap fix; the DEGENERATE RATE
+# is itself reported (see write_table's `torso-rest` row) rather than hidden.
+NOMINAL2_REPS = int(os.environ.get("BVS_NOMINAL2_REPS", "8"))
+
 SWEEP_SECONDS = 16.0
 SWEEP_REPS = 2
 DISTURB_N = [30.0, 60.0, 90.0]      # [N] pulse magnitude, +x (away from robot)
@@ -124,6 +151,12 @@ def stage_jobs(stage):
             for r in range(NOMINAL_REPS):
                 jobs.append(("nominal_%s_r%d" % (arm, r), arm,
                              NOMINAL_SECONDS, "", ""))
+    if stage in ("nominal2", "all"):
+        for arm in ARMS:
+            for r in range(NOMINAL2_REPS):
+                num = "reach_target=%g|-0.2348|1.0982" % NOMINAL2_X
+                jobs.append(("nominal2_%s_r%d" % (arm, r), arm,
+                             NOMINAL2_SECONDS, num, ""))
     if stage in ("sweep", "all"):
         for x in SWEEP_X:
             for arm in ARMS:
@@ -160,6 +193,23 @@ def stage_jobs(stage):
                               DISTURB_PERIOD, DISTURB_COUNT))
                     jobs.append(("disturb_f%03d_%s_r%d" % (round(f), arm, r),
                                  arm, DISTURB_SECONDS, "", dis))
+    # THE SAME PUSH TRAIN AT THE EXTENDED TARGET. `disturb` is delivered at the
+    # task's default target, and the first pulse lands at t = 10 s -- which is
+    # inside the window where the contact-explicit brace has already fallen
+    # there (see NOMINAL2_X). A rejection figure whose braced arm is on the
+    # floor before the first push measures nothing, so the comparison carries
+    # the ladder again at x = 1.06, where both planners are standing when it
+    # arrives.
+    if stage in ("disturb2", "all"):
+        for f in DISTURB_N:
+            for arm in ARMS:
+                for r in range(DISTURB_REPS):
+                    dis = ("body=%s,force=%g|0|0,t0=%g,dur=%g,period=%g,n=%d"
+                           % (HAND_BODY, f, DISTURB_T0, DISTURB_DUR,
+                              DISTURB_PERIOD, DISTURB_COUNT))
+                    num = "reach_target=%g|-0.2348|1.0982" % NOMINAL2_X
+                    jobs.append(("disturb2_f%03d_%s_r%d" % (round(f), arm, r),
+                                 arm, DISTURB_SECONDS, num, dis))
     return jobs
 
 
@@ -259,6 +309,18 @@ def analyse_one(path, stab=True):
     settle = quiet & (t >= 0.6 * t[-1])
     if settle.sum() < 5:
         settle = t >= 0.75 * t[-1]
+    # SMOOTHNESS: spectral arc length of the reaching hand's speed profile,
+    # over the movement only. This is the metric the hardware runs report, and
+    # unlike a jitter-in-millimetres number it is amplitude- and
+    # duration-invariant, so a sim value and a hardware value are comparable.
+    # More negative = less smooth. See sparc.py.
+    dt_ = float(t[1] - t[0])
+    spd = np.linalg.norm(np.diff(hp, axis=0), axis=1) / dt_
+    i0, i1 = movement_window(spd)
+    out["sparc_reach"] = sparc(spd[i0:i1 + 1], 1.0 / dt_)[0]
+    out["sparc_full"] = sparc(spd, 1.0 / dt_)[0]
+    out["move_window_s"] = [float(t[i0]), float(t[min(i1 + 1, len(t) - 1)])]
+    out["peak_hand_speed"] = float(spd.max())
     out["precision_rms_mm"] = float(np.linalg.norm(
         hp[settle] - hp[settle].mean(axis=0), axis=1).std() * 1000)
     out["hand_jitter_mm"] = float(np.linalg.norm(
@@ -290,6 +352,7 @@ def analyse_one(path, stab=True):
         step = max(1, int(round(STAB_DT / (t[1] - t[0]))))
         idx = list(range(0, len(rows), step))
         mc, ma, tt, ncon = [], [], [], []
+        fc_, fa_ = [], []
         bl, bodyload, nframe = [], {}, [0]
         for k in idx:
             d.qpos[:] = rows[k, qi]
@@ -303,9 +366,12 @@ def analyse_one(path, stab=True):
                 # every series stays index-aligned with tt, or `sel` reads the
                 # wrong frames out of the short one
                 mc.append(np.nan); ma.append(np.nan); bl.append(0.0)
+                fc_.append(np.nan); fa_.append(np.nan)
                 continue
-            mc.append(fr.equilibrium_region(actuated=False, ndir=STAB_NDIR)[2])
-            ma.append(fr.equilibrium_region(actuated=True, ndir=STAB_NDIR)[2])
+            _, _, sc, fwc = fr.margins(actuated=False, ndir=STAB_NDIR)
+            _, _, sa, fwa = fr.margins(actuated=True, ndir=STAB_NDIR)
+            mc.append(sc); ma.append(sa)
+            fc_.append(fwc); fa_.append(fwa)
             # BRACE LOAD, measured. This task is contact-implicit: the planner
             # may put a link on the table whether or not a brace cost asked it
             # to, and it does -- a zero-brace-cost rollout was found carrying
@@ -335,8 +401,14 @@ def analyse_one(path, stab=True):
         out["margin_actuated"] = ma
         out["ncontacts"] = ncon
         sel = [i for i, x in enumerate(tt) if x >= 0.6 * t[-1]]
+        out["margin_contact"] = mc
+        out["margin_actuated"] = ma
+        out["fwd_contact"] = fc_
+        out["fwd_actuated"] = fa_
         out["margin_contact_settled"] = float(np.nanmean([mc[i] for i in sel]))
         out["margin_actuated_settled"] = float(np.nanmean([ma[i] for i in sel]))
+        out["fwd_contact_settled"] = float(np.nanmean([fc_[i] for i in sel]))
+        out["fwd_actuated_settled"] = float(np.nanmean([fa_[i] for i in sel]))
         out["brace_load_t"] = bl
         out["brace_load_N"] = float(np.mean([bl[i] for i in sel])) if sel \
             else float("nan")
@@ -478,8 +550,8 @@ def main():
     r = sub.add_parser("run")
     r.add_argument("--out", required=True)
     r.add_argument("--stage", default="all",
-                   choices=["nominal", "sweep", "maxreach", "disturb",
-                            "disturb_max", "all"])
+                   choices=["nominal", "nominal2", "sweep", "maxreach",
+                            "disturb", "disturb2", "disturb_max", "all"])
     r.add_argument("--force", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("--run", required=True)

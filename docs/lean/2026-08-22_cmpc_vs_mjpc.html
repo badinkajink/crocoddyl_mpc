@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The gradient planner on the sampling planner's figures</title>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.78rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.6rem 0}
+  img{width:100%;border-radius:10px;display:block;background:#fff}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>The gradient planner on the sampling planner's figures</h1>
+<p class="sub">Crocoddyl-MPC run through the braced-reach protocol that produced the paper's MJPC baselines &mdash; same plant, same targets, same scorer, same plotting code &mdash; so the two controllers can be read off one axis.</p>
+<p class="meta">2026-08-22 &middot; S23 &middot; in-process MuJoCo, closed loop, 86 CMPC and 108 MJPC scored rollouts</p>
+<div class="note ok"><p><b>What this produced.</b> Every figure in the MJPC baseline set now has a CMPC counterpart and a two-planner overlay, from one code path: the CMPC harness writes testspeed's <code>--dump_traj</code> CSV, so <code>brace_vs_stand.py analyze</code>, <code>bvs_plots.py</code> and <code>bvs_strips.py</code> run on it unchanged. The target sweep was extended to seven targets and run on both.</p><p><b>Clean-arrival band</b> &mdash; the contiguous run of targets where every replicate lands within 5&nbsp;cm, upright, without resting its trunk on the slab: MJPC <b>0.90&ndash;1.22 m</b> no-brace, <b>none</b> braced; CMPC <b>0.90&ndash;1.30 m</b> no-brace, <b>0.98&ndash;1.22 m</b> braced. The braced arms of both planners leave that band by resting the trunk, not by failing to reach &mdash; which is a cost-function result and is why the band is reported instead of a maximum.</p></div>
+<h2>1. What was held, and what could not be</h2>
+<p>The two controllers were given the same plant (<code>Lean_H12_Magpie.xml</code> and <code>Lean_Simple_H12_Magpie.xml</code> are the same rigid body &mdash; identical nq/nv/nu, body, site, geom and actuator lists in the same order, identical masses, gains, force ranges, friction, <code>solref/solimp</code>, contact pairs and exclusions; they differ only in MJPC task metadata), the same targets, the same durations and the same scorer. Three things could not be held, and all three are visible in the numbers rather than hidden in them:</p>
+<ul><li><b>What &ldquo;no brace cost&rdquo; means.</b> For MJPC it is three weights at zero and the planner may still find the table &mdash; and does. For CMPC it is the <code>legs_only</code> plan, a contact schedule with nothing on the table, which no weight can override. The difference is not that one makes table contacts and the other cannot: a <code>legs_only</code> rollout at x = 1.38 m settles with the gripper seated anyway, because the physics puts it there. The difference is that the gradient planner never MODELLED that contact, so it is an unmodelled disturbance rather than support being exploited. That is the result, not a confound.</li><li><b>The start pose.</b> MJPC begins at the <code>home</code> keyframe, CMPC at <code>stand</code> (knees 0.55&nbsp;rad). Each is its own pipeline's start. Functional reach &mdash; hand to ankle-midpoint &mdash; is posture-intrinsic and references neither.</li><li><b>Where the spread comes from.</b> MJPC replicates differ because it samples; CMPC is a deterministic descent, so its replicates start from a seeded 3&nbsp;mrad / 3&nbsp;mm perturbation. Both are spreads over repeated attempts; they are not the same random variable.</li></ul>
+<h2>2. The extended-reach condition, side by side</h2>
+<p>x = 1.06&nbsp;m, 20&nbsp;s, four replicates per arm per planner. This condition exists because the paper's default target is 0.905&nbsp;m, where both arms arrive to within a centimetre &mdash; good for isolating a stability difference, useless for a reach one &mdash; and because it is the one target at which CMPC's declared brace does not survive the hold (&sect;4).</p>
+<div class="scroll"><table><thead><tr><th>metric</th><th>MJPC no&nbsp;brace</th><th>MJPC brace</th><th>CMPC no&nbsp;brace</th><th>CMPC brace</th><th>unit</th></tr></thead><tbody>
+<tr><td>Functional reach</td><td>89.7 &plusmn; 1.4</td><td>90.3 &plusmn; 0.2</td><td>83.8 &plusmn; 0.9</td><td>87.0 &plusmn; 1.1</td><td>cm</td></tr>
+<tr><td>Settled reach error</td><td>1.0 &plusmn; 0.5</td><td>0.7 &plusmn; 0.5</td><td>1.0 &plusmn; 0.1</td><td>3.7 &plusmn; 0.3</td><td>cm</td></tr>
+<tr><td>Bracing-arm force</td><td>42 &plusmn; 22</td><td>64 &plusmn; 21</td><td>0</td><td>141 &plusmn; 9</td><td>N</td></tr>
+<tr><td>Support margin (actuated)</td><td>13.9 &plusmn; 7.9</td><td>20.3 &plusmn; 5.8</td><td>9.1 &plusmn; 0.3</td><td>20.5 &plusmn; 1.1</td><td>cm</td></tr>
+<tr><td>Forward margin (actuated)</td><td>24.7 &plusmn; 19.5</td><td>37.2 &plusmn; 13.8</td><td>9.3 &plusmn; 0.3</td><td>28.2 &plusmn; 2.7</td><td>cm</td></tr>
+<tr><td>Smoothness SPARC</td><td>-3.13 &plusmn; 0.95</td><td>-3.68 &plusmn; 1.30</td><td>-2.91 &plusmn; 0.03</td><td>-3.35 &plusmn; 0.11</td><td>&mdash;</td></tr>
+<tr><td>Hand jitter</td><td>7.5 &plusmn; 3.8</td><td>5.8 &plusmn; 5.1</td><td>0.1 &plusmn; 0.0</td><td>2.9 &plusmn; 4.1</td><td>mm</td></tr>
+<tr><td>Worst-case push at hand</td><td>82 &plusmn; 64</td><td>119 &plusmn; 39</td><td>57 &plusmn; 2</td><td>125 &plusmn; 4</td><td>N</td></tr>
+<tr><td>Peak torque ratio</td><td>1.00</td><td>1.00</td><td>0.99 &plusmn; 0.01</td><td>0.98 &plusmn; 0.00</td><td>&mdash;</td></tr>
+</tbody></table></div>
+<figure><img src="media/s23_envelope.png" alt=""><figcaption>The target sweep, both planners. Hue is the arm, marker and linestyle the planner. Left: does the hand arrive. Right: how far it gets, measured from the ankles so the two planners' different start poses cannot flatter either.</figcaption></figure>
+<figure><img src="media/s23_panels.png" alt=""><figcaption>What the brace buys and costs, at the extended-reach condition (x = 1.06 m). Solid fill MJPC, hatched CMPC.</figcaption></figure>
+<h2>3. The target sweep</h2>
+<p>Seven targets, 0.90&ndash;1.38&nbsp;m along +x at fixed y,&nbsp;z; two replicates per point per arm per planner. The clean-arrival band is the contiguous run of targets at which <i>every</i> replicate settles within 5&nbsp;cm of the target it was given, upright, without the trunk on the slab:</p>
+<div class="scroll"><table><thead><tr><th>planner</th><th>no brace cost</th><th>commanded brace</th></tr></thead><tbody>
+<tr><td>MJPC (sampling)</td><td>0.90&ndash;1.22 m</td><td>none</td></tr>
+<tr><td>CMPC (gradient)</td><td>0.90&ndash;1.30 m</td><td>0.98&ndash;1.22 m</td></tr>
+</tbody></table></div>
+<p>What ended each walk, per target &mdash; <b>a</b>rrived / <b>m</b>issed by more than 5&nbsp;cm / rested the <b>t</b>runk / <b>f</b>ell:</p>
+<div class="scroll"><table><thead><tr><th>planner / arm</th><th>0.90</th><th>0.98</th><th>1.06</th><th>1.14</th><th>1.22</th><th>1.30</th><th>1.38</th></tr></thead><tbody>
+<tr><td>MJPC no brace cost</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="bad">am</td><td class="bad">mm</td></tr>
+<tr><td>MJPC commanded brace</td><td class="bad">ta</td><td class="bad">tt</td><td class="bad">tt</td><td class="bad">tt</td><td class="bad">at</td><td class="bad">ta</td><td class="bad">mt</td></tr>
+<tr><td>CMPC no brace cost</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="bad">tt</td></tr>
+<tr><td>CMPC commanded brace</td><td class="bad">ff</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="good">aa</td><td class="bad">tt</td><td class="bad">tt</td></tr>
+</tbody></table></div>
+<p>The static side of the same question, from <code>croco_modes</code>'s IK+QP certification: <code>legs_only</code> stops being admissible past x&nbsp;=&nbsp;1.14&nbsp;m while <code>elbow+forearm</code> still certifies at 1.30&nbsp;m; neither certifies at 1.38 or at the 1.60&nbsp;m max-reach target, which is why the max-reach cell carries a best-effort pose marked <code>admissible: false</code> rather than a certified one.</p>
+<h2>4. Where the declared brace stops working</h2>
+<div class="note warn"><p><b>CMPC's elbow+forearm brace does not survive a 20&nbsp;s hold at the paper's default target.</b> 4 of 4 nominal braced replicates fell (x&nbsp;=&nbsp;0.905). At x&nbsp;&ge;&nbsp;0.98 the same plan, the same gains and the same loop hold for the full 20&nbsp;s in every cell measured (0.98, 1.06, 1.14, 1.22). The certified static brace force at 0.9047 is 51.5&nbsp;N against 80.9&nbsp;N at 1.05 &mdash; at the near target the declared contact is a light touch, and a rigid bilateral constraint on a light touch is the configuration this formulation is least able to defend.</p></div>
+<p>This is not the horizon trap that produced the first version of these runs, and the two are worth telling apart because they look identical from outside. Clamping the held plan index to <code>len(us)-1</code> makes <code>MPC.__call__</code> take its tail branch and rebuild a <b>one-node</b> problem: mean solve collapses 18.9&nbsp;&rarr;&nbsp;2.5&nbsp;ms and the robot is on the floor by t&nbsp;=&nbsp;15&nbsp;s <i>in every cell</i>. Holding at <code>len(us)&nbsp;&minus;&nbsp;H</code> keeps the window full, and then only the two nearest targets fail. <b><code>croco_twin.py</code>'s own <code>hold</code> submode still uses <code>len(us)-1</code></b> &mdash; left alone because recorded results depend on it, but S19's &ldquo;8&nbsp;s hold&rdquo; should be read as a hold that was degrading.</p>
+<figure><img src="media/s23_stages.png" alt=""><figcaption>The maneuver end to end under CMPC: one trajectory, brace+reach held and then chained into the recovery.</figcaption></figure>
+<figure><img src="media/s23_strip.png" alt=""><figcaption>CMPC strategies, chosen by measured load rather than by commanded weights.</figcaption></figure>
+<figure><img src="media/s23_disturb.png" alt=""><figcaption>Push rejection: three 0.3 s pulses of 30-90 N at the reaching wrist, invisible to both planners.</figcaption></figure>
+<h2>5. The generated tables, verbatim</h2>
+<h3>table_mjpc_vs_cmpc.txt</h3><pre>metric                            MJPC/stand      MJPC/brace      CMPC/stand      CMPC/brace   unit
+functional reach                  89.7 ± 1.4      90.3 ± 0.2      83.8 ± 0.9      87.0 ± 1.1   cm
+settled reach error                1.0 ± 0.5       0.7 ± 0.5       1.0 ± 0.1       3.7 ± 0.3   cm
+brace load, all contacts             61 ± 64        109 ± 37               0        161 ± 16   N
+bracing-arm force                    42 ± 22         64 ± 21               0         141 ± 9   N
+support margin (actuated)         13.9 ± 7.9      20.3 ± 5.8       9.1 ± 0.3      20.5 ± 1.1   cm
+forward margin (actuated)        24.7 ± 19.5     37.2 ± 13.8       9.3 ± 0.3      28.2 ± 2.7   cm
+smoothness SPARC                -3.13 ± 0.95    -3.68 ± 1.30    -2.91 ± 0.03    -3.35 ± 0.11   --
+hand jitter                      7.46 ± 3.75     5.80 ± 5.11     0.14 ± 0.04     2.86 ± 4.11   mm
+worst-case push at hand              82 ± 64        119 ± 39          57 ± 2         125 ± 4   N
+settling time                      6.3 ± 3.7       5.7 ± 0.8       2.3 ± 0.0       2.4 ± 0.1   s
+peak torque ratio                       1.00            1.00     0.99 ± 0.01     0.98 ± 0.00   --
+runs bracing (>15 N)                     8/8             3/3             0/8             8/8   --
+torso-rest (excluded)                    0/8             5/8             0/8             0/8   --
+</pre>
+<h3>table_brace_vs_stand.txt</h3><pre>metric                   stand/Targeted brace/Targeted stand/Extended brace/Extended     stand/Max     brace/Max   unit
+functional reach            71.5 ± 0.6           n/a    83.8 ± 0.9    87.0 ± 1.1         116.7           n/a     cm
+settled reach error          3.4 ± 0.1           n/a     1.0 ± 0.1     3.7 ± 0.3          19.2           n/a     cm
+brace load, all contacts             0           n/a             0      161 ± 16            25           n/a      N
+bracing-arm force                    0           n/a             0       141 ± 9             0           n/a      N
+support margin (contact)     8.7 ± 0.3           n/a    10.4 ± 0.4    31.6 ± 2.2          14.0           n/a     cm
+support margin (actuated)     8.6 ± 0.3           n/a     9.1 ± 0.3    20.5 ± 1.1          13.8           n/a     cm
+forward margin (contact)    12.1 ± 0.8           n/a    10.4 ± 0.4    45.0 ± 3.2          69.9           n/a     cm
+forward margin (actuated)    12.0 ± 0.7           n/a     9.3 ± 0.3    28.2 ± 2.7          33.0           n/a     cm
+smoothness SPARC          -3.03 ± 0.03           n/a  -2.91 ± 0.03  -3.35 ± 0.11         -4.07           n/a     --
+hand jitter                0.17 ± 0.01           n/a   0.14 ± 0.04   2.86 ± 4.11         33.59           n/a     mm
+reach error spread         0.10 ± 0.01           n/a   0.04 ± 0.02   1.60 ± 1.57         29.82           n/a     mm
+worst-case push at hand         55 ± 1           n/a        57 ± 2       125 ± 4            67           n/a      N
+settling time (initial)      2.3 ± 0.0           n/a     2.3 ± 0.0     2.4 ± 0.1          19.2           n/a      s
+peak torque ratio          0.98 ± 0.00           n/a   0.99 ± 0.01   0.98 ± 0.00          1.00           n/a     --
+runs bracing (>15 N)               0/4           n/a           0/8           8/8           1/1           n/a     --
+torso-rest (excluded)              0/4           4/4           0/8           0/8           3/4           3/4     --
+</pre>
+<h3>table_disturbance.txt</h3><pre>push [N]   stand peak[mm] brace peak[mm]   stand rec[s]   brace rec[s]     fell s/b
+30                 37 ± 0            n/a    1.11 ± 0.04            n/a          0/0
+60                 81 ± 1            n/a    1.30 ± 0.04            n/a          0/0
+90                147 ± 3            n/a    1.53 ± 0.03            n/a          0/0
+</pre>
+<h2>6. Reproduce</h2>
+<pre>export CL_ASSETS_DIR=... LEAN_TASK_DIR=... MUJOCO_GL=egl
+export MJPC_BIN=&lt;mujoco_mpc&gt;/build_cmake/bin/testspeed
+export BVS_SWEEP_X="0.90,0.98,1.06,1.14,1.22,1.30,1.38"
+
+# the sampling baseline
+studies/brace_vs_stand.py run     --out studies/runs/2026-08-22_brace_vs_stand --stage all
+studies/brace_vs_stand.py analyze --run studies/runs/2026-08-22_brace_vs_stand --append
+
+# the gradient side: one cell per target, then the episodes
+studies/cmpc_brace_vs_stand.py cells --out studies/runs/2026-08-22_cmpc_bvs --stage all
+env LD_PRELOAD=$CROCO_OMP \
+  studies/cmpc_brace_vs_stand.py run --out studies/runs/2026-08-22_cmpc_bvs --stage all
+
+# every figure, both planners
+studies/make_cmpc_figures.sh
+</pre>
+</div>
+</body>
+</html>

@@ -1416,6 +1416,21 @@ class Session:
         """
         nq, us, xs = cb.NQ_ROBOT, task.us, task.xs
         dt_plan = task.plan["dt"]
+        # MEASURED DEFECT, LEFT IN DELIBERATELY -- read before trusting a long
+        # hold. `MPC.__call__` slides forward only while `k + H <= len(models)`;
+        # past that it takes the TAIL branch and rebuilds a shrinking-horizon
+        # problem from `models[k:]`. At k = len(us)-1 that is a ONE-NODE
+        # problem, so a "hold" stops being MPC after the plan ends. Measured
+        # 2026-08-22 on a fresh x=0.905 cell, elbow+forearm, 20 s: mean solve
+        # 18.9 -> 2.5 ms and the robot on the floor at t = 15 s; holding at
+        # `len(us) - horizon` instead keeps the window full and the same cell
+        # stays up. The 2.5 ms is the tell -- a solve that got seven times
+        # cheaper got smaller, not faster.
+        #
+        # NOT CHANGED HERE because every recorded `--submode hold` result in
+        # this study (S19's 8 s brace hold among them) was measured against this
+        # line, and moving it silently rewrites what those records mean.
+        # studies/cmpc_brace_vs_stand.py carries the corrected form.
         k_hold = len(us) - 1
         q0_plan = cb.pin_to_mj(xs[0][:nq], cs.start_qpos(self.m,
                                                         task.plan["start"]))

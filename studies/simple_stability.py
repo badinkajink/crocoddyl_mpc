@@ -246,6 +246,33 @@ class Frame:
                          fext, fpoint)
 
     # ----------------------------------------------------------------- #
+    def margins(self, actuated=True, ndir=NDIR, fwd=(1.0, 0.0)):
+        """Both margins the hardware run reports, from one region solve.
+
+        They are different questions and they differ by a lot, so the study
+        should never say just "margin":
+
+          support  min distance from the CoM to the region boundary, over ALL
+                   directions. The omnidirectional "how close to tipping ANY
+                   way" number. Usually set by the narrow (lateral) axis, so it
+                   is the smaller of the two and is dominated by foot width.
+          forward  distance from the CoM to the boundary along +x only, i.e.
+                   how much further the CoM could travel toward the target
+                   before equilibrium is lost. This is the one a brace is
+                   supposed to buy, because a brace extends the region forward
+                   and hardly at all sideways.
+
+        Returns (pts, com_xy, support, forward)."""
+        pts, c0, support = self.equilibrium_region(actuated, ndir)
+        if len(pts) < 3:
+            return pts, c0, support, float("nan")
+        u = np.array(fwd, dtype=float)
+        u /= np.linalg.norm(u)
+        forward = _ray_to_poly(pts, c0, u)
+        if not np.isfinite(support) or support < 0:
+            forward = -abs(forward) if np.isfinite(forward) else forward
+        return pts, c0, support, forward
+
     def equilibrium_region(self, actuated=True, ndir=NDIR):
         """Ray-shoot the region boundary. Returns (pts (ndir,2), com_xy, margin)."""
         if not self.ok:
@@ -302,6 +329,28 @@ class Frame:
                     hi = mid
             out.append(lo)
         return angs, np.array(out)
+
+
+def _ray_to_poly(poly, p, u):
+    """Distance from p to the polygon boundary along +u.
+
+    Segment intersection rather than "nearest boundary point in roughly that
+    direction": the region is not convex once a brace is in it, and the nearest
+    vertex can sit 40 deg off the ray."""
+    best = np.inf
+    n = len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        e = b - a
+        den = u[0] * (-e[1]) + u[1] * e[0]
+        if abs(den) < 1e-12:
+            continue
+        d = a - p
+        t = (d[0] * (-e[1]) + d[1] * e[0]) / den          # along u
+        sgn = (u[0] * d[1] - u[1] * d[0]) / -den          # along the edge
+        if t >= 0 and -1e-9 <= sgn <= 1 + 1e-9:
+            best = min(best, t)
+    return float(best) if np.isfinite(best) else float("nan")
 
 
 def _poly_margin(poly, p):

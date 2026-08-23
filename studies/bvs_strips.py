@@ -83,7 +83,14 @@ def _is_robot(m, b):
     return bool(_ROBOT[key][b])
 
 
-def frame_at(m, d, r, rows, col, k, az, draw_contacts=True):
+def frame_at(m, d, r, rows, col, k, az, draw_contacts=True, camera=None):
+    """One rendered frame. `camera` overrides the default framing.
+
+    The default is the six-row ablation strip's, where each tile is a sixth of
+    the text height and a wide shot reads fine. A one-row strip gets five times
+    the tile height and the same wide shot leaves the robot a thumbnail, so the
+    caller is allowed to frame it -- the contact drawing below is unchanged
+    either way, which is the part that must not vary between figures."""
     qi = [col["qpos%d" % i] for i in range(m.nq)]
     vi = [col["qvel%d" % i] for i in range(m.nv)]
     ui = [col["ctrl%d" % i] for i in range(m.nu)]
@@ -91,8 +98,9 @@ def frame_at(m, d, r, rows, col, k, az, draw_contacts=True):
     d.qvel[:] = rows[k, vi]
     d.ctrl[:] = rows[k, ui]
     mujoco.mj_forward(m, d)
-    r.update_scene(d, camera=sv.cam(az, el=-10, dist=2.75,
-                                    look=(0.82, 0.0, 0.90)))
+    r.update_scene(d, camera=(camera if camera is not None else
+                              sv.cam(az, el=-10, dist=2.75,
+                                     look=(0.82, 0.0, 0.90))))
     scn = r.scene
     if draw_contacts:
         env = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "pelvis")
@@ -125,15 +133,30 @@ def frame_at(m, d, r, rows, col, k, az, draw_contacts=True):
 
 
 def pick_rows(res, run_dir):
-    """Representative rollouts, chosen by measured load."""
+    """Representative rollouts, chosen by measured load.
+
+    A ROLLOUT THAT FELL IS NOT A STRATEGY. Nothing fell in the sampling
+    planner's settled conditions, so this filter was implicit; the gradient
+    planner's declared brace does fall at the default target, and a fallen
+    robot's contact set is large, trunk-heavy and would be selected as the
+    "commanded brace" exemplar by load alone -- drawing the failure and
+    labelling it the strategy. Fallen runs are dropped, and if that empties a
+    condition the EXTENDED one is used instead, which is why the strip's
+    caption has to say which target each row came from.
+    """
     def get(stage, arm):
         return [r for r in res if r.get("stage") == stage
                 and r.get("arm") == arm and "error" not in r
+                and not r.get("fell")
                 and r.get("brace_load_N") is not None
                 and np.isfinite(r["brace_load_N"])]
 
+    def get2(arm):
+        """`nominal`, or `nominal2` when the default target has nothing left."""
+        return get("nominal", arm) or get("nominal2", arm)
+
     out = []
-    ns, nb = get("nominal", "stand"), get("nominal", "brace")
+    ns, nb = get2("stand"), get2("brace")
     # the zero-brace-cost arm is TWO behaviours; show both ends of it
     pool = ns + get("sweep", "stand")
     if pool:
@@ -157,7 +180,7 @@ def pick_rows(res, run_dir):
     # purpose: 3 of 4 commanded-brace max-reach runs end up here, and a reader
     # comparing only the clean rows would not know that.
     degen = [r for r in res if _BP.contact_class(r) == "torso"
-             and r.get("stage") == "maxreach"]
+             and r.get("stage") == "maxreach" and not r.get("fell")]
     if degen:
         out.append(("Degenerate\ntorso on table",
                     max(degen, key=lambda r: _BP.trunk_load(r))))
