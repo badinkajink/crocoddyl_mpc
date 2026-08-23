@@ -729,6 +729,197 @@ def write_disturb_table(rows, out, stage="disturb", name="table_disturbance"):
     print("  wrote %s.tex / .txt" % name)
 
 
+# --------------------------------------------------------------------------- #
+# Hardware, drawn beside the simulation.
+#
+# Allen's real-robot runs of the COMMANDED BRACE, transcribed from
+# paper/figures/brace_reach/allen_real_experiments/brace_reach_real_{1,2}.png.
+# Values are already in DISPLAY units (the sim rows are SI and get scaled at
+# draw time), so the two paths through the panel loop differ and are kept
+# visibly separate rather than merged into a fake rollout record.
+#
+# THREE CAVEATS THAT BELONG IN THE CAPTION, NOT JUST HERE:
+#  1. The spread convention may not match. Sim bars are HALF-RANGE, (max-min)/2
+#     (see `_ms`: 2-8 replicates cannot support a standard error). The hardware
+#     "+-" is transcribed as given; if it is an SD the two bar kinds are not
+#     the same statistic and the figure should say so.
+#  2. `n` is not recorded in the source table. The hardware max-reach attempt
+#     rate quoted elsewhere in this study is 11/15; whether these means are over
+#     11 runs or some subset is unknown here.
+#  3. Only the SUPPORT margin was reported. There is no hardware forward-margin
+#     number, so `which="forward"` draws the sim pair alone -- deliberately,
+#     rather than reusing the support value under a different name.
+#
+# The targeted-reach condition is empty on purpose: hardware has only been run
+# at max reach so far. Adding it later is one dict entry, and every group in
+# every panel picks up the bar without further edits.
+REAL_LABEL = "Commanded brace (real)"
+# Categorical slot 3 (aqua) of the documented reference palette, not an
+# arbitrary green. Slots 1-3 are the validated all-pairs opening -- worst pair
+# CVD dE 9.2, normal-vision 24.0 on a light surface -- which is the gate that
+# applies here, because all three bars sit side by side inside one group and so
+# every pair is adjacent.
+C_REAL = "#1baf7a"
+REAL = {
+    "nominal": {},
+    "maxreach": {
+        "func_reach_settled": (99.1, 2.7),
+        "margin_actuated_settled": (14.3, 1.2),
+        "sparc_reach": (-3.85, 0.75),
+        "hand_jitter_mm": (25.6, 3.9),
+        "brace_arm_load": (109.0, 28.0),
+    },
+}
+
+# HAND JITTER: mean radial deviation of the reaching-hand site about its own
+# settled-window mean position, in mm (brace_vs_stand.analyse_one).
+#
+#     settle = t >= 0.6 * t_end        final 40% of the rollout; for the 20 s
+#                                      settled conditions that is t >= 12.0 s,
+#                                      800 samples at the 100 Hz dump rate
+#     jitter = mean_k || p(k) - mean(p[settle]) ||   over k in settle
+#
+# It is a DISPERSION, not an accuracy: taken about the window's own centroid, a
+# constant offset from the commanded target costs nothing (that is
+# `reach_err_settled`) while a slow drift across the window costs a lot. It is a
+# mean absolute deviation, not an RMS and not a peak-to-peak -- `precision_rms_mm`
+# is the SD of the same radius if the second moment is wanted. In the disturbance
+# stages each pulse and the 2 s after it are cut from the window first, so the
+# number is always quiet-state jitter and never a rejection transient.
+#
+# It is kept ALONGSIDE SPARC rather than replaced by it because the two disagree
+# about what "unsteady" means and the disagreement is informative: SPARC scores
+# the whole reaching movement's speed profile and is amplitude- and
+# duration-invariant, jitter scores only the hold and is neither.
+REAL_PANELS = [
+    ("func_reach_settled", 100.0, "cm   (higher better)",
+     "Functional reach", "", "%.0f"),
+    # Title is overridden per margin variant at draw time -- see MARGIN_TITLE.
+    ("margin_actuated_settled", 100.0, "cm   (higher better)",
+     "Support margin", "(any direction)", "%.1f"),
+    ("sparc_reach", 1.0, "SPARC   (higher better)",
+     "Smoothness", "", "%.2f"),
+    ("hand_jitter_mm", 1.0, "mm   (lower better)",
+     "Hand jitter", "", "%.1f"),
+    # NOT "higher better". More newtons through the bracing arm is what the
+    # posture costs, not what it achieves -- the source figure labelled this
+    # panel "higher better" and that reading would have the degenerate
+    # chest-on-the-table rollouts winning it outright at 300-470 N.
+    ("brace_arm_load", 1.0, "N",
+     "Bracing-arm force", "", "%.0f"),
+]
+
+# Group centres and slot width. Five panels across one text width leaves ~1.15 in
+# of drawing area each, so the bars are thin and the two conditions sit close
+# together: at the previous 0.36 slot the three-bar max-reach group ran into its
+# neighbour's tick label.
+REAL_GAP, REAL_W = 0.72, 0.20
+
+# Two-line forms of MARGIN_VARIANTS' labels. The one-line versions overrun a
+# 1.15 in panel, and a margin panel silently mislabelled as the OTHER margin is
+# the single most misleading thing this figure could do -- the two differ by a
+# factor of ~1.5 and the paper quotes both.
+MARGIN_TITLE = {
+    "support": ("Support margin", "(any direction)"),
+    "forward": ("Forward margin", "(toward target)"),
+}
+
+
+def _real_value(cond, key, which):
+    """The hardware bar for one panel, or None if hardware has no such number."""
+    if which != "support" and key == "margin_actuated_settled":
+        return None
+    return REAL.get(cond, {}).get(key)
+
+
+def fig_stability_real(rows, out, which="support"):
+    """The stability panels with the hardware runs drawn in beside the sim.
+
+    Same measurements as `fig_stability` plus hand jitter, restricted to the two
+    conditions hardware can be compared against, and with the commanded brace
+    appearing twice -- once as simulated, once as measured. The sim-vs-real pair
+    is the point of the figure, so the two conditions are drawn tight and the
+    bars thin rather than dropping a panel to make room.
+    """
+    mkey, _ = MARGIN_VARIANTS[which]
+    groups = [(g, lab) for g, lab in CONDITIONS
+              if g in ("nominal", "maxreach") and by(rows, g)]
+    if not groups:
+        return
+    d = defaultdict(lambda: defaultdict(list))
+    for g, _ in groups:
+        for r in by(rows, g):
+            d[g][r["arm"]].append(r)
+
+    fig, axs = plt.subplots(1, len(REAL_PANELS), figsize=(TEXT, 3.1),
+                            layout="constrained")
+    for ax, (key, sc, ylab, t1, t2, fmt) in zip(axs, REAL_PANELS):
+        k = key
+        if key == "margin_actuated_settled":
+            k = mkey
+            t1, t2 = MARGIN_TITLE[which]
+        for gi, (g, lab) in enumerate(groups):
+            # Series present in THIS group. The bars are centred on the group,
+            # so the targeted-reach pair is not left with a hole where the
+            # hardware bar would go -- there is no hardware run there to imply.
+            series = []
+            for arm in ORDER:
+                if key == "brace_arm_load":
+                    vals = [brace_arm_load(r) for r in d[g][arm]]
+                else:
+                    vals = [r.get(k) for r in d[g][arm]
+                            if r.get(k) is not None
+                            and np.isfinite(r.get(k, np.nan))]
+                mu, hr = _ms([v * sc for v in vals])
+                if np.isfinite(mu):
+                    series.append((C[arm], LABEL[arm], mu, hr))
+            rv = _real_value(g, key, which)
+            if rv is not None:
+                series.append((C_REAL, REAL_LABEL, rv[0], rv[1]))
+            n = len(series)
+            for si, (col, _lab, mu, hr) in enumerate(series):
+                x = gi * REAL_GAP + (si - (n - 1) / 2.0) * REAL_W
+                ax.bar(x, mu, width=REAL_W * 0.88, color=col, zorder=3,
+                       edgecolor="white", linewidth=0.8)
+                if hr > 0:
+                    ax.errorbar(x, mu, yerr=hr, color=INK2, lw=0.9,
+                                capsize=2.0, zorder=4)
+                # Value labels ZIGZAG. At this width a slot is ~9.6 pt across
+                # and a three-character label at a legible size is wider than
+                # that, so neighbours inside a group WILL overlap horizontally
+                # no matter how the bars are spaced. Alternating the vertical
+                # offset separates them along the other axis instead of
+                # shrinking the type to 5.5 pt, which does not print.
+                neg = mu < 0
+                dy = 2.0 + 9.0 * (si % 2)
+                ax.annotate(fmt % mu, xy=(x, mu - hr if neg else mu + hr),
+                            xytext=(0, -dy if neg else dy),
+                            textcoords="offset points", ha="center",
+                            va="top" if neg else "bottom", fontsize=6.4,
+                            color=INK, zorder=5)
+        ax.set_xticks([gi * REAL_GAP for gi in range(len(groups))])
+        ax.set_xticklabels([lab for _, lab in groups], fontsize=7.4)
+        ax.set_xlim(-0.46, (len(groups) - 1) * REAL_GAP + 0.46)
+        ax.set_ylabel(ylab, fontsize=7.8)
+        ax.tick_params(labelsize=7.2)
+        # Every title carries two lines even when the second is blank. Under
+        # constrained layout a taller title shrinks its own axes, so a mix of
+        # one- and two-line titles leaves the five panels with visibly
+        # different plot heights.
+        ax.set_title("%s\n%s" % (t1, t2), fontsize=8.0)
+        ax.margins(y=0.30)
+        ax.grid(axis="x", visible=False)
+
+    h = [plt.Rectangle((0, 0), 1, 1, color=C[a]) for a in ORDER]
+    lab = [LABEL[a] for a in ORDER]
+    if any(_real_value(g, k[0], which) is not None
+           for g, _ in groups for k in REAL_PANELS):
+        h.append(plt.Rectangle((0, 0), 1, 1, color=C_REAL))
+        lab.append(REAL_LABEL)
+    fig.legend(h, lab, loc="outside lower center", ncol=len(h), fontsize=8)
+    _save(fig, out, "fig_stability_panels_real_" + which)
+
+
 def make_all(json_path, out):
     rows = json.load(open(json_path))
     os.makedirs(out, exist_ok=True)
@@ -739,6 +930,15 @@ def make_all(json_path, out):
     fig_success(rows, out)
     for _w in MARGIN_VARIANTS:
         fig_stability(rows, out, _w)
+    # The hardware comparison lives in its own subdirectory -- it is the only
+    # figure in this set that is not pure simulation, and the transcribed
+    # numbers in `REAL` have a provenance the rest of the tree does not share.
+    # One canonical copy, written by the normal pipeline, so it cannot drift
+    # from the analysis.json the sim bars came from.
+    real_out = os.path.join(out, "allen_real_experiments")
+    os.makedirs(real_out, exist_ok=True)
+    for _w in MARGIN_VARIANTS:
+        fig_stability_real(rows, real_out, _w)
     fig_margin_series(rows, out)
     for _s, _n, _w in DISTURB_STAGES:
         fig_disturb(rows, out, _s, _n, _w)
@@ -747,3 +947,35 @@ def make_all(json_path, out):
     for _s, _n, _w in DISTURB_STAGES:
         write_disturb_table(rows, out, _s, _n.replace("fig_disturbance",
                                                       "table_disturbance"))
+
+
+# `brace_vs_stand.py plot` is the usual entry point; this one exists so a single
+# figure can be redrawn without re-running the whole set (the region and strip
+# figures load the model and take minutes).
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--json", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--only", default="all",
+                    help="all | real | stability | table")
+    a = ap.parse_args()
+    os.makedirs(a.out, exist_ok=True)
+    if a.only == "all":
+        make_all(a.json, a.out)
+        return
+    rows = json.load(open(a.json))
+    if a.only == "real":
+        for w in MARGIN_VARIANTS:
+            fig_stability_real(rows, a.out, w)
+    elif a.only == "stability":
+        for w in MARGIN_VARIANTS:
+            fig_stability(rows, a.out, w)
+    elif a.only == "table":
+        write_table(rows, a.out)
+    else:
+        raise SystemExit("unknown --only %s" % a.only)
+
+
+if __name__ == "__main__":
+    main()
