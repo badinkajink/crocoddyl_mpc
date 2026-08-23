@@ -117,6 +117,56 @@ MAXREACH_TARGET = (1.60, -0.2348, 1.0982)
 MAXREACH_SECONDS = 20.0
 MAXREACH_REPS = 4
 
+# THE TARGET THE HARDWARE WAS ACTUALLY GIVEN.
+#
+# The real runs used a different reach target from any of the sim conditions,
+# and the raw numbers are not to hand -- so this is READ OFF the published
+# tip-position trace, paper/figures/brace_reach/allen_real_experiments/
+# target_position.png, by pixel: the axes were calibrated against their own tick
+# marks (exact linear fit, 9 ticks) and each dashed target line separated from
+# its solid mean curve by run structure, a dashed line breaking into 15-33
+# separate runs across the width where a solid curve gives one.
+#
+# It is an ESTIMATE, and the x component is the soft one: the x curve settles
+# onto its own target line, so the two overlap for most of the width and only
+# 15 dash runs were resolvable against 32-33 for y and z. Read precision is
+# about +-3 mm (one line width, ~1.2 px at 0.0024 m/px); a systematic frame
+# offset between Allen's "tip" and this task's `right_hand` site would be a
+# larger error than that and cannot be detected from the image at all.
+#
+# CONFIRMED AGAINST ALLEN'S OWN FIGURE, 2026-08-23. He gives the target as
+# (0.55, 0.04, 0.18) m from "the right bottom of the table". Taking that origin
+# as the near-right corner of the table TOP -- sim table_top spans x [0.45,
+# 1.63], y [-0.2975, 0.2975], surface z = 0.985 -- and the axes as the robot's:
+#
+#     x  0.45   + 0.55 = 1.000   vs 0.998 read   ->  2 mm
+#     z  0.985  + 0.18 = 1.165   vs 1.163 read   ->  2 mm
+#     y -0.2975 + 0.04 = -0.2575 vs -0.156 read  -> 102 mm
+#
+# Two axes agreeing to 2 mm is not a coincidence, so the frame reading is right
+# and the pixel read is good. THE y GAP IS NOT A TARGET DISCREPANCY -- it is a
+# setup difference: the trace's dashed line IS the target the real robot was
+# commanded in its own frame, so y = -0.156 is correct for the robot, and
+# 0.04 m from the real table's right edge puts that edge at y = -0.196 against
+# the sim's -0.2975. The real table sits ~10 cm further +y relative to the
+# robot than the sim's does. Worth confirming with Allen: if the real table is
+# also 10 cm further from the LEFT arm, the brace geometry differs too, and
+# nothing here would show it.
+#
+# Cross-check: the settled tip read off the same trace misses the target by
+# 62.5 mm against the 53 +- 9 mm Allen reports. Consistent, and it lands the
+# same way -- almost all of the miss is +y (58 mm), with 22 mm of +z and 6 mm
+# of -x. Allen's "it overshot the target by a couple cm" is the +22 mm in z;
+# his "if we account for the targeting error it'll be slightly behind where the
+# data says" is the horizontal consequence -- the achieved tip is 13 mm CLOSER
+# to the robot than the commanded target, so the reach the run demonstrates is
+# about a centimetre short of the number the target would imply.
+REALPOSE_TARGET = (0.998, -0.156, 1.163)
+REALPOSE_SECONDS = 20.0
+REALPOSE_REPS = 4
+# Hardware, for the comparison table (mm). Allen's reported settled precision.
+REALPOSE_HW_ERR_MM = (53.0, 9.0)
+
 THREADS = int(os.environ.get("BVS_THREADS", "18"))
 STRIDE = 5                           # 100 Hz rows
 
@@ -184,6 +234,12 @@ def stage_jobs(stage):
                     num = "reach_target=%g|%g|%g" % MAXREACH_TARGET
                     jobs.append(("disturbmax_f%03d_%s_r%d" % (round(f), arm, r),
                                  arm, DISTURB_SECONDS, num, dis))
+    if stage in ("realpose", "all"):
+        for arm in ARMS:
+            for r in range(REALPOSE_REPS):
+                num = "reach_target=%g|%g|%g" % REALPOSE_TARGET
+                jobs.append(("realpose_%s_r%d" % (arm, r), arm,
+                             REALPOSE_SECONDS, num, ""))
     if stage in ("disturb", "all"):
         for f in DISTURB_N:
             for arm in ARMS:
@@ -551,7 +607,8 @@ def main():
     r.add_argument("--out", required=True)
     r.add_argument("--stage", default="all",
                    choices=["nominal", "nominal2", "sweep", "maxreach",
-                            "disturb", "disturb2", "disturb_max", "all"])
+                            "realpose", "disturb", "disturb2", "disturb_max",
+                            "all"])
     r.add_argument("--force", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("--run", required=True)

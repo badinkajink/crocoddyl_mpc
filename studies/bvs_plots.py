@@ -869,8 +869,16 @@ REAL_PANELS = [
      "Support margin", "(any direction)", "%.1f"),
     ("sparc_reach", 1.0, "SPARC   (higher better)",
      "Smoothness", "", "%.2f"),
+    # WINDOW NAMED IN THE TITLE, because this number is not what it sounds
+    # like. `hold_jitter.py` shows only 23% of settled rollouts ever reach a
+    # steady hold in 20 s, and where one exists the RMS is 2-3 mm regardless of
+    # condition. The 6-20 mm here is therefore mostly the hand still creeping
+    # outward at t = 12-20 s, charged to jitter by taking a dispersion about
+    # the window mean. It stays in the figure because it is the number the
+    # hardware table can be lined up against; it is labelled so nobody reads it
+    # as high-frequency shake.
     ("hand_jitter_mm", 1.0, "mm   (lower better)",
-     "Hand jitter", "", "%.1f"),
+     "Hand jitter", "(last 40 % of run)", "%.1f"),
     # NOT "higher better". More newtons through the bracing arm is what the
     # posture costs, not what it achieves -- the source figure labelled this
     # panel "higher better" and that reading would have the degenerate
@@ -912,13 +920,20 @@ def fig_stability_real(rows, out, which="support"):
     bars thin rather than dropping a panel to make room.
     """
     mkey, _ = MARGIN_VARIANTS[which]
+    # clean=True PASSED EXPLICITLY, not inherited. `by()`'s default flipped to
+    # pooling trunk rests (ringed rather than dropped) while this figure was
+    # being written, which is right for the envelope curves and wrong here:
+    # pooling would credit "Brace Encouraged" with a margin earned by lying on
+    # the table (23.1 cm pooled vs 18.5 cm clean at max reach, n=16 vs n=6),
+    # and the hardware bar it is being compared against is certainly not doing
+    # that. Pinned so a future default change cannot move these bars silently.
     groups = [(g, lab) for g, lab in CONDITIONS
-              if g in ("nominal", "maxreach") and by(rows, g)]
+              if g in ("nominal", "maxreach") and by(rows, g, clean=True)]
     if not groups:
         return
     d = defaultdict(lambda: defaultdict(list))
     for g, _ in groups:
-        for r in by(rows, g):
+        for r in by(rows, g, clean=True):
             d[g][r["arm"]].append(r)
 
     fig, axs = plt.subplots(1, len(REAL_PANELS), figsize=(TEXT, 3.1),
