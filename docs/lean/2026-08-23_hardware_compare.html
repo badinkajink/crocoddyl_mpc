@@ -71,6 +71,27 @@ dots do not read at this size. They are still drawn and still sized by normal
 force, so the caption this figure ships with has to say what they are. Nothing on
 the page does.</div>
 
+<h3>The like-for-like pairing, for comparison</h3>
+
+<figure><img src="media/s24_strip_real_realpose.png" alt=""><figcaption>The same strip with the sim rows taken from <code>realpose</code> &mdash; the sim run at the hardware's own target &mdash; instead of <code>maxreach</code>. Rendered with <code>--stage realpose</code>.</figcaption></figure>
+
+<p>This is the honest same-target comparison, and it is the less useful figure.
+The sim robot arrives by <i>t</i>&nbsp;=&nbsp;3&nbsp;s and then does nothing for
+seventeen seconds: barely any torso pitch, the reaching arm folded close in, the
+hand stopping around the near half of the slab. The hardware in the row beneath it
+is pitching progressively forward across all five frames and finishes deep in a
+lean. Bracing-arm load tells the same story &mdash; 25 and ​69&nbsp;N against the
+hardware's 108&nbsp;&plusmn;&nbsp;23, where the max-reach pairing gives 42 and 105
+against 109&nbsp;&plusmn;&nbsp;28.</p>
+
+<p>So the two variants answer different questions. This one shows the sim2real gap
+directly: given the same target, the simulated robot reaches it from 11&nbsp;cm
+closer and never has to commit to the posture the hardware commits to. The
+default variant shows what the hardware's maneuver <i>is</i>, by pairing it with
+the sim condition that produces the same posture and the same brace load at a
+different target. The paper wants the second; this one belongs in a discussion of
+why.</p>
+
 <h2>What the strip showed: the robot is not standing where the sim puts it</h2>
 
 <p>At <i>t</i>&nbsp;=&nbsp;0 the sim robot is already at the table and the real one

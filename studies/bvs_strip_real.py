@@ -55,18 +55,23 @@ import bvs_strips as ST
 # Allen's clip, as given. Not derived from anything in this repo.
 REAL_TIMES = (0.0, 15.0, 25.0, 35.0, 45.0)
 REAL_FILES = ("1.png", "2.png", "3.png", "4.png", "5.png")
-STAGE = "maxreach"
-# "Targeted Reach" rather than "Max reach": on hardware the two are the same
-# experiment, and a row labelled "max reach" beside a row labelled "targeted"
-# would read as a second condition that was never run.
+# Both stages carry the SAME row label, and that is deliberate rather than
+# sloppy. On hardware targeted reach and max reach are one experiment, so
+# "Targeted Reach" is the honest label for the photographs either way; what
+# changes between the two variants is which sim condition is being held up
+# against them. `maxreach` is the default because it is the one that LOOKS like
+# the hardware trial (deep pitch, arm out across the slab) -- see the module
+# docstring. `realpose` is the sim run at the hardware's own target, which is
+# the like-for-like pairing and reaches visibly less far.
 STAGE_LABEL = "Targeted Reach"
+SUFFIX = {"maxreach": "", "realpose": "_realpose"}
 # Sim wording tracks `bvs_plots.REAL_ARM_LABEL` so the strip and the bar figure
 # cannot drift apart; the hardware row tracks `REAL_LABEL`.
 ROW_SIM = [("stand", BP.REAL_ARM_LABEL["stand"]),
            ("brace", BP.REAL_ARM_LABEL["brace"])]
 
 
-def pick_sim(res, run_dir):
+def pick_sim(res, run_dir, STAGE):
     """Median-load exemplar per arm, trunk-rests excluded.
 
     Same rule as the six-row strip -- chosen by MEASURED load, not by the
@@ -114,6 +119,8 @@ def main():
     ap.add_argument("--frames", required=True,
                     help="directory holding %s" % ", ".join(REAL_FILES))
     ap.add_argument("--out", required=True)
+    ap.add_argument("--stage", default="maxreach", choices=sorted(SUFFIX),
+                    help="which sim condition faces the hardware row")
     ap.add_argument("--az", type=float, default=120.0)
     # Tighter than the six-row strip's 2.75. Three rows at text width give each
     # tile 1.7x the height the ablation's tiles get, and the wide framing that
@@ -123,7 +130,7 @@ def main():
     a = ap.parse_args()
 
     res = json.load(open(a.json))
-    picks = pick_sim(res, a.run)
+    picks = pick_sim(res, a.run, a.stage)
     real, ar = load_real(a.frames)
     fracs = [float(x) for x in a.fracs.split(",")]
     if len(fracs) != len(REAL_TIMES):
@@ -152,7 +159,7 @@ def main():
     grid.append(real)
 
     labels = [p[0] for p in picks] + ["%s\n%s" % (STAGE_LABEL, BP.REAL_LABEL)]
-    hw_mu, hw_sd = BP.REAL[STAGE]["brace_arm_load"]
+    hw_mu, hw_sd = BP.REAL[a.stage]["brace_arm_load"]
     loads = ["%.0f N" % BP.brace_arm_load(p[2]) for p in picks]
     # The hardware cell is a MEAN over Allen's runs, not this clip -- these five
     # frames have no force trace attached to them. The "+-" is what says so.
@@ -209,10 +216,12 @@ def main():
         fig.set_figheight(figh - excess)
 
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(a.out, "fig_strategy_strip_real." + ext),
+        fig.savefig(os.path.join(a.out, "fig_strategy_strip_real%s.%s"
+                                 % (SUFFIX[a.stage], ext)),
                     facecolor="white", dpi=190)
     plt.close(fig)
-    print("wrote fig_strategy_strip_real.pdf / .png  (%d rows)" % nr)
+    print("wrote fig_strategy_strip_real%s.pdf / .png  (%d rows, sim stage %s)"
+          % (SUFFIX[a.stage], nr, a.stage))
     for (lab, path, meta), ld in zip(picks, loads):
         print("   %-42s %-24s %8s   brace_load_N %5.0f  margin %.3f"
               % (lab.replace("\n", " / "), os.path.basename(path), ld,
