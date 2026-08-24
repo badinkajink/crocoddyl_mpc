@@ -796,26 +796,29 @@ def write_disturb_table(rows, out, stage="disturb", name="table_disturbance"):
 # Hardware, drawn beside the simulation.
 #
 # Allen's real-robot runs of the COMMANDED BRACE, transcribed from
-# paper/figures/brace_reach/allen_real_experiments/brace_reach_real_{1,2}.png.
-# Values are already in DISPLAY units (the sim rows are SI and get scaled at
-# draw time), so the two paths through the panel loop differ and are kept
-# visibly separate rather than merged into a fake rollout record.
+# paper/figures/brace_reach/allen_real_experiments/brace_reach_real_{1,2}.png
+# (max reach) and target_position_metrics.jpeg (targeted). Values are already in
+# DISPLAY units (the sim rows are SI and get scaled at draw time), so the two
+# paths through the panel loop differ and are kept visibly separate rather than
+# merged into a fake rollout record.
 #
-# THREE CAVEATS THAT BELONG IN THE CAPTION, NOT JUST HERE:
+# FOUR CAVEATS THAT BELONG IN THE CAPTION, NOT JUST HERE:
 #  1. The spread convention may not match. Sim bars are HALF-RANGE, (max-min)/2
 #     (see `_ms`: 2-8 replicates cannot support a standard error). The hardware
 #     "+-" is transcribed as given; if it is an SD the two bar kinds are not
 #     the same statistic and the figure should say so.
-#  2. `n` is not recorded in the source table. The hardware max-reach attempt
+#  2. `n` is not recorded in either source table. The hardware max-reach attempt
 #     rate quoted elsewhere in this study is 11/15; whether these means are over
 #     11 runs or some subset is unknown here.
-#  3. Only the SUPPORT margin was reported. There is no hardware forward-margin
-#     number, so `which="forward"` draws the sim pair alone -- deliberately,
-#     rather than reusing the support value under a different name.
+#  3. Only the SUPPORT margin was reported, at either pose. There is no hardware
+#     forward-margin number, so `which="forward"` draws the sim pair alone --
+#     deliberately, rather than reusing the support value under another name.
+#  4. Hand jitter exists only at max reach, and see the panel's own comment for
+#     why that number is not what its name suggests on the sim side.
 #
-# The targeted-reach condition is empty on purpose: hardware has only been run
-# at max reach so far. Adding it later is one dict entry, and every group in
-# every panel picks up the bar without further edits.
+# The two hardware poses are nearly the same reach -- 98.8 cm targeted against
+# 99.1 cm at max -- which is not an error: Allen chose the targeted pose near
+# the limit "to show that we can reach that far".
 # Legend labels for the hardware comparison ONLY. Every other figure in this set
 # still reads "Commanded brace"; renaming in `LABEL` would silently retitle nine
 # figures whose captions are already written against that wording, so the
@@ -831,14 +834,16 @@ REAL_LABEL = "Brace Encouraged (real)"
 # every pair is adjacent.
 C_REAL = "#1baf7a"
 REAL = {
-    # Awaiting Allen's targeted-reach numbers. The one hardware value already in
-    # hand for this pose is a 53 +- 9 mm settled miss, which is not one of these
-    # five panels -- it is drawn by `realpose_compare.py` instead. Functional
-    # reach and the margins cannot be recovered from the published trace: both
-    # need the ankles and the contact set, and the trace carries only the tip.
-    "realpose": {},
+    "realpose": {
+        "hand_x_settled": (98.8, 1.7),
+        "margin_actuated_settled": (16.1, 1.1),
+        "sparc_reach": (-3.44, 0.45),
+        "brace_arm_load": (108.0, 23.0),
+        # No jitter reported at the targeted pose. The panel simply has no
+        # green bar there rather than borrowing the max-reach value.
+    },
     "maxreach": {
-        "func_reach_settled": (99.1, 2.7),
+        "hand_x_settled": (99.1, 2.7),
         "margin_actuated_settled": (14.3, 1.2),
         "sparc_reach": (-3.85, 0.75),
         "hand_jitter_mm": (25.6, 3.9),
@@ -846,6 +851,24 @@ REAL = {
     },
 }
 
+# REACH IS TIP x, NOT THIS STUDY'S FUNCTIONAL REACH. The two are different
+# measurements and mixing them was an error in the first version of this figure.
+#
+# `func_reach_settled` is the horizontal hand-to-ankle-midpoint distance, chosen
+# deliberately (see brace_vs_stand.analyse_one) because world hand x moves when
+# the base does. Allen's "functional reach" is the tip's x in the robot base
+# frame. Measured against the same rollouts they differ by the ankle offset:
+#
+#     realpose   81 cm ankle-mid  vs  99.5 cm tip x   -> 18.8 cm
+#     maxreach  111 cm ankle-mid  vs  128  cm tip x   -> 16.6 cm
+#
+# Sim tip x at the hardware target is 99.5-99.9 cm against Allen's 98.8 +- 1.7,
+# which is what identified the definition: 8 mm apart, where the ankle-mid
+# reading is 18 cm out. Plotting 111/118 beside a hardware 99.1 -- as the first
+# version did -- compared two different quantities and made the sim look CLOSER
+# to hardware than it is. Same-definition, max reach is sim 128/132 vs real 99.
+# Tip x is the only definition available on both sides, so it is what both sides
+# are plotted in; the ankle-mid numbers stay in `table_brace_vs_stand`.
 # HAND JITTER: mean radial deviation of the reaching-hand site about its own
 # settled-window mean position, in mm (brace_vs_stand.analyse_one).
 #
@@ -867,8 +890,8 @@ REAL = {
 # the whole reaching movement's speed profile and is amplitude- and
 # duration-invariant, jitter scores only the hold and is neither.
 REAL_PANELS = [
-    ("func_reach_settled", 100.0, "cm   (higher better)",
-     "Functional reach", "", "%.0f"),
+    ("hand_x_settled", 100.0, "cm   (higher better)",
+     "Reach", "(tip $x$, base frame)", "%.0f"),
     # Title is overridden per margin variant at draw time -- see MARGIN_TITLE.
     ("margin_actuated_settled", 100.0, "cm   (higher better)",
      "Support margin", "(any direction)", "%.1f"),
