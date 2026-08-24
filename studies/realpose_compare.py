@@ -82,11 +82,30 @@ def settled(t, hp):
 
 
 def load(run):
+    """Clean realpose rollouts per arm, in analysis.json's judgement.
+
+    NOT every realpose_*.csv. 12 of the 16 commanded-brace rollouts at this
+    target finish with the trunk on the slab, and a precision figure that
+    averaged those would be reporting how accurately the robot can lie down.
+    The classification lives in analysis.json (contact forces per body), so the
+    tag list is taken from there rather than re-derived here -- one definition
+    of "clean" for the whole study."""
+    import json
+    from bvs_plots import by
+    jp = os.path.join(run, "analysis.json")
+    if not os.path.exists(jp):
+        raise SystemExit("need %s -- run `brace_vs_stand.py analyze` first" % jp)
+    rows = json.load(open(jp))
+    keep = {r["tag"] for r in by(rows, "realpose", clean=True)}
+    dropped = sum(1 for r in rows if r.get("stage") == "realpose") - len(keep)
+    print("realpose: %d clean rollouts, %d dropped (trunk rest / fell)"
+          % (len(keep), dropped))
     out = {}
     for arm in ARMS:
         runs = []
-        for r in range(BVS.REALPOSE_REPS):
-            p = os.path.join(run, "realpose_%s_r%d.csv" % (arm, r))
+        for tag in sorted(t for t in keep if t.endswith("_r%s" % t.rsplit("_r", 1)[1])
+                          and "_%s_" % arm in t):
+            p = os.path.join(run, tag + ".csv")
             if os.path.exists(p):
                 runs.append(hand_series(p))
         out[arm] = runs

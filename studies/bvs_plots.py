@@ -831,7 +831,12 @@ REAL_LABEL = "Brace Encouraged (real)"
 # every pair is adjacent.
 C_REAL = "#1baf7a"
 REAL = {
-    "nominal": {},
+    # Awaiting Allen's targeted-reach numbers. The one hardware value already in
+    # hand for this pose is a 53 +- 9 mm settled miss, which is not one of these
+    # five panels -- it is drawn by `realpose_compare.py` instead. Functional
+    # reach and the margins cannot be recovered from the published trace: both
+    # need the ankles and the contact set, and the trace carries only the tip.
+    "realpose": {},
     "maxreach": {
         "func_reach_settled": (99.1, 2.7),
         "margin_actuated_settled": (14.3, 1.2),
@@ -903,6 +908,21 @@ MARGIN_TITLE = {
 }
 
 
+# THE TARGETED GROUP IS THE HARDWARE'S TARGET, not the task XML's.
+#
+# `nominal` is the study target at x = 0.9047, which is not where the real robot
+# reached -- Allen's runs used (0.998, -0.156, 1.163), confirmed to 2 mm in x
+# and z (see brace_vs_stand.REALPOSE_TARGET). Putting `nominal` in a figure
+# whose whole purpose is a hardware comparison would compare two different
+# reaches and call the difference a result. `realpose` runs the same two arms at
+# the target hardware was actually given, so every column of this figure is at a
+# pose the hardware also attempted, and the green bars drop in when they exist.
+#
+# Kept separate from the shared CONDITIONS list on purpose: adding a fourth
+# group there would silently retitle the nine sim-only figures built on it.
+REAL_CONDITIONS = [("realpose", "Targeted\nreach"), ("maxreach", "Max\nreach")]
+
+
 def _real_value(cond, key, which):
     """The hardware bar for one panel, or None if hardware has no such number."""
     if which != "support" and key == "margin_actuated_settled":
@@ -927,8 +947,8 @@ def fig_stability_real(rows, out, which="support"):
     # the table (23.1 cm pooled vs 18.5 cm clean at max reach, n=16 vs n=6),
     # and the hardware bar it is being compared against is certainly not doing
     # that. Pinned so a future default change cannot move these bars silently.
-    groups = [(g, lab) for g, lab in CONDITIONS
-              if g in ("nominal", "maxreach") and by(rows, g, clean=True)]
+    groups = [(g, lab) for g, lab in REAL_CONDITIONS
+              if by(rows, g, clean=True)]
     if not groups:
         return
     d = defaultdict(lambda: defaultdict(list))

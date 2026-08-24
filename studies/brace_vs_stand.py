@@ -163,7 +163,10 @@ MAXREACH_REPS = 4
 # about a centimetre short of the number the target would imply.
 REALPOSE_TARGET = (0.998, -0.156, 1.163)
 REALPOSE_SECONDS = 20.0
-REALPOSE_REPS = 4
+# EIGHT, for the same reason NOMINAL2_REPS is eight: 2 of the first 4 commanded
+# -brace rollouts here finished with the trunk on the slab (145 N and 171 N),
+# which leaves the braced column resting on two runs once they are excluded.
+REALPOSE_REPS = 16
 # Hardware, for the comparison table (mm). Allen's reported settled precision.
 REALPOSE_HW_ERR_MM = (53.0, 9.0)
 
@@ -272,6 +275,12 @@ def stage_jobs(stage):
 def cmd_run(a):
     os.makedirs(a.out, exist_ok=True)
     jobs = stage_jobs(a.stage)
+    # --arm tops up ONE column. The degenerate rate is not symmetric -- at the
+    # hardware target the unbraced arm is 8/8 clean while the commanded brace
+    # rests its trunk 5 times in 8 -- so raising replicates for both wastes half
+    # the compute on a column that already has its spread.
+    if getattr(a, "arm", None):
+        jobs = [j for j in jobs if j[1] == a.arm]
     print("%d runs, ~%.0f s of sim at %d threads"
           % (len(jobs), sum(j[2] for j in jobs), THREADS), flush=True)
     manifest = []
@@ -609,6 +618,8 @@ def main():
                    choices=["nominal", "nominal2", "sweep", "maxreach",
                             "realpose", "disturb", "disturb2", "disturb_max",
                             "all"])
+    r.add_argument("--arm", choices=sorted(ARMS), default=None,
+                   help="run only this arm's jobs")
     r.add_argument("--force", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("--run", required=True)
