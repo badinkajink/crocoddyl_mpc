@@ -56,6 +56,7 @@ import sys
 
 import numpy as np
 import mujoco
+from scipy.signal import butter, filtfilt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import simple_lean as S
@@ -76,6 +77,42 @@ TREND_WIN = 1.0             # [s] boxcar on position; must exceed the jitter per
 TREND_SPEED = 10.0          # [mm/s] drift below this is a hold, not an approach
 HOLD_DWELL = 0.50           # [s] margin after the last crossing
 HOLD_MIN = 2.0              # [s] shorter than this is not a hold
+
+# ALLEN'S DEFINITION (received 2026-08-23), implemented verbatim where the sim
+# allows it:
+#
+#   "Hand jitter reports the high-pass RMS of hand motion during the braced
+#    hold. The window is ~60 s during the Brace phase, between 3 s after brace
+#    starting and 1 s before recovery starting.
+#    jitter = sqrt( mean|| x(t) - xbar(t) ||^2 )  [mm]
+#    RMS tremor above ~1 Hz is only counted."
+#
+# `xbar(t)` is a FUNCTION OF t, so `x - xbar` is the high-passed signal and the
+# formula is just the RMS of it. Implemented as a 2nd-order zero-phase
+# Butterworth at HP_CORNER, run over the WHOLE trace and only then windowed, so
+# the filter's edge transient never lands inside the measurement.
+#
+# This is a strictly better metric for a sim/hardware comparison than either of
+# the two above it, because it is DRIFT-IMMUNE BY CONSTRUCTION: the slow outward
+# creep that made `hand_jitter_mm` unusable (see the module docstring) lives
+# below 1 Hz and is removed, so a rollout no longer has to reach a steady hold
+# to be measurable. That is why the window below is phase-based like Allen's
+# rather than gated on TREND_SPEED.
+#
+# TWO DEVIATIONS, both forced by rollout length and both recorded on the figure:
+#   * Our rollouts are 20 s against his ~60 s. High-pass RMS is stationary, so a
+#     shorter window is a NOISIER estimate of the same quantity, not a biased
+#     one -- but the spread is wider than his.
+#   * There is no recovery phase in these rollouts and no brace command onset to
+#     anchor to, so "brace start" is taken as the hand's ARRIVAL (last downward
+#     crossing of ARRIVE_TOL toward its final position). `hp_margin_s` records
+#     how much of the 3 s post-brace margin actually fitted.
+HP_CORNER = 1.0             # [Hz] Allen's "above ~1 Hz"
+HP_ORDER = 2                # zero-phase (filtfilt) => effective 4th order
+ARRIVE_TOL = 0.050          # [m] within this of the final pose = arrived
+BRACE_MARGIN = 3.0          # [s] Allen: 3 s after brace starting
+END_MARGIN = 1.0            # [s] Allen: 1 s before recovery starting
+HP_MIN = 2.0                # [s] shorter than this is not reportable
 
 
 def trend(t, hp):
@@ -103,6 +140,53 @@ def hold_window(t, hp):
     return t0, "ok"
 
 
+def arrival(t, hp):
+    """Time the hand reaches its final pose, the sim's stand-in for brace onset.
+
+    Last downward crossing of ARRIVE_TOL, not the first: a rollout that touches
+    the tolerance early and then wanders back out has not arrived."""
+    final = hp[t >= t[-1] - 1.0].mean(axis=0)
+    far = np.where(np.linalg.norm(hp - final, axis=1) > ARRIVE_TOL)[0]
+    return float(t[0]) if len(far) == 0 else float(t[far[-1]])
+
+
+def hp_jitter(t, hp, keep):
+    """Allen's metric: RMS of the >HP_CORNER content over the braced hold."""
+    dt = float(t[1] - t[0])
+    nyq = 0.5 / dt
+    if HP_CORNER >= nyq:
+        return {"jitter_hp_rms_mm": None, "hp_reason": "corner above Nyquist"}
+    b, a = butter(HP_ORDER, HP_CORNER / nyq, btype="highpass")
+    # Filter the FULL trace, then window -- filtfilt's edge transient is several
+    # cycles long at 1 Hz and would otherwise sit inside a 2 s window.
+    xhp = filtfilt(b, a, hp, axis=0)
+
+    t_arr = arrival(t, hp)
+    t0 = t_arr + BRACE_MARGIN
+    t1 = t[-1] - END_MARGIN
+    # Keep Allen's margin if it fits; otherwise take what is left after arrival
+    # and say by how much we fell short, rather than silently using a different
+    # window from his.
+    short = 0.0
+    if t1 - t0 < HP_MIN:
+        short = t0 - t_arr
+        t0 = t_arr
+        short -= max(0.0, min(short, t1 - t_arr - HP_MIN))
+    w = (t >= t0) & (t <= t1) & keep
+    if w.sum() < 10 or t1 - t0 < HP_MIN:
+        return {"jitter_hp_rms_mm": None, "hp_t0": t0, "hp_win_s": max(0.0, t1 - t0),
+                "hp_arrive_s": t_arr, "hp_margin_s": BRACE_MARGIN - short,
+                "hp_reason": "window shorter than %.1f s (arrived %.1f s of %.1f s)"
+                             % (HP_MIN, t_arr, t[-1])}
+    r = np.linalg.norm(xhp[w], axis=1)
+    return {"jitter_hp_rms_mm": float(np.sqrt((r ** 2).mean()) * 1000),
+            "hp_t0": t0, "hp_win_s": float(t1 - t0), "hp_arrive_s": t_arr,
+            "hp_margin_s": BRACE_MARGIN - short, "hp_n": int(w.sum()),
+            "hp_reason": "ok" if short == 0 else
+                         "ok, post-brace margin trimmed %.1f s -> %.1f s"
+                         % (BRACE_MARGIN, BRACE_MARGIN - short)}
+
+
 def measure(path):
     col, rows, meta = S.load_traj(path)
     m, d = S.load()
@@ -127,6 +211,7 @@ def measure(path):
 
     t0, why = hold_window(t, hp)
     out = {"hold_reason": why}
+    out.update(hp_jitter(t, hp, keep))
     if t0 is None:
         out.update(hold_t0=None, hold_len_s=0.0, hold_n=0, hold_drift_mm=None,
                    jitter_hold_rms_mm=None, jitter_hold_mad_mm=None)
@@ -164,9 +249,9 @@ def main():
     rows = json.load(open(jpath))
     idx = {r.get("tag"): r for r in rows}
 
-    print("%-28s %8s %8s %9s %9s %9s  %s"
+    print("%-28s %8s %8s %9s %9s %9s %9s %8s  %s"
           % ("tag", "hold t0", "len [s]", "RMS [mm]", "MAD [mm]", "drift[mm]",
-             "old MAD"))
+             "HP RMS", "HP win", "old MAD"))
     n = 0
     for p in sorted(glob.glob(os.path.join(a.run, "*.csv"))):
         tag = os.path.splitext(os.path.basename(p))[0]
@@ -181,9 +266,10 @@ def main():
         r.update(o)
         n += 1
         f = lambda k: ("-" if o.get(k) is None else "%.1f" % o[k])
-        print("%-28s %8s %8.1f %9s %9s %9s  %8.1f"
+        print("%-28s %8s %8.1f %9s %9s %9s %9s %8s  %8.1f"
               % (tag, f("hold_t0"), o["hold_len_s"], f("jitter_hold_rms_mm"),
                  f("jitter_hold_mad_mm"), f("hold_drift_mm"),
+                 f("jitter_hp_rms_mm"), f("hp_win_s"),
                  r.get("hand_jitter_mm", float("nan"))))
     if a.write:
         with open(jpath, "w") as f:

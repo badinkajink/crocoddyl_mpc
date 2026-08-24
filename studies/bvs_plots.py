@@ -335,7 +335,8 @@ def fig_stability(rows, out, which="support"):
                     ax.errorbar(x, mu, yerr=hr, color=INK2, lw=1.0, capsize=2.5,
                                 zorder=4)
                 neg = mu < 0
-                ax.annotate(fmt % mu, xy=(x, mu - hr if neg else mu + hr),
+                ax.annotate(fmt % mu,
+                            xy=(x, mu - hr if neg else mu + hr),
                             xytext=(0, -3 if neg else 2.5),
                             textcoords="offset points", ha="center",
                             va="top" if neg else "bottom", fontsize=7.2,
@@ -661,7 +662,11 @@ def write_table(rows, out):
         ("forward margin (contact)", "fwd_contact_settled", 100.0, "cm", "%.1f"),
         ("forward margin (actuated)", "fwd_actuated_settled", 100.0, "cm", "%.1f"),
         ("smoothness SPARC", "sparc_reach", 1.0, "--", "%.2f"),
-        ("hand jitter", "hand_jitter_mm", 1.0, "mm", "%.2f"),
+        # Both, deliberately: the high-pass is Allen's definition and the one
+        # the figure plots, the old last-40% MAD is kept one more revision so
+        # every number already written down can still be traced.
+        ("hand jitter (HP RMS >1 Hz)", "jitter_hp_rms_mm", 1.0, "mm", "%.2f"),
+        ("hand jitter (old, last 40%)", "hand_jitter_mm", 1.0, "mm", "%.2f"),
         ("reach error spread", "reach_err_std_mm", 1.0, "mm", "%.2f"),
         ("worst-case push at hand", "push_min_N", 1.0, "N", "%.0f"),
         ("settling time (initial)", "settle_time_s", 1.0, "s", "%.1f"),
@@ -813,8 +818,18 @@ def write_disturb_table(rows, out, stage="disturb", name="table_disturbance"):
 #  3. Only the SUPPORT margin was reported, at either pose. There is no hardware
 #     forward-margin number, so `which="forward"` draws the sim pair alone --
 #     deliberately, rather than reusing the support value under another name.
-#  4. Hand jitter exists only at max reach, and see the panel's own comment for
-#     why that number is not what its name suggests on the sim side.
+#  4. Hand jitter is now reported at both poses (22.2 and 25.6 mm) and both
+#     sides use Allen's high-pass definition -- but the two are still NOT
+#     comparable. His number "contains the estimator's ~8.7 mm/s velocity noise
+#     floor, so it is an upper bound on physical tremor"; the sim loop has no
+#     sensing in it at all and reads 2.2-3.3 mm with no braced/unbraced
+#     separation. The bars are hatched and prefixed "<=" to say so, and
+#     `--no-jitter` renders the figure without the panel. Recommend printing
+#     that one: a 10x bar difference that is mostly somebody's sensor noise
+#     will be read as a steadiness result no matter what the caption says.
+#  5. His window is ~60 s; ours is 7-14 s at the targeted pose and only 2-6 s at
+#     max reach, which is what a 20 s rollout leaves after a hand that does not
+#     arrive until t = 15 s. Noisier, not biased.
 #
 # The two hardware poses are nearly the same reach -- 98.8 cm targeted against
 # 99.1 cm at max -- which is not an error: Allen chose the targeted pose near
@@ -839,14 +854,13 @@ REAL = {
         "margin_actuated_settled": (16.1, 1.1),
         "sparc_reach": (-3.44, 0.45),
         "brace_arm_load": (108.0, 23.0),
-        # No jitter reported at the targeted pose. The panel simply has no
-        # green bar there rather than borrowing the max-reach value.
+        "jitter_hp_rms_mm": (22.2, 3.8),
     },
     "maxreach": {
         "hand_x_settled": (99.1, 2.7),
         "margin_actuated_settled": (14.3, 1.2),
         "sparc_reach": (-3.85, 0.75),
-        "hand_jitter_mm": (25.6, 3.9),
+        "jitter_hp_rms_mm": (25.6, 3.9),
         "brace_arm_load": (109.0, 28.0),
     },
 }
@@ -869,26 +883,43 @@ REAL = {
 # to hardware than it is. Same-definition, max reach is sim 128/132 vs real 99.
 # Tip x is the only definition available on both sides, so it is what both sides
 # are plotted in; the ankle-mid numbers stay in `table_brace_vs_stand`.
-# HAND JITTER: mean radial deviation of the reaching-hand site about its own
-# settled-window mean position, in mm (brace_vs_stand.analyse_one).
+# HAND JITTER, to Allen's definition (received 2026-08-23), applied to BOTH
+# sides of this figure. His words:
 #
-#     settle = t >= 0.6 * t_end        final 40% of the rollout; for the 20 s
-#                                      settled conditions that is t >= 12.0 s,
-#                                      800 samples at the 100 Hz dump rate
-#     jitter = mean_k || p(k) - mean(p[settle]) ||   over k in settle
+#   "high-pass RMS of hand motion during the braced hold. The window is ~60 s
+#    during the Brace phase, between 3 s after brace starting and 1 s before
+#    recovery starting.  jitter = sqrt( mean|| x(t) - xbar(t) ||^2 ) [mm].
+#    RMS tremor above ~1 Hz is only counted."
 #
-# It is a DISPERSION, not an accuracy: taken about the window's own centroid, a
-# constant offset from the commanded target costs nothing (that is
-# `reach_err_settled`) while a slow drift across the window costs a lot. It is a
-# mean absolute deviation, not an RMS and not a peak-to-peak -- `precision_rms_mm`
-# is the SD of the same radius if the second moment is wanted. In the disturbance
-# stages each pulse and the 2 s after it are cut from the window first, so the
-# number is always quiet-state jitter and never a rejection transient.
+# `xbar(t)` is a function of t, so `x - xbar` IS the high-passed signal and the
+# formula is the RMS of it. `hold_jitter.py` implements it as a 2nd-order
+# zero-phase Butterworth at 1 Hz over the whole trace, windowed afterwards.
 #
-# It is kept ALONGSIDE SPARC rather than replaced by it because the two disagree
-# about what "unsteady" means and the disagreement is informative: SPARC scores
-# the whole reaching movement's speed profile and is amplitude- and
-# duration-invariant, jitter scores only the hold and is neither.
+# THIS REPLACED A METRIC THAT WAS MEASURING SOMETHING ELSE. The old
+# `hand_jitter_mm` was a mean radial deviation about the mean of the last 40% of
+# the run, which charged the hand's slow outward creep to "jitter" -- it read
+# 6-20 mm where the high-pass reads 2-3 mm, and its apparent 19.7-vs-18.0 mm
+# brace effect at max reach was a drift difference, not a jitter difference. The
+# high-pass is drift-immune by construction, which also fixed coverage: the old
+# steady-hold detector found a usable window in only 23% of rollouts, this finds
+# one in 100%.
+#
+# WHAT THE PANEL NOW SHOWS, and why the hardware bars are drawn as upper bounds:
+# sim reads 2.2-3.3 mm in every condition -- no separation between braced and
+# unbraced, at either pose -- against hardware's 22.2 and 25.6 mm. That is not a
+# 10x steadiness result. Allen's own note: the hardware figure "contains the
+# estimator's ~8.7 mm/s velocity noise floor, so it is an upper bound on
+# physical tremor and not directly comparable to noise-free simulation." The sim
+# has no sensing at all in this loop, so the two bars are not measuring the same
+# thing and the panel cannot support a comparison. Hatched + "<=" says so on the
+# figure; `--no-jitter` drops the panel entirely for the version that should
+# probably print.
+#
+# Window length also differs: Allen's is ~60 s, ours is what a 20 s rollout
+# leaves after the hand arrives -- 7-14 s at the targeted pose, but only 2-6 s
+# at max reach, where the unbraced hand does not arrive until t = 15 s. High-pass
+# RMS is stationary, so a short window is a noisier estimate rather than a
+# biased one, but the max-reach spread should be read with that in mind.
 REAL_PANELS = [
     ("hand_x_settled", 100.0, "cm   (higher better)",
      "Reach", "(tip $x$, base frame)", "%.0f"),
@@ -897,16 +928,8 @@ REAL_PANELS = [
      "Support margin", "(any direction)", "%.1f"),
     ("sparc_reach", 1.0, "SPARC   (higher better)",
      "Smoothness", "", "%.2f"),
-    # WINDOW NAMED IN THE TITLE, because this number is not what it sounds
-    # like. `hold_jitter.py` shows only 23% of settled rollouts ever reach a
-    # steady hold in 20 s, and where one exists the RMS is 2-3 mm regardless of
-    # condition. The 6-20 mm here is therefore mostly the hand still creeping
-    # outward at t = 12-20 s, charged to jitter by taking a dispersion about
-    # the window mean. It stays in the figure because it is the number the
-    # hardware table can be lined up against; it is labelled so nobody reads it
-    # as high-frequency shake.
-    ("hand_jitter_mm", 1.0, "mm   (lower better)",
-     "Hand jitter", "(last 40 % of run)", "%.1f"),
+    ("jitter_hp_rms_mm", 1.0, "mm   (lower better)",
+     "Hand jitter", "(high-pass RMS, $>$1 Hz)", "%.1f"),
     # NOT "higher better". More newtons through the bracing arm is what the
     # posture costs, not what it achieves -- the source figure labelled this
     # panel "higher better" and that reading would have the degenerate
@@ -920,6 +943,11 @@ REAL_PANELS = [
 # together: at the previous 0.36 slot the three-bar max-reach group ran into its
 # neighbour's tick label.
 REAL_GAP, REAL_W = 0.72, 0.20
+
+# Panels where the HARDWARE bar is an upper bound, not a measurement: it
+# contains a sensing noise floor the sim does not have. Drawn hatched with a
+# "<=" on the value so the figure cannot be read as a like-for-like win.
+UPPER_BOUND_KEYS = {"jitter_hp_rms_mm"}
 
 # Two-line forms of MARGIN_VARIANTS' labels. The one-line versions overrun a
 # 1.15 in panel, and a margin panel silently mislabelled as the OTHER margin is
@@ -953,7 +981,7 @@ def _real_value(cond, key, which):
     return REAL.get(cond, {}).get(key)
 
 
-def fig_stability_real(rows, out, which="support"):
+def fig_stability_real(rows, out, which="support", jitter=True):
     """The stability panels with the hardware runs drawn in beside the sim.
 
     Same measurements as `fig_stability` plus hand jitter, restricted to the two
@@ -963,6 +991,7 @@ def fig_stability_real(rows, out, which="support"):
     bars thin rather than dropping a panel to make room.
     """
     mkey, _ = MARGIN_VARIANTS[which]
+    panels = [p for p in REAL_PANELS if jitter or p[0] not in UPPER_BOUND_KEYS]
     # clean=True PASSED EXPLICITLY, not inherited. `by()`'s default flipped to
     # pooling trunk rests (ringed rather than dropped) while this figure was
     # being written, which is right for the envelope curves and wrong here:
@@ -979,9 +1008,9 @@ def fig_stability_real(rows, out, which="support"):
         for r in by(rows, g, clean=True):
             d[g][r["arm"]].append(r)
 
-    fig, axs = plt.subplots(1, len(REAL_PANELS), figsize=(TEXT, 3.1),
+    fig, axs = plt.subplots(1, len(panels), figsize=(TEXT, 3.1),
                             layout="constrained")
-    for ax, (key, sc, ylab, t1, t2, fmt) in zip(axs, REAL_PANELS):
+    for ax, (key, sc, ylab, t1, t2, fmt) in zip(axs, panels):
         k = key
         if key == "margin_actuated_settled":
             k = mkey
@@ -1000,15 +1029,17 @@ def fig_stability_real(rows, out, which="support"):
                             and np.isfinite(r.get(k, np.nan))]
                 mu, hr = _ms([v * sc for v in vals])
                 if np.isfinite(mu):
-                    series.append((C[arm], REAL_ARM_LABEL[arm], mu, hr))
+                    series.append((C[arm], REAL_ARM_LABEL[arm], mu, hr, False))
             rv = _real_value(g, key, which)
             if rv is not None:
-                series.append((C_REAL, REAL_LABEL, rv[0], rv[1]))
+                series.append((C_REAL, REAL_LABEL, rv[0], rv[1],
+                               key in UPPER_BOUND_KEYS))
             n = len(series)
-            for si, (col, _lab, mu, hr) in enumerate(series):
+            for si, (col, _lab, mu, hr, ub) in enumerate(series):
                 x = gi * REAL_GAP + (si - (n - 1) / 2.0) * REAL_W
                 ax.bar(x, mu, width=REAL_W * 0.88, color=col, zorder=3,
-                       edgecolor="white", linewidth=0.8)
+                       edgecolor="white", linewidth=0.8,
+                       hatch="////" if ub else None)
                 if hr > 0:
                     ax.errorbar(x, mu, yerr=hr, color=INK2, lw=0.9,
                                 capsize=2.0, zorder=4)
@@ -1020,7 +1051,8 @@ def fig_stability_real(rows, out, which="support"):
                 # shrinking the type to 5.5 pt, which does not print.
                 neg = mu < 0
                 dy = 2.0 + 9.0 * (si % 2)
-                ax.annotate(fmt % mu, xy=(x, mu - hr if neg else mu + hr),
+                ax.annotate(("\u2264" if ub else "") + fmt % mu,
+                            xy=(x, mu - hr if neg else mu + hr),
                             xytext=(0, -dy if neg else dy),
                             textcoords="offset points", ha="center",
                             va="top" if neg else "bottom", fontsize=6.4,
@@ -1041,11 +1073,12 @@ def fig_stability_real(rows, out, which="support"):
     h = [plt.Rectangle((0, 0), 1, 1, color=C[a]) for a in ORDER]
     lab = [REAL_ARM_LABEL[a] for a in ORDER]
     if any(_real_value(g, k[0], which) is not None
-           for g, _ in groups for k in REAL_PANELS):
+           for g, _ in groups for k in panels):
         h.append(plt.Rectangle((0, 0), 1, 1, color=C_REAL))
         lab.append(REAL_LABEL)
     fig.legend(h, lab, loc="outside lower center", ncol=len(h), fontsize=8)
-    _save(fig, out, "fig_stability_panels_real_" + which)
+    _save(fig, out, "fig_stability_panels_real_" + which +
+          ("" if jitter else "_nojitter"))
 
 
 def make_all(json_path, out):
@@ -1067,6 +1100,7 @@ def make_all(json_path, out):
     os.makedirs(real_out, exist_ok=True)
     for _w in MARGIN_VARIANTS:
         fig_stability_real(rows, real_out, _w)
+        fig_stability_real(rows, real_out, _w, jitter=False)
     fig_margin_series(rows, out)
     for _s, _n, _w in DISTURB_STAGES:
         fig_disturb(rows, out, _s, _n, _w)
