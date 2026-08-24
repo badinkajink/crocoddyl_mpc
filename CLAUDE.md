@@ -78,6 +78,18 @@ PY=~/miniconda3/envs/croco/bin/python        # NOT base: base segfaults
 
 ## 4. Traps that have cost a session each
 
+- **`Trunk Clear` is capped, and blind to load.** `lean_simple.cc` term 4 is
+  `max(0, 0.05 - gap)` at weight 1500, and a rigid slab clamps `gap` at ~0 -- so
+  the whole cost of lying on the table is **75 units and cannot grow**, and a
+  feather-touch and a 402 N chest-load score identically. Against `Reach`
+  (weight 400) that is 187 mm, so a torso pitch buying ~19 cm of hand travel
+  *pays for it*. At the hardware's target the planner takes the trade in **12 of
+  16** braced rollouts (68-402 N, median 150 N = 23% BW), nothing falls, and the
+  rest buys **no accuracy** (8.6 vs 7.5 mm settled error). Clean runs park at
+  +43 mm, just inside the +50 mm shoulder where the residual goes to zero. Any
+  trunk-contact rate out of this task measures that ceiling, not the robot --
+  hardware rested on 2 of 15, both failures. See the star comment at the term.
+
 - **The declared contact set does not allocate load.** Contacts are prescribed
   kinematic constraints; forces fall out of the dynamics. A mode named
   `elbow+forearm` can carry 111 N through the elbow, 1.8 N through the forearm
