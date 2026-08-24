@@ -91,18 +91,17 @@ PY=~/miniconda3/envs/croco/bin/python        # NOT base: base segfaults
   stop **34-67% of every episode**. Sim-side that is solver softness; on hardware
   it is two joints parked on a stop with no margin in the trip band.
 
-- **`hand_x_settled` is world x; Allen's reach is base x.** The two have been
-  compared directly, and the frames differ by exactly the sim's 19 cm base
-  offset, so the difference cancels and the mismatch reads as agreement. The
-  same target reconciliation that pins the real table to 2 mm also pins the real
-  *robot*: its base stands **0.448 m** from the slab where the sim's stands
-  **0.260 m** -- 19 cm further back, confirmed independently by the reach
-  arithmetic (both hands reach the same table point, and 98.8 - 79.8 = 19.0 cm).
-  Read from each robot's own base: targeted reach **sim 80 vs real 99 cm**, max
-  reach **sim 110-116 vs real 99 cm**. The published "8 mm agreement at the
-  target, 29 cm apart at max reach" is two frame errors. Unresolved until Allen
-  gives base x at t = 0 (or a t = 0 AprilTag-to-base transform); nothing has been
-  moved on the suspicion. See the star block at `brace_vs_stand.REALPOSE_TARGET`.
+- **The real robot stands 11 cm further back, and the Reach panel is still
+  right.** Allen measured it: table front edge to ankle midpoint is **37 cm** on
+  hardware against **26 cm** here (edge 0.450, ankles 0.190). His plotted x datum
+  sits 44.8 cm behind the table edge and the sim world origin 45.0 cm behind it,
+  so the two **coincide to 2 mm** and `hand_x_settled` is directly comparable --
+  as a TABLE-frame statement ("how far onto the slab"), not a robot-frame one.
+  In the ankle frame (`func_reach_settled`) his 98.8 cm is ~91.0: the real robot
+  reaches 11 cm further from its own ankles at the shared target because it must,
+  and the sim over-reaches by **18-25 cm** at max reach rather than 29-33. An
+  earlier inference here said 19 cm and said the panel was wrong; both were
+  errors from assuming his origin was the ankle midpoint (it is 7.8 cm behind).
 
 - **`Trunk Clear` is capped, and blind to load.** `lean_simple.cc` term 4 is
   `max(0, 0.05 - gap)` at weight 1500, and a rigid slab clamps `gap` at ~0 -- so

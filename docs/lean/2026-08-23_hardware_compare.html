@@ -104,12 +104,43 @@ Allen's "functional reach"                                    98.8 +- 1.7 cm fro
                                                               -------------------------
                                                               19.0 cm</pre>
 
-<h2>The consequence: the reach column has been compared across frames</h2>
+<h2>Corrected: Allen measured it, and it is 11 cm</h2>
 
-<div class="note warn"><b>Sim world x has been plotted against real base x.</b> The
-two frames differ by precisely the sim's 19&nbsp;cm standoff, which cancels &mdash; so
-the 8&nbsp;mm agreement at the target is the artifact, and the 29&nbsp;cm gap at max
-reach is inflated by the same offset. Read from each robot's own base:</div>
+<div class="note ok"><b>Superseded, same day.</b> Allen gives the real table front
+edge to ankle midpoint as <b>37&nbsp;cm</b>. The model's is <b>26&nbsp;cm</b> (edge
+0.450, ankles 0.190), so the standoff difference is <b>11&nbsp;cm</b>, not the
+19&nbsp;cm inferred above. The inference assumed his plotted x origin was the ankle
+midpoint; it is 44.8&nbsp;&minus;&nbsp;37.0&nbsp;=&nbsp;<b>7.8&nbsp;cm behind</b> the
+ankles, and that 7.8&nbsp;cm is the rest of the old number.</div>
+
+<p>The first consequence reverses the section below. Allen's datum sits 44.8&nbsp;cm
+behind the table edge and the sim world origin sits 45.0&nbsp;cm behind it &mdash;
+they <b>coincide to 2&nbsp;mm</b>. So <code>hand_x_settled</code> and his base-frame
+reach are directly comparable and <b>the Reach panel needs no rescaling</b>. What
+it states is a <i>table</i>-frame quantity, "how far onto the slab did the hand
+get", not a robot-frame one.</p>
+
+<p>The second consequence is the robot-frame reading. In the ankle frame this
+study uses for <code>func_reach_settled</code>, his 98.8&nbsp;cm becomes
+~91.0&nbsp;cm:</p>
+
+<div class="scroll"><table>
+<tr><th>Settled reach, from the ankle midpoint</th><th>No brace cost</th><th>Brace Encouraged</th><th>Hardware</th></tr>
+<tr><td>Targeted reach</td><td>79.8 cm</td><td>80.4 cm</td><td class="good">~91.0 cm</td></tr>
+<tr><td>Max reach</td><td class="good">109.5 cm</td><td class="good">115.9 cm</td><td>~91.3 cm</td></tr>
+</table></div>
+
+<p>So at the shared target the real robot reaches 11&nbsp;cm further from its own
+ankles &mdash; it has to, it is standing 11&nbsp;cm back &mdash; and at max reach the
+sim over-reaches by <b>18&ndash;25&nbsp;cm</b> rather than the 29&ndash;33&nbsp;cm the
+table-frame numbers show. The over-reach is real and the standoff explains about a
+third of it.</p>
+
+<h2>The superseded inference, kept for its derivation</h2>
+
+<div class="note warn"><b>Wrong, and kept as the derivation that got to the right
+question.</b> This said the panel compared across frames. The datums coincide to
+2&nbsp;mm, so it does not. What follows uses the superseded 19&nbsp;cm.</div>
 
 <div class="scroll"><table>
 <tr><th>Reach, from the robot's own base</th><th>No brace cost</th><th>Brace Encouraged</th><th>Hardware</th></tr>

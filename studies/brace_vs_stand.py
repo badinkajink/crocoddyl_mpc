@@ -166,6 +166,30 @@ MAXREACH_REPS = 4
 # about a centimetre short of the number the target would imply.
 #
 # ---------------------------------------------------------------------------
+# ★ SUPERSEDED 2026-08-23 (later the same day): ALLEN MEASURED IT -- table front
+#   edge to ankle midpoint is 37 cm on the real robot, against 26 cm here
+#   (edge 0.450, ankles 0.190). The standoff difference is 11 cm, NOT the 19 cm
+#   inferred below. The inference assumed his plotted x origin was the ankle
+#   midpoint; it is 44.8 - 37.0 = 7.8 cm BEHIND the ankles, and that 7.8 cm is
+#   the rest of the old number.
+#
+#   TWO CONSEQUENCES, and the first reverses what the block below concludes:
+#     * `hand_x_settled` IS comparable to Allen's reach after all. His datum sits
+#       44.8 cm behind the table edge and the sim world origin sits 45.0 cm
+#       behind it -- they coincide to 2 mm. The Reach panel needs no rescaling.
+#       It is a TABLE-frame statement ("how far onto the slab did the hand get"),
+#       not a robot-frame one, and it is correct as published.
+#     * In the ankle frame this study uses for `func_reach_settled`, Allen's
+#       98.8 cm becomes ~91.0 cm. Sim clean settled: 79.8 / 80.4 cm at this
+#       target, 109.5 / 115.9 at max reach. So the real robot reaches 11 cm
+#       further from its own ankles at the shared target (it must -- it stands
+#       11 cm back), and the sim over-reaches by 18-25 cm at max reach rather
+#       than the 29-33 cm the table-frame numbers show.
+#
+# Everything below is kept as the derivation that got here, with its one wrong
+# step named. Do not quote its 19 cm.
+#
+# ─ superseded ──────────────────────────────────────────────────────────────
 # ★ AND THE SAME RECONCILIATION SAYS THE ROBOT STANDS 19 cm FURTHER BACK
 #   (2026-08-23, prompted by the hardware film strip -- the real robot is
 #   visibly off the table at t = 0 where the sim robot is already at it).
