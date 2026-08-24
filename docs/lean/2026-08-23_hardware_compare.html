@@ -1,0 +1,201 @@
+<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>The hardware stands 19 cm further back</title>\n<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fcfcfb; --panel:#f3f3f0; --line:#dededa;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#7a7873;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+    --warn:#e34948; --good:#1baf7a;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#1a1a19; --panel:#232322; --line:#3a3a37;
+           --ink:#fff; --ink2:#c3c2b7; --ink3:#918f86;
+           --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+           --warn:#e66767; --good:#3fbf8c; }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       padding:2.5rem 1.25rem 5rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .4rem;letter-spacing:-.02em}
+  h2{font-size:1.2rem;margin:3rem 0 .5rem;letter-spacing:-.01em;
+     padding-top:1rem;border-top:1px solid var(--line)}
+  h3{font-size:1rem;margin:1.8rem 0 .3rem}
+  .sub{color:var(--ink2);margin:0 0 .4rem}
+  .meta{color:var(--ink3);font-size:.85rem;margin:0 0 2rem}
+  p,li{color:var(--ink2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.87em;
+       background:var(--panel);padding:.1em .35em;border-radius:4px}
+  pre{background:var(--panel);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;
+      font-size:.78rem;line-height:1.45;color:var(--ink)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.8rem 0;min-width:26rem}
+  th,td{text-align:right;padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal}
+  th{color:var(--ink3);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+  td{color:var(--ink2)} td:first-child{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .note{border-left:3px solid var(--s1);background:var(--panel);
+        border-radius:0 8px 8px 0;padding:.8rem 1rem;margin:1.2rem 0}
+  .warn{border-left-color:var(--warn)}
+  .ok{border-left-color:var(--good)}
+  .note b{color:var(--ink)}
+  figure{margin:1.6rem 0}
+  img{width:100%;border-radius:10px;display:block;background:#fff}
+  figcaption{color:var(--ink3);font-size:.84rem;margin-top:.5rem}
+  ul{padding-left:1.15rem}
+  td.bad{color:var(--warn);font-weight:600}
+  td.good{color:var(--good);font-weight:600}
+</style>\n</head>\n<body>\n<div class="wrap">\n\n<h1>The hardware stands 19&nbsp;cm further back</h1>
+<p class="sub">A film strip pairing the sim's targeted reach with Allen's, and the frame error it exposed: <code>hand_x_settled</code> is world&nbsp;x, his reach is base&nbsp;x, and the two differ by exactly the sim's own base offset &mdash; so the mismatch has been reading as agreement. Plus the jitter metric, re-cut to his definition.</p>
+<p class="meta">2026-08-23 &middot; S24 &middot; <code>studies/bvs_strip_real.py</code>, <code>studies/hold_jitter.py</code>, <code>studies/bvs_plots.py</code></p>
+
+<h2>The strip</h2>
+
+<figure><img src="media/s24_strip_real.png" alt=""><figcaption>Targeted reach, both plants. Sim rows are <code>maxreach</code> exemplars chosen by measured bracing-arm load, trunk rests excluded; the hardware row is five frames from Allen's clip. Columns are phase-aligned, not time-aligned &mdash; the sim clock runs along the top and the hardware clock along the bottom, and they are not the same 20&nbsp;s.</figcaption></figure>
+
+<p>Two things about how this figure is built. The sim rows are the <b>max-reach</b>
+condition even though both rows are labelled "Targeted Reach", because on hardware
+those are the same experiment: Allen ran one target and the robot stretched to it.
+In sim they are two conditions, and it is the max-reach rollouts that look like
+the hardware trial. That is the result, not a labelling slip.</p>
+
+<p>And the force annotations are <b>bracing-arm load</b> in all three rows, not
+the six-row strip's <code>brace_load_N</code>. The latter counts every non-foot
+contact, so it also charges the reaching hand resting on the slab; quoting it
+against a hardware number that is the bracing arm alone compares two different
+quantities. On the same exemplar it is the difference between 157&nbsp;N and
+105&nbsp;N &mdash; against the hardware's 109&nbsp;&plusmn;&nbsp;28&nbsp;N.</p>
+
+<div class="note"><b>The marker legend is gone</b>, by request &mdash; the contact
+dots do not read at this size. They are still drawn and still sized by normal
+force, so the caption this figure ships with has to say what they are. Nothing on
+the page does.</div>
+
+<h2>What the strip showed: the robot is not standing where the sim puts it</h2>
+
+<p>At <i>t</i>&nbsp;=&nbsp;0 the sim robot is already at the table and the real one
+is visibly off it. That turns out to be recoverable to the centimetre from numbers
+already in the repo.</p>
+
+<p>The target reconciliation in <code>brace_vs_stand.py</code> pinned the
+<i>table</i>: Allen gives his target as 0.55&nbsp;m from the table's near corner and
+plots it at x&nbsp;=&nbsp;0.998, so in his frame the slab's near edge is at 0.448&nbsp;m
+&mdash; against the sim's 0.450&nbsp;m. Two millimetres. Run it one step further and
+it pins the <i>robot</i>, because his trace is in the robot's base frame:</p>
+
+<div class="scroll"><table>
+<tr><th></th><th>base &rarr; table edge</th><th>evidence</th></tr>
+<tr><td>Hardware</td><td>0.448 m</td><td>0.998 &minus; 0.55, base-frame trace</td></tr>
+<tr><td>Simulation</td><td>0.260 m</td><td>table edge 0.450, ankles 0.190 (world)</td></tr>
+<tr><td><b>Difference</b></td><td class="bad"><b>0.188 m</b></td><td>= the sim's own base offset, 0.190 m</td></tr>
+</table></div>
+
+<p>The z read corroborates the frame: 1.163 against a table surface at 0.985 is
+measured from the <b>floor</b>, not from a pelvis at 1.028 &mdash; so his frame is
+base-in-xy, floor-in-z, and an x origin sitting 0.448&nbsp;m from the table is the
+robot rather than an arbitrary room corner.</p>
+
+<p>This is not circular, because the reach numbers close it independently. Both
+robots put the hand on the <b>same table point</b>, so their own-frame reaches must
+differ by the standoff &mdash; and they do, exactly:</p>
+
+<pre>sim tip, settled, at the hardware target   99.5 cm world  =  79.8 cm from its own ankles
+Allen's "functional reach"                                    98.8 +- 1.7 cm from his base
+                                                              -------------------------
+                                                              19.0 cm</pre>
+
+<h2>The consequence: the reach column has been compared across frames</h2>
+
+<div class="note warn"><b>Sim world x has been plotted against real base x.</b> The
+two frames differ by precisely the sim's 19&nbsp;cm standoff, which cancels &mdash; so
+the 8&nbsp;mm agreement at the target is the artifact, and the 29&nbsp;cm gap at max
+reach is inflated by the same offset. Read from each robot's own base:</div>
+
+<div class="scroll"><table>
+<tr><th>Reach, from the robot's own base</th><th>No brace cost</th><th>Brace Encouraged</th><th>Hardware</th></tr>
+<tr><td>Targeted reach</td><td>79.8 cm</td><td>80.4 cm</td><td class="good">98.8 &plusmn; 1.7 cm</td></tr>
+<tr><td>Max reach</td><td class="good">109.5 cm</td><td class="good">115.9 cm</td><td>99.1 &plusmn; 2.7 cm</td></tr>
+</table></div>
+
+<p>So the published pair &mdash; perfect agreement at the target, 29&nbsp;cm apart at
+max reach &mdash; is two frame errors rather than two results. At the target the real
+robot reaches <b>19&nbsp;cm further from its own base than the sim does</b>, because
+it has to; at max reach the sim is ahead by 10&ndash;17&nbsp;cm, not 29&ndash;33. It also
+explains the strip: starting 19&nbsp;cm closer, the sim's max-reach posture is what
+the hardware's targeted reach looks like, which is exactly why those two rows are
+paired.</p>
+
+<p>The y axis is the same class of finding on the other axis &mdash; the earlier
+reconciliation already put the real table ~10&nbsp;cm further +y relative to the
+robot. Taken together the real robot stands about <b>19&nbsp;cm further back and
+10&nbsp;cm off in y</b> from where this study places it.</p>
+
+<div class="note"><b>Unresolved, and nothing has been moved on it.</b> All of the
+above turns on Allen's x origin being the robot base. One number closes it: the
+base (pelvis) x at <i>t</i>&nbsp;=&nbsp;0 in the frame <code>target_position.png</code> is
+plotted in. ~0 confirms it; anything else and his trace is a room frame and the
+standoff is unmeasured. The AprilTag logs answer it too &mdash; a tag-to-base
+transform at <i>t</i>&nbsp;=&nbsp;0 puts the table's near edge in the base frame directly,
+which <i>is</i> the standoff. The sim start pose is a published condition and moving
+it re-costs every rollout in the study, so it stays where it is until that lands.</div>
+
+<h2>Hand jitter, re-cut to Allen's definition</h2>
+
+<p>His metric is the high-pass RMS of hand motion over the braced hold &mdash;
+&radic;(mean&nbsp;&#8214;x(t) &minus; x&#772;(t)&#8214;&sup2;) in mm, counting tremor above
+&asymp;1&nbsp;Hz, over a window from 3&nbsp;s after brace onset to 1&nbsp;s before recovery.
+Since x&#772;(t) is a function of t, x&nbsp;&minus;&nbsp;x&#772; <i>is</i> the high-passed
+signal and the formula is just its RMS: a 2nd-order zero-phase Butterworth at
+1&nbsp;Hz, filtered over the whole trace and windowed afterwards so the edge
+transient stays out.</p>
+
+<div class="scroll"><table>
+<tr><th></th><th>New: HP RMS &gt;1 Hz</th><th>Old: last-40% MAD</th><th>Hardware</th></tr>
+<tr><td>Targeted, no brace</td><td>3.3 &plusmn; 1.2 mm</td><td>10.8 mm</td><td>&mdash;</td></tr>
+<tr><td>Targeted, brace</td><td>2.3 &plusmn; 0.7 mm</td><td>6.2 mm</td><td>22.2 &plusmn; 3.8 mm</td></tr>
+<tr><td>Max, no brace</td><td>2.8 &plusmn; 1.9 mm</td><td>19.7 mm</td><td>&mdash;</td></tr>
+<tr><td>Max, brace</td><td>2.2 &plusmn; 2.0 mm</td><td>18.0 mm</td><td>25.6 &plusmn; 3.9 mm</td></tr>
+</table></div>
+
+<p>Two things fall out. Coverage went from <b>23% to 100%</b> of rollouts, because a
+high-pass is drift-immune and a run no longer has to reach a steady hold to be
+measurable. And the sim shows <b>no braced-vs-unbraced separation at either pose</b>
+&mdash; which is the panel's whole reason for being in a brace-vs-stand figure. The
+old metric's apparent 19.7-vs-18.0&nbsp;mm brace effect at max reach was a difference
+in <i>drift</i>, not in jitter.</p>
+
+<div class="note warn"><b>The comparison itself does not hold.</b> Allen's own
+caveat: his number "contains the estimator's &asymp;8.7&nbsp;mm/s velocity noise floor,
+so it is an upper bound on physical tremor and not directly comparable to
+noise-free simulation". The sim loop has no sensing in it at all, which is why it
+sits ~10&times; below. A 10&times; bar gap will read as a steadiness win regardless of
+the caption, so both variants are rendered and the four-panel one is the
+recommendation.</div>
+
+<figure><img src="media/s24_panels_real.png" alt=""><figcaption>Five panels: hardware jitter drawn as an upper bound (hatched, &le; prefix).</figcaption></figure>
+<figure><img src="media/s24_panels_real_nojitter.png" alt=""><figcaption>Four panels, jitter dropped. The recommended print.</figcaption></figure>
+
+<p>Window caveat: Allen's is ~60&nbsp;s, these are 7&ndash;14&nbsp;s targeted and only
+2&ndash;6&nbsp;s at max reach, because the unbraced hand does not arrive until
+<i>t</i>&nbsp;=&nbsp;15&nbsp;s of a 20&nbsp;s rollout. High-pass RMS is stationary, so that is
+noise rather than bias &mdash; but longer rollouts are the fix if the max-reach
+spread wants tightening.</p>
+
+<h2>Reproducing</h2>
+
+<pre>export LEAN_TASK_DIR=$STAGE_ROOT/mjpc/tasks/humanoid_bench/lean   # see below
+cd studies
+python3 bvs_strip_real.py \
+  --json runs/2026-08-22_brace_vs_stand/analysis.json \
+  --run  runs/2026-08-22_brace_vs_stand \
+  --frames ../paper/figures/brace_reach/allen_real_experiments/five_frames_strip \
+  --out    ../paper/figures/brace_reach/allen_real_experiments</pre>
+
+<div class="note"><b><code>LEAN_TASK_DIR</code> is now mandatory for the study
+scripts.</b> <code>simple_lean.py</code> falls back to
+<code>crocoddyl_mpc/build/mjpc/tasks/...</code>, which is the pre-split layout and
+no longer exists; the MJPC build tree lives at
+<code>mujoco_mpc/build_cmake/</code>. The failure mode is a <code>ParseXML</code>
+error on every rollout and "0 rollouts updated" &mdash; loud, but only if you read
+past the first line.</div>
+\n<p class="meta" style="margin-top:3rem"><a href="../index.html">&larr; index</a></p>\n</div>\n</body>\n</html>\n

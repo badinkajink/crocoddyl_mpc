@@ -78,6 +78,19 @@ PY=~/miniconda3/envs/croco/bin/python        # NOT base: base segfaults
 
 ## 4. Traps that have cost a session each
 
+- **`hand_x_settled` is world x; Allen's reach is base x.** The two have been
+  compared directly, and the frames differ by exactly the sim's 19 cm base
+  offset, so the difference cancels and the mismatch reads as agreement. The
+  same target reconciliation that pins the real table to 2 mm also pins the real
+  *robot*: its base stands **0.448 m** from the slab where the sim's stands
+  **0.260 m** -- 19 cm further back, confirmed independently by the reach
+  arithmetic (both hands reach the same table point, and 98.8 - 79.8 = 19.0 cm).
+  Read from each robot's own base: targeted reach **sim 80 vs real 99 cm**, max
+  reach **sim 110-116 vs real 99 cm**. The published "8 mm agreement at the
+  target, 29 cm apart at max reach" is two frame errors. Unresolved until Allen
+  gives base x at t = 0 (or a t = 0 AprilTag-to-base transform); nothing has been
+  moved on the suspicion. See the star block at `brace_vs_stand.REALPOSE_TARGET`.
+
 - **`Trunk Clear` is capped, and blind to load.** `lean_simple.cc` term 4 is
   `max(0, 0.05 - gap)` at weight 1500, and a rigid slab clamps `gap` at ~0 -- so
   the whole cost of lying on the table is **75 units and cannot grow**, and a

@@ -114,6 +114,9 @@ DISTURB_REPS = 2
 # is supposed to answer. y and z are held at the study target so the comparison
 # moves along one axis only.
 MAXREACH_TARGET = (1.60, -0.2348, 1.0982)
+# ★ Reach out of this condition is WORLD tip x, and the hardware column beside
+# it is BASE-frame tip x -- see the starred block at REALPOSE_TARGET. Subtract
+# the 19 cm ankle offset before quoting the two against each other.
 MAXREACH_SECONDS = 20.0
 MAXREACH_REPS = 4
 
@@ -161,6 +164,57 @@ MAXREACH_REPS = 4
 # data says" is the horizontal consequence -- the achieved tip is 13 mm CLOSER
 # to the robot than the commanded target, so the reach the run demonstrates is
 # about a centimetre short of the number the target would imply.
+#
+# ---------------------------------------------------------------------------
+# ★ AND THE SAME RECONCILIATION SAYS THE ROBOT STANDS 19 cm FURTHER BACK
+#   (2026-08-23, prompted by the hardware film strip -- the real robot is
+#   visibly off the table at t = 0 where the sim robot is already at it).
+#
+# The paragraph above pins the TABLE and stops. Run it one step further and it
+# pins the ROBOT, because Allen's trace is plotted in his robot's BASE frame:
+#
+#     real:  table near edge at 0.998 - 0.55 = 0.448 m  ahead of his x origin
+#     sim:   table near edge at 0.450 m world,  ankles at 0.190 m world
+#            -> standoff 0.260 m
+#
+# So the real robot's base sits 0.448 m from the slab and the sim's sits 0.260 m
+# from it: 188 mm further back, which is the sim's own base offset (0.19 m) to
+# within a millimetre. The z read is the corroborating detail -- 1.163 against a
+# 0.985 table surface is measured from the FLOOR, not from a pelvis at 1.028, so
+# his frame is base-in-xy / floor-in-z and an x origin 0.448 m from the table is
+# the robot, not an arbitrary room corner.
+#
+# NOT CIRCULAR -- the reach numbers close it independently. Both robots put the
+# hand on the SAME table point, so their own-frame reaches must differ by the
+# standoff, and they do, exactly:
+#
+#     sim tip, settled, at this target   99.5 cm world = 79.8 cm from its ankles
+#     Allen's "functional reach"                         98.8 +- 1.7 cm from base
+#     difference                                         19.0 cm
+#
+# THE CONSEQUENCE IS THAT `hand_x_settled` HAS BEEN COMPARED ACROSS FRAMES. Sim
+# world x against real base x agree to 8 mm at this target (99.5 vs 98.8) and
+# that agreement is the artifact: the two frames differ by precisely the sim's
+# 19 cm standoff, which cancels. Read from each robot's own base instead:
+#
+#     targeted reach    sim 79.8 / 80.4 cm   vs real 98.8 cm   (real reaches further)
+#     max reach         sim 109.5 / 115.9    vs real 99.1 cm   (sim reaches further)
+#
+# -- so the panel's "perfect agreement at the target, 29 cm apart at max reach"
+# is two frame errors, not two results. It also explains the film strip: the sim
+# robot starts 19 cm closer, so its MAX-reach posture is what the hardware's
+# TARGETED reach looks like, which is why the strip pairs those two.
+#
+# WHAT WOULD SETTLE IT -- one number from Allen: the base (pelvis) x at t = 0 in
+# the frame `target_position.png` is plotted in. ~0 confirms all of the above;
+# anything else and his trace is a room frame and the standoff is unmeasured.
+# The AprilTag logs answer it too: a tag-to-base transform at t = 0 puts the
+# table's near edge in the base frame directly, which IS the standoff. Note the
+# y gap above is the same class of finding on the other axis -- taken together,
+# the real robot stands ~19 cm further back and ~10 cm off in y from where this
+# study places it. NOTHING HERE IS CHANGED ON THAT SUSPICION: the sim start pose
+# is a published condition and moving it re-costs every rollout in the study.
+# ---------------------------------------------------------------------------
 REALPOSE_TARGET = (0.998, -0.156, 1.163)
 REALPOSE_SECONDS = 20.0
 # EIGHT, for the same reason NOMINAL2_REPS is eight: 2 of the first 4 commanded
