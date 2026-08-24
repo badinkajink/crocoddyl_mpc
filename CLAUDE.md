@@ -78,6 +78,19 @@ PY=~/miniconda3/envs/croco/bin/python        # NOT base: base segfaults
 
 ## 4. Traps that have cost a session each
 
+- **The e-stop is not what limits hardware reach, and the knee is.** Replaying
+  every rollout through `h12_safety_layer`'s own check (`studies/estop_replay.py`,
+  `relax_safety_split.yaml` -- what real bringup launches) clears all three
+  channels: velocity peaks at **0.22x** the trip level, torque at **0.81x**, and
+  the only position violations are **8 mrad** of MuJoCo soft-constraint overshoot.
+  Torque trips are *structurally* impossible here -- every MJCF `forcerange` is
+  0.18-0.90x its safety limit, so the sim reaches 129 cm while modelled weaker
+  than the robot is permitted to be. But under the config as deployed
+  (`position_offset = 0.0001`, zero tolerance) **100% of rollouts trip**, always
+  on a knee, median 1.0 s: this robot stands with its knees on the hyperextension
+  stop **34-67% of every episode**. Sim-side that is solver softness; on hardware
+  it is two joints parked on a stop with no margin in the trip band.
+
 - **`hand_x_settled` is world x; Allen's reach is base x.** The two have been
   compared directly, and the frames differ by exactly the sim's 19 cm base
   offset, so the difference cancels and the mismatch reads as agreement. The

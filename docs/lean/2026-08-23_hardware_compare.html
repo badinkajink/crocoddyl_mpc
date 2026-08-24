@@ -181,6 +181,69 @@ recommendation.</div>
 noise rather than bias &mdash; but longer rollouts are the fix if the max-reach
 spread wants tightening.</p>
 
+<h2>Is the reach gap the e-stop? No &mdash; on all three channels</h2>
+
+<p>Setting the standoff aside and assuming the offsets are right, the other
+candidate is that the hardware is not reach-limited but <i>envelope</i>-limited:
+<code>h1_real_controller.launch.py</code> starts <code>h12_safety_layer</code> with
+<code>relax_safety_split.yaml</code>, which latches an e-stop on the first
+<code>lowstate</code> sample outside its limits and then publishes mode&nbsp;0 with
+kp&nbsp;=&nbsp;kd&nbsp;=&nbsp;0. A sim posture that trips it is a posture hardware could not
+hold. <code>studies/estop_replay.py</code> replays every rollout through the real
+check &mdash; the limit arrays come from the safety layer's own
+<code>load_config</code>, and the three sim analogues of <code>q</code>,
+<code>dq</code>, <code>tau_est</code> are joint position, joint velocity and
+<code>data.actuator_force</code>.</p>
+
+<div class="scroll"><table>
+<tr><th>Channel</th><th>Peak, worst condition</th><th>Verdict</th></tr>
+<tr><td>Velocity</td><td>0.22 &times; the trip level (left shoulder pitch)</td><td class="good">nowhere near</td></tr>
+<tr><td>Torque</td><td>0.81 &times; (right ankle pitch)</td><td class="good">structurally unreachable</td></tr>
+<tr><td>Position</td><td>8 mrad = 0.46&deg; past the knee stop</td><td class="good">solver softness</td></tr>
+</table></div>
+
+<p>The torque row is the strong one: every MJCF <code>forcerange</code> is
+<b>0.18&ndash;0.90&times;</b> its safety-layer torque limit, so a torque trip is
+impossible in this sim by construction &mdash; not merely unobserved. And the
+inversion matters. In the max-reach condition the sim is pinned at its
+<i>modelled</i> torque ceiling for a good part of the episode (left elbow 39%,
+right ankle pitch 35%, left wrist pitch 31%), and those ceilings are the tight
+ones: 13&nbsp;N&middot;m at the elbow where the safety layer allows 18, 9 at the wrist
+where it allows 19. <b>The sim reaches 129&nbsp;cm while modelled weaker than the
+real robot is permitted to be</b>, so torque capability cannot be what holds
+hardware to 99&nbsp;cm.</p>
+
+<div class="note warn"><b>One real finding fell out, and it is not about
+reach.</b> Under the config exactly as deployed, <b>100% of rollouts trip</b>,
+every one of them on a knee, at a median 1.0&nbsp;s. <code>estop.position_offset</code>
+is <b>0.0001&nbsp;rad</b> &mdash; zero tolerance against the URDF stop &mdash; and this
+robot <i>stands</i> with its knees parked on the hyperextension stop: the knee is
+within 5&nbsp;mrad of its limit for <b>34&ndash;67% of every episode</b>. In sim the
+overshoot is MuJoCo's soft constraint and means nothing. On hardware the same
+posture puts two joints on a stop with no margin in the trip band, so whether the
+run survives is a question about encoder noise and zero calibration. Worth raising
+with whoever runs the robot; it is unrelated to how far the arm gets.</div>
+
+<h3>And the max-reach variance is sim sampling noise, not the brace</h3>
+
+<div class="scroll"><table>
+<tr><th>Settled tip x</th><th>All upright</th><th>Arm-braced only</th></tr>
+<tr><td>Targeted, no brace</td><td>99.5 &plusmn; 0.6 cm (n=8)</td><td>99.5 &plusmn; 0.6 (n=8)</td></tr>
+<tr><td>Targeted, brace</td><td>99.6 &plusmn; 0.4 (n=16)</td><td>99.9 &plusmn; 0.2 (n=4)</td></tr>
+<tr><td>Max, no brace</td><td>129.2 &plusmn; 6.3 (n=16)</td><td>128.0 &plusmn; 4.3 (n=15)</td></tr>
+<tr><td>Max, brace</td><td>139.8 &plusmn; 7.2 (n=16)</td><td>131.9 &plusmn; 3.2 (n=6)</td></tr>
+</table></div>
+
+<p>Two corrections here. The max-reach condition is an order of magnitude noisier
+than the targeted one (SD 3&ndash;7&nbsp;cm against 0.2&ndash;0.6) because its target sits at
+x&nbsp;=&nbsp;1.60, outside anything the robot can touch, so the <code>Reach</code>
+residual never saturates and each rollout simply stretches as far as its own
+sampling got &mdash; that spread is the planner, not the posture. And the
+commanded-brace column only looks like the noisier of the two while the trunk
+rests are in it (7.2 vs 6.3); among rollouts that braced with the arm they were
+told to use it is the <i>tighter</i> one, 3.2 against 4.3. The extra variance is
+the <code>Trunk Clear</code> exploit showing up as spread.</p>
+
 <h2>Reproducing</h2>
 
 <pre>export LEAN_TASK_DIR=$STAGE_ROOT/mjpc/tasks/humanoid_bench/lean   # see below
@@ -189,7 +252,9 @@ python3 bvs_strip_real.py \
   --json runs/2026-08-22_brace_vs_stand/analysis.json \
   --run  runs/2026-08-22_brace_vs_stand \
   --frames ../paper/figures/brace_reach/allen_real_experiments/five_frames_strip \
-  --out    ../paper/figures/brace_reach/allen_real_experiments</pre>
+  --out    ../paper/figures/brace_reach/allen_real_experiments
+
+python3 estop_replay.py --run runs/2026-08-22_brace_vs_stand</pre>
 
 <div class="note"><b><code>LEAN_TASK_DIR</code> is now mandatory for the study
 scripts.</b> <code>simple_lean.py</code> falls back to
