@@ -283,6 +283,56 @@ SEED_KEY = os.environ.get("SEED_KEY", "forearm_brace_reach")
 STANCE_DX = float(os.environ.get("STANCE_DX", "0.0"))
 STANCE_DY = float(os.environ.get("STANCE_DY", "0.0"))
 
+# TABLE FACE HEIGHT (2026-09-08).  Absolute world z of the tabletop's top face
+# [m].  Unset or 0 leaves the compiled model exactly as it is -- the default is
+# byte-identical, so every certified cell in this study still means what it
+# meant.
+#
+# Why it belongs here rather than in a caller: the MJPC braced-lean study on
+# `wxie/table-height` measures a HEIGHT WINDOW against a slab compiled at
+# 0.985 m, and this model's face is at 0.985 m too (table body z 0.54 + geom
+# z 0.39 + half-extent 0.055), so the two studies are asking about the same
+# slab and their heights are directly comparable.  Asking the crocoddyl
+# question -- does a gradient planner's certified brace survive a table the
+# sampling planner cannot handle -- needs the same knob on this side.
+#
+# The table is a STATIC child of worldbody with no rotation, and every table
+# query below (`table_top_z`, `table_x_range`, `table_y_range`, the IK's
+# collision rows, `contact_gaps`' narrowphase test) reads `table_top_collision`
+# out of `d.geom_xpos` rather than a constant.  So translating the body moves
+# the face, the near edge, the legs and MuJoCo's narrowphase together, and one
+# hook in `load()` reaches every study that loads through this module.
+#
+# The reach target does NOT ride along: it is a world point supplied by the
+# caller, and whether it should be held absolute or pinned to the face is the
+# question a height sweep is asking, not something to decide here.
+TABLE_H = float(os.environ.get("TABLE_H", "0") or 0.0)
+
+
+def set_table_face(m, d, face_z):
+    """Translate the table body so its top face sits at `face_z` [m, world].
+
+    Returns the height it moved from, so a caller can record the delta.
+    """
+    g = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "table_top_collision")
+    b = m.geom_bodyid[g]
+    mujoco.mj_forward(m, d)
+    cur = float(d.geom_xpos[g][2] + m.geom_size[g][2])
+    dz = face_z - cur
+    m.body_pos[b][2] += dz
+    # The object rides with the slab.  It is a FREE body, so its height lives in
+    # qpos, not body_pos, and leaving it behind buries it: at the shipped
+    # keyframe its base already sits 30 mm inside the wood, and at a face of
+    # 1.085 m that becomes 130 mm.  Inert for the static certification -- the IK
+    # runs on the 33 robot DOFs and `_is_env` calls the object environment, so
+    # no table/object contact ever produces a row -- but a dynamic replay would
+    # start with a 0.3 kg box exploding out of the tabletop.
+    j = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, "object_anchor_joint")
+    if j >= 0:
+        d.qpos[m.jnt_qposadr[j] + 2] += dz
+    mujoco.mj_forward(m, d)
+    return cur
+
 # --------------------------------------------------------------------------- #
 # TORQUE BASIS -- which limit the QP is allowed to spend.  Three real, different
 # authorities, so this has to be a named choice rather than "whatever the model
@@ -404,6 +454,8 @@ def load(ik_margin=IK_MARGIN):
     if STANCE_DX or STANCE_DY:
         d.qpos[0] += STANCE_DX      # free-joint translation == move the whole
         d.qpos[1] += STANCE_DY      # robot, feet included (see STANCE_DX above)
+    if TABLE_H:
+        set_table_face(m, d, TABLE_H)   # moves the slab, not the robot
     mujoco.mj_forward(m, d)
     _resolve_palm(m)          # site + brace face follow the model, never a constant
     return m, d
