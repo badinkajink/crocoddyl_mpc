@@ -53,6 +53,15 @@ class QueueTests(unittest.TestCase):
             self.assertEqual(json.loads(dst.read_text()), {'checkpoint': 1})
             self.assertFalse(dst.with_suffix('.tmp').exists())
 
+    def test_resource_refusal(self):
+        state = {'status': 'running', 'attempts': 2, 'completed': [], 'resource_refusals': 1}
+        step = {'id': 'geometry', 'required_artifacts': []}
+        result = driver.reconcile(state, step, {}, 3, 1000, guard_refused=True)
+        self.assertEqual(result['next_at'], 1900)
+        self.assertEqual(result['resource_refusals'], 2)
+        self.assertEqual(result['attempts'] - result['resource_refusals'], 0)
+        self.assertEqual(result['completed'], [])
+
     def test_cleanup_only_own_attempt(self):
         with tempfile.TemporaryDirectory() as path:
             root = Path(path)

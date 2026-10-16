@@ -78,11 +78,15 @@ def quota_wait(limits, now):
     return max(deadlines, default=0)
 
 
-def reconcile(state, step, result, rc, now):
+def reconcile(state, step, result, rc, now, guard_refused=False):
     """A failed process or missing artifact cannot advance the queue."""
     state['last_returncode'] = rc
     state['last_result'] = result
     state['next_at'] = now + 15 * 60
+    if guard_refused:
+        state['resource_refusals'] = state.get('resource_refusals', 0) + 1
+        state['last_error'] = 'Resguard refused the launch; no Codex session started'
+        return state
     status = result.get('status') if isinstance(result, dict) else None
     if rc == 0 and status == 'checkpoint_complete':
         missing = [p for p in step['required_artifacts']
@@ -169,7 +173,7 @@ def main():
             save(state_path, state)
             print('All three research checkpoints are complete.', flush=True)
             return
-        if state['attempts'] >= config['max_launches']:
+        if state['attempts'] - state.get('resource_refusals', 0) >= config['max_launches']:
             state['status'] = 'stopped'
             save(state_path, state)
             print('Launch budget exhausted; review the saved checkpoint.', flush=True)
@@ -239,7 +243,10 @@ def main():
             result = json.loads(final_path.read_text())
         except (OSError, ValueError):
             result = {}
-        state = reconcile(state, step, result, proc.returncode, time.time())
+        with (RUN / (tag + '.jsonl')).open() as output:
+            first_line = output.readline()
+        guard_refused = proc.returncode == 3 and first_line.startswith('[resguard] refusing to launch:')
+        state = reconcile(state, step, result, proc.returncode, time.time(), guard_refused)
         if len(state['completed']) == len(config['steps']):
             state['status'] = 'done'
         elif state['status'] == 'running':

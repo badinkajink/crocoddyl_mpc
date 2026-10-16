@@ -1,0 +1,16 @@
+--- /home/humanoid/.claude/bin/20261016-resguard-before-host-cpu.sh
++++ /home/humanoid/.claude/bin/resguard.sh
+@@ -56,8 +56,11 @@
+   awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}/SwapTotal/{st=$2}/SwapFree/{sf=$2}
+        END{printf "%.1f %.1f %.1f\n", a/1048576, (st-sf)/1048576, t/1048576}' /proc/meminfo
+ }
+-loadinfo() {  # prints: load1 nproc
+-  printf "%s %s\n" "$(cut -d' ' -f1 /proc/loadavg)" "$(nproc)"
++loadinfo() {  # prints: host load1 and online host CPUs
++  # /proc/loadavg is host-wide. nproc is reduced by OMP_NUM_THREADS and taskset,
++  # giving a negative launch threshold in single-core jobs (2026-10-16).
++  # Keep the host load gate independent of per-job thread and CPU-quota limits.
++  printf "%s %s\n" "$(cut -d' ' -f1 /proc/loadavg)" "$(getconf _NPROCESSORS_ONLN)"
+ }
+ psi() {  # memory pressure, full avg10 (0 if unavailable)
+   awk '/^full/{for(i=1;i<=NF;i++) if($i ~ /^avg10=/){sub("avg10=","",$i); print $i; exit}}' /proc/pressure/memory 2>/dev/null || echo 0
