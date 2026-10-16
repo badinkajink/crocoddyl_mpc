@@ -1,0 +1,59 @@
+{
+  "state": {
+    "status": "running",
+    "completed": [],
+    "attempts": 5,
+    "next_at": 1792179070,
+    "current_step": "geometry",
+    "last_started": "2026-10-16T19:45:06.023721+00:00",
+    "active_tag": "cmpc-20261015-attempt-05-geometry",
+    "last_returncode": 0,
+    "last_result": {
+      "status": "continue",
+      "summary": "Committed checkpoint 93dc6ba; not pushed. Compared three models, saved five physical patches and three pose renders, and inspected two images. Serial numerical work: 9.99 seconds; no new resguard events. Stopped at 81% quota. Certified contacts remain unchanged.",
+      "artifacts": [
+        "docs/lean/20261015-cmpc-surface-catalogue.html",
+        "docs/lean/media/20261015-contact-audit/20261015-surface-catalogue.json",
+        "docs/lean/media/20261015-contact-audit/20261016-model-comparison.json",
+        "docs/lean/media/20261015-contact-audit/20261016-geometry-run-record.json",
+        "studies/20261016_surface_catalogue.py",
+        "docs/handoff/20261015-cmpc-research.md"
+      ],
+      "remaining": "Validate normals, triangle-union membership and collision agreement across each full patch; review small facet extents before marking geometry complete."
+    },
+    "last_error": "Repaired stdin loss through background resguard scope; prompt now passed as a single argv entry",
+    "resource_refusals": 2,
+    "repair_20261016": {
+      "refused_logs": [
+        "attempt-01-geometry.jsonl",
+        "attempt-02-geometry.jsonl"
+      ],
+      "actual_model_launches_before_repair": 0
+    },
+    "startup_failures": 1
+  },
+  "quota": {
+    "limit_id": "codex",
+    "limit_name": null,
+    "primary": {
+      "used_percent": 59.0,
+      "window_minutes": 300,
+      "resets_at": 1792197201
+    },
+    "secondary": {
+      "used_percent": 41.0,
+      "window_minutes": 10080,
+      "resets_at": 1792656594
+    },
+    "credits": {
+      "has_credits": false,
+      "unlimited": false,
+      "balance": "0"
+    },
+    "individual_limit": null,
+    "spend_control_reached": null,
+    "plan_type": "plus",
+    "rate_limit_reached_type": null
+  },
+  "quota_wait_until": 0
+}

@@ -1032,7 +1032,7 @@
       "old_site_displacement_mm": 50.97009703499018,
       "nominal_proxy_signed_separation_mm": -0.03635201629922924,
       "collision_surface_agrees_at_nominal": true,
-      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "simulation_use": "Opt-in geometry candidate with full-region collision boundary agreement within 0.5 mm. Recompute contact feasibility and force allocation before using it in a planner.",
       "current_cl_mapping": {
         "body": "left_shoulder_yaw_link",
         "local_surface_point_m": [
@@ -1047,6 +1047,43 @@
         ],
         "collision_geom_id": null,
         "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      },
+      "validation": {
+        "id": "upper_arm_elbow_end",
+        "label": "E",
+        "source_vertex_error_mm": 0.0,
+        "unit_normal_error": 1.1102230246251565e-16,
+        "basis_orthonormal_error_max": 1.1102230246251565e-16,
+        "source_normal_angle_max_deg": 0.000101138849202288,
+        "nominal_member": {
+          "accepted": true,
+          "same_body": true,
+          "same_geom": true,
+          "projected_inside_triangle_union": true,
+          "plane_distance_mm": 0.0,
+          "normal_angle_deg": null,
+          "within_plane_tolerance": true,
+          "within_normal_tolerance": true,
+          "best_barycentric": [
+            0.4629467452799768,
+            0.45353181921873703,
+            0.08352143550128611
+          ]
+        },
+        "area_mm2": 2.6969136998271135,
+        "guaranteed_seed_disk_diameter_mm": 0.5741143675870897,
+        "collision_region": {
+          "method": "Inside convex hull: per-triangle supporting-plane lower bound; vertex upper bound. 1 nm rounding allowance.",
+          "signed_separation_bound_mm": [
+            -0.06652283789984614,
+            2.7755575615628914e-14
+          ],
+          "maximum_boundary_distance_bound_mm": 0.06652383789984614,
+          "collision_normal_angle_sample_max_deg": 6.761884503176367,
+          "samples": 4,
+          "cover_radius_bound_mm": 0.0,
+          "full_region_within_0p5_mm": true
+        }
       }
     },
     {
@@ -1189,7 +1226,7 @@
       "old_site_displacement_mm": 115.63029860992508,
       "nominal_proxy_signed_separation_mm": -6.938893903907228e-15,
       "collision_surface_agrees_at_nominal": true,
-      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "simulation_use": "Opt-in geometry candidate with full-region collision boundary agreement within 0.5 mm. Recompute contact feasibility and force allocation before using it in a planner.",
       "current_cl_mapping": {
         "body": "left_elbow_link",
         "local_surface_point_m": [
@@ -1204,6 +1241,43 @@
         ],
         "collision_geom_id": null,
         "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      },
+      "validation": {
+        "id": "forearm_proximal",
+        "label": "F1",
+        "source_vertex_error_mm": 0.0,
+        "unit_normal_error": 0.0,
+        "basis_orthonormal_error_max": 2.220446049250313e-16,
+        "source_normal_angle_max_deg": 0.00012141609850025617,
+        "nominal_member": {
+          "accepted": true,
+          "same_body": true,
+          "same_geom": true,
+          "projected_inside_triangle_union": true,
+          "plane_distance_mm": 0.0,
+          "normal_angle_deg": null,
+          "within_plane_tolerance": true,
+          "within_normal_tolerance": true,
+          "best_barycentric": [
+            0.4409201679649922,
+            0.4176075114896581,
+            0.14147232054534967
+          ]
+        },
+        "area_mm2": 12.19567744926472,
+        "guaranteed_seed_disk_diameter_mm": 1.5279008451392209,
+        "collision_region": {
+          "method": "Inside convex hull: per-triangle supporting-plane lower bound; vertex upper bound. 1 nm rounding allowance.",
+          "signed_separation_bound_mm": [
+            0.0,
+            6.938893903907228e-15
+          ],
+          "maximum_boundary_distance_bound_mm": 1.0000000000000002e-06,
+          "collision_normal_angle_sample_max_deg": 0.00012141609850025617,
+          "samples": 4,
+          "cover_radius_bound_mm": 0.0,
+          "full_region_within_0p5_mm": true
+        }
       }
     },
     {
@@ -1320,7 +1394,7 @@
       "old_site_displacement_mm": 29.03127440884865,
       "nominal_proxy_signed_separation_mm": 0.0193397687147448,
       "collision_surface_agrees_at_nominal": true,
-      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "simulation_use": "Opt-in geometry candidate with full-region collision boundary agreement within 0.5 mm. Recompute contact feasibility and force allocation before using it in a planner.",
       "current_cl_mapping": {
         "body": "left_elbow_link",
         "local_surface_point_m": [
@@ -1335,6 +1409,43 @@
         ],
         "collision_geom_id": null,
         "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      },
+      "validation": {
+        "id": "forearm_distal",
+        "label": "F2",
+        "source_vertex_error_mm": 0.0,
+        "unit_normal_error": 0.0,
+        "basis_orthonormal_error_max": 6.421502201383392e-18,
+        "source_normal_angle_max_deg": 0.0,
+        "nominal_member": {
+          "accepted": true,
+          "same_body": true,
+          "same_geom": true,
+          "projected_inside_triangle_union": true,
+          "plane_distance_mm": 0.0,
+          "normal_angle_deg": null,
+          "within_plane_tolerance": true,
+          "within_normal_tolerance": true,
+          "best_barycentric": [
+            0.4613171860128241,
+            0.16931912983460157,
+            0.3693636841525743
+          ]
+        },
+        "area_mm2": 8.648247499215113,
+        "guaranteed_seed_disk_diameter_mm": 1.7999349945091474,
+        "collision_region": {
+          "method": "Capsule signed distance: convex vertex maximum and 1-Lipschitz sampled minimum with 0.1 mm cover.",
+          "signed_separation_bound_mm": [
+            -0.15836286542764486,
+            0.14835068153880304
+          ],
+          "maximum_boundary_distance_bound_mm": 0.15836286542764486,
+          "collision_normal_angle_sample_max_deg": 7.262650545767875,
+          "samples": 3321,
+          "cover_radius_bound_mm": 0.09974323215021157,
+          "full_region_within_0p5_mm": true
+        }
       }
     },
     {
@@ -1451,7 +1562,7 @@
       "old_site_displacement_mm": 12.830396771045887,
       "nominal_proxy_signed_separation_mm": -0.0807003685831531,
       "collision_surface_agrees_at_nominal": true,
-      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "simulation_use": "Opt-in geometry candidate with full-region collision boundary agreement within 0.5 mm. Recompute contact feasibility and force allocation before using it in a planner.",
       "current_cl_mapping": {
         "body": "left_wrist_yaw_link",
         "local_surface_point_m": [
@@ -1466,6 +1577,43 @@
         ],
         "collision_geom_id": null,
         "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      },
+      "validation": {
+        "id": "wrist_housing_underside",
+        "label": "W",
+        "source_vertex_error_mm": 0.0,
+        "unit_normal_error": 1.1102230246251565e-16,
+        "basis_orthonormal_error_max": 4.440892098500626e-16,
+        "source_normal_angle_max_deg": 8.537736462515939e-07,
+        "nominal_member": {
+          "accepted": true,
+          "same_body": true,
+          "same_geom": true,
+          "projected_inside_triangle_union": true,
+          "plane_distance_mm": 0.0,
+          "normal_angle_deg": null,
+          "within_plane_tolerance": true,
+          "within_normal_tolerance": true,
+          "best_barycentric": [
+            0.03230156773080273,
+            0.4838552505609825,
+            0.4838431817082148
+          ]
+        },
+        "area_mm2": 104.41844773413848,
+        "guaranteed_seed_disk_diameter_mm": 3.2510367908179805,
+        "collision_region": {
+          "method": "Distance to one box face; all projected triangle vertices lie in the face rectangle.",
+          "signed_separation_bound_mm": [
+            -0.16411306362279499,
+            2.1603229691247172e-06
+          ],
+          "maximum_boundary_distance_bound_mm": 0.16411306362279499,
+          "collision_normal_angle_sample_max_deg": 2.518781016669267,
+          "samples": 3,
+          "cover_radius_bound_mm": 0.0,
+          "full_region_within_0p5_mm": true
+        }
       }
     },
     {
@@ -1591,7 +1739,7 @@
       "old_site_displacement_mm": 19.66259643290311,
       "nominal_proxy_signed_separation_mm": -0.00023991578667476032,
       "collision_surface_agrees_at_nominal": true,
-      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "simulation_use": "Opt-in geometry candidate with full-region collision boundary agreement within 0.5 mm. Recompute contact feasibility and force allocation before using it in a planner.",
       "current_cl_mapping": {
         "body": "leftg_base_bot",
         "local_surface_point_m": [
@@ -1606,6 +1754,43 @@
         ],
         "collision_geom_id": 33,
         "mesh": "magpie_base_bot"
+      },
+      "validation": {
+        "id": "gripper_base_rim",
+        "label": "P",
+        "source_vertex_error_mm": 0.0,
+        "unit_normal_error": 1.1102230246251565e-16,
+        "basis_orthonormal_error_max": 1.1102230246251565e-16,
+        "source_normal_angle_max_deg": 8.537736462515939e-07,
+        "nominal_member": {
+          "accepted": true,
+          "same_body": true,
+          "same_geom": true,
+          "projected_inside_triangle_union": true,
+          "plane_distance_mm": 0.0,
+          "normal_angle_deg": null,
+          "within_plane_tolerance": true,
+          "within_normal_tolerance": true,
+          "best_barycentric": [
+            0.4763394400565786,
+            0.049946973487572356,
+            0.4737135864558491
+          ]
+        },
+        "area_mm2": 85.35898889042149,
+        "guaranteed_seed_disk_diameter_mm": 2.5580536299415146,
+        "collision_region": {
+          "method": "Distance to one box face; all projected triangle vertices lie in the face rectangle.",
+          "signed_separation_bound_mm": [
+            -0.00023998413112985562,
+            -0.00023985426941472432
+          ],
+          "maximum_boundary_distance_bound_mm": 0.00023998413112985562,
+          "collision_normal_angle_sample_max_deg": 2.561320938754782e-06,
+          "samples": 4,
+          "cover_radius_bound_mm": 0.0,
+          "full_region_within_0p5_mm": true
+        }
       }
     }
   ],
@@ -1783,7 +1968,35 @@
           "signed_gap_mm": -2.095218458615094
         }
       ],
-      "image": "20261016-patches-elbow_forearm.png"
+      "image": "20261016-validated-patches-elbow_forearm.png",
+      "region_contact_counts": [
+        {
+          "label": "E",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F1",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 1
+        },
+        {
+          "label": "F2",
+          "same_geom_contacts": 2,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "W",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "P",
+          "same_geom_contacts": 0,
+          "accepted_contacts": 0
+        }
+      ],
+      "source_qpos_file_sha256": "8df3925f51adc6e402b30b6a15408faf45f1aef28e4f0051d2a3f4a6da6f9a65"
     },
     {
       "mode": "elbow+palm",
@@ -2002,7 +2215,35 @@
           "signed_gap_mm": -1.9977740649643017
         }
       ],
-      "image": "20261016-patches-elbow_palm.png"
+      "image": "20261016-validated-patches-elbow_palm.png",
+      "region_contact_counts": [
+        {
+          "label": "E",
+          "same_geom_contacts": 2,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F1",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F2",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "W",
+          "same_geom_contacts": 5,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "P",
+          "same_geom_contacts": 0,
+          "accepted_contacts": 0
+        }
+      ],
+      "source_qpos_file_sha256": "d0c5e64377763ec87a66c6aa814c70c6a0398e2fe743533b691e27eeff0cc02d"
     },
     {
       "mode": "forearm+wrist",
@@ -2166,7 +2407,35 @@
           "signed_gap_mm": -1.9999999999998561
         }
       ],
-      "image": "20261016-patches-forearm_wrist.png"
+      "image": "20261016-validated-patches-forearm_wrist.png",
+      "region_contact_counts": [
+        {
+          "label": "E",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 1
+        },
+        {
+          "label": "F1",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F2",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "W",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "P",
+          "same_geom_contacts": 0,
+          "accepted_contacts": 0
+        }
+      ],
+      "source_qpos_file_sha256": "01ef87c22d8c01993a119bd27b93af3324b8cee5576e3110ff26209deeaeafe6"
     }
   ],
   "rejected_regions": [
@@ -2186,5 +2455,15 @@
       "cad_support_plane_inset_mm": 10.0000007951087
     }
   ],
-  "elapsed_s": 2.846493530087173
+  "elapsed_s": 2.846493530087173,
+  "geometry_validation": {
+    "result": "20261016-surface-validation.json",
+    "result_sha256": "ab900220737dcc675005626109f3e3f281138eaf61ed3b3b5039ad07d329ac5b",
+    "geometry_sha256": "c3cd490f7060200536d50969642fa4379dd31e600f534d883647ba4ec80c4071",
+    "validated_utc": "2026-10-16T19:50:54Z",
+    "full_regions_within_0p5_mm": true,
+    "contact_point_convention": "Robot-side witness = MuJoCo midpoint minus half the signed gap times the robot outward contact normal.",
+    "extent_review": "Retain exact CAD facets as position candidates. Guaranteed seed disk diameters are 0.574 to 3.251 mm; finite pad size and force capacity require separate design and loading measurements.",
+    "contact_sampling_limit": "A rejected collision witness does not prove separation of the full patch. Box-face contact records sample a manifold sparsely; force relocation from a corner into a facet requires a separate wrench model."
+  }
 }

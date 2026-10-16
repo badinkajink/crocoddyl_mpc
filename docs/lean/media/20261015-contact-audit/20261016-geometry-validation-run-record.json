@@ -1,0 +1,146 @@
+{
+  "status": "checkpoint_complete",
+  "started_utc": "2026-10-16T19:45:06Z",
+  "saved_utc": "2026-10-16T19:55:16.306674+00:00",
+  "baseline_commit": "93dc6ba",
+  "scope": "Geometry only; no dynamics advanced and no planner/certified-cell changes.",
+  "numerical_wall_seconds": 12.32,
+  "peak_rss_kib": 2119096,
+  "prior_session_numerical_wall_seconds": 9.99,
+  "runs": [
+    {
+      "name": "Pose hash assertion failure",
+      "command": "~/.claude/bin/resguard.sh run --mem 2.5G --cpu 200 -- /usr/bin/time -v timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_validate_surface_catalogue.py",
+      "time_record": "20261016-validation-initial-time.txt",
+      "stdout_record": "20261016-validation-initial-stdout.txt",
+      "wall_s": 4.25,
+      "peak_rss_kib": 1935540,
+      "exit_status": 1,
+      "resguard_memory_cap": "2.5G",
+      "resguard_cpu_percent": 200,
+      "threads": 1,
+      "affinity_cpu": 18,
+      "prelaunch_resources": {
+        "available_gb": 8.0,
+        "psi_some": 0.0,
+        "psi_full": 0.0,
+        "load1": 4.69
+      },
+      "five_hour_quota_before_percent": 16
+    },
+    {
+      "name": "Geometry validation",
+      "command": "~/.claude/bin/resguard.sh run --mem 2.5G --cpu 200 -- /usr/bin/time -v timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_validate_surface_catalogue.py",
+      "time_record": "20261016-validation-check-time.txt",
+      "stdout_record": "20261016-validation-check-stdout.txt",
+      "wall_s": 3.44,
+      "peak_rss_kib": 1932520,
+      "exit_status": 0,
+      "resguard_memory_cap": "2.5G",
+      "resguard_cpu_percent": 200,
+      "threads": 1,
+      "affinity_cpu": 18,
+      "prelaunch_resources": {
+        "available_gb": 7.7,
+        "psi_some": 0.05,
+        "psi_full": 0.0,
+        "load1": 5.4
+      },
+      "five_hour_quota_before_percent": 21
+    },
+    {
+      "name": "Geometry validation and witness renders",
+      "command": "~/.claude/bin/resguard.sh run --mem 2.5G --cpu 200 -- /usr/bin/time -v timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_validate_surface_catalogue.py --render --update-catalogue",
+      "time_record": "20261016-validation-time.txt",
+      "stdout_record": "20261016-validation-stdout.txt",
+      "wall_s": 4.63,
+      "peak_rss_kib": 2119096,
+      "exit_status": 0,
+      "resguard_memory_cap": "2.5G",
+      "resguard_cpu_percent": 200,
+      "threads": 1,
+      "affinity_cpu": 18,
+      "prelaunch_resources": {
+        "available_gb": 6.7,
+        "psi_some": 0.42,
+        "psi_full": 0.24,
+        "load1": 3.84
+      },
+      "five_hour_quota_before_percent": 25
+    }
+  ],
+  "future_render_memory_cap": "2.7G (at least 1.3 times the measured 2119096 KiB render peak)",
+  "resguard_events_line_count_before": 196,
+  "resguard_events_line_count_after": 196,
+  "new_resguard_events": [],
+  "quota_readings": [
+    {
+      "elapsed_note": "Start",
+      "five_hour_percent": 1,
+      "weekly_percent": 32
+    },
+    {
+      "elapsed_note": "Before first validation",
+      "five_hour_percent": 16,
+      "weekly_percent": 34
+    },
+    {
+      "elapsed_note": "Before corrected validation",
+      "five_hour_percent": 21,
+      "weekly_percent": 35
+    },
+    {
+      "elapsed_note": "Before validation render",
+      "five_hour_percent": 25,
+      "weekly_percent": 35
+    },
+    {
+      "elapsed_note": "After documentation, 8 minutes",
+      "five_hour_percent": 44,
+      "weekly_percent": 38
+    },
+    {
+      "elapsed_note": "10-minute check before commit",
+      "utc": "2026-10-16T19:55:16.306658+00:00",
+      "five_hour_percent": 59.0,
+      "weekly_percent": 41.0
+    }
+  ],
+  "validation_result": "20261016-surface-validation.json",
+  "validation_sha256": "ab900220737dcc675005626109f3e3f281138eaf61ed3b3b5039ad07d329ac5b",
+  "catalogue_sha256": "e6730832e710723ae8f76e67b5fc29efa1297f886e1ca218f3ff47c974e67d42",
+  "image_sha256": {
+    "20261016-validated-patches-elbow_forearm.png": "4a1deb6c88898bd45c17ed6bc16ceb4a2102aa09eb638e0012a807a322fc96c9",
+    "20261016-validated-patches-elbow_palm.png": "e0e8388e1815a7e37b8332ccc235e975b04818741c84fe9639239972c9f57578",
+    "20261016-validated-patches-forearm_wrist.png": "0c6b2ab7aa7532a74726e335b2a9e2aaebfab29e7a0834dc1a373574d221e32f"
+  },
+  "image_inspection": {
+    "20261016-validated-patches-elbow_palm.png": "Inspected saved render. Upper-arm E and forearm F1 are adjacent on opposite sides of the elbow joint. Black wrist witnesses surround the thin purple W facet, with some visible beyond the CAD outline because the collision box extends beyond the rounded housing. The orange P rim is elevated; white old palm reference lies beside it. The upper-left table view obscures the underside; the table-hidden CAD and collision panels expose it.",
+    "20261016-validated-patches-forearm_wrist.png": "Inspected saved render. One black wrist witness lies at the proximal box edge and outside W, while the W nominal point and P rim remain above the table. E is on the upper-arm housing; F1 and F2 are on the downstream forearm. The accepted E witness is near the red facet. Labels and legend are legible."
+  },
+  "extent_review": "Keep the five exact CAD facets as opt-in position candidates. Seed disk diameters 0.574\u20133.251 mm require separate pad-footprint and load studies before hardware contact design.",
+  "checks": {
+    "all_three_models_reproduce_hashes": true,
+    "analytic_membership_cases_passed": 8,
+    "body_frame_comparisons_passed": 36,
+    "full_region_boundary_distance_bound_max_mm": 0.16411306362279499,
+    "accepted_collision_records": 2,
+    "collision_records": 18,
+    "wrist_records_rejected": 7
+  },
+  "remaining": "No required geometry work remains. Planner integration, distributed contact-wrench allocation and hardware loading are separate work. The other queued checkpoints were not started.",
+  "quota_status_file": "20261016-validation-quota-status.json",
+  "source_repository_heads": {
+    "CL_Assets": "c727cc684520fde0b83e9c9a106b8e538881e28b",
+    "mujoco_mpc": "2f11db0b52d70986e48cee1ee662ad6e2948d2e2",
+    "lean_export_provenance": "Existing build output pinned by XML/mesh hashes; repository HEAD does not identify its build commit."
+  },
+  "artifact_checks": {
+    "python_syntax_passed": true,
+    "candidate_geometry_unchanged_from_93dc6ba": true,
+    "catalogue_validation_hash_passed": true,
+    "image_hashes_passed": 3,
+    "local_page_links_passed": 13,
+    "git_diff_check_passed": true
+  }
+}

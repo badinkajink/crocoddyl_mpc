@@ -1,0 +1,2563 @@
+{
+  "created_utc": "2026-10-16T19:50:54Z",
+  "input_catalogue_sha256": "126b752ac1e19d6e3ea90d9bb9b6388ae5a0797a23e3d153d3dc60ac2975732a",
+  "model_comparison_sha256": "f2af1ef2eae6d3b1c4eb97753a81509e76ca5826ee3d75e3e1713d16a5b31ea7",
+  "validated_geometry_sha256": "c3cd490f7060200536d50969642fa4379dd31e600f534d883647ba4ec80c4071",
+  "geometry_hash_fields": [
+    "id",
+    "body",
+    "collision_geom",
+    "surface_geom_id",
+    "surface_mesh",
+    "local_surface_point_m",
+    "outward_normal_body",
+    "tangent_u_body",
+    "tangent_v_body",
+    "allowed_extent",
+    "current_cl_mapping"
+  ],
+  "mujoco_version": "3.10.0",
+  "predicate_cases": [
+    {
+      "case": "Interior",
+      "expected": true,
+      "actual": true
+    },
+    {
+      "case": "Edge",
+      "expected": true,
+      "actual": true
+    },
+    {
+      "case": "Vertex",
+      "expected": true,
+      "actual": true
+    },
+    {
+      "case": "Gap",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "case": "Beyond plane",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "case": "Reversed normal",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "case": "Other body",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "case": "Other geom",
+      "expected": false,
+      "actual": false
+    }
+  ],
+  "source_checks": {
+    "staged": {
+      "xml_hashes_equal": true,
+      "mesh_hashes_equal": true,
+      "loaded_array_hashes_equal": true,
+      "xml_file_count": 5,
+      "mesh_file_count": 37
+    },
+    "current_cl": {
+      "xml_hashes_equal": true,
+      "mesh_hashes_equal": true,
+      "loaded_array_hashes_equal": true,
+      "xml_file_count": 3,
+      "mesh_file_count": 38
+    },
+    "lean_export": {
+      "xml_hashes_equal": true,
+      "mesh_hashes_equal": true,
+      "loaded_array_hashes_equal": true,
+      "xml_file_count": 5,
+      "mesh_file_count": 29
+    }
+  },
+  "patches": [
+    {
+      "id": "upper_arm_elbow_end",
+      "label": "E",
+      "source_vertex_error_mm": 0.0,
+      "unit_normal_error": 1.1102230246251565e-16,
+      "basis_orthonormal_error_max": 1.1102230246251565e-16,
+      "source_normal_angle_max_deg": 0.000101138849202288,
+      "nominal_member": {
+        "accepted": true,
+        "same_body": true,
+        "same_geom": true,
+        "projected_inside_triangle_union": true,
+        "plane_distance_mm": 0.0,
+        "normal_angle_deg": null,
+        "within_plane_tolerance": true,
+        "within_normal_tolerance": true,
+        "best_barycentric": [
+          0.4629467452799768,
+          0.45353181921873703,
+          0.08352143550128611
+        ]
+      },
+      "area_mm2": 2.6969136998271135,
+      "guaranteed_seed_disk_diameter_mm": 0.5741143675870897,
+      "collision_region": {
+        "method": "Inside convex hull: per-triangle supporting-plane lower bound; vertex upper bound. 1 nm rounding allowance.",
+        "signed_separation_bound_mm": [
+          -0.06652283789984614,
+          2.7755575615628914e-14
+        ],
+        "maximum_boundary_distance_bound_mm": 0.06652383789984614,
+        "collision_normal_angle_sample_max_deg": 6.761884503176367,
+        "samples": 4,
+        "cover_radius_bound_mm": 0.0,
+        "full_region_within_0p5_mm": true
+      }
+    },
+    {
+      "id": "forearm_proximal",
+      "label": "F1",
+      "source_vertex_error_mm": 0.0,
+      "unit_normal_error": 0.0,
+      "basis_orthonormal_error_max": 2.220446049250313e-16,
+      "source_normal_angle_max_deg": 0.00012141609850025617,
+      "nominal_member": {
+        "accepted": true,
+        "same_body": true,
+        "same_geom": true,
+        "projected_inside_triangle_union": true,
+        "plane_distance_mm": 0.0,
+        "normal_angle_deg": null,
+        "within_plane_tolerance": true,
+        "within_normal_tolerance": true,
+        "best_barycentric": [
+          0.4409201679649922,
+          0.4176075114896581,
+          0.14147232054534967
+        ]
+      },
+      "area_mm2": 12.19567744926472,
+      "guaranteed_seed_disk_diameter_mm": 1.5279008451392209,
+      "collision_region": {
+        "method": "Inside convex hull: per-triangle supporting-plane lower bound; vertex upper bound. 1 nm rounding allowance.",
+        "signed_separation_bound_mm": [
+          0.0,
+          6.938893903907228e-15
+        ],
+        "maximum_boundary_distance_bound_mm": 1.0000000000000002e-06,
+        "collision_normal_angle_sample_max_deg": 0.00012141609850025617,
+        "samples": 4,
+        "cover_radius_bound_mm": 0.0,
+        "full_region_within_0p5_mm": true
+      }
+    },
+    {
+      "id": "forearm_distal",
+      "label": "F2",
+      "source_vertex_error_mm": 0.0,
+      "unit_normal_error": 0.0,
+      "basis_orthonormal_error_max": 6.421502201383392e-18,
+      "source_normal_angle_max_deg": 0.0,
+      "nominal_member": {
+        "accepted": true,
+        "same_body": true,
+        "same_geom": true,
+        "projected_inside_triangle_union": true,
+        "plane_distance_mm": 0.0,
+        "normal_angle_deg": null,
+        "within_plane_tolerance": true,
+        "within_normal_tolerance": true,
+        "best_barycentric": [
+          0.4613171860128241,
+          0.16931912983460157,
+          0.3693636841525743
+        ]
+      },
+      "area_mm2": 8.648247499215113,
+      "guaranteed_seed_disk_diameter_mm": 1.7999349945091474,
+      "collision_region": {
+        "method": "Capsule signed distance: convex vertex maximum and 1-Lipschitz sampled minimum with 0.1 mm cover.",
+        "signed_separation_bound_mm": [
+          -0.15836286542764486,
+          0.14835068153880304
+        ],
+        "maximum_boundary_distance_bound_mm": 0.15836286542764486,
+        "collision_normal_angle_sample_max_deg": 7.262650545767875,
+        "samples": 3321,
+        "cover_radius_bound_mm": 0.09974323215021157,
+        "full_region_within_0p5_mm": true
+      }
+    },
+    {
+      "id": "wrist_housing_underside",
+      "label": "W",
+      "source_vertex_error_mm": 0.0,
+      "unit_normal_error": 1.1102230246251565e-16,
+      "basis_orthonormal_error_max": 4.440892098500626e-16,
+      "source_normal_angle_max_deg": 8.537736462515939e-07,
+      "nominal_member": {
+        "accepted": true,
+        "same_body": true,
+        "same_geom": true,
+        "projected_inside_triangle_union": true,
+        "plane_distance_mm": 0.0,
+        "normal_angle_deg": null,
+        "within_plane_tolerance": true,
+        "within_normal_tolerance": true,
+        "best_barycentric": [
+          0.03230156773080273,
+          0.4838552505609825,
+          0.4838431817082148
+        ]
+      },
+      "area_mm2": 104.41844773413848,
+      "guaranteed_seed_disk_diameter_mm": 3.2510367908179805,
+      "collision_region": {
+        "method": "Distance to one box face; all projected triangle vertices lie in the face rectangle.",
+        "signed_separation_bound_mm": [
+          -0.16411306362279499,
+          2.1603229691247172e-06
+        ],
+        "maximum_boundary_distance_bound_mm": 0.16411306362279499,
+        "collision_normal_angle_sample_max_deg": 2.518781016669267,
+        "samples": 3,
+        "cover_radius_bound_mm": 0.0,
+        "full_region_within_0p5_mm": true
+      }
+    },
+    {
+      "id": "gripper_base_rim",
+      "label": "P",
+      "source_vertex_error_mm": 0.0,
+      "unit_normal_error": 1.1102230246251565e-16,
+      "basis_orthonormal_error_max": 1.1102230246251565e-16,
+      "source_normal_angle_max_deg": 8.537736462515939e-07,
+      "nominal_member": {
+        "accepted": true,
+        "same_body": true,
+        "same_geom": true,
+        "projected_inside_triangle_union": true,
+        "plane_distance_mm": 0.0,
+        "normal_angle_deg": null,
+        "within_plane_tolerance": true,
+        "within_normal_tolerance": true,
+        "best_barycentric": [
+          0.4763394400565786,
+          0.049946973487572356,
+          0.4737135864558491
+        ]
+      },
+      "area_mm2": 85.35898889042149,
+      "guaranteed_seed_disk_diameter_mm": 2.5580536299415146,
+      "collision_region": {
+        "method": "Distance to one box face; all projected triangle vertices lie in the face rectangle.",
+        "signed_separation_bound_mm": [
+          -0.00023998413112985562,
+          -0.00023985426941472432
+        ],
+        "maximum_boundary_distance_bound_mm": 0.00023998413112985562,
+        "collision_normal_angle_sample_max_deg": 2.561320938754782e-06,
+        "samples": 4,
+        "cover_radius_bound_mm": 0.0,
+        "full_region_within_0p5_mm": true
+      }
+    }
+  ],
+  "poses": [
+    {
+      "mode": "elbow+forearm",
+      "loaded_qpos_array_sha256": "ed7cab2238a11ef213c9bcbb501dec6b2e48e9f11ec2557e670bf96b72f3f9a0",
+      "source_qpos_file_sha256": "8df3925f51adc6e402b30b6a15408faf45f1aef28e4f0051d2a3f4a6da6f9a65",
+      "contacts": [
+        {
+          "contact_index": 0,
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 41,
+          "signed_gap_mm": -3.4825722802038768,
+          "midpoint_world_m": [
+            0.535852766561969,
+            0.26695192488218583,
+            0.983258713859898
+          ],
+          "robot_surface_witness_world_m": [
+            0.535852766561969,
+            0.26695192488218583,
+            0.9815174277197961
+          ],
+          "robot_surface_witness_body_m": [
+            -0.007133199125998954,
+            0.01600006248023465,
+            -0.22602740173862942
+          ],
+          "outward_normal_body": [
+            -0.27286327480297384,
+            0.04117572135186882,
+            -0.9611712611366127
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.24945509596527674,
+              "normal_angle_deg": 28.488224077786086,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                0.0023450670646479876,
+                1.957292519833353,
+                -0.959637586898001
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.9559255118242524,
+              "normal_angle_deg": 2.3635091521936795,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                0.6529777963451802,
+                0.8470218962108272,
+                -0.49999969255600746
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.167680059375051,
+              "normal_angle_deg": 1.3851436770600003,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -19.572769548726953,
+                18.290665952991315,
+                2.282103595735637
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -96.42555891643825,
+              "normal_angle_deg": 26.620155069119768,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                3.7188696954033773,
+                -40.61725550809044,
+                37.89838581268706
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -78.32613795499394,
+              "normal_angle_deg": 28.7277758413429,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                108.23243491330689,
+                -4.562418644045484,
+                -102.67001626926141
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 1,
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "geom1": 44,
+          "geom2": 99,
+          "signed_gap_mm": -1.4397300610980226,
+          "midpoint_world_m": [
+            0.5536629004620321,
+            0.2805998281142071,
+            0.984280134969451
+          ],
+          "robot_surface_witness_world_m": [
+            0.5536629004620321,
+            0.2805998281142071,
+            0.983560269938902
+          ],
+          "robot_surface_witness_body_m": [
+            0.019272121904649085,
+            -0.008558849752684566,
+            -0.04396274130332117
+          ],
+          "outward_normal_body": [
+            -0.02079651701002702,
+            0.041175721351868824,
+            -0.9989354658091789
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.400488954792914,
+              "normal_angle_deg": 28.488224077786086,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                15.093547224512076,
+                -9.603185108543489,
+                -4.490362115968588
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.4798752704575067,
+              "normal_angle_deg": 2.3635091521936795,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                9.489936188804451,
+                -9.380114495214464,
+                0.8901783064100132
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.6210796636817854,
+              "normal_angle_deg": 1.3851436770600003,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -20.8197446468522,
+                15.801938226534608,
+                6.017806420317592
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -88.35418653318662,
+              "normal_angle_deg": 26.620155069119768,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                3.5731340351486622,
+                -35.35121647749863,
+                32.77808244234997
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -69.41639404865371,
+              "normal_angle_deg": 28.7277758413429,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                104.84574028783551,
+                -3.893950843309946,
+                -99.95178944452556
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 2,
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "geom1": 44,
+          "geom2": 99,
+          "signed_gap_mm": 1.2554708968417136,
+          "midpoint_world_m": [
+            0.6456997417634258,
+            0.2852855228394679,
+            0.9856277354484209
+          ],
+          "robot_surface_witness_world_m": [
+            0.6456997417634258,
+            0.2852855228394679,
+            0.9862554708968417
+          ],
+          "robot_surface_witness_body_m": [
+            0.1092721219046486,
+            -0.02855884975268444,
+            -0.04396274130332124
+          ],
+          "outward_normal_body": [
+            -0.02079651701002702,
+            0.041175721351868824,
+            -0.9989354658091789
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -7.605963315608772,
+              "normal_angle_deg": 28.488224077786086,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                28.84374357329023,
+                -13.820255147712242,
+                -14.023488425577987
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -2.558624654973397,
+              "normal_angle_deg": 2.3635091521936795,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                57.08948981444641,
+                -53.64631979636032,
+                -2.4431700180860836
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.11643857579416757,
+              "normal_angle_deg": 1.3851436770600003,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -1.119649851131816,
+                0.6997459090779409,
+                1.419903942053875
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -53.169405997844294,
+              "normal_angle_deg": 26.620155069119768,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                2.2511262679627357,
+                -23.32999586993446,
+                22.078869601971725
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -32.456637892784066,
+              "normal_angle_deg": 28.7277758413429,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                78.7627150921555,
+                -2.4593997151557896,
+                -75.30331537699972
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 3,
+          "body": "left_elbow_link",
+          "geom_id": 43,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 43,
+          "signed_gap_mm": -1.9028243545939902,
+          "midpoint_world_m": [
+            0.5351093985871662,
+            0.27615744288698085,
+            0.984048587822703
+          ],
+          "robot_surface_witness_world_m": [
+            0.5351093985871662,
+            0.2761574428869809,
+            0.983097175645406
+          ],
+          "robot_surface_witness_body_m": [
+            0.00019999669352608793,
+            -0.007899938160118783,
+            -0.04400211257237773
+          ],
+          "outward_normal_body": [
+            -0.020796517010019257,
+            0.04117572135189693,
+            -0.9989354658091779
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.721021035198064,
+              "normal_angle_deg": 28.488224077784444,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                10.92284731054963,
+                -10.422273595584887,
+                0.49942628503525743
+              ]
+            },
+            "F1": {
+              "accepted": true,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": true,
+              "plane_distance_mm": -4.4038936993645583e-14,
+              "normal_angle_deg": 2.363509152195376,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                0.9999999999999942,
+                -1.821459640393898e-14,
+                2.4025987615016036e-14
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.6228687504028665,
+              "normal_angle_deg": 1.3851436770597372,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -23.40053848156561,
+                18.725446522369904,
+                5.675091959195707
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -96.23875065827747,
+              "normal_angle_deg": 26.620155069118983,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                3.8072054915105227,
+                -38.530733478888855,
+                35.72352798737833
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -77.78612867047592,
+              "normal_angle_deg": 28.727775841342055,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                109.59962271215639,
+                -4.283230121150533,
+                -104.31639259100585
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 5,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -2.095218458615094,
+          "midpoint_world_m": [
+            0.7694232192592926,
+            0.29704488240458227,
+            0.984056414777738
+          ],
+          "robot_surface_witness_world_m": [
+            0.7694232192592926,
+            0.29658976480916455,
+            0.9831128295554759
+          ],
+          "robot_surface_witness_body_m": [
+            0.005255331001057998,
+            -0.02799999999999986,
+            -0.04249999999999975
+          ],
+          "outward_normal_body": [
+            0.0,
+            -0.7290856622813681,
+            -0.6844224551077612
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -12.783943501427267,
+              "normal_angle_deg": 53.86621544465438,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                60.695404603455216,
+                -13.99347033483694,
+                -45.701934268618274
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.2052014449338688,
+              "normal_angle_deg": 23.444280662413725,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                120.88749580440076,
+                -113.81342956126718,
+                -6.0740662431335695
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 6.2300791102633,
+              "normal_angle_deg": 26.105067226223834,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                23.351329598582932,
+                -19.4042178474955,
+                -2.9471117510874336
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.2077715804177762,
+              "normal_angle_deg": 44.29138226884144,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                0.5498657954465047,
+                -6.767579881866098,
+                7.217714086419593
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.37523419469407,
+              "normal_angle_deg": 46.80979657065593,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                45.06563140695438,
+                -0.48407918780636544,
+                -43.581552219148016
+              ]
+            }
+          }
+        }
+      ],
+      "patch_counts": [
+        {
+          "label": "E",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F1",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 1
+        },
+        {
+          "label": "F2",
+          "same_geom_contacts": 2,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "W",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "P",
+          "same_geom_contacts": 0,
+          "accepted_contacts": 0
+        }
+      ]
+    },
+    {
+      "mode": "elbow+palm",
+      "loaded_qpos_array_sha256": "6dfc54c9d59f8573ec1b1bab160e482e1edb466463aa211e35ddec03bcc83844",
+      "source_qpos_file_sha256": "d0c5e64377763ec87a66c6aa814c70c6a0398e2fe743533b691e27eeff0cc02d",
+      "contacts": [
+        {
+          "contact_index": 0,
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 41,
+          "signed_gap_mm": -2.000000018057446,
+          "midpoint_world_m": [
+            0.5288301288965807,
+            0.22156395967260448,
+            0.9839999999909714
+          ],
+          "robot_surface_witness_world_m": [
+            0.5288301288965807,
+            0.22156395967260448,
+            0.9829999999819428
+          ],
+          "robot_surface_witness_body_m": [
+            -0.0033944483325957717,
+            0.016000061331405867,
+            -0.22699040146587415
+          ],
+          "outward_normal_body": [
+            -0.24671908811598062,
+            0.09719404001743145,
+            -0.9642007105080901
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.2514292204545764,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                1.0051421270393623,
+                0.9528237438480421,
+                -0.9579658708874045
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.9427742122781286,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                1.7484092998890246,
+                -0.24840905929729093,
+                -0.5000002405917336
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.2134170246222995,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -19.30499428515766,
+                17.95523820858302,
+                2.349756076574642
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 6.385906991515816,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.7783367841386806,
+                -39.2708002879396,
+                36.49246350380092
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.614344966889988,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                109.29390417176495,
+                -4.540680502116562,
+                -103.75322366964839
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 1,
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 41,
+          "signed_gap_mm": -2.000000018057446,
+          "midpoint_world_m": [
+            0.5251072217334686,
+            0.22054143780522925,
+            0.9840061037140992
+          ],
+          "robot_surface_witness_world_m": [
+            0.5251072217334686,
+            0.22054143780522925,
+            0.9830061037050706
+          ],
+          "robot_surface_witness_body_m": [
+            -0.007133199125998961,
+            0.016000062480234632,
+            -0.22602740173862942
+          ],
+          "outward_normal_body": [
+            -0.24671908811598062,
+            0.09719404001743145,
+            -0.9642007105080901
+          ],
+          "table_witness_height_residual_mm": 0.006103723127863503,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.2494550959652841,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                0.0023450670646478766,
+                1.9572925198333915,
+                -0.9596375868980394
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.9088658612281384,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -0.15093710363823054,
+                1.6509365385353816,
+                -0.499999434897151
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.077469536517337,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -19.77012353834243,
+                18.536780582134362,
+                2.233342956208065
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 6.494657730030656,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.8294243741805403,
+                -39.99141965206218,
+                37.16199527788164
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.611059640892428,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                110.33734467829376,
+                -4.6319661266172245,
+                -104.70537855167653
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 2,
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "geom1": 44,
+          "geom2": 99,
+          "signed_gap_mm": -0.3234313133193903,
+          "midpoint_world_m": [
+            0.5436045798444618,
+            0.2365286253732101,
+            0.9848382843433403
+          ],
+          "robot_surface_witness_world_m": [
+            0.5436045798444618,
+            0.2365286253732101,
+            0.9846765686866806
+          ],
+          "robot_surface_witness_body_m": [
+            0.018944900387511683,
+            -0.006598208599389849,
+            -0.043818308116197455
+          ],
+          "outward_normal_body": [
+            -0.030145703213950104,
+            0.09719404001743147,
+            -0.9948088033199263
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.681571368377318,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                18.433495767592905,
+                -12.6110688256397,
+                -4.822426941953206
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.6167128223051194,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                10.217516387354816,
+                -0.2169537374919141,
+                -9.000562649862902
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.5548109748554915,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -21.734249415692148,
+                16.003187176286204,
+                6.731062239405942
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 3.8296711806018884,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.66391649836255,
+                -33.87437025006015,
+                31.210453751697603
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 22.932029820628216,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                106.45788613836105,
+                -3.8366264384272886,
+                -101.62125969993376
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 3,
+          "body": "left_elbow_link",
+          "geom_id": 43,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 43,
+          "signed_gap_mm": -0.9699795979557502,
+          "midpoint_world_m": [
+            0.525202075298211,
+            0.23278092837831538,
+            0.9845150102010223
+          ],
+          "robot_surface_witness_world_m": [
+            0.525202075298211,
+            0.23278092837831535,
+            0.9840300204020445
+          ],
+          "robot_surface_witness_body_m": [
+            0.00019999676748628853,
+            -0.00527843371760113,
+            -0.04377125960880026
+          ],
+          "outward_normal_body": [
+            -0.030145703213957764,
+            0.097194040017404,
+            -0.9948088033199287
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 3.8400673583381133,
+              "normal_angle_deg": 25.241245270971756,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                14.735596410722573,
+                -13.813555256444468,
+                0.07795884572189415
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.2307924926585654,
+              "normal_angle_deg": 5.592800960350214,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                0.9973771138510372,
+                -0.4369173648862837,
+                0.43954025103524647
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.49802934128426135,
+              "normal_angle_deg": 3.788803568427104,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -24.571462627269064,
+                18.92872886210522,
+                6.642733765163843
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 4.992320784107999,
+              "normal_angle_deg": 2.5162061300446337,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.927021653919489,
+                -37.12217433005175,
+                34.19515267613226
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 23.59316066117255,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                111.77169529885646,
+                -4.2469095181771745,
+                -106.52478578067928
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 4,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -1.9131713647881872,
+          "midpoint_world_m": [
+            0.7415227932687655,
+            0.2975,
+            0.984043414317606
+          ],
+          "robot_surface_witness_world_m": [
+            0.7415227932687655,
+            0.2975,
+            0.9830868286352119
+          ],
+          "robot_surface_witness_body_m": [
+            -0.019999999999999928,
+            0.020586168446684202,
+            -0.042499999999999885
+          ],
+          "outward_normal_body": [
+            0.0010228601371045298,
+            -3.974883991392225e-05,
+            -0.9999994760884462
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 6.436425275154701,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                80.18100190987406,
+                -20.135516127024363,
+                -59.045485782849696
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.8381283696788029,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                112.05060697589761,
+                -1.2949642051396026,
+                -109.755642770758
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 8.740838500552172,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                0.3339616815233786,
+                -14.675525261868602,
+                15.341563580345223
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.9456778828792923,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                1.0015138357787219,
+                6.0001238153186005,
+                -6.001637651097322
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.37523310146078,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                52.99999502038251,
+                -51.77647993809356,
+                -0.22351508228895053
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 5,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -1.9278100252633892,
+          "midpoint_world_m": [
+            0.7578969523220791,
+            0.2975,
+            0.9840360949873683
+          ],
+          "robot_surface_witness_world_m": [
+            0.7578969523220791,
+            0.2975,
+            0.9830721899747367
+          ],
+          "robot_surface_witness_body_m": [
+            -0.005400397241957081,
+            0.02799999999999994,
+            -0.04249999999999993
+          ],
+          "outward_normal_body": [
+            0.0010228601371045298,
+            -3.974883991392225e-05,
+            -0.9999994760884462
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 4.56974144112076,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                78.72773731126969,
+                -14.570878439476509,
+                -63.15685887179319
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.3880141447858274,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                119.81657386807214,
+                -0.5754379152795573,
+                -118.24113595279259
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 9.533184192747534,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                4.163473026564743,
+                -17.38673574111094,
+                14.223262714546197
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -1.2607308699788484,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                0.7404045714729133,
+                8.115225562718667,
+                -7.85563013419158
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.37523373343724,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                48.13346126819448,
+                -46.64938198245767,
+                -0.4840792857368111
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 6,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -1.9999999999994813,
+          "midpoint_world_m": [
+            0.793528889362328,
+            0.21659898520893076,
+            0.9840000000000003
+          ],
+          "robot_surface_witness_world_m": [
+            0.793528889362328,
+            0.21659898520893076,
+            0.9830000000000005
+          ],
+          "robot_surface_witness_body_m": [
+            0.0629999999999999,
+            -0.027999999999999883,
+            -0.042499999999999954
+          ],
+          "outward_normal_body": [
+            0.0010228601371045298,
+            -3.974883991392225e-05,
+            -0.9999994760884462
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -32.680653614021864,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                -30.837961988730527,
+                97.9300415077877,
+                -66.09207951905718
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 11.052350920679492,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                139.07194716685768,
+                -125.1423488420298,
+                -12.929598324827886
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 15.01415075888836,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                44.57734351427776,
+                -26.0447430909857,
+                -17.53260042329206
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.2501565650090576,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -0.48286232107844107,
+                -6.245437692077665,
+                7.728300013156106
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.375236694301265,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                25.81741038686766,
+                -0.48407918780636644,
+                -24.333331199061295
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 7,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -1.9151026086198053,
+          "midpoint_world_m": [
+            0.7195241247702652,
+            0.2541794004555228,
+            0.9840424486956901
+          ],
+          "robot_surface_witness_world_m": [
+            0.7195241247702652,
+            0.2541794004555228,
+            0.9830848973913803
+          ],
+          "robot_surface_witness_body_m": [
+            -0.019999999999999914,
+            -0.027999999999999924,
+            -0.0424999999999999
+          ],
+          "outward_normal_body": [
+            0.0010228601371045298,
+            -3.974883991392225e-05,
+            -0.9999994760884462
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -8.8272387600921,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                51.10502397868656,
+                -24.95920744852367,
+                -25.145816530162886
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 5.098149757556407,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                99.62208337908665,
+                -94.9550496038197,
+                -3.6670337752669377
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 9.68796738185897,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                12.367341429933607,
+                -12.509925442906036,
+                1.1425840129724292
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.1892339935916487,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                1.0015419565379196,
+                -6.995945098280564,
+                6.994403141742644
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.375233101460793,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                53.484074208188886,
+                -0.4840791878063684,
+                -51.99999502038252
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 8,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -1.9977740649643017,
+          "midpoint_world_m": [
+            0.8188843655256287,
+            0.2665299357664506,
+            0.9840011129675179
+          ],
+          "robot_surface_witness_world_m": [
+            0.8188843655256287,
+            0.2665299357664506,
+            0.9830022259350357
+          ],
+          "robot_surface_witness_body_m": [
+            0.06299999999999985,
+            0.027999999999999952,
+            -0.042499999999999954
+          ],
+          "outward_normal_body": [
+            0.0010228601371045298,
+            -3.974883991392225e-05,
+            -0.9999994760884462
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -15.087885686421359,
+              "normal_angle_deg": 25.241245270970175,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": false,
+              "best_barycentric": [
+                76.91266347996364,
+                -32.32601320942962,
+                -43.58665027053402
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 7.29487829919716,
+              "normal_angle_deg": 5.592800960351781,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                150.7520199614701,
+                -143.6941437214797,
+                -6.0578762399904
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 13.922498153859786,
+              "normal_angle_deg": 3.7888035684282597,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                30.70777348118409,
+                -28.540794822148285,
+                -1.1669786590358067
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -1.2105245074975124,
+              "normal_angle_deg": 2.5162061300460823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -0.48289473282370743,
+                8.733719595457325,
+                -7.250824862633618
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.375236694301265,
+              "normal_angle_deg": 0.0586473354371912,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                25.33333119906131,
+                -23.849251913324498,
+                -0.4840792857368114
+              ]
+            }
+          }
+        }
+      ],
+      "patch_counts": [
+        {
+          "label": "E",
+          "same_geom_contacts": 2,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F1",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F2",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "W",
+          "same_geom_contacts": 5,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "P",
+          "same_geom_contacts": 0,
+          "accepted_contacts": 0
+        }
+      ]
+    },
+    {
+      "mode": "forearm+wrist",
+      "loaded_qpos_array_sha256": "823493de55b8e0e0e84d8ae9f0533bf834677f2d038f21c1e45099de7e237155",
+      "source_qpos_file_sha256": "01ef87c22d8c01993a119bd27b93af3324b8cee5576e3110ff26209deeaeafe6",
+      "contacts": [
+        {
+          "contact_index": 0,
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 41,
+          "signed_gap_mm": -1.9066205081392784,
+          "midpoint_world_m": [
+            0.517964802945307,
+            0.18209125226807518,
+            0.9840466897459308
+          ],
+          "robot_surface_witness_world_m": [
+            0.517964802945307,
+            0.18209125226807518,
+            0.9830933794918612
+          ],
+          "robot_surface_witness_body_m": [
+            -0.003367468166293096,
+            0.016707446160151452,
+            -0.22686390275972956
+          ],
+          "outward_normal_body": [
+            -0.19254412702490475,
+            0.196456683536677,
+            -0.9614216196040037
+          ],
+          "table_witness_height_residual_mm": 3.8163916471489756e-13,
+          "patch_membership": {
+            "E": {
+              "accepted": true,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": true,
+              "plane_distance_mm": -6.422000518174764e-13,
+              "normal_angle_deg": 19.706519342628823,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                4.2443826231419735e-13,
+                0.9999999999995851,
+                -9.602795894832287e-15
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.8369028370832954,
+              "normal_angle_deg": 11.348345807404057,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -0.03941774694613698,
+                1.3821022726679664,
+                -0.34268452572182934
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.067011677172544,
+              "normal_angle_deg": 9.269221780716569,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -19.936461833430915,
+                18.4041643052126,
+                2.5322975282183156
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -36.14271686019243,
+              "normal_angle_deg": 10.47950693929556,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.8264113397845136,
+                -41.84850299370594,
+                39.02209165392143
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -18.29027089014323,
+              "normal_angle_deg": 12.191956472186053,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                110.46950892704783,
+                -4.809856795685561,
+                -104.65965213136226
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 1,
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "geom1": 44,
+          "geom2": 99,
+          "signed_gap_mm": -1.3298360629372743,
+          "midpoint_world_m": [
+            0.5343297921800381,
+            0.20053889414684545,
+            0.9843350819685314
+          ],
+          "robot_surface_witness_world_m": [
+            0.5343297921800381,
+            0.20053889414684545,
+            0.9836701639370627
+          ],
+          "robot_surface_witness_body_m": [
+            0.018817096799095715,
+            -0.0031240160762162576,
+            -0.04329754488439612
+          ],
+          "outward_normal_body": [
+            -0.033797234311551835,
+            0.19645668353667695,
+            -0.9799298538398848
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 2.96901514384659,
+              "normal_angle_deg": 19.706519342628823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                24.554349093341806,
+                -18.119608776976186,
+                -5.4347403163656205
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -1.1343866829281024,
+              "normal_angle_deg": 11.348345807404057,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                10.148739547219565,
+                -0.7959857617841596,
+                -8.352753785435405
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.17429043005498587,
+              "normal_angle_deg": 9.269221780716569,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -23.305145914923152,
+                16.292402531843138,
+                8.012743383080016
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -33.099906135930645,
+              "normal_angle_deg": 10.47950693929556,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.718317609932683,
+                -35.442790782459554,
+                32.72447317252687
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -14.212526000475224,
+              "normal_angle_deg": 12.191956472186053,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                107.62590776317319,
+                -3.9816735713113456,
+                -102.64423419186184
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 2,
+          "body": "left_elbow_link",
+          "geom_id": 43,
+          "geom_name": null,
+          "geom1": 99,
+          "geom2": 43,
+          "signed_gap_mm": -2.0000000107751603,
+          "midpoint_world_m": [
+            0.5170251669539703,
+            0.19335814483574015,
+            0.9839999999946125
+          ],
+          "robot_surface_witness_world_m": [
+            0.5170251669539703,
+            0.19335814483574015,
+            0.9829999999892249
+          ],
+          "robot_surface_witness_body_m": [
+            0.00019999676748621935,
+            -0.005278433717601096,
+            -0.04377125960880039
+          ],
+          "outward_normal_body": [
+            -0.0337972343115556,
+            0.19645668353666382,
+            -0.9799298538398874
+          ],
+          "table_witness_height_residual_mm": 4.85722573273506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 3.699631555986678,
+              "normal_angle_deg": 19.706519342629562,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                15.507253984206573,
+                -13.932683284257525,
+                -0.5745706999490474
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -0.230792492658432,
+              "normal_angle_deg": 11.34834580740328,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                0.9973771138510044,
+                -0.4369173648862893,
+                0.43954025103528493
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 0.4980293412843942,
+              "normal_angle_deg": 9.269221780715858,
+              "within_plane_tolerance": true,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                -24.571462627269085,
+                18.92872886210523,
+                6.642733765163852
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -35.79132445192808,
+              "normal_angle_deg": 10.479506939295735,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                3.9333336993868286,
+                -39.33490299051164,
+                36.40156929112481
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -17.5134421887728,
+              "normal_angle_deg": 12.191956472186355,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                112.12609308781481,
+                -4.473684438210129,
+                -106.65240864960468
+              ]
+            }
+          }
+        },
+        {
+          "contact_index": 3,
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "geom1": 52,
+          "geom2": 99,
+          "signed_gap_mm": -1.9999999999998561,
+          "midpoint_world_m": [
+            0.7187100816769288,
+            0.22244025252384597,
+            0.9840000000000001
+          ],
+          "robot_surface_witness_world_m": [
+            0.7187100816769288,
+            0.22244025252384597,
+            0.9830000000000002
+          ],
+          "robot_surface_witness_body_m": [
+            -0.019999999999999928,
+            -0.027999999999999893,
+            -0.04249999999999985
+          ],
+          "outward_normal_body": [
+            -0.14065565014902992,
+            -0.1575314877339354,
+            -0.9774455577951567
+          ],
+          "table_witness_height_residual_mm": -6.245004513516506e-14,
+          "patch_membership": {
+            "E": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": -14.357078305951655,
+              "normal_angle_deg": 19.706519342628823,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                54.057968162237266,
+                -41.94473891847638,
+                -11.113229243760882
+              ]
+            },
+            "F1": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 7.0741515535021575,
+              "normal_angle_deg": 11.348345807404057,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                103.15370128108609,
+                -99.42700893946417,
+                -2.726692341621912
+              ]
+            },
+            "F2": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 12.129767878550076,
+              "normal_angle_deg": 9.269221780716569,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                10.979191598551257,
+                -13.441306614379915,
+                3.462115015828659
+              ]
+            },
+            "W": {
+              "accepted": false,
+              "same_body": true,
+              "same_geom": true,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 1.1892339935915988,
+              "normal_angle_deg": 10.47950693929556,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                1.0015419565379204,
+                -6.995945098280556,
+                6.9944031417426356
+              ]
+            },
+            "P": {
+              "accepted": false,
+              "same_body": false,
+              "same_geom": false,
+              "projected_inside_triangle_union": false,
+              "plane_distance_mm": 24.375233101460747,
+              "normal_angle_deg": 12.191956472186053,
+              "within_plane_tolerance": false,
+              "within_normal_tolerance": true,
+              "best_barycentric": [
+                53.48407420818889,
+                -0.4840791878063674,
+                -51.99999502038253
+              ]
+            }
+          }
+        }
+      ],
+      "patch_counts": [
+        {
+          "label": "E",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 1
+        },
+        {
+          "label": "F1",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "F2",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "W",
+          "same_geom_contacts": 1,
+          "accepted_contacts": 0
+        },
+        {
+          "label": "P",
+          "same_geom_contacts": 0,
+          "accepted_contacts": 0
+        }
+      ]
+    }
+  ],
+  "frame_checks": [
+    {
+      "mode": "elbow+forearm",
+      "model": "staged",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "staged",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "staged",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "staged",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "current_cl",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "current_cl",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "current_cl",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "current_cl",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "lean_export",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "lean_export",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "lean_export",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+forearm",
+      "model": "lean_export",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "staged",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "staged",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "staged",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "staged",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "current_cl",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "current_cl",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "current_cl",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "current_cl",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "lean_export",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "lean_export",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "lean_export",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "elbow+palm",
+      "model": "lean_export",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "staged",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "staged",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "staged",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "staged",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "current_cl",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "current_cl",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "current_cl",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "current_cl",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "lean_export",
+      "body": "left_shoulder_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "lean_export",
+      "body": "left_elbow_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "lean_export",
+      "body": "left_wrist_yaw_link",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    },
+    {
+      "mode": "forearm+wrist",
+      "model": "lean_export",
+      "body": "left_magpie_gripper",
+      "rotation_entry_error_max": 0.0,
+      "origin_error_mm": 0.0
+    }
+  ],
+  "all_regions_within_0p5_mm": true,
+  "images": {
+    "20261016-validated-patches-elbow_forearm.png": "4a1deb6c88898bd45c17ed6bc16ceb4a2102aa09eb638e0012a807a322fc96c9",
+    "20261016-validated-patches-elbow_palm.png": "e0e8388e1815a7e37b8332ccc235e975b04818741c84fe9639239972c9f57578",
+    "20261016-validated-patches-forearm_wrist.png": "0c6b2ab7aa7532a74726e335b2a9e2aaebfab29e7a0834dc1a373574d221e32f"
+  },
+  "elapsed_s": 4.195733750239015
+}

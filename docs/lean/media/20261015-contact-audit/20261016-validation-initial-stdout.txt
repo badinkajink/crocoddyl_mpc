@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/20261016_validate_surface_catalogue.py", line 291, in <module>
+    main()
+  File "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/20261016_validate_surface_catalogue.py", line 227, in main
+    assert pose['qpos_sha256'] == po['qpos_sha256']
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

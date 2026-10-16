@@ -2,8 +2,8 @@
 """Read-only geometry comparison and opt-in brace patches; run under resguard.
 
 No physics steps, planner imports, model edits or cell writes. Coordinates are
-metres in MuJoCo body frames. Triangle patches use an inscribed disk so their
-entire allowed extent stays on an observed CAD triangle.
+metres in MuJoCo body frames. Allowed extents are connected CAD triangle unions;
+the seed triangle also supplies a guaranteed inscribed disk.
 """
 import argparse
 import hashlib
@@ -272,8 +272,8 @@ def proxy_offset(m, g, point, outward):
         return float(np.linalg.norm(p-nearest)-size[0])
     if t == mujoco.mjtGeom.mjGEOM_MESH:
         v, _ = mesh_triangles(m, g)
-        # Plane distance to the convex collision hull; exact inside, an upper
-        # bound on signed distance outside near a hull edge.
+        # Plane distance to the convex collision hull; exact inside, a lower
+        # bound on distance outside near a hull edge.
         hull = ConvexHull(v)
         return float(np.max(hull.equations[:, :3] @ point + hull.equations[:, 3]))
     raise ValueError(t)
@@ -441,7 +441,7 @@ def create_catalogue():
         print(p['mode'], [(r['label'], round(r['nominal_height_above_table_mm'], 2)) for r in p['patch_measurements']])
 
 
-def render_patches(m, audit, result):
+def render_patches(m, audit, result, contacts_by_mode=None, filename_prefix='20261016-patches-'):
     colors = [(1, .2, .12, 1), (.1, .7, 1, 1), (.1, .9, .4, 1), (.8, .3, 1, 1), (1, .65, .05, 1)]
     m.vis.global_.offwidth, m.vis.global_.offheight = 1000, 800
     font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18)
@@ -510,6 +510,13 @@ def render_patches(m, audit, result):
                     oldp = d.xpos[b] + r @ p['old_site_point_body_m']
                     sphere(oldp, (.95, .95, .95, 1), .003)
                     line(oldp, point, (.8, .8, .8, 1), .0006)
+                if contacts_by_mode is not None:
+                    for contact in contacts_by_mode[po['mode']]:
+                        witness = np.asarray(contact['robot_surface_witness_world_m'])
+                        sphere(witness, (.02, .02, .02, 1), .0035)
+                        # Short white cross remains visible against dark CAD.
+                        for delta in (np.array([.004, 0, 0]), np.array([0, .004, 0])):
+                            line(witness-delta, witness+delta, (1., 1., 1., 1.), .0006)
                 im = Image.fromarray(renderer.render())
                 draw = ImageDraw.Draw(im)
                 draw.rectangle((0, 0, 1000, 43), fill='white')
@@ -532,7 +539,9 @@ def render_patches(m, audit, result):
             draw.text((1040, 1350), 'Colored edges: allowed CAD facet. Line: outward normal (30 mm).', font=small, fill='black')
             draw.text((1040, 1380), 'White point: old site. Gray segment: displacement to candidate.', font=small, fill='black')
             draw.text((1040, 1410), 'Reaching arm hidden in close-ups. Static pose; no load estimate.', font=small, fill='black')
-            filename = '20261016-patches-'+po['mode'].replace('+', '_')+'.png'
+            if contacts_by_mode is not None:
+                draw.text((1040, 1440), 'White crosses / black dots: robot-side collision witnesses.', font=small, fill='black')
+            filename = filename_prefix+po['mode'].replace('+', '_')+'.png'
             panel.save(OUT / filename)
             pr['image'] = filename
 
