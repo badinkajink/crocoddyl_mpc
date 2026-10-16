@@ -1,0 +1,1068 @@
+{
+  "model": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+  "model_sha256": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+  "repo_commit": "aba958e5260f7ff81eb2e3d39fddaaedce58447d",
+  "provenance": {
+    "xml_sha256": {
+      "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+      "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/h1_2/h1_2_modified_magpie.xml": "aa2521f9fb13c5f7d06a772fd90b53442acdc4d6a1715e9d5797346eb8755844",
+      "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/lean.xml": "a7714c822237be759c355656feae403d2092cfd4a622567d4019831cacfbfb1d",
+      "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/common.xml": "958ad3b0b6c25796e78670b1bea7aec9d10a727873988bbc56a2ef225efc4797",
+      "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/assets/floor.xml": "6f54b0cba9c629d831139defa175ff55c9e8fbb0c2cc8ee76b37109feea3d3d3"
+    },
+    "loaded_model_array_sha256": {
+      "body_pos": "00d119337c424940be92d15d7417054ae2b34fbe384aa5607bde5cb609f7514c",
+      "body_quat": "449ca587db37ae25fd2e94a42f938424fbc9a80593bf9d198e0374b95d60e53d",
+      "body_parentid": "a8096a5cf7eb057072d0d692a6530c4431aee153fed73dbd9e356d8beaf13670",
+      "jnt_pos": "030dd256c2a1dda892b0e57157ec52f9ae5fd1e054d0c66380fae1cb6c09c477",
+      "jnt_axis": "d919355f55109f8c45b6d0f9aeb336b61fde4c5b8a5fac3bf4f4f6282eb11a0c",
+      "geom_pos": "a55da24ddd15207d1d020caed6da9913255f7916ba27fa16ce0426db82853ca2",
+      "geom_quat": "10b12d82111f8ce6ed85caf4d8700a5701894e9bc78be48f7cbbbe43e19ec4b1",
+      "geom_size": "1e6dd0cdf7b1f12849c7529d3032c0b928ead59cab3a56eb703e6f95fca71a83",
+      "geom_type": "af69a7fd4f0b40dcbef3924fafd18c0a5c2ede64df5a18bde42c7bc4f032453d",
+      "geom_bodyid": "a31b4c8cf1ffa7dbd8611370d8e27fae22680247f8ba66a2a22ced11fcf595af",
+      "geom_dataid": "612c618dbf81df85b2b2d53c65066cf2a5baac12d2931e65ff31bf7220b25f1b",
+      "geom_contype": "68097fe1293ef86a192a8fbe1900e282905ce2add7bb3421b7cd959e459618c8",
+      "geom_conaffinity": "68097fe1293ef86a192a8fbe1900e282905ce2add7bb3421b7cd959e459618c8",
+      "mesh_vert": "337838746b890d4203649037cc884ef61c3ce5d4c69c4d54d641222511a5d2c9",
+      "mesh_face": "cfb2c6ebc64801508550f5025894d07e859f641ea9b21b5d94ad3446e77b4ea1",
+      "mesh_vertadr": "114fce30d8ab3d44bb828e9008b2a2905c3a18de04f9239f7159c177ef846447",
+      "mesh_vertnum": "cc586ec854adf6f049b07817ee198a674134caaa8faf6fe3790736832ce3d376",
+      "mesh_faceadr": "59020317f702ba3759eb417389ca2c64187611f472178788192042110c68cfdd",
+      "mesh_facenum": "63f143cd4d484887c4d8811cfec53c2c8c7bc6a0266deb769282817616206782",
+      "pair_geom1": "27c659c6a989b64823d891d50d318d7f02993356f74284ecef9324acc6acd0fe",
+      "pair_geom2": "6c2f18e757d3d836c7fe199775c14989fb0d4d101bb4d42dff3274478f8a7603"
+    },
+    "mujoco_version": "3.10.0"
+  },
+  "cell_manifest": {
+    "target": [
+      1.05,
+      -0.2348,
+      1.0982
+    ],
+    "stance_dx": 0.0,
+    "stance_dy": 0.0,
+    "sites": [
+      "elbow",
+      "forearm",
+      "palm",
+      "wrist"
+    ],
+    "model": "Lean_H12_Magpie.xml",
+    "brace_arm": "left",
+    "site_set": "v2",
+    "seed_key": "forearm_brace_reach",
+    "tau_basis": "clamp",
+    "commit": "62baceebab28a99bfa04d544a86d84f3bd2adb41",
+    "pressed": true,
+    "modes": [
+      {
+        "subset": [],
+        "admissible": true,
+        "reach": 0.002389207789703944,
+        "penetration": 0.0020001696361518773,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 3.8509282317163574e-13,
+        "max_ratio": 0.4954672671185569,
+        "effort": 1.3379906063268783,
+        "brace_force": 0.0,
+        "n_arm": 0,
+        "pressed": true,
+        "contact_gap_mm": {},
+        "name": "legs_only",
+        "qpos_file": "q_legs_only.txt"
+      },
+      {
+        "subset": [
+          "elbow"
+        ],
+        "admissible": true,
+        "reach": 0.0021337883881533105,
+        "penetration": 0.0025,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 4.572401230087702e-13,
+        "max_ratio": 0.44749291275800207,
+        "effort": 0.7596538783882014,
+        "brace_force": 80.25713979063535,
+        "n_arm": 1,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -2.5
+        },
+        "name": "elbow",
+        "qpos_file": "q_elbow.txt"
+      },
+      {
+        "subset": [
+          "forearm"
+        ],
+        "admissible": true,
+        "reach": 0.0019077654335231157,
+        "penetration": 0.002121893330357824,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 3.5501571643483803e-13,
+        "max_ratio": 0.4462602496156379,
+        "effort": 0.7683355975103253,
+        "brace_force": 84.12009118345307,
+        "n_arm": 1,
+        "pressed": true,
+        "contact_gap_mm": {
+          "forearm": -1.38
+        },
+        "name": "forearm",
+        "qpos_file": "q_forearm.txt"
+      },
+      {
+        "subset": [
+          "palm"
+        ],
+        "admissible": true,
+        "reach": 0.0023835559313274733,
+        "penetration": 0.002,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 2.2856159547429807e-13,
+        "max_ratio": 0.44627484867612577,
+        "effort": 0.8414775450730401,
+        "brace_force": 27.1946426990152,
+        "n_arm": 1,
+        "pressed": true,
+        "contact_gap_mm": {
+          "palm": -2.0
+        },
+        "name": "palm",
+        "qpos_file": "q_palm.txt"
+      },
+      {
+        "subset": [
+          "wrist"
+        ],
+        "admissible": true,
+        "reach": 0.0023886625071466655,
+        "penetration": 0.002000000000000335,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 6.129856923045079e-13,
+        "max_ratio": 0.4463810862271146,
+        "effort": 0.7057596712467192,
+        "brace_force": 43.04024398246527,
+        "n_arm": 0,
+        "pressed": true,
+        "contact_gap_mm": {
+          "wrist": -2.0
+        },
+        "name": "wrist",
+        "qpos_file": "q_wrist.txt"
+      },
+      {
+        "subset": [
+          "elbow",
+          "forearm"
+        ],
+        "admissible": true,
+        "reach": 0.0021235273423133643,
+        "penetration": 0.003482570524733941,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 1.8519595173692956e-13,
+        "max_ratio": 0.4401336058526015,
+        "effort": 0.7575103241152854,
+        "brace_force": 80.9776884550315,
+        "n_arm": 2,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -3.48,
+          "forearm": -1.76
+        },
+        "name": "elbow+forearm",
+        "qpos_file": "q_elbow+forearm.txt"
+      },
+      {
+        "subset": [
+          "elbow",
+          "palm"
+        ],
+        "admissible": true,
+        "reach": 0.001994726171570209,
+        "penetration": 0.002,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 8.295937760496434e-13,
+        "max_ratio": 0.4466433751947111,
+        "effort": 0.655875876908422,
+        "brace_force": 67.15871585777553,
+        "n_arm": 2,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -2.0,
+          "palm": -2.0
+        },
+        "name": "elbow+palm",
+        "qpos_file": "q_elbow+palm.txt"
+      },
+      {
+        "subset": [
+          "elbow",
+          "wrist"
+        ],
+        "admissible": true,
+        "reach": 0.002428403057189478,
+        "penetration": 0.003022800588512932,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 1.1459416373693796e-13,
+        "max_ratio": 0.4439674810137059,
+        "effort": 0.6520317799082288,
+        "brace_force": 64.36277807022495,
+        "n_arm": 1,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -3.02,
+          "wrist": -2.0
+        },
+        "name": "elbow+wrist",
+        "qpos_file": "q_elbow+wrist.txt"
+      },
+      {
+        "subset": [
+          "forearm",
+          "palm"
+        ],
+        "admissible": true,
+        "reach": 0.0019220174039777864,
+        "penetration": 0.0020000000000002655,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 2.0954438306780012e-13,
+        "max_ratio": 0.4459044618945084,
+        "effort": 0.6494030502468784,
+        "brace_force": 69.4863653160063,
+        "n_arm": 2,
+        "pressed": true,
+        "contact_gap_mm": {
+          "forearm": -2.0,
+          "palm": -2.0
+        },
+        "name": "forearm+palm",
+        "qpos_file": "q_forearm+palm.txt"
+      },
+      {
+        "subset": [
+          "forearm",
+          "wrist"
+        ],
+        "admissible": true,
+        "reach": 0.0019130810557546837,
+        "penetration": 0.002,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 1.3921928466584583e-12,
+        "max_ratio": 0.44621107513995395,
+        "effort": 0.6449412040942866,
+        "brace_force": 67.54524814848965,
+        "n_arm": 1,
+        "pressed": true,
+        "contact_gap_mm": {
+          "forearm": -1.33,
+          "wrist": -2.0
+        },
+        "name": "forearm+wrist",
+        "qpos_file": "q_forearm+wrist.txt"
+      },
+      {
+        "subset": [
+          "palm",
+          "wrist"
+        ],
+        "admissible": false,
+        "reach": 2.237726045655905e-16,
+        "penetration": 0.002,
+        "placed": false,
+        "placed_by_body": false,
+        "base_res": 1.8240883206910814e-14,
+        "max_ratio": 0.44560806849525647,
+        "effort": 0.7505089159657752,
+        "brace_force": 29.571759726424172,
+        "n_arm": 1,
+        "pressed": true,
+        "contact_gap_mm": {
+          "palm": 9999.0,
+          "wrist": -2.0
+        },
+        "name": "palm+wrist"
+      },
+      {
+        "subset": [
+          "elbow",
+          "forearm",
+          "palm"
+        ],
+        "admissible": true,
+        "reach": 0.002211621442462001,
+        "penetration": 0.002000000000000314,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 6.422788738745676e-13,
+        "max_ratio": 0.44675709018474075,
+        "effort": 0.6808744988153052,
+        "brace_force": 69.6797014686068,
+        "n_arm": 3,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -2.0,
+          "forearm": -2.0,
+          "palm": -2.0
+        },
+        "name": "elbow+forearm+palm",
+        "qpos_file": "q_elbow+forearm+palm.txt"
+      },
+      {
+        "subset": [
+          "elbow",
+          "forearm",
+          "wrist"
+        ],
+        "admissible": true,
+        "reach": 0.0023178109401139862,
+        "penetration": 0.00317,
+        "placed": true,
+        "placed_by_body": true,
+        "base_res": 8.742609801708503e-15,
+        "max_ratio": 0.4421205159808175,
+        "effort": 0.6823069723051449,
+        "brace_force": 66.70705026184608,
+        "n_arm": 2,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -3.17,
+          "forearm": -0.66,
+          "wrist": -1.87
+        },
+        "name": "elbow+forearm+wrist",
+        "qpos_file": "q_elbow+forearm+wrist.txt"
+      },
+      {
+        "subset": [
+          "elbow",
+          "palm",
+          "wrist"
+        ],
+        "admissible": false,
+        "reach": 7.061236828750162e-05,
+        "penetration": 0.002000349050088168,
+        "placed": false,
+        "placed_by_body": false,
+        "base_res": 1.1581624814883824e-13,
+        "max_ratio": 0.4487045262944907,
+        "effort": 0.6663666855055399,
+        "brace_force": 59.47960230843324,
+        "n_arm": 2,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -2.0,
+          "palm": 9999.0,
+          "wrist": -2.0
+        },
+        "name": "elbow+palm+wrist"
+      },
+      {
+        "subset": [
+          "forearm",
+          "palm",
+          "wrist"
+        ],
+        "admissible": false,
+        "reach": 6.821092853621126e-05,
+        "penetration": 0.0020000070253968216,
+        "placed": false,
+        "placed_by_body": false,
+        "base_res": 1.0688631563188133e-12,
+        "max_ratio": 0.448815668584418,
+        "effort": 0.6625878809720551,
+        "brace_force": 62.74393657517795,
+        "n_arm": 2,
+        "pressed": true,
+        "contact_gap_mm": {
+          "forearm": 0.35,
+          "palm": 9999.0,
+          "wrist": -2.0
+        },
+        "name": "forearm+palm+wrist"
+      },
+      {
+        "subset": [
+          "elbow",
+          "forearm",
+          "palm",
+          "wrist"
+        ],
+        "admissible": false,
+        "reach": 0.00013845659761181452,
+        "penetration": 0.002,
+        "placed": false,
+        "placed_by_body": false,
+        "base_res": 1.172581719153971e-13,
+        "max_ratio": 0.44785563912227355,
+        "effort": 0.706149624053529,
+        "brace_force": 59.62572396335492,
+        "n_arm": 3,
+        "pressed": true,
+        "contact_gap_mm": {
+          "elbow": -2.0,
+          "forearm": 9999.0,
+          "palm": 9999.0,
+          "wrist": -2.0
+        },
+        "name": "elbow+forearm+palm+wrist"
+      }
+    ],
+    "ranked": [
+      "forearm+wrist",
+      "forearm+palm",
+      "elbow+wrist",
+      "elbow+palm",
+      "elbow+forearm+palm",
+      "elbow+forearm+wrist",
+      "wrist",
+      "elbow+forearm",
+      "elbow",
+      "forearm",
+      "palm",
+      "legs_only"
+    ]
+  },
+  "mesh_distance_definition": "Unsigned distance to triangles on the named body; mm.",
+  "poses": [
+    {
+      "mode": "elbow+forearm",
+      "qpos": [
+        0.23330217644160564,
+        0.026761417261925914,
+        0.9636543000841932,
+        0.9688129899928077,
+        -0.0017438696222351053,
+        0.24726879111381186,
+        0.016015438834107,
+        -0.018802164402100766,
+        -0.9746425972144747,
+        0.08861239183838207,
+        0.6721917726529626,
+        -0.19977515444162997,
+        0.03180772981510241,
+        -0.02941646168903897,
+        -0.9453445411140458,
+        -0.14354785755034769,
+        0.6336784814788475,
+        -0.1872998495993559,
+        0.032856395782618494,
+        -0.03294403800243497,
+        -0.7864331942697588,
+        0.1197854044722769,
+        0.44799932153677935,
+        0.25579307210070806,
+        0.17958260188314032,
+        -0.4625,
+        -0.73951456577441,
+        -1.3059725057934093,
+        -0.3695456446255381,
+        -0.035028231688007457,
+        0.8715431664401934,
+        -0.00011528090752476123,
+        0.06147920004287031,
+        0.002732317160425272,
+        1.5,
+        0.0,
+        1.035,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qpos_sha256": "8df3925f51adc6e402b30b6a15408faf45f1aef28e4f0051d2a3f4a6da6f9a65",
+      "sites": [
+        {
+          "site": "elbow",
+          "selected": true,
+          "body": "left_shoulder_yaw_link",
+          "body_offset": [
+            0.002,
+            -0.007,
+            -0.182
+          ],
+          "world_position": [
+            0.5383394626632607,
+            0.24571656132093533,
+            1.027274459760193
+          ],
+          "site_height_above_table_mm": 42.274459760192954,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "left_shoulder_yaw_link",
+            "distance_mm": 26.80501136056594
+          },
+          "nearest_same_body_table_contact_mm": 48.933732845941776,
+          "same_body_contact_count": 1
+        },
+        {
+          "site": "forearm",
+          "selected": true,
+          "body": "left_elbow_link",
+          "body_offset": [
+            0.11,
+            -0.03,
+            -0.015
+          ],
+          "world_position": [
+            0.6458856953466059,
+            0.2850805181315904,
+            1.0152618581019868
+          ],
+          "site_height_above_table_mm": 30.26185810198667,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "left_elbow_link",
+            "distance_mm": 10.591698639950229
+          },
+          "nearest_same_body_table_contact_mm": 29.635415149984617,
+          "same_body_contact_count": 3
+        },
+        {
+          "site": "palm",
+          "selected": false,
+          "body": "left_magpie_gripper",
+          "body_offset": [
+            0.12249999999999994,
+            3.0727000110974947e-09,
+            -0.018125000000000044
+          ],
+          "world_position": [
+            0.8666245128682121,
+            0.2536418979822429,
+            1.0450147072451892
+          ],
+          "site_height_above_table_mm": 60.01470724518909,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "magpie_base_bot",
+            "distance_mm": 10.001020881664864
+          },
+          "nearest_same_body_table_contact_mm": null,
+          "same_body_contact_count": 0
+        },
+        {
+          "site": "wrist",
+          "selected": false,
+          "body": "left_wrist_yaw_link",
+          "body_offset": [
+            0.0215,
+            0.0,
+            -0.0425
+          ],
+          "world_position": [
+            0.793686600443774,
+            0.3113255098075281,
+            0.9986703172615592
+          ],
+          "site_height_above_table_mm": 13.670317261559095,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "wrist_yaw_link",
+            "distance_mm": 1.0161642473950211e-06
+          },
+          "nearest_same_body_table_contact_mm": 31.720878476672937,
+          "same_body_contact_count": 1
+        }
+      ],
+      "contacts": [
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom": null,
+          "body_id": 18,
+          "pos": [
+            0.535852766561969,
+            0.26695192488218583,
+            0.983258713859898
+          ],
+          "gap_mm": -3.4825722802038768
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": "left_forearm_pad",
+          "body_id": 19,
+          "pos": [
+            0.5536629004620321,
+            0.2805998281142071,
+            0.984280134969451
+          ],
+          "gap_mm": -1.4397300610980226
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": "left_forearm_pad",
+          "body_id": 19,
+          "pos": [
+            0.6456997417634258,
+            0.2852855228394679,
+            0.9856277354484209
+          ],
+          "gap_mm": 1.2554708968417136
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": null,
+          "body_id": 19,
+          "pos": [
+            0.5351093985871662,
+            0.27615744288698085,
+            0.984048587822703
+          ],
+          "gap_mm": -1.9028243545939902
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.7694232192592926,
+            0.29704488240458227,
+            0.984056414777738
+          ],
+          "gap_mm": -2.095218458615094
+        }
+      ]
+    },
+    {
+      "mode": "elbow+palm",
+      "qpos": [
+        0.2289420224591716,
+        0.007057545113670646,
+        0.9629553575557963,
+        0.9689982874093183,
+        0.0028623640986158503,
+        0.2467095920785999,
+        0.012980872312163673,
+        -0.017299020627757004,
+        -0.9671801571489074,
+        0.104932682669778,
+        0.6518707334485007,
+        -0.18479370456802252,
+        0.008852772689900933,
+        -0.023643017670074245,
+        -0.9666152800413261,
+        -0.1305508528385502,
+        0.6634724640922163,
+        -0.19597105550859437,
+        0.00968209488547968,
+        -0.01071022194150352,
+        -0.7894456864781083,
+        0.03919723009457829,
+        0.45672750638103216,
+        0.2202107627330237,
+        0.09811226905489283,
+        0.030878074571101456,
+        -0.7410457514734042,
+        -1.3157573698271228,
+        -0.35489767806280526,
+        -0.02962238143239945,
+        0.8673135972694656,
+        9.576816727163423e-05,
+        0.05971946489005273,
+        0.005910495361098555,
+        1.5,
+        0.0,
+        1.035,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qpos_sha256": "d0c5e64377763ec87a66c6aa814c70c6a0398e2fe743533b691e27eeff0cc02d",
+      "sites": [
+        {
+          "site": "elbow",
+          "selected": true,
+          "body": "left_shoulder_yaw_link",
+          "body_offset": [
+            0.002,
+            -0.007,
+            -0.182
+          ],
+          "world_position": [
+            0.5280243511552554,
+            0.2021307930242932,
+            1.0299461592963384
+          ],
+          "site_height_above_table_mm": 44.94615929633827,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "left_shoulder_yaw_link",
+            "distance_mm": 26.80501136056594
+          },
+          "nearest_same_body_table_contact_mm": 49.57771870722252,
+          "same_body_contact_count": 2
+        },
+        {
+          "site": "forearm",
+          "selected": false,
+          "body": "left_elbow_link",
+          "body_offset": [
+            0.11,
+            -0.03,
+            -0.015
+          ],
+          "world_position": [
+            0.6358815279538351,
+            0.24091540942211176,
+            1.0183647099563653
+          ],
+          "site_height_above_table_mm": 33.3647099563652,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "left_elbow_link",
+            "distance_mm": 10.591698639950229
+          },
+          "nearest_same_body_table_contact_mm": 98.27665155598955,
+          "same_body_contact_count": 2
+        },
+        {
+          "site": "palm",
+          "selected": true,
+          "body": "left_magpie_gripper",
+          "body_offset": [
+            0.12249999999999994,
+            3.0727000110974947e-09,
+            -0.018125000000000044
+          ],
+          "world_position": [
+            0.8592800286675253,
+            0.21461213344006716,
+            1.0073152400191385
+          ],
+          "site_height_above_table_mm": 22.31524001913843,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "magpie_base_bot",
+            "distance_mm": 10.001020881664864
+          },
+          "nearest_same_body_table_contact_mm": null,
+          "same_body_contact_count": 0
+        },
+        {
+          "site": "wrist",
+          "selected": false,
+          "body": "left_wrist_yaw_link",
+          "body_offset": [
+            0.0215,
+            0.0,
+            -0.0425
+          ],
+          "world_position": [
+            0.7692042451479469,
+            0.26035466811098673,
+            0.983043561663208
+          ],
+          "site_height_above_table_mm": -1.9564383367920435,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "wrist_yaw_link",
+            "distance_mm": 1.0161642473950211e-06
+          },
+          "nearest_same_body_table_contact_mm": 38.840902082655546,
+          "same_body_contact_count": 5
+        }
+      ],
+      "contacts": [
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom": null,
+          "body_id": 18,
+          "pos": [
+            0.5288301288965807,
+            0.22156395967260448,
+            0.9839999999909714
+          ],
+          "gap_mm": -2.000000018057446
+        },
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom": null,
+          "body_id": 18,
+          "pos": [
+            0.5251072217334686,
+            0.22054143780522925,
+            0.9840061037140992
+          ],
+          "gap_mm": -2.000000018057446
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": "left_forearm_pad",
+          "body_id": 19,
+          "pos": [
+            0.5436045798444618,
+            0.2365286253732101,
+            0.9848382843433403
+          ],
+          "gap_mm": -0.3234313133193903
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": null,
+          "body_id": 19,
+          "pos": [
+            0.525202075298211,
+            0.23278092837831538,
+            0.9845150102010223
+          ],
+          "gap_mm": -0.9699795979557502
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.7415227932687655,
+            0.2975,
+            0.984043414317606
+          ],
+          "gap_mm": -1.9131713647881872
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.7578969523220791,
+            0.2975,
+            0.9840360949873683
+          ],
+          "gap_mm": -1.9278100252633892
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.793528889362328,
+            0.21659898520893076,
+            0.9840000000000003
+          ],
+          "gap_mm": -1.9999999999994813
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.7195241247702652,
+            0.2541794004555228,
+            0.9840424486956901
+          ],
+          "gap_mm": -1.9151026086198053
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.8188843655256287,
+            0.2665299357664506,
+            0.9840011129675179
+          ],
+          "gap_mm": -1.9977740649643017
+        }
+      ]
+    },
+    {
+      "mode": "forearm+wrist",
+      "qpos": [
+        0.22833128764920788,
+        0.007216880875105324,
+        0.9629392163099711,
+        0.9691028831543816,
+        0.002447811368840925,
+        0.24629205780220362,
+        0.01318454947743501,
+        -0.019043530516176813,
+        -0.9677255569531015,
+        0.1067064281101761,
+        0.6533876260551116,
+        -0.18489282097916646,
+        0.008871776639809606,
+        -0.02514012128076654,
+        -0.9657924854821209,
+        -0.128940321028763,
+        0.6623213445718921,
+        -0.19477314543432267,
+        0.00965227267151121,
+        -0.006100726811062619,
+        -0.7853301252786824,
+        -0.07468759103273796,
+        0.47424530890707695,
+        0.16317960411801066,
+        0.21908450975626115,
+        -0.17793420241260471,
+        -0.7413148252332601,
+        -1.3133794553671814,
+        -0.35953818047947234,
+        -0.031344287717004045,
+        0.867212857328223,
+        3.6083461956391177e-05,
+        0.05967746803756959,
+        0.004906105433021275,
+        1.5,
+        0.0,
+        1.035,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qpos_sha256": "01ef87c22d8c01993a119bd27b93af3324b8cee5576e3110ff26209deeaeafe6",
+      "sites": [
+        {
+          "site": "elbow",
+          "selected": false,
+          "body": "left_shoulder_yaw_link",
+          "body_offset": [
+            0.002,
+            -0.007,
+            -0.182
+          ],
+          "world_position": [
+            0.5183650097745741,
+            0.16726995428017025,
+            1.0319174662650379
+          ],
+          "site_height_above_table_mm": 46.91746626503779,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "left_shoulder_yaw_link",
+            "distance_mm": 26.80501136056594
+          },
+          "nearest_same_body_table_contact_mm": 50.11429221384616,
+          "same_body_contact_count": 1
+        },
+        {
+          "site": "forearm",
+          "selected": true,
+          "body": "left_elbow_link",
+          "body_offset": [
+            0.11,
+            -0.03,
+            -0.015
+          ],
+          "world_position": [
+            0.6266057678083818,
+            0.20500581409762667,
+            1.0197614695727968
+          ],
+          "site_height_above_table_mm": 34.761469572796685,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "left_elbow_link",
+            "distance_mm": 10.591698639950229
+          },
+          "nearest_same_body_table_contact_mm": 98.94361015597234,
+          "same_body_contact_count": 2
+        },
+        {
+          "site": "palm",
+          "selected": false,
+          "body": "left_magpie_gripper",
+          "body_offset": [
+            0.12249999999999994,
+            3.0727000110974947e-09,
+            -0.018125000000000044
+          ],
+          "world_position": [
+            0.8513158062838457,
+            0.1803784186739067,
+            1.031279547758091
+          ],
+          "site_height_above_table_mm": 46.27954775809084,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "magpie_base_bot",
+            "distance_mm": 10.001020881664864
+          },
+          "nearest_same_body_table_contact_mm": null,
+          "same_body_contact_count": 0
+        },
+        {
+          "site": "wrist",
+          "selected": true,
+          "body": "left_wrist_yaw_link",
+          "body_offset": [
+            0.0215,
+            0.0,
+            -0.0425
+          ],
+          "world_position": [
+            0.7673567991062298,
+            0.22833291842192824,
+            0.993248091137735
+          ],
+          "site_height_above_table_mm": 8.248091137734948,
+          "nearest_mesh": {
+            "geom": null,
+            "mesh": "wrist_yaw_link",
+            "distance_mm": 1.0161642473950211e-06
+          },
+          "nearest_same_body_table_contact_mm": 49.86736224951672,
+          "same_body_contact_count": 1
+        }
+      ],
+      "contacts": [
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom": null,
+          "body_id": 18,
+          "pos": [
+            0.517964802945307,
+            0.18209125226807518,
+            0.9840466897459308
+          ],
+          "gap_mm": -1.9066205081392784
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": "left_forearm_pad",
+          "body_id": 19,
+          "pos": [
+            0.5343297921800381,
+            0.20053889414684545,
+            0.9843350819685314
+          ],
+          "gap_mm": -1.3298360629372743
+        },
+        {
+          "body": "left_elbow_link",
+          "geom": null,
+          "body_id": 19,
+          "pos": [
+            0.5170251669539703,
+            0.19335814483574015,
+            0.9839999999946125
+          ],
+          "gap_mm": -2.0000000107751603
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom": "left_wrist_pad",
+          "body_id": 22,
+          "pos": [
+            0.7187100816769288,
+            0.22244025252384597,
+            0.9840000000000001
+          ],
+          "gap_mm": -1.9999999999998561
+        }
+      ]
+    }
+  ]
+}

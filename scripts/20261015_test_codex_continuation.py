@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Offline queue tests. No Codex invocation, model usage or systemd mutation."""
+import importlib.util
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest import mock
+
+spec = importlib.util.spec_from_file_location(
+    'continuation', Path(__file__).with_name('20261015_codex_continuation.py'))
+driver = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(driver)
+
+
+class QueueTests(unittest.TestCase):
+    def test_quota(self):
+        self.assertEqual(driver.quota_wait(None, 1000), 0)
+        self.assertEqual(driver.quota_wait({'primary': {
+            'used_percent': 80, 'resets_at': 1200}}, 1000), 1260)
+        self.assertEqual(driver.quota_wait({'primary': {
+            'used_percent': 99, 'resets_at': 900}}, 1000), 0)
+        self.assertEqual(driver.quota_wait({
+            'primary': {'used_percent': 85, 'resets_at': 1200},
+            'secondary': {'used_percent': 90, 'resets_at': 2200}}, 1000), 2260)
+
+    def test_result_gate(self):
+        original = driver.ROOT
+        with tempfile.TemporaryDirectory() as path:
+            driver.ROOT = Path(path)
+            try:
+                step = {'id': 'probe', 'required_artifacts': ['result.txt']}
+                def fresh():
+                    return {'status': 'running', 'completed': []}
+                result = {'status': 'checkpoint_complete'}
+                failed = driver.reconcile(fresh(), step, result, 0, 1000)
+                self.assertEqual(failed['completed'], [])
+                self.assertIn('Missing artifacts', failed['last_error'])
+                (driver.ROOT / 'result.txt').write_text('Measured result')
+                self.assertEqual(driver.reconcile(fresh(), step, result, 0, 1000)['completed'], ['probe'])
+                failed = driver.reconcile(fresh(), step, result, 1, 1000)
+                self.assertEqual(failed['completed'], [])
+                self.assertEqual(failed['next_at'], 22600)
+                self.assertEqual(driver.reconcile(fresh(), step, {'status': 'blocked'}, 0, 1000)['status'], 'blocked')
+                self.assertEqual(driver.reconcile(fresh(), step, {'status': 'continue'}, 0, 1000)['completed'], [])
+            finally:
+                driver.ROOT = original
+
+    def test_save(self):
+        with tempfile.TemporaryDirectory() as path:
+            dst = Path(path) / 'state.json'
+            driver.save(dst, {'checkpoint': 1})
+            self.assertEqual(json.loads(dst.read_text()), {'checkpoint': 1})
+            self.assertFalse(dst.with_suffix('.tmp').exists())
+
+    def test_cleanup_only_own_attempt(self):
+        with tempfile.TemporaryDirectory() as path:
+            root = Path(path)
+            for pid, marker in [('101', b'CMPC_CONTINUATION_TAG=our-attempt\0'),
+                                ('102', b'CMPC_CONTINUATION_TAG=another-attempt\0')]:
+                entry = root / pid
+                entry.mkdir()
+                (entry / 'environ').write_bytes(marker)
+                (entry / 'cgroup').write_text('0::/user.slice/app.slice/run-test.scope\n')
+            with mock.patch.object(driver, 'Path', return_value=root), \
+                 mock.patch.object(driver.os, 'kill') as kill, \
+                 mock.patch.object(driver.subprocess, 'run') as run:
+                self.assertEqual(driver.cleanup_tagged('our-attempt'), 1)
+                kill.assert_called_once_with(101, driver.signal.SIGTERM)
+                run.assert_called_once_with(['systemctl', '--user', '--no-block',
+                                             'stop', 'run-test.scope'], check=False)
+
+
+if __name__ == '__main__':
+    unittest.main()

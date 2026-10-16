@@ -1,0 +1,23 @@
+Status: active, scheduled Codex continuation
+
+Task: On 2026-10-15 the owner asked to revisit Crocoddyl MPC after the leaning paper matured: sim-to-real transfer, base estimation, approximately 90 s maneuvers, commandability, recovery, foot slip and physically meaningful brace selection. They requested iterative work across usage windows, with usage consumption kept under control.
+
+Read first: `CLAUDE.md`; `/home/humanoid/.claude/CLAUDE.md` Writing and Compute safety; `docs/lean/20261015-cmpc-contact-reassessment.html`; `docs/lean/media/20261015-contact-audit/20261015-audit.json`; `docs/handoff/20261015-cmpc-queue.json`.
+
+State: Baseline is `aba958e`. Three saved poses were rendered; selected sites differ from contacting surfaces by 29.6–98.9 mm. Elbow+palm has zero gripper table contacts while the wrist touches. The predictor fixes both feet with ContactModel6D in every phase. Static probe: 2.24 s, 1,157,776 KiB RSS, six analytic distance checks passed. Current hardware export and dynamic disturbances remain untested. `studies/bvs_plots.py` was already modified before this task and belongs to other work.
+
+Continuation verification: Codex CLI 0.162.0-alpha.17.2 authenticated as gpt-6-astra and returned a tool-free response in 4.15 s (187,452 KiB RSS). Offline runner tests passed. The installed systemd timer is enabled and active; its service completed a check with exit 0. At 82% five-hour usage it deferred the first research launch until after 22:20 MDT on 2026-10-15, with the next eligible timer tick at 22:30. No research worker has launched yet. Automatic launching after an actual quota reset remains unobserved.
+
+Next: The finite queue in `20261015-cmpc-queue.json` specifies geometry, foot_motion and state_frames in order. A fresh Codex session performs one checkpoint per launch. Runtime state and logs are under `studies/runs/20261015-cmpc-continuation/`. Update this State after each useful measurement; never edit queue state or budgets from a worker.
+
+Claimed: New dated CMPC study scripts and reports; `docs/lean/media/20261015-contact-audit/`; `studies/runs/20261015-cmpc-*/`; `docs/index.html`; this note's State. Existing planner/plant code is read-only unless an opt-in experiment needs a minimal change; document that change and preserve defaults. The driver and queue configuration belong to the supervising chat.
+
+Waiting on owner: Hardware runs and any multi-hour grid. These are beyond the three queued checkpoints. No answer is needed for the finite queue.
+
+Do not: Modify certified defaults, horizon 35, dt 0.02, SITES5 or ARM_SITES membership; delete earlier runs; push; use ground truth as a default observation; spawn agents; launch detached numerical processes; arm a second queue; resume the owner's live Codex thread. New simulations need measured resguard caps and videos. Check `~/.claude/resguard_events.jsonl` before and after numerical work, report new kills in this note and the result page. Follow the local autopilot guide only if supervising an existing Claude job; do not type into its tmux session.
+
+Research context: `croco_modes.contact_gaps` assigns a table contact to the nearest site within 100 mm, including other bodies. `croco_bridge.mj_site_frames` applies the site's offset to the named body, so a nearby wrist contact can certify a palm force at a different point. The August mode sweep favored elbow+wrist near 0.90 m, forearm+palm at 0.98 m, forearm+wrist at 1.06–1.30 m; endpoint failures remained. S17 base-position bias 10 mm reduced success from 5/6 to 3/6 after launch fixes. Its quaternion multiplication bug was fixed; do not revive that false result. Verify held plans retain their full horizon; an old endpoint clamp reduced it to one node.
+
+Literature: https://h12leaner.github.io/paper.pdf?v=4; https://arxiv.org/html/2610.10465v1; https://arxiv.org/html/2511.09484v1. LLA-MPPI selects a physics model from short-transition residuals; SPIDER includes optimization across sampled model variants. Both use sampling. The proposed hybrid needs contact physics and observation tests before a solver-family conclusion.
+
+Continuation controls: `python scripts/20261015_codex_continuation.py status` reads progress and local usage telemetry. `systemctl --user stop codex-cmpc-research.timer codex-cmpc-research.service` stops future and current launches. The timer checks every 15 min, starts no session before the configured time, pauses at 80% five-hour or 90% weekly usage until the reported reset, and stops after six launches or three completed checkpoints. Each session has a 40 min timeout and at most 20 min numerical work. Authentication and transient failures back off six hours. The current chat is not resumed or modified.

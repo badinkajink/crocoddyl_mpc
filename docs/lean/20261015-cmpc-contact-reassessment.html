@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contact geometry and foot motion in the H12 Crocoddyl controller</title>
+<style>
+body{max-width:1000px;margin:40px auto;padding:0 20px;font:16px/1.6 system-ui;color:#222;background:#fafafa}
+h1{font-size:1.8rem;line-height:1.25}h2{font-size:1.25rem;margin-top:2em}a{color:#126397}
+table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;padding:9px;border-bottom:1px solid #ccc}
+figure{margin:24px 0}img{width:100%;height:auto}figcaption,.meta{color:#555;font-size:.9rem}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:15px;background:#eee;font-size:.8rem}
+code{font-size:.9em}.terms{padding:14px 20px;background:#edf2f4}
+</style>
+<h1>Contact geometry and foot motion in the H12 Crocoddyl controller</h1>
+<p class="meta">15 October 2026 · Repository baseline <code>aba958e</code> · Static geometry audit and research plan</p>
+
+<p>The current controller fixes both feet throughout every phase, and its brace points can differ from the contacting surfaces by centimetres. In an archived elbow+palm pose, the palm point is 22.3 mm above the table with zero gripper contacts; the wrist pad touches instead. A Crocoddyl revisit should begin with physical contact patches and foot motion. The earlier target sweep already selected different braces at different reach distances. Correcting the geometry provides a way to test whether those choices improve recovery and tolerance to estimation error.</p>
+
+<div class="terms"><strong>Terms and metrics.</strong> CMPC means the Crocoddyl model predictive controller in this repository. Site height is a point's world height minus the tabletop height, in mm; zero is on the plane. Contact distance is the Euclidean distance from a site to the closest MuJoCo table-contact position on that same body, in mm. Mesh distance is the unsigned minimum distance to triangles of meshes attached to the named body, in mm; it gives neither an inside/outside classification nor a collision-hull distance. A contact count records geometry intersections after forward evaluation at a saved pose. It measures no sustained load. Task duration is elapsed physical time from the lean command through stable recovery; solver time is computation per control update.</div>
+
+<h2>Contact points in saved poses</h2>
+<p>The probe loaded the staged Magpie model and three poses from <code>studies/runs/wristcell</code>. It ran forward kinematics and collision detection without advancing physics. The cell's manifest records commit <code>62bacee</code>. The JSON records the loaded XML hashes, geometry-array hashes, site definitions and full pose vectors.</p>
+<table>
+<tr><th>Mode</th><th>Selected site</th><th>Site height (mm)</th><th>Contact distance (mm)</th><th>Same-body contacts</th></tr>
+<tr><td>Elbow + forearm</td><td>Elbow</td><td>42.3</td><td>48.9</td><td>1</td></tr>
+<tr><td>Elbow + forearm</td><td>Forearm</td><td>30.3</td><td>29.6</td><td>3</td></tr>
+<tr><td>Elbow + palm</td><td>Elbow</td><td>44.9</td><td>49.6</td><td>2</td></tr>
+<tr><td>Elbow + palm</td><td>Palm</td><td>22.3</td><td>No contact</td><td>0</td></tr>
+<tr><td>Forearm + wrist</td><td>Forearm</td><td>34.8</td><td>98.9</td><td>2</td></tr>
+<tr><td>Forearm + wrist</td><td>Wrist</td><td>8.2</td><td>49.9</td><td>1</td></tr>
+</table>
+<p>The closest rendered mesh lies 26.8 mm from the elbow point, 10.6 mm from the forearm point, 10.0 mm from the palm point and less than 0.001 mm from the wrist point. An interior reference point can describe a rigid-body constraint, but a point force at that reference has a different moment arm from force at the surface. The correct force location therefore matters even when the link visibly touches.</p>
+
+<figure><a href="media/20261015-contact-audit/20261015-elbow_palm.png"><img src="media/20261015-contact-audit/20261015-elbow_palm.png" alt="Saved elbow and palm pose, with visual and collision geometry. The wrist rests on the table while the gripper is elevated."></a><figcaption>Elbow + palm. Left: full pose. Centre: visual geometry and named sites. Right: collision geometry. The wrist pad reaches the table before the gripper. Labels identify the reference points; some points are occluded by the body surface.</figcaption></figure>
+<figure><a href="media/20261015-contact-audit/20261015-forearm_wrist.png"><img src="media/20261015-contact-audit/20261015-forearm_wrist.png" alt="Forearm and wrist pose showing the forearm contact near its elbow end and wrist pad near the tabletop."></a><figcaption>Forearm + wrist. The nearest forearm-body contact is 98.9 mm from the forearm site. A patch needs a location and an extent along the link.</figcaption></figure>
+<p><code>croco_modes.contact_gaps</code> assigns each table contact to the nearest requested site within a 100 mm radius. It permits a contact on another body to satisfy the site. In the point-contact optimizer, <code>croco_bridge.mj_site_frames</code> places the constraint and force frame at the site's body offset. These two definitions permit different force locations. Patch certification should check body identity, surface location and the allowed contact region together.</p>
+
+<h2>Fixed feet and base-state errors</h2>
+<p><code>croco_plan.LeanOCP._contacts</code> adds a six-dimensional contact constraint for each foot in every phase. The reference transforms are captured at the initial pose. The prediction consequently excludes foot sliding, lift and corrective stepping. Friction-cone penalties score the resulting wrench; they do not create sliding dynamics. This restriction belongs to our action model and schedule. Crocoddyl can optimize other dynamics and contact schedules.</p>
+<p>Updating an anchor after observed slip is a useful baseline for adaptation. Predicting slip requires a contact model that permits tangential motion and loss of support. A first experiment should compare measured MuJoCo sole motion with CMPC predictions during a small lateral disturbance, then test a smooth frictional contact model on the same state and input sequence. A full humanoid solve follows only if force, slip and derivative errors are acceptable in that smaller test.</p>
+<p>The <a href="2026-08-14_robustness.html">August robustness report</a> already found base-position sensitivity after correcting launch and quaternion bugs: success fell from 5/6 nominal runs to 3/6 with a 10 mm position-bias distribution. Combined degraded sensing gave 2/6 at 10 mm and 0/6 at 20 mm. These small experiments used older assets. The current <code>default_sense</code> draws a constant base bias per episode. A consistent world-frame translation or yaw rotation of the robot, table, goals and contact anchors should preserve the physical problem. Applying the error only to the estimated base creates a relative geometry error. Both cases need separate tests, followed by slow drift, delay and slip-dependent estimator errors.</p>
+<p>The leaning paper's 210 mm/min value describes the fused Internal + LiDAR estimate through a foot-anchoring residual. Foot slip violates the stationary-foot assumption in that residual. A new estimator comparison needs synchronized raw odometry, fused state and independent reference motion before using this number to characterize FAST-LIO accuracy.</p>
+
+<h2>Brace selection and task performance</h2>
+<p>The five-site set gives 32 subsets including no brace. Those subsets specify simultaneous fixed points, with predetermined phases. Contact location within a surface and the timing of contact changes remain additional choices. A useful first representation is a small set of physical patches with continuous position within each patch, followed by optimization over a few feasible contact schedules. It can retain the discrete search while exposing its sensitivity to patch resolution.</p>
+<p>The <a href="2026-08-22_cmpc_vs_mjpc.html">August target sweep</a> selected elbow+wrist at 0.90 m, forearm+palm at 0.98 m, and forearm+wrist from 1.06 to 1.30 m. The default elbow+forearm was never the cheapest selected mode in that comparison. Selection reduced reported brace force by approximately 25–30%, but failures remained at the envelope ends. Geometry corrections can change that ranking. The same archive documents a separate controller bug in which the horizon shrank at a held plan's end; a new benchmark must verify its deployed hold path.</p>
+<p>The <a href="https://h12leaner.github.io/paper.pdf?v=4">current leaning paper</a> reports 48/54 commanded reaches and 44/54 complete cycles, using 20 rollouts at 34 Hz. The owner's approximately 90 s maneuver duration should be measured from command to stable recovery. Controller latency alone cannot explain that duration. New trials should record approach, bracing, reaching and recovery times, intervention count, foot displacement and contact loads. Both controllers need the same robot assets, observations and task success criteria.</p>
+
+<h2>Model adaptation and multiple simulated worlds</h2>
+<p><a href="https://arxiv.org/html/2610.10465v1">LLA-MPPI</a> compares short predictions from a bank of physics models against measured transitions, then uses the selected model for MPPI planning. Its GPU model evaluation and CPU planning run asynchronously. <a href="https://arxiv.org/html/2511.09484v1">SPIDER</a> includes trajectory optimization against the worst cost among sampled dynamics variants, alongside demonstration retargeting and temporary contact guidance. Model selection and optimization across model variants offer separate experiments for this project; both papers use sampling methods.</p>
+<p>A model bank can vary friction, compliance and actuator response around a physically credible contact model. Every candidate with fixed feet still excludes slip. Estimator bias can also resemble a dynamics error in prediction residuals; that is a risk to test here. The proposed comparison includes a fixed model, online model selection and optimization across model variants, with measured-state and ground-truth diagnostic inputs scored separately. Ground truth remains an evaluation instrument.</p>
+
+<h2>Future work</h2>
+<p>The first continuation compares the staged robot against the current exported hardware assets, produces a surface catalogue with normals and extents, and renders candidate force locations. It preserves the certified site set and writes new candidates as an opt-in configuration. The hypothesis fails if corrected sites reproduce the existing force locations and mode ranking within numerical tolerance.</p>
+<p>The second continuation constructs a short foot-disturbance experiment and records tangential displacement, support loss, predicted contact force and recovery. Fixed anchors and anchors updated from the estimated contact pose are compared first. A slipping-foot prediction model is justified by remaining prediction error after the anchor update.</p>
+<p>The third continuation implements the frame-consistency check and a small base-error comparison using a held plan with a full horizon. Results determine whether the next investment is contact dynamics, estimator coupling or contact-schedule search. Each checkpoint writes its command, model provenance, runtime and a result page. Numerical work is serial and capped at 20 minutes per checkpoint; a larger grid requires the owner’s budget.</p>
+
+<h2>Reproduction and limitations</h2>
+<p><a href="media/20261015-contact-audit/20261015-audit.json">Geometry measurements and provenance</a> · <a href="../../studies/20261015_contact_audit.py">Probe source</a> · <a href="media/20261015-contact-audit/20261015-elbow_forearm.png">Elbow + forearm render</a></p>
+<pre>cd /home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc
+~/.claude/bin/resguard.sh status
+~/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v timeout 45s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl LEAN_TASK_DIR="$PWD/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean" taskset -c 18 ~/miniconda3/envs/croco/bin/python studies/20261015_contact_audit.py</pre>
+<p>The final probe took 2.24 s with peak RSS 1,157,776 KiB. Six analytic point-to-triangle cases passed, including an edge, a corner and a degenerate triangle. The XML provenance reader removes comments before parsing because archived comments contain double hyphens; the recorded hashes cover the original bytes.</p>
+<p>The renders describe archived poses evaluated against the currently staged model. The current hardware export has not yet been compared. Static intersection counts give no evidence about sustainable loads, dynamics or hardware success. The measurement hashes identify the tested geometry; the previous cell manifest alone does not identify every historical mesh.</p>
+</html>

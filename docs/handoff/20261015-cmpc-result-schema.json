@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "status": {"type": "string", "enum": ["checkpoint_complete", "continue", "blocked"]},
+    "summary": {"type": "string"},
+    "artifacts": {"type": "array", "items": {"type": "string"}},
+    "remaining": {"type": "string"}
+  },
+  "required": ["status", "summary", "artifacts", "remaining"]
+}

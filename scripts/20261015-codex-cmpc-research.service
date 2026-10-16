@@ -1,0 +1,11 @@
+[Unit]
+Description=Finite Codex CMPC research continuation
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Programs/Humanoid_Simulation/crocoddyl_mpc
+ExecStart=/usr/bin/python3 %h/Programs/Humanoid_Simulation/crocoddyl_mpc/scripts/20261015_codex_continuation.py tick
+ExecStopPost=/usr/bin/python3 %h/Programs/Humanoid_Simulation/crocoddyl_mpc/scripts/20261015_codex_continuation.py cleanup
+TimeoutStartSec=45min
+Nice=10
+KillMode=control-group

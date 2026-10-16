@@ -1,0 +1,11 @@
+[Unit]
+Description=Check finite Codex CMPC queue every 15 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00,15,30,45:00
+Persistent=true
+AccuracySec=15s
+Unit=codex-cmpc-research.service
+
+[Install]
+WantedBy=timers.target
