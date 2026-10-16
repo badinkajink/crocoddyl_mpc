@@ -1,0 +1,2190 @@
+{
+  "schema_version": 1,
+  "enabled_by_default": false,
+  "certified": false,
+  "created_utc": "2026-10-16T16:54:48Z",
+  "units": {
+    "positions": "m",
+    "normals": "unit vectors",
+    "area": "mm^2",
+    "distances": "mm"
+  },
+  "model_comparison": "20261016-model-comparison.json",
+  "model_comparison_sha256": "f2af1ef2eae6d3b1c4eb97753a81509e76ca5826ee3d75e3e1713d16a5b31ea7",
+  "staged_model_path": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+  "required_staged_xml_sha256": {
+    "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+    "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/h1_2/h1_2_modified_magpie.xml": "aa2521f9fb13c5f7d06a772fd90b53442acdc4d6a1715e9d5797346eb8755844",
+    "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/lean.xml": "a7714c822237be759c355656feae403d2092cfd4a622567d4019831cacfbfb1d",
+    "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/common.xml": "958ad3b0b6c25796e78670b1bea7aec9d10a727873988bbc56a2ef225efc4797",
+    "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/assets/floor.xml": "6f54b0cba9c629d831139defa175ff55c9e8fbb0c2cc8ee76b37109feea3d3d3"
+  },
+  "required_staged_array_sha256": {
+    "body_pos": "00d119337c424940be92d15d7417054ae2b34fbe384aa5607bde5cb609f7514c",
+    "body_quat": "449ca587db37ae25fd2e94a42f938424fbc9a80593bf9d198e0374b95d60e53d",
+    "body_parentid": "a8096a5cf7eb057072d0d692a6530c4431aee153fed73dbd9e356d8beaf13670",
+    "jnt_pos": "030dd256c2a1dda892b0e57157ec52f9ae5fd1e054d0c66380fae1cb6c09c477",
+    "jnt_axis": "d919355f55109f8c45b6d0f9aeb336b61fde4c5b8a5fac3bf4f4f6282eb11a0c",
+    "geom_pos": "a55da24ddd15207d1d020caed6da9913255f7916ba27fa16ce0426db82853ca2",
+    "geom_quat": "10b12d82111f8ce6ed85caf4d8700a5701894e9bc78be48f7cbbbe43e19ec4b1",
+    "geom_size": "1e6dd0cdf7b1f12849c7529d3032c0b928ead59cab3a56eb703e6f95fca71a83",
+    "geom_type": "af69a7fd4f0b40dcbef3924fafd18c0a5c2ede64df5a18bde42c7bc4f032453d",
+    "geom_bodyid": "a31b4c8cf1ffa7dbd8611370d8e27fae22680247f8ba66a2a22ced11fcf595af",
+    "geom_dataid": "612c618dbf81df85b2b2d53c65066cf2a5baac12d2931e65ff31bf7220b25f1b",
+    "geom_contype": "68097fe1293ef86a192a8fbe1900e282905ce2add7bb3421b7cd959e459618c8",
+    "geom_conaffinity": "68097fe1293ef86a192a8fbe1900e282905ce2add7bb3421b7cd959e459618c8",
+    "mesh_vert": "337838746b890d4203649037cc884ef61c3ce5d4c69c4d54d641222511a5d2c9",
+    "mesh_face": "cfb2c6ebc64801508550f5025894d07e859f641ea9b21b5d94ad3446e77b4ea1",
+    "mesh_vertadr": "114fce30d8ab3d44bb828e9008b2a2905c3a18de04f9239f7159c177ef846447",
+    "mesh_vertnum": "cc586ec854adf6f049b07817ee198a674134caaa8faf6fe3790736832ce3d376",
+    "mesh_faceadr": "59020317f702ba3759eb417389ca2c64187611f472178788192042110c68cfdd",
+    "mesh_facenum": "63f143cd4d484887c4d8811cfec53c2c8c7bc6a0266deb769282817616206782",
+    "pair_geom1": "27c659c6a989b64823d891d50d318d7f02993356f74284ecef9324acc6acd0fe",
+    "pair_geom2": "6c2f18e757d3d836c7fe199775c14989fb0d4d101bb4d42dff3274478f8a7603"
+  },
+  "activation": "Standalone research data only. A future consumer must opt in, verify hashes, require body and geom identity, then test triangle-union membership. No existing planner reads this file.",
+  "normal_convention": "Outward from robot solid; compressive support force on robot is opposite this vector.",
+  "comparisons": {
+    "shared_mesh_hashes": [
+      {
+        "mesh": "magpie_base_bot",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_base_bot",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_base_top",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_base_top",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_left_crank",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_left_crank",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_right_crank",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_right_crank",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_left_finger",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_left_finger",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_right_finger",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_right_finger",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_left_rocker",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_left_rocker",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "magpie_right_rocker",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "magpie_right_rocker",
+        "other_model": "lean_export",
+        "exists": false,
+        "bytes_equal": false
+      },
+      {
+        "mesh": "pelvis",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "pelvis",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_hip_yaw_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_hip_yaw_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_hip_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_hip_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_hip_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_hip_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_knee_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_knee_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_ankle_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_ankle_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_ankle_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_ankle_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_hip_yaw_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_hip_yaw_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_hip_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_hip_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_hip_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_hip_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_knee_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_knee_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_ankle_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_ankle_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_ankle_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_ankle_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "torso_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "torso_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_shoulder_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_shoulder_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_shoulder_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_shoulder_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_shoulder_yaw_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_shoulder_yaw_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_elbow_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_elbow_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_wrist_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_wrist_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_wrist_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "left_wrist_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "wrist_yaw_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "wrist_yaw_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "h12_mount",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "h12_mount",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_shoulder_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_shoulder_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_shoulder_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_shoulder_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_shoulder_yaw_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_shoulder_yaw_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_elbow_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_elbow_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_wrist_roll_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_wrist_roll_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_wrist_pitch_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "right_wrist_pitch_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "logo_link",
+        "other_model": "current_cl",
+        "exists": true,
+        "bytes_equal": true
+      },
+      {
+        "mesh": "logo_link",
+        "other_model": "lean_export",
+        "exists": true,
+        "bytes_equal": true
+      }
+    ],
+    "mesh_body_frame_errors": [
+      {
+        "mesh": "left_shoulder_yaw_link",
+        "staged_geom_id": 40,
+        "cl_geom_id": 22,
+        "reference_body": "left_shoulder_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "left_shoulder_yaw_link",
+        "staged_geom_id": 41,
+        "cl_geom_id": 22,
+        "reference_body": "left_shoulder_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "left_elbow_link",
+        "staged_geom_id": 42,
+        "cl_geom_id": 23,
+        "reference_body": "left_elbow_link",
+        "symmetric_vertex_distance_max_mm": 0.0,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "left_elbow_link",
+        "staged_geom_id": 43,
+        "cl_geom_id": 23,
+        "reference_body": "left_elbow_link",
+        "symmetric_vertex_distance_max_mm": 0.0,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "wrist_yaw_link",
+        "staged_geom_id": 49,
+        "cl_geom_id": 26,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_base_bot",
+        "staged_geom_id": 53,
+        "cl_geom_id": 32,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0002460136188308575,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_base_top",
+        "staged_geom_id": 54,
+        "cl_geom_id": 34,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0004161110850152205,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_left_crank",
+        "staged_geom_id": 55,
+        "cl_geom_id": 36,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.00022972978315410227,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_right_crank",
+        "staged_geom_id": 56,
+        "cl_geom_id": 46,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.00022991337286626165,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_left_finger",
+        "staged_geom_id": 57,
+        "cl_geom_id": 38,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0003146183105625567,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_right_finger",
+        "staged_geom_id": 58,
+        "cl_geom_id": 48,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0003098878444556502,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_left_rocker",
+        "staged_geom_id": 59,
+        "cl_geom_id": 44,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.00018575401546860624,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "magpie_right_rocker",
+        "staged_geom_id": 60,
+        "cl_geom_id": 54,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.00018598261763053857,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      },
+      {
+        "mesh": "h12_mount",
+        "staged_geom_id": 64,
+        "cl_geom_id": 27,
+        "reference_body": "left_wrist_yaw_link",
+        "symmetric_vertex_distance_max_mm": 0.0,
+        "jaw_configuration": "Each model qpos0; no linkage settling"
+      }
+    ],
+    "collision_changes": [
+      {
+        "geom": "left_forearm_pad",
+        "staged": {
+          "id": 44,
+          "name": "left_forearm_pad",
+          "body": "left_elbow_link",
+          "type": "mjGEOM_CAPSULE",
+          "pos_m": [
+            0.065,
+            -0.02,
+            -0.009
+          ],
+          "quat_wxyz": [
+            0.7071067811865476,
+            -0.15339299776947404,
+            -0.6902684899626333,
+            0.0
+          ],
+          "size_m": [
+            0.035,
+            0.046097722286464436,
+            0.0
+          ],
+          "group": 3,
+          "contype": 0,
+          "conaffinity": 0,
+          "explicit_pairs": [
+            "table_top_collision"
+          ]
+        },
+        "lean_export": {
+          "id": 44,
+          "name": "left_forearm_pad",
+          "body": "left_elbow_link",
+          "type": "mjGEOM_CAPSULE",
+          "pos_m": [
+            0.065,
+            -0.02,
+            -0.015
+          ],
+          "quat_wxyz": [
+            0.7071067811865476,
+            -0.15339299776947404,
+            -0.6902684899626333,
+            0.0
+          ],
+          "size_m": [
+            0.035,
+            0.046097722286464436,
+            0.0
+          ],
+          "group": 3,
+          "contype": 0,
+          "conaffinity": 0,
+          "explicit_pairs": [
+            "table_top_collision"
+          ]
+        }
+      },
+      {
+        "geom": "left_wrist_pad",
+        "staged": {
+          "id": 52,
+          "name": "left_wrist_pad",
+          "body": "left_wrist_yaw_link",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.0215,
+            0.0,
+            0.0
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0415,
+            0.028,
+            0.0425
+          ],
+          "group": 3,
+          "contype": 0,
+          "conaffinity": 0,
+          "explicit_pairs": [
+            "table_top_collision"
+          ]
+        },
+        "lean_export": {
+          "id": 52,
+          "name": "left_wrist_pad",
+          "body": "left_wrist_yaw_link",
+          "type": "mjGEOM_CAPSULE",
+          "pos_m": [
+            0.0215,
+            0.0,
+            0.0
+          ],
+          "quat_wxyz": [
+            0.7071067811865476,
+            0.0,
+            -0.7071067811865475,
+            0.0
+          ],
+          "size_m": [
+            0.0425,
+            0.0415,
+            0.0
+          ],
+          "group": 3,
+          "contype": 0,
+          "conaffinity": 0,
+          "explicit_pairs": [
+            "table_top_collision"
+          ]
+        }
+      },
+      {
+        "geom": "left_gripper_collision",
+        "staged": {
+          "id": 61,
+          "name": "left_gripper_collision",
+          "body": "left_magpie_gripper",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.1225,
+            3.0727e-09,
+            -0.001125
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0415,
+            0.0666776,
+            0.017
+          ],
+          "group": 3,
+          "contype": 1,
+          "conaffinity": 1,
+          "explicit_pairs": []
+        },
+        "lean_export": {
+          "id": 54,
+          "name": "left_gripper_collision",
+          "body": "left_magpie_gripper",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.0965,
+            0.0,
+            0.0
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0425,
+            0.0315,
+            0.0667
+          ],
+          "group": 3,
+          "contype": 1,
+          "conaffinity": 1,
+          "explicit_pairs": []
+        }
+      },
+      {
+        "geom": "left_gripper_jaw_a",
+        "staged": {
+          "id": 62,
+          "name": "left_gripper_jaw_a",
+          "body": "left_magpie_gripper",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.204472,
+            0.080093,
+            0.000624991
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0458823,
+            0.0260951,
+            0.008
+          ],
+          "group": 3,
+          "contype": 1,
+          "conaffinity": 1,
+          "explicit_pairs": []
+        },
+        "lean_export": {
+          "id": 55,
+          "name": "left_gripper_jaw_a",
+          "body": "left_magpie_gripper",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.1795,
+            -0.0038,
+            -0.0801
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0459,
+            0.008,
+            0.0261
+          ],
+          "group": 3,
+          "contype": 1,
+          "conaffinity": 1,
+          "explicit_pairs": []
+        }
+      },
+      {
+        "geom": "left_gripper_jaw_b",
+        "staged": {
+          "id": 63,
+          "name": "left_gripper_jaw_b",
+          "body": "left_magpie_gripper",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.204472,
+            -0.080093,
+            0.000624991
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0458823,
+            0.0260951,
+            0.008
+          ],
+          "group": 3,
+          "contype": 1,
+          "conaffinity": 1,
+          "explicit_pairs": []
+        },
+        "lean_export": {
+          "id": 56,
+          "name": "left_gripper_jaw_b",
+          "body": "left_magpie_gripper",
+          "type": "mjGEOM_BOX",
+          "pos_m": [
+            0.1795,
+            -0.0038,
+            0.0801
+          ],
+          "quat_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "size_m": [
+            0.0459,
+            0.008,
+            0.0261
+          ],
+          "group": 3,
+          "contype": 1,
+          "conaffinity": 1,
+          "explicit_pairs": []
+        }
+      }
+    ]
+  },
+  "patches": [
+    {
+      "local_surface_point_m": [
+        -0.0036352608844184586,
+        0.017037490223468073,
+        -0.22659140825627214
+      ],
+      "outward_normal_body": [
+        -0.2147050760403861,
+        0.5123214584054813,
+        -0.8315217697569756
+      ],
+      "tangent_u_body": [
+        -0.10693088455848875,
+        -0.8585893749292598,
+        -0.5013881442416864
+      ],
+      "tangent_v_body": [
+        -0.9708076618208321,
+        -0.018735221265405957,
+        0.23912648375724743
+      ],
+      "surface_mesh": "left_shoulder_yaw_link",
+      "surface_geom_id": 40,
+      "seed_face_index": 32725,
+      "cad_support_plane_inset_mm": 1.2870837270408386,
+      "allowed_extent": {
+        "type": "connected_coplanar_triangle_union",
+        "source_face_indices": [
+          32725,
+          32758
+        ],
+        "vertices_body_m": [
+          [
+            -0.0032922496644807076,
+            0.017311404564882255,
+            -0.22651121078311212
+          ],
+          [
+            -0.003367468166293301,
+            0.01670744616015153,
+            -0.22686390275973023
+          ],
+          [
+            -0.0069906683293158006,
+            0.017311404715930755,
+            -0.2255562516143581
+          ],
+          [
+            -0.007095193959716549,
+            0.01670744620044083,
+            -0.2259013778157939
+          ]
+        ],
+        "faces": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            1,
+            3,
+            2
+          ]
+        ],
+        "area_mm2": 2.6969136998271135,
+        "bounds_body_m": [
+          [
+            -0.007095193959716549,
+            0.01670744616015153,
+            -0.22686390275973023
+          ],
+          [
+            -0.0032922496644807076,
+            0.017311404715930755,
+            -0.2255562516143581
+          ]
+        ],
+        "nominal_inscribed_disk_radius_m": 0.00028705718379354485,
+        "normal_distance_tolerance_m": 0.0005,
+        "normal_angle_tolerance_deg": 25,
+        "rule": "Projected point must lie in the triangle union; holes and all other bodies are excluded."
+      },
+      "id": "upper_arm_elbow_end",
+      "label": "E",
+      "body": "left_shoulder_yaw_link",
+      "physical_support": "Distal upper-arm housing on left_shoulder_yaw_link, upstream of the elbow joint.",
+      "collision_geom": {
+        "id": 41,
+        "name": null,
+        "body": "left_shoulder_yaw_link",
+        "type": "mjGEOM_MESH",
+        "pos_m": [
+          0.001624443441664103,
+          -0.006752653050218365,
+          -0.1254847827367946
+        ],
+        "quat_wxyz": [
+          0.6838845552684046,
+          -0.030674408122260577,
+          -0.0015888878941786085,
+          0.7289433936781006
+        ],
+        "size_m": [
+          0.04247754367143041,
+          0.04939851347555379,
+          0.13087970570057753
+        ],
+        "group": 3,
+        "contype": 1,
+        "conaffinity": 1,
+        "explicit_pairs": [],
+        "mesh": "left_shoulder_yaw_link",
+        "bounds_body_m": [
+          [
+            -0.03980000135257355,
+            -0.03999993774299343,
+            -0.22799174189890237
+          ],
+          [
+            0.05219946449551425,
+            0.03999163892634343,
+            0.002997978270838225
+          ]
+        ],
+        "vertices": 21213,
+        "triangles": 42752,
+        "body_vertices_sha256": "76ac24a76cf3b2b0e2eaf5ae223905b414b7f8a190d99a11d94c8d22e4c4f18b",
+        "faces_sha256": "fcb705c20c2b56e4ff35b1060c062e10daa1256f27283e278f471e0de1306f55"
+      },
+      "old_site": "elbow",
+      "old_site_body": "left_shoulder_yaw_link",
+      "old_site_point_body_m": [
+        0.002,
+        -0.007,
+        -0.182
+      ],
+      "old_site_displacement_mm": 50.97009703499018,
+      "nominal_proxy_signed_separation_mm": -0.03635201629922924,
+      "collision_surface_agrees_at_nominal": true,
+      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "current_cl_mapping": {
+        "body": "left_shoulder_yaw_link",
+        "local_surface_point_m": [
+          -0.0036352608844184586,
+          0.017037490223468073,
+          -0.22659140825627214
+        ],
+        "outward_normal_body": [
+          -0.2147050760403861,
+          0.5123214584054813,
+          -0.8315217697569756
+        ],
+        "collision_geom_id": null,
+        "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      }
+    },
+    {
+      "local_surface_point_m": [
+        -0.0006486119222223211,
+        -0.013051104319557298,
+        -0.043982504576370776
+      ],
+      "outward_normal_body": [
+        -0.023097309813392284,
+        -4.249344667416191e-07,
+        -0.9997332215542323
+      ],
+      "tangent_u_body": [
+        -0.9997332215538539,
+        -9.583268411968558e-07,
+        0.02309730981379088
+      ],
+      "tangent_v_body": [
+        -9.67886023280513e-07,
+        0.9999999999994504,
+        -4.026863314312545e-07
+      ],
+      "surface_mesh": "left_elbow_link",
+      "surface_geom_id": 42,
+      "seed_face_index": 12102,
+      "cad_support_plane_inset_mm": 6.938893903907228e-15,
+      "allowed_extent": {
+        "type": "connected_coplanar_triangle_union",
+        "source_face_indices": [
+          12102,
+          12103
+        ],
+        "vertices_body_m": [
+          [
+            0.00019999669352609856,
+            -0.007899938160118893,
+            -0.04400211257237778
+          ],
+          [
+            0.0001999952218721679,
+            -0.013899937308952726,
+            -0.04400210998809066
+          ],
+          [
+            -0.0018320755032970523,
+            -0.007899938897381975,
+            -0.043955160565881224
+          ],
+          [
+            -0.0018320739553935803,
+            -0.01389993925685882,
+            -0.04395516213206422
+          ]
+        ],
+        "faces": [
+          [
+            1,
+            3,
+            0
+          ],
+          [
+            0,
+            3,
+            2
+          ]
+        ],
+        "area_mm2": 12.19567744926472,
+        "bounds_body_m": [
+          [
+            -0.0018320755032970523,
+            -0.01389993925685882,
+            -0.04400211257237778
+          ],
+          [
+            0.00019999669352609856,
+            -0.007899938160118893,
+            -0.043955160565881224
+          ]
+        ],
+        "nominal_inscribed_disk_radius_m": 0.0007639504225696104,
+        "normal_distance_tolerance_m": 0.0005,
+        "normal_angle_tolerance_deg": 25,
+        "rule": "Projected point must lie in the triangle union; holes and all other bodies are excluded."
+      },
+      "id": "forearm_proximal",
+      "label": "F1",
+      "body": "left_elbow_link",
+      "physical_support": "Proximal forearm housing on left_elbow_link, downstream of the elbow joint.",
+      "collision_geom": {
+        "id": 43,
+        "name": null,
+        "body": "left_elbow_link",
+        "type": "mjGEOM_MESH",
+        "pos_m": [
+          0.05026006173656058,
+          -0.02103707546243482,
+          -0.007343307804747388
+        ],
+        "quat_wxyz": [
+          0.535367043104269,
+          0.605493357677648,
+          0.4405698306517851,
+          0.3907149181762829
+        ],
+        "size_m": [
+          0.04229509921710304,
+          0.045082714978634544,
+          0.09478837748856879
+        ],
+        "group": 3,
+        "contype": 1,
+        "conaffinity": 1,
+        "explicit_pairs": [],
+        "mesh": "left_elbow_link",
+        "bounds_body_m": [
+          [
+            -0.04380000632715516,
+            -0.06589993973719177,
+            -0.044002113556270546
+          ],
+          [
+            0.12370000233908438,
+            0.007100064172750099,
+            0.04399788728632012
+          ]
+        ],
+        "vertices": 12710,
+        "triangles": 25752,
+        "body_vertices_sha256": "0d788fc57143bb0b678a6726da99a3e71ecece7f4a3ea639822fcc20950ba580",
+        "faces_sha256": "f31435bb24d4a62ef8380e0996fd24d8ce608ac363fad1f61c9f6656a9293a2a"
+      },
+      "old_site": "forearm",
+      "old_site_body": "left_elbow_link",
+      "old_site_point_body_m": [
+        0.11,
+        -0.03,
+        -0.015
+      ],
+      "old_site_displacement_mm": 115.63029860992508,
+      "nominal_proxy_signed_separation_mm": -6.938893903907228e-15,
+      "collision_surface_agrees_at_nominal": true,
+      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "current_cl_mapping": {
+        "body": "left_elbow_link",
+        "local_surface_point_m": [
+          -0.0006486119222223211,
+          -0.013051104319557298,
+          -0.043982504576370776
+        ],
+        "outward_normal_body": [
+          -0.023097309813392284,
+          -4.249344667416191e-07,
+          -0.9997332215542323
+        ],
+        "collision_geom_id": null,
+        "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      }
+    },
+    {
+      "local_surface_point_m": [
+        0.11124327796101616,
+        -0.03157942079943908,
+        -0.04396160533623475
+      ],
+      "outward_normal_body": [
+        0.003363474469071794,
+        0.04036768950520761,
+        -0.9991792315112975
+      ],
+      "tangent_u_body": [
+        -0.9965467809265317,
+        0.08303320676071294,
+        -9.465207812031937e-10
+      ],
+      "tangent_v_body": [
+        0.08296505568287897,
+        0.9957288467344129,
+        0.0405075711008812
+      ],
+      "surface_mesh": "left_elbow_link",
+      "surface_geom_id": 42,
+      "seed_face_index": 5356,
+      "cad_support_plane_inset_mm": 0.6307642900191535,
+      "allowed_extent": {
+        "type": "connected_coplanar_triangle_union",
+        "source_face_indices": [
+          5356
+        ],
+        "vertices_body_m": [
+          [
+            0.11182710661098985,
+            -0.03263067130974945,
+            -0.04400211144380534
+          ],
+          [
+            0.1131650927040411,
+            -0.030027741162127745,
+            -0.0438924468765173
+          ],
+          [
+            0.1054602411321684,
+            -0.032100178142906735,
+            -0.044002111449852596
+          ]
+        ],
+        "faces": [
+          [
+            0,
+            2,
+            1
+          ]
+        ],
+        "area_mm2": 8.648247499215113,
+        "bounds_body_m": [
+          [
+            0.1054602411321684,
+            -0.03263067130974945,
+            -0.044002111449852596
+          ],
+          [
+            0.1131650927040411,
+            -0.030027741162127745,
+            -0.0438924468765173
+          ]
+        ],
+        "nominal_inscribed_disk_radius_m": 0.0008999674972545737,
+        "normal_distance_tolerance_m": 0.0005,
+        "normal_angle_tolerance_deg": 25,
+        "rule": "Projected point must lie in the triangle union; holes and all other bodies are excluded."
+      },
+      "id": "forearm_distal",
+      "label": "F2",
+      "body": "left_elbow_link",
+      "physical_support": "Distal forearm housing on left_elbow_link, before the wrist-roll joint.",
+      "collision_geom": {
+        "id": 44,
+        "name": "left_forearm_pad",
+        "body": "left_elbow_link",
+        "type": "mjGEOM_CAPSULE",
+        "pos_m": [
+          0.065,
+          -0.02,
+          -0.009
+        ],
+        "quat_wxyz": [
+          0.7071067811865476,
+          -0.15339299776947404,
+          -0.6902684899626333,
+          0.0
+        ],
+        "size_m": [
+          0.035,
+          0.046097722286464436,
+          0.0
+        ],
+        "group": 3,
+        "contype": 0,
+        "conaffinity": 0,
+        "explicit_pairs": [
+          "table_top_collision"
+        ]
+      },
+      "old_site": "forearm",
+      "old_site_body": "left_elbow_link",
+      "old_site_point_body_m": [
+        0.11,
+        -0.03,
+        -0.015
+      ],
+      "old_site_displacement_mm": 29.03127440884865,
+      "nominal_proxy_signed_separation_mm": 0.0193397687147448,
+      "collision_surface_agrees_at_nominal": true,
+      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "current_cl_mapping": {
+        "body": "left_elbow_link",
+        "local_surface_point_m": [
+          0.11124327796101616,
+          -0.03157942079943908,
+          -0.04396160533623475
+        ],
+        "outward_normal_body": [
+          0.003363474469071794,
+          0.04036768950520761,
+          -0.9991792315112975
+        ],
+        "collision_geom_id": null,
+        "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      }
+    },
+    {
+      "local_surface_point_m": [
+        0.03419386763247418,
+        -0.0018650183061298781,
+        -0.04241929963141685
+      ],
+      "outward_normal_body": [
+        0.0007340068845464526,
+        -0.04394073343761745,
+        -0.99903386988573
+      ],
+      "tangent_u_body": [
+        0.9994548619305466,
+        0.033007033246793806,
+        -0.0007174396400549262
+      ],
+      "tangent_v_body": [
+        0.0330066689819726,
+        -0.9984887318849467,
+        0.0439410070606625
+      ],
+      "surface_mesh": "wrist_yaw_link",
+      "surface_geom_id": 49,
+      "seed_face_index": 447,
+      "cad_support_plane_inset_mm": 0.0,
+      "allowed_extent": {
+        "type": "connected_coplanar_triangle_union",
+        "source_face_indices": [
+          447
+        ],
+        "vertices_body_m": [
+          [
+            -0.019914657800683133,
+            -0.0018465835621831576,
+            -0.04245986488908422
+          ],
+          [
+            0.035999998491687224,
+            4.0354279272115606e-14,
+            -0.04250000216032297
+          ],
+          [
+            0.035999998901240414,
+            -0.0037313138438183047,
+            -0.04233588693637721
+          ]
+        ],
+        "faces": [
+          [
+            0,
+            1,
+            2
+          ]
+        ],
+        "area_mm2": 104.41844773413848,
+        "bounds_body_m": [
+          [
+            -0.019914657800683133,
+            -0.0037313138438183047,
+            -0.04250000216032297
+          ],
+          [
+            0.035999998901240414,
+            4.0354279272115606e-14,
+            -0.04233588693637721
+          ]
+        ],
+        "nominal_inscribed_disk_radius_m": 0.0016255183954089903,
+        "normal_distance_tolerance_m": 0.0005,
+        "normal_angle_tolerance_deg": 25,
+        "rule": "Projected point must lie in the triangle union; holes and all other bodies are excluded."
+      },
+      "id": "wrist_housing_underside",
+      "label": "W",
+      "body": "left_wrist_yaw_link",
+      "physical_support": "Wrist-yaw housing on left_wrist_yaw_link; a separate articulated body from the forearm.",
+      "collision_geom": {
+        "id": 52,
+        "name": "left_wrist_pad",
+        "body": "left_wrist_yaw_link",
+        "type": "mjGEOM_BOX",
+        "pos_m": [
+          0.0215,
+          0.0,
+          0.0
+        ],
+        "quat_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size_m": [
+          0.0415,
+          0.028,
+          0.0425
+        ],
+        "group": 3,
+        "contype": 0,
+        "conaffinity": 0,
+        "explicit_pairs": [
+          "table_top_collision"
+        ]
+      },
+      "old_site": "wrist",
+      "old_site_body": "left_wrist_yaw_link",
+      "old_site_point_body_m": [
+        0.0215,
+        0.0,
+        -0.0425
+      ],
+      "old_site_displacement_mm": 12.830396771045887,
+      "nominal_proxy_signed_separation_mm": -0.0807003685831531,
+      "collision_surface_agrees_at_nominal": true,
+      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "current_cl_mapping": {
+        "body": "left_wrist_yaw_link",
+        "local_surface_point_m": [
+          0.03419386763247418,
+          -0.0018650183061298781,
+          -0.04241929963141685
+        ],
+        "outward_normal_body": [
+          0.0007340068845464526,
+          -0.04394073343761745,
+          -0.99903386988573
+        ],
+        "collision_geom_id": null,
+        "collision_status": "Arm visual mesh contype=conaffinity=0; no table pair in CL robot XML."
+      }
+    },
+    {
+      "local_surface_point_m": [
+        0.1374211409551683,
+        -0.012805357172980387,
+        -0.018124760084213327
+      ],
+      "outward_normal_body": [
+        4.328723392527436e-08,
+        0.0,
+        -0.999999999999999
+      ],
+      "tangent_u_body": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "tangent_v_body": [
+        0.999999999999999,
+        -0.0,
+        4.328723392527436e-08
+      ],
+      "surface_mesh": "magpie_base_bot",
+      "surface_geom_id": 53,
+      "seed_face_index": 652,
+      "cad_support_plane_inset_mm": 0.0,
+      "allowed_extent": {
+        "type": "connected_coplanar_triangle_union",
+        "source_face_indices": [
+          652,
+          653
+        ],
+        "vertices_body_m": [
+          [
+            0.13600000004964521,
+            -0.014226498078503451,
+            -0.018124760145730587
+          ],
+          [
+            0.13900000035817667,
+            -0.014226498078503451,
+            -0.018124760015868872
+          ],
+          [
+            0.13900000035817667,
+            0.01422649529208922,
+            -0.018124760015868872
+          ],
+          [
+            0.13600000004964521,
+            0.01422649529208922,
+            -0.018124760145730587
+          ]
+        ],
+        "faces": [
+          [
+            0,
+            3,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ]
+        ],
+        "area_mm2": 85.35898889042149,
+        "bounds_body_m": [
+          [
+            0.13600000004964521,
+            -0.014226498078503451,
+            -0.018124760145730587
+          ],
+          [
+            0.13900000035817667,
+            0.01422649529208922,
+            -0.018124760015868872
+          ]
+        ],
+        "nominal_inscribed_disk_radius_m": 0.0012790268149707573,
+        "normal_distance_tolerance_m": 0.0005,
+        "normal_angle_tolerance_deg": 25,
+        "rule": "Projected point must lie in the triangle union; holes and all other bodies are excluded."
+      },
+      "id": "gripper_base_rim",
+      "label": "P",
+      "body": "left_magpie_gripper",
+      "physical_support": "Exposed Magpie base_bot rim, welded to left_magpie_gripper in the staged model; leftg_base_bot in CL_Assets.",
+      "collision_geom": {
+        "id": 61,
+        "name": "left_gripper_collision",
+        "body": "left_magpie_gripper",
+        "type": "mjGEOM_BOX",
+        "pos_m": [
+          0.1225,
+          3.0727e-09,
+          -0.001125
+        ],
+        "quat_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size_m": [
+          0.0415,
+          0.0666776,
+          0.017
+        ],
+        "group": 3,
+        "contype": 1,
+        "conaffinity": 1,
+        "explicit_pairs": []
+      },
+      "old_site": "palm",
+      "old_site_body": "left_magpie_gripper",
+      "old_site_point_body_m": [
+        0.12249999999999994,
+        3.0727000110974947e-09,
+        -0.018125000000000044
+      ],
+      "old_site_displacement_mm": 19.66259643290311,
+      "nominal_proxy_signed_separation_mm": -0.00023991578667476032,
+      "collision_surface_agrees_at_nominal": true,
+      "simulation_use": "Requires collision surface agreement over the patch before certification; source collision proxies remain unchanged.",
+      "current_cl_mapping": {
+        "body": "leftg_base_bot",
+        "local_surface_point_m": [
+          0.014999755953215005,
+          -0.012805357172980314,
+          0.05842114201581142
+        ],
+        "outward_normal_body": [
+          0.9999999999999901,
+          2.3738774345065854e-17,
+          1.1399790759607976e-07
+        ],
+        "collision_geom_id": 33,
+        "mesh": "magpie_base_bot"
+      }
+    }
+  ],
+  "poses": [
+    {
+      "mode": "elbow+forearm",
+      "qpos_sha256": "8df3925f51adc6e402b30b6a15408faf45f1aef28e4f0051d2a3f4a6da6f9a65",
+      "source_qpos_file": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/wristcell/q_elbow+forearm.txt",
+      "patch_measurements": [
+        {
+          "id": "upper_arm_elbow_end",
+          "label": "E",
+          "world_point_m": [
+            0.53896602385384,
+            0.26890152239850496,
+            0.9818870629119232
+          ],
+          "world_outward_normal": [
+            -0.10665278394253959,
+            0.4649014071617154,
+            -0.8789151638789486
+          ],
+          "nominal_height_above_table_mm": -3.112937088076917,
+          "extent_height_min_max_mm": [
+            -3.380198528178835,
+            -2.953537037489795
+          ],
+          "normal_angle_to_down_deg": 28.488224077786086,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 3.92106207093253
+        },
+        {
+          "id": "forearm_proximal",
+          "label": "F1",
+          "world_point_m": [
+            0.5356567712738132,
+            0.2709699962104485,
+            0.9833112176469369
+          ],
+          "world_outward_normal": [
+            0.008724977341200433,
+            -0.040305783211921645,
+            -0.9991492974576249
+          ],
+          "nominal_height_above_table_mm": -1.688782353063245,
+          "extent_height_min_max_mm": [
+            -1.9028243545939905,
+            -1.6511295131749204
+          ],
+          "normal_angle_to_down_deg": 2.3635091521938336,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 5.268105414289204
+        },
+        {
+          "id": "forearm_distal",
+          "label": "F2",
+          "world_point_m": [
+            0.6484002134956747,
+            0.28290035274039893,
+            0.986421973026853
+          ],
+          "world_outward_normal": [
+            0.02350504766684694,
+            0.005643126232073266,
+            -0.9997077912372717
+          ],
+          "nominal_height_above_table_mm": 1.421973026852874,
+          "extent_height_min_max_mm": [
+            1.282685568863684,
+            1.4671333896454364
+          ],
+          "normal_angle_to_down_deg": 1.3851436770602636,
+          "same_geom_contact_count": 2,
+          "nearest_same_geom_contact_mm": 3.6894982462607975
+        },
+        {
+          "id": "wrist_housing_underside",
+          "label": "W",
+          "world_point_m": [
+            0.8033647420486661,
+            0.3032633857033029,
+            1.001110565467417
+          ],
+          "world_outward_normal": [
+            0.39798990421743613,
+            0.2058494258314378,
+            -0.8939966722677775
+          ],
+          "nominal_height_above_table_mm": 16.11056546741696,
+          "extent_height_min_max_mm": [
+            2.705663810376402,
+            17.255063538895943
+          ],
+          "normal_angle_to_down_deg": 26.620155069119768,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 38.49078861603184
+        },
+        {
+          "id": "gripper_base_rim",
+          "label": "P",
+          "world_point_m": [
+            0.8739064006908283,
+            0.23544667277343218,
+            1.043425497434401
+          ],
+          "world_outward_normal": [
+            0.4149014757334922,
+            0.24265181528135943,
+            -0.8769132579536176
+          ],
+          "nominal_height_above_table_mm": 58.42549743440095,
+          "extent_height_min_max_mm": [
+            57.48837229387193,
+            69.95818051917047
+          ],
+          "normal_angle_to_down_deg": 28.727775841342886,
+          "same_geom_contact_count": 0,
+          "nearest_same_geom_contact_mm": null
+        }
+      ],
+      "table_contacts": [
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "position_world_m": [
+            0.535852766561969,
+            0.26695192488218583,
+            0.983258713859898
+          ],
+          "signed_gap_mm": -3.4825722802038768
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "position_world_m": [
+            0.5536629004620321,
+            0.2805998281142071,
+            0.984280134969451
+          ],
+          "signed_gap_mm": -1.4397300610980226
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "position_world_m": [
+            0.6456997417634258,
+            0.2852855228394679,
+            0.9856277354484209
+          ],
+          "signed_gap_mm": 1.2554708968417136
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 43,
+          "geom_name": null,
+          "position_world_m": [
+            0.5351093985871662,
+            0.27615744288698085,
+            0.984048587822703
+          ],
+          "signed_gap_mm": -1.9028243545939902
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.7694232192592926,
+            0.29704488240458227,
+            0.984056414777738
+          ],
+          "signed_gap_mm": -2.095218458615094
+        }
+      ],
+      "image": "20261016-patches-elbow_forearm.png"
+    },
+    {
+      "mode": "elbow+palm",
+      "qpos_sha256": "d0c5e64377763ec87a66c6aa814c70c6a0398e2fe743533b691e27eeff0cc02d",
+      "source_qpos_file": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/wristcell/q_elbow+palm.txt",
+      "patch_measurements": [
+        {
+          "id": "upper_arm_elbow_end",
+          "label": "E",
+          "world_point_m": [
+            0.5282277685928366,
+            0.2225021615114011,
+            0.9832244645596867
+          ],
+          "world_outward_normal": [
+            -0.11481046407843826,
+            0.41068425670513875,
+            -0.9045203141072279
+          ],
+          "nominal_height_above_table_mm": -1.7755354403133916,
+          "extent_height_min_max_mm": [
+            -1.9401269430397994,
+            -1.6319025918971608
+          ],
+          "normal_angle_to_down_deg": 25.241245270970175,
+          "same_geom_contact_count": 2,
+          "nearest_same_geom_contact_mm": 1.3581295339642538
+        },
+        {
+          "id": "forearm_proximal",
+          "label": "F1",
+          "world_point_m": [
+            0.5264464408170091,
+            0.22507634482475342,
+            0.9845497474004725
+          ],
+          "world_outward_normal": [
+            0.032692781228674965,
+            -0.09181075598680602,
+            -0.9952396531191181
+          ],
+          "nominal_height_above_table_mm": -0.45025259952757857,
+          "extent_height_min_max_mm": [
+            -0.959389457233395,
+            -0.36167286904875695
+          ],
+          "normal_angle_to_down_deg": 5.592800960351781,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 7.804502543481991
+        },
+        {
+          "id": "forearm_distal",
+          "label": "F2",
+          "world_point_m": [
+            0.6390868581708259,
+            0.23725195648795397,
+            0.9897444397864119
+          ],
+          "world_outward_normal": [
+            0.047497952318790025,
+            -0.045938735537970725,
+            -0.9978144001279455
+          ],
+          "nominal_height_above_table_mm": 4.744439786411814,
+          "extent_height_min_max_mm": [
+            4.580424746159051,
+            4.823919163389645
+          ],
+          "normal_angle_to_down_deg": 3.7888035684281633,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 95.6109776308474
+        },
+        {
+          "id": "wrist_housing_underside",
+          "label": "W",
+          "world_point_m": [
+            0.7796780339369632,
+            0.25294425285635636,
+            0.9831112038060104
+          ],
+          "world_outward_normal": [
+            -0.0201340131451638,
+            -0.03901287220643884,
+            -0.9990358438599045
+          ],
+          "nominal_height_above_table_mm": -1.888796193989739,
+          "extent_height_min_max_mm": [
+            -1.971271967559085,
+            -1.8073051454108313
+          ],
+          "normal_angle_to_down_deg": 2.5162061300462275,
+          "same_geom_contact_count": 5,
+          "nearest_same_geom_contact_mm": 38.905200617035895
+        },
+        {
+          "id": "gripper_base_rim",
+          "label": "P",
+          "world_point_m": [
+            0.8667861069365395,
+            0.1964386294774116,
+            1.0072997086963018
+          ],
+          "world_outward_normal": [
+            -0.0008939708465275092,
+            0.000498548296816876,
+            -0.999999476132722
+          ],
+          "nominal_height_above_table_mm": 22.299708696301714,
+          "extent_height_min_max_mm": [
+            22.298037323598365,
+            22.30223674794218
+          ],
+          "normal_angle_to_down_deg": 0.0586473354371912,
+          "same_geom_contact_count": 0,
+          "nearest_same_geom_contact_mm": null
+        }
+      ],
+      "table_contacts": [
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "position_world_m": [
+            0.5288301288965807,
+            0.22156395967260448,
+            0.9839999999909714
+          ],
+          "signed_gap_mm": -2.000000018057446
+        },
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "position_world_m": [
+            0.5251072217334686,
+            0.22054143780522925,
+            0.9840061037140992
+          ],
+          "signed_gap_mm": -2.000000018057446
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "position_world_m": [
+            0.5436045798444618,
+            0.2365286253732101,
+            0.9848382843433403
+          ],
+          "signed_gap_mm": -0.3234313133193903
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 43,
+          "geom_name": null,
+          "position_world_m": [
+            0.525202075298211,
+            0.23278092837831538,
+            0.9845150102010223
+          ],
+          "signed_gap_mm": -0.9699795979557502
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.7415227932687655,
+            0.2975,
+            0.984043414317606
+          ],
+          "signed_gap_mm": -1.9131713647881872
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.7578969523220791,
+            0.2975,
+            0.9840360949873683
+          ],
+          "signed_gap_mm": -1.9278100252633892
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.793528889362328,
+            0.21659898520893076,
+            0.9840000000000003
+          ],
+          "signed_gap_mm": -1.9999999999994813
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.7195241247702652,
+            0.2541794004555228,
+            0.9840424486956901
+          ],
+          "signed_gap_mm": -1.9151026086198053
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.8188843655256287,
+            0.2665299357664506,
+            0.9840011129675179
+          ],
+          "signed_gap_mm": -1.9977740649643017
+        }
+      ],
+      "image": "20261016-patches-elbow_palm.png"
+    },
+    {
+      "mode": "forearm+wrist",
+      "qpos_sha256": "01ef87c22d8c01993a119bd27b93af3324b8cee5576e3110ff26209deeaeafe6",
+      "source_qpos_file": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/wristcell/q_forearm+wrist.txt",
+      "patch_measurements": [
+        {
+          "id": "upper_arm_elbow_end",
+          "label": "E",
+          "world_point_m": [
+            0.5175629870418011,
+            0.1823600374606833,
+            0.9832389603214735
+          ],
+          "world_outward_normal": [
+            -0.1341396554737429,
+            0.3093735577863384,
+            -0.9414321826727653
+          ],
+          "nominal_height_above_table_mm": -1.761039678526588,
+          "extent_height_min_max_mm": [
+            -1.9066205081392784,
+            -1.4656940333662716
+          ],
+          "normal_angle_to_down_deg": 19.706519342628845,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 0.9413438921083516
+        },
+        {
+          "id": "forearm_proximal",
+          "label": "F1",
+          "world_point_m": [
+            0.5182493186637738,
+            0.18574150858951433,
+            0.9842913072009878
+          ],
+          "world_outward_normal": [
+            0.06309529045968063,
+            -0.18638347251814483,
+            -0.9804489713870297
+          ],
+          "nominal_height_above_table_mm": -0.7086927990123115,
+          "extent_height_min_max_mm": [
+            -1.7338762579479639,
+            -0.5324652387929119
+          ],
+          "normal_angle_to_down_deg": 11.348345807404057,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 7.7198805045429335
+        },
+        {
+          "id": "forearm_distal",
+          "label": "F2",
+          "world_point_m": [
+            0.6306838319727929,
+            0.19863293676980245,
+            0.9917334350174214
+          ],
+          "world_outward_normal": [
+            0.07799449628541241,
+            -0.140931146677499,
+            -0.9869423845622135
+          ],
+          "nominal_height_above_table_mm": 6.7334350174212965,
+          "extent_height_min_max_mm": [
+            6.561319644459829,
+            6.919998855852816
+          ],
+          "normal_angle_to_down_deg": 9.269221780716569,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 96.65644978863493
+        },
+        {
+          "id": "wrist_housing_underside",
+          "label": "W",
+          "world_point_m": [
+            0.7776839190546183,
+            0.2208828806842052,
+            0.9948186364508548
+          ],
+          "world_outward_normal": [
+            0.17789672748997779,
+            0.03787456379085398,
+            -0.9833200251016998
+          ],
+          "nominal_height_above_table_mm": 9.81863645085468,
+          "extent_height_min_max_mm": [
+            2.1712203491807136,
+            10.287595741151456
+          ],
+          "normal_angle_to_down_deg": 10.479506939295526,
+          "same_geom_contact_count": 1,
+          "nearest_same_geom_contact_mm": 59.978177671156615
+        },
+        {
+          "id": "gripper_base_rim",
+          "label": "P",
+          "world_point_m": [
+            0.8588567849466143,
+            0.16221954592462068,
+            1.0313612775942544
+          ],
+          "world_outward_normal": [
+            0.19655607253153168,
+            0.07723926333175839,
+            -0.9774455517065618
+          ],
+          "nominal_height_above_table_mm": 46.36127759425435,
+          "extent_height_min_max_mm": [
+            45.937511594978275,
+            50.8417210919081
+          ],
+          "normal_angle_to_down_deg": 12.191956472186023,
+          "same_geom_contact_count": 0,
+          "nearest_same_geom_contact_mm": null
+        }
+      ],
+      "table_contacts": [
+        {
+          "body": "left_shoulder_yaw_link",
+          "geom_id": 41,
+          "geom_name": null,
+          "position_world_m": [
+            0.517964802945307,
+            0.18209125226807518,
+            0.9840466897459308
+          ],
+          "signed_gap_mm": -1.9066205081392784
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 44,
+          "geom_name": "left_forearm_pad",
+          "position_world_m": [
+            0.5343297921800381,
+            0.20053889414684545,
+            0.9843350819685314
+          ],
+          "signed_gap_mm": -1.3298360629372743
+        },
+        {
+          "body": "left_elbow_link",
+          "geom_id": 43,
+          "geom_name": null,
+          "position_world_m": [
+            0.5170251669539703,
+            0.19335814483574015,
+            0.9839999999946125
+          ],
+          "signed_gap_mm": -2.0000000107751603
+        },
+        {
+          "body": "left_wrist_yaw_link",
+          "geom_id": 52,
+          "geom_name": "left_wrist_pad",
+          "position_world_m": [
+            0.7187100816769288,
+            0.22244025252384597,
+            0.9840000000000001
+          ],
+          "signed_gap_mm": -1.9999999999998561
+        }
+      ],
+      "image": "20261016-patches-forearm_wrist.png"
+    }
+  ],
+  "rejected_regions": [
+    {
+      "id": "gripper_recess_nearest_old_palm",
+      "reason": "Base_bot rim protrudes 10 mm beyond this recessed surface; a flat table reaches the rim first along this normal.",
+      "point_body_m": [
+        0.1207371193865179,
+        -1.2163526417082008e-09,
+        -0.008124760022824688
+      ],
+      "outward_normal_body": [
+        4.391774366220627e-08,
+        0.0,
+        -0.9999999999999991
+      ],
+      "cad_support_plane_inset_mm": 10.0000007951087
+    }
+  ],
+  "elapsed_s": 2.846493530087173
+}
