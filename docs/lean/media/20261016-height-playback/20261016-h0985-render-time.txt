@@ -1,0 +1,23 @@
+	Command being timed: "taskset -c 18 env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 CL_ASSETS_DIR=/home/humanoid/Programs/Humanoid_Simulation/CL_Assets LEAN_TASK_DIR=/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean MUJOCO_GL=egl /home/humanoid/miniconda3/envs/croco/bin/python studies/height_video.py --face .985 --out docs/lean/media/20261016-height-playback --prefix 20261016- studies/runs/2026-09-08_height_dyn/h0985_x1060/h0985_x1060_brace_r0.csv"
+	User time (seconds): 7.00
+	System time (seconds): 0.95
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:08.10
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1175792
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 447631
+	Voluntary context switches: 31737
+	Involuntary context switches: 15534
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 920
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

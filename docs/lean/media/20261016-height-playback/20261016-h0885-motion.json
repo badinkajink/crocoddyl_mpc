@@ -1,0 +1,62 @@
+{
+  "source_csv": "studies/runs/2026-09-08_height_dyn/h0885_x1060/h0885_x1060_brace_r0.csv",
+  "source_sha256": "c552995ab1b795c059c0bb241abc1cf7dddba6702d819b80cd5f966b9599c794",
+  "source_plan": "studies/runs/2026-09-08_height_dyn/h0885_x1060/cell/plan_elbow_forearm.json",
+  "model": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+  "model_xml_sha256": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+  "table_face_m": 0.885,
+  "samples": 2502,
+  "simulation_end_s": 25.009999999997017,
+  "sample_interval_s": 0.009999999999998899,
+  "old_video": "docs/lean/media/height/h0885_x1060_brace_r0.mp4",
+  "old_video_probe": {
+    "avg_frame_rate": "30/1",
+    "duration": "8.366667",
+    "nb_frames": "251"
+  },
+  "old_frame_stride": 10,
+  "old_playback_speed": 3,
+  "approach_s": 2.4,
+  "nominal_plan_s": 4.0,
+  "additional_velocity_cost_weight": 0.0,
+  "peak_motor_velocity": {
+    "value": -3.4112639793982655,
+    "absolute": 3.4112639793982655,
+    "time_s": 0.07000000000000005,
+    "joint": "left_hip_pitch_joint",
+    "units": "rad/s"
+  },
+  "peak_arm_velocity": {
+    "value": -1.7882846351756227,
+    "absolute": 1.7882846351756227,
+    "time_s": 0.3100000000000002,
+    "joint": "left_shoulder_pitch_joint",
+    "units": "rad/s"
+  },
+  "peak_motor_acceleration": {
+    "value": 133.86403524263721,
+    "absolute": 133.86403524263721,
+    "time_s": 0.02500000000000001,
+    "joint": "left_knee_joint",
+    "units": "rad/s^2 over a 10 ms sample interval"
+  },
+  "peak_base_translation_speed_m_s": 0.39776771294147895,
+  "points": {
+    "reaching_hand": {
+      "peak_speed_m_s": 0.8700165667669205,
+      "time_s": 0.1400000000000001,
+      "velocity_pose_difference_rms_m_s": 0.0011009617268282973
+    },
+    "brace_wrist": {
+      "peak_speed_m_s": 1.2047981705915867,
+      "time_s": 0.1300000000000001,
+      "velocity_pose_difference_rms_m_s": 0.0008471580637943604
+    }
+  },
+  "first_reconstructed_table_overlap": {
+    "time_s": 2.149999999999985,
+    "body": "left_shoulder_yaw_link",
+    "separation_m": -1.1800584663879121e-05
+  },
+  "limitations": "100 Hz archived samples may miss faster peaks. Point kinematics and first overlap use the current staged model, not archived collision telemetry. Acceleration is a finite difference; no actuator bandwidth or hardware tracking validation."
+}

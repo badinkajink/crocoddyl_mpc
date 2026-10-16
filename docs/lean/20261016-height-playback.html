@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Height-study playback timing and startup motion</title>
+<style>
+:root{color-scheme:dark}body{max-width:1060px;margin:40px auto;padding:0 20px;
+font:16px/1.6 system-ui,sans-serif;background:#11161d;color:#dce3ed}
+h1{font-size:1.8rem}h2{font-size:1.25rem;margin-top:2rem}a{color:#8fc0ff}
+video,img{width:100%;height:auto;background:#080b10}figure{margin:1.5rem 0}
+figcaption,.meta{font-size:.9rem;color:#acb9ca}.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+table{border-collapse:collapse;width:100%;font-size:.92rem}th,td{border-bottom:1px solid #364252;
+padding:9px;text-align:left}code{font-size:.9em}pre{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:750px){.grid{grid-template-columns:1fr}.scroll{overflow:auto}}
+</style>
+<p><a href="../index.html">Documentation index</a> · 16 October 2026</p>
+<h1>Height-study playback timing and startup motion</h1>
+<p>All five September height-study videos play at 3× speed without a label: each
+25.01 s trajectory becomes an 8.37 s clip. The corrected videos below play at 1×,
+with simulation time displayed. The underlying h0885 motion also starts sharply:
+the bracing wrist reaches 1.20 m/s after 0.13 s, and left hip pitch reaches
+3.41 rad/s after 0.07 s. The playback correction makes the trajectory easier to
+inspect; hardware tracking and motion smoothness still require measurement.</p>
+
+<h2>Real-time h0885 replay</h2>
+<figure>
+<video controls preload="metadata" playsinline src="media/20261016-height-playback/20261016-h0885_x1060_brace_r0.mp4"></video>
+<figcaption>Table face 0.885 m, reach target x = 1.060 m, brace, seed 0. The original
+logged positions are replayed at 1×. This episode approaches and maintains the
+brace; it contains no recovery to standing.</figcaption>
+</figure>
+<details><summary>Original 3× h0885 video</summary>
+<video controls preload="none" playsinline src="media/height/h0885_x1060_brace_r0.mp4"></video>
+<p>This archived clip remains at 3×. Its 2.4 s planned approach occupies 0.8 s of video.</p></details>
+
+<h2>Terms and metrics</h2>
+<p>Playback speed is simulation seconds per video second. Joint speed is the
+largest absolute logged velocity among the 27 actuated joints. Joint acceleration
+is the largest absolute change in joint velocity divided by the 10 ms logging
+interval. Bracing-wrist speed is the world-frame translational speed of the left
+wrist-yaw body origin. Reaching-hand speed uses the task point 130 mm along the
+right wrist-yaw body's local x axis. Point speeds use the replayed position
+Jacobian and logged generalized velocity. All peaks cover the full episode.</p>
+<div class="scroll"><table>
+<thead><tr><th>Table / mode</th><th>Joint speed (rad/s)</th><th>Joint acceleration (rad/s²)</th><th>Bracing wrist (m/s)</th><th>Reaching hand (m/s)</th></tr></thead>
+<tbody>
+<tr><td>0.885 m / brace</td><td>3.41</td><td>134</td><td>1.20</td><td>0.87</td></tr>
+<tr><td>0.985 m / brace</td><td>2.47</td><td>213</td><td>0.87</td><td>0.62</td></tr>
+<tr><td>1.050 m / brace</td><td>2.66</td><td>228</td><td>0.95</td><td>0.64</td></tr>
+<tr><td>1.085 m / brace</td><td>2.66</td><td>229</td><td>0.96</td><td>0.63</td></tr>
+<tr><td>1.085 m / stand, falls</td><td>7.08</td><td>490</td><td>4.67</td><td>7.25</td></tr>
+</tbody></table></div>
+<p>h0885 has the fastest wrist and hip motion among these four brace episodes.
+Its peak arm-joint speed is 1.79 rad/s at the left shoulder pitch, at 0.31 s.
+Its 134 rad/s² knee acceleration occurs over 0.02–0.03 s. The higher tables have
+larger knee acceleration during the first 10 ms. The 1.085 m standing episode
+falls around 6 s; its large peaks include the fall.</p>
+<p>The saved brace plans allocate 120 approach nodes and 80 braced nodes at
+20 ms per node: 2.4 s to approach, 4.0 s total. Their additional velocity-cost
+weight, <code>w_vel</code>, is zero. A weak velocity component remains in the
+state regularizer. The simulation controller applies position-servo commands
+with feedforward torque; these measurements do not establish motor tracking
+accuracy on the robot.</p>
+
+<h2>Other height replays at 1×</h2>
+<div class="grid">
+<figure><video controls preload="metadata" playsinline src="media/20261016-height-playback/20261016-h0985_x1060_brace_r0.mp4"></video><figcaption>0.985 m table, brace, seed 0.</figcaption></figure>
+<figure><video controls preload="metadata" playsinline src="media/20261016-height-playback/20261016-h1050_x1060_brace_r0.mp4"></video><figcaption>1.050 m table, brace, seed 0.</figcaption></figure>
+<figure><video controls preload="metadata" playsinline src="media/20261016-height-playback/20261016-h1085_x1060_brace_r0.mp4"></video><figcaption>1.085 m table, brace, seed 0.</figcaption></figure>
+<figure><video controls preload="metadata" playsinline src="media/20261016-height-playback/20261016-h1085_x1060_stand_r0.mp4"></video><figcaption>1.085 m table, standing reach, seed 0. Failed episode.</figcaption></figure>
+</div>
+
+<h2>Playback verification and data</h2>
+<p><code>height_video.py</code> previously selected every tenth row of a 100 Hz
+log and encoded at 30 fps. It now defaults to 1× and chooses the nearest logged
+state for each output timestamp. A constant three-row stride would instead
+produce 0.9× playback. All five new files contain 751 frames at 30 fps and last
+25.033 s. The largest source-time rounding error is 3.34 ms; poses are not interpolated.</p>
+<p>The timestamp checks cover 1×, 3×, 0.5×, irregular timestamps and invalid
+inputs. FFprobe independently confirms every output's duration and frame count.
+The h0885 images at 0, 0.1, 0.5, 1, 2.4 and 4 s were inspected, as were the other
+brace poses at 2.4 s and the standing fall at 6.5 s. For h0885, point velocities
+agree with position finite differences to 1.10 mm/s RMS per component at the
+reaching hand and 0.85 mm/s at the bracing wrist.</p>
+<p>The measurements use archived CSVs under
+<code>studies/runs/2026-09-08_height_dyn/</code> and the staged
+<code>Lean_H12_Magpie.xml</code>, with each table moved to its recorded height.
+CSV hashes, video hashes and timing are in the adjacent JSON files.
+The 100 Hz logs can miss faster peaks. Reconstructed point kinematics use the
+current staged model; no new dynamics or hardware trials were run.</p>
+<p><a href="media/20261016-height-playback/20261016-h0885-motion.json">h0885 measurements</a> ·
+<a href="media/20261016-height-playback/20261016-h0885_x1060_brace_r0.json">h0885 playback metadata</a> ·
+<a href="media/20261016-height-playback/20261016-h0885-frames.jpg">h0885 image sequence</a> ·
+<a href="media/20261016-height-playback/20261016-other-height-frames.jpg">Other inspected frames</a></p>
+<p>Measurement script: <a href="../../studies/20261016_height_motion_audit.py">20261016_height_motion_audit.py</a>.
+Exact render and measurement commands, elapsed times and memory use are recorded
+in the adjacent <code>*-time.txt</code> files. All model loads used resguard;
+the event log stayed at 196 entries, with no new refusal or kill.</p>
+
+<h2>Future work</h2>
+<p>The queued foot-motion experiment now includes startup speed and acceleration,
+plus videos at labelled 1×. A subsequent timing comparison should re-solve with
+120 versus 240 approach nodes at 20 ms, retaining the 35-node MPC horizon.
+Measure startup acceleration, wrist speed at contact and foot displacement
+alongside reach error. A slower approach that retains the startup spike would
+point to initialization or command tracking as the next cause to test. Hardware
+velocity and torque tracking logs are needed to choose executable limits.</p>
+</html>

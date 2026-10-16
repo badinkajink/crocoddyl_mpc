@@ -1,0 +1,15 @@
+{
+  "source_csv": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/2026-09-08_height_dyn/h1050_x1060/h1050_x1060_brace_r0.csv",
+  "source_sha256": "919246c3907519120a16cd717cc1025a6eede5d41ee81d44fbcac1d069148b28",
+  "model": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+  "table_face_m": 1.05,
+  "fps": 30,
+  "playback_speed": 1.0,
+  "frames": 751,
+  "source_start_s": 0.0,
+  "source_end_s": 25.009999999997017,
+  "video_duration_s": 25.033333333333335,
+  "max_sample_time_error_s": 0.0033333333362719486,
+  "sampling": "Nearest logged state at each output timestamp",
+  "video_sha256": "6c7738c00fe150ed5831d272a00a40425c83282bbd11176bef9732dadd0964a6"
+}
