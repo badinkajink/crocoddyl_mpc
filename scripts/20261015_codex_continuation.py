@@ -173,7 +173,8 @@ def main():
             save(state_path, state)
             print('All three research checkpoints are complete.', flush=True)
             return
-        if state['attempts'] - state.get('resource_refusals', 0) >= config['max_launches']:
+        if (state['attempts'] - state.get('resource_refusals', 0)
+                - state.get('startup_failures', 0)) >= config['max_launches']:
             state['status'] = 'stopped'
             save(state_path, state)
             print('Launch budget exhausted; review the saved checkpoint.', flush=True)
@@ -231,11 +232,13 @@ def main():
                    '--cd', str(ROOT), '-m', config['model'],
                    '--sandbox', 'danger-full-access', '-c', 'approval_policy="never"',
                    '--json', '--color', 'never', '--output-schema', str(SCHEMA),
-                   '--output-last-message', str(final_path), '-']
+                   '--output-last-message', str(final_path), prompt]
         env = dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1',
                    CMPC_CONTINUATION_TAG=state['active_tag'])
         with (RUN / (tag + '.jsonl')).open('w') as output:
-            proc = subprocess.run(command, input=prompt, text=True, stdout=output,
+            # resguard backgrounds its scope; Bash supplies /dev/null on stdin.
+            # Pass the prompt as one argv entry, without shell interpolation.
+            proc = subprocess.run(command, stdin=subprocess.DEVNULL, text=True, stdout=output,
                                   stderr=subprocess.STDOUT, env=env, cwd=ROOT)
             output.flush()
             os.fsync(output.fileno())
