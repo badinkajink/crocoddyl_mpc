@@ -514,8 +514,12 @@ class LeanOCP:
                 crocoddyl.ResidualModelState(self.state, self.state.zero(),
                                              self.nu)), self.w_jlim)
 
-        # Contact cones.  mu is the study's 0.6, and min_nforce > 0 is what makes
-        # these UNILATERAL -- without it a "contact" is free to pull the robot down.
+        # Contact cones.  mu is the study's 0.6.  min_nforce sets the positive
+        # normal-force bound, but these are SOFT quadratic-barrier costs, not
+        # hard unilateral constraints.  A finite penalty can admit negative
+        # normal force or cone violations; measure feasibility in the solution.
+        # ContactModel6D still constrains foot motion even with feasible forces.
+        # See docs/lean/20261015-cmpc-contact-reassessment.html (15 Oct audit).
         #
         # The feet get a WRENCH cone and the bracing sites a FRICTION cone, and the
         # pairing is forced: a wrench cone is the 6D object (3 force rows + the

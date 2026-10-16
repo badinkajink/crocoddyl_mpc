@@ -6,17 +6,26 @@
     {
       "id": "geometry",
       "task": "Compare the audited staged Magpie model against the current CL_Assets and lean robot export. Record exact paths, hashes, geometry differences and body-frame mappings. Create an opt-in physical brace-patch catalogue with body, collision geom, local surface point, normal and allowed extent. Render the candidate patches in at least two saved brace poses and inspect the images. Explain which physical body supports each proposed contact and how it differs from the old site. Do not change SITES5, ARM_SITES or certified cells. Save a JSON catalogue and a dated result page with images; add its row to docs/index.html.",
-      "required_artifacts": ["docs/lean/20261015-cmpc-surface-catalogue.html", "docs/lean/media/20261015-contact-audit/20261015-surface-catalogue.json"]
+      "required_artifacts": [
+        "docs/lean/20261015-cmpc-surface-catalogue.html",
+        "docs/lean/media/20261015-contact-audit/20261015-surface-catalogue.json"
+      ]
     },
     {
       "id": "foot_motion",
-      "task": "Build a small opt-in foot-motion experiment around an existing held CMPC plan. First verify the full hold horizon and record the chosen plan/model. Apply one reproducible tangential disturbance in MuJoCo; measure sole displacement, rotation, contact loss and the fixed-anchor predictor residual. Include nominal and disturbed cases. If time permits, compare an anchor updated from the estimated contact pose, clearly separating reactive reanchoring from a physical sliding model. Preserve default controller behavior. Render video for any behavior claim. Limit to six short rollouts and 20 minutes numerical wall time. Save raw metrics and a dated result page, including failures; add its row to docs/index.html.",
-      "required_artifacts": ["docs/lean/20261015-cmpc-foot-motion.html", "docs/lean/media/20261015-contact-audit/20261015-foot-motion.json"]
+      "task": "Build a small opt-in foot-motion experiment around an existing held CMPC plan. First verify the full hold horizon and record the chosen plan/model. Apply one reproducible tangential disturbance in MuJoCo; measure sole displacement, rotation, contact loss and the fixed-anchor predictor residual. Include nominal and disturbed cases. If time permits, compare an anchor updated from the estimated contact pose, clearly separating reactive reanchoring from a physical sliding model. Preserve default controller behavior. Render video for any behavior claim. Limit to six short rollouts and 20 minutes numerical wall time. Save raw metrics and a dated result page, including failures; add its row to docs/index.html. Within the same rollout budget, also record signed normal forces, tangential forces, friction/wrench-cone violations with row units, sole centre-of-pressure margins, control-bound and joint-limit violations. Separate predicted quantities from simulated contacts and document force frames. Read the owner follow-up in the handoff; soft cone penalties do not guarantee feasibility. Do not install a new solver for this checkpoint.",
+      "required_artifacts": [
+        "docs/lean/20261015-cmpc-foot-motion.html",
+        "docs/lean/media/20261015-contact-audit/20261015-foot-motion.json"
+      ]
     },
     {
       "id": "state_frames",
       "task": "Implement an opt-in state-frame consistency check. Compare identical physical states under a consistent world-frame horizontal translation/yaw change applied to state, table, targets and contact references, then a base-only 10 mm error. Account for Pinocchio and MuJoCo velocity conventions. Compare contact residuals, predicted accelerations/torques or first control action before attributing behavior to estimator noise. Use the full hold horizon; if rolling out, at most six short episodes and 20 minutes numerical wall time. Save a result page and metrics, then update the research assessment with the next falsifiable experiment. Stop after this checkpoint; no expanding grids or new queue.",
-      "required_artifacts": ["docs/lean/20261015-cmpc-state-frames.html", "docs/lean/media/20261015-contact-audit/20261015-state-frames.json"]
+      "required_artifacts": [
+        "docs/lean/20261015-cmpc-state-frames.html",
+        "docs/lean/media/20261015-contact-audit/20261015-state-frames.json"
+      ]
     }
   ]
 }
