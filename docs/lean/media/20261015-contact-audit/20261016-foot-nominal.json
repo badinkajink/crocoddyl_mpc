@@ -1,0 +1,12 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261016-cmpc-foot-motion/20261016-nominal.csv",
+  "source_sha256": "bcbcd47a463a114b68cf807792f549a8f18369a9a41110da6ad980011f4e4b3d",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 181,
+  "duration_s": 6.033333333333333,
+  "simulation_start_s": 0.0,
+  "simulation_end_s": 6.017999999999559,
+  "max_timestamp_error_s": 0.0006666666671018007,
+  "video_sha256": "e82f54c97042b4408ca3961ffe77afc3c50a970c9590905d4470eb30f24aed2f"
+}

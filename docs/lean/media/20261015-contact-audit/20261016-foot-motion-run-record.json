@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-16 America/Denver",
+  "checkpoint": "foot_motion",
+  "rollouts_started": 2,
+  "rollouts_completed": 2,
+  "rollout_retries": 0,
+  "checkpoint_rollout_limit": 6,
+  "serial_numerical_wall_s": 53.580000000000005,
+  "serial_numerical_limit_s": 1200,
+  "jobs": [
+    {
+      "name": "probe",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-probe-time.txt timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_motion.py --probe > studies/runs/20261016-cmpc-foot-motion/20261016-probe.log 2>&1",
+      "wall_s": 0.69,
+      "max_rss_KiB": 185720,
+      "exit_code": 1,
+      "purpose": "Failed before model loading: missing CL_ASSETS_DIR",
+      "cap": "3G"
+    },
+    {
+      "name": "probe2",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-probe2-time.txt timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_motion.py --probe > studies/runs/20261016-cmpc-foot-motion/20261016-probe2.log 2>&1",
+      "wall_s": 2.44,
+      "max_rss_KiB": 2685052,
+      "exit_code": 0,
+      "purpose": "Full-horizon and anchor-null probe",
+      "cap": "3G"
+    },
+    {
+      "name": "nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-nominal-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_motion.py --case nominal > studies/runs/20261016-cmpc-foot-motion/20261016-nominal.log 2>&1",
+      "wall_s": 10.63,
+      "max_rss_KiB": 3038720,
+      "exit_code": 0,
+      "purpose": "Nominal rollout",
+      "cap": "3.4G"
+    },
+    {
+      "name": "pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-pulse-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_motion.py --case pulse > studies/runs/20261016-cmpc-foot-motion/20261016-pulse.log 2>&1",
+      "wall_s": 10.46,
+      "max_rss_KiB": 3032540,
+      "exit_code": 0,
+      "purpose": "Pulse rollout",
+      "cap": "3.4G"
+    },
+    {
+      "name": "analysis",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-analysis-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_analysis.py  > studies/runs/20261016-cmpc-foot-motion/20261016-analysis.log 2>&1",
+      "wall_s": 4.05,
+      "max_rss_KiB": 1035592,
+      "exit_code": 1,
+      "purpose": "Failed scoring: a future brace contact had no node-zero samples",
+      "cap": "1.6G"
+    },
+    {
+      "name": "analysis2",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-analysis2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_analysis.py  > studies/runs/20261016-cmpc-foot-motion/20261016-analysis2.log 2>&1",
+      "wall_s": 6.53,
+      "max_rss_KiB": 1064036,
+      "exit_code": 0,
+      "purpose": "Contact and phase scoring",
+      "cap": "1.6G"
+    },
+    {
+      "name": "render",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-render-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_analysis.py --render > studies/runs/20261016-cmpc-foot-motion/20261016-render.log 2>&1",
+      "wall_s": 5.28,
+      "max_rss_KiB": 1190676,
+      "exit_code": 0,
+      "purpose": "Two labelled 1x videos",
+      "cap": "1.6G"
+    },
+    {
+      "name": "analysis3",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-analysis3-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_analysis.py  > studies/runs/20261016-cmpc-foot-motion/20261016-analysis3.log 2>&1",
+      "wall_s": 6.79,
+      "max_rss_KiB": 1064360,
+      "exit_code": 0,
+      "purpose": "Actuator clipping and physical sole geometry checks",
+      "cap": "1.6G"
+    },
+    {
+      "name": "analysis4",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-foot-motion/20261016-analysis4-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_foot_analysis.py  > studies/runs/20261016-cmpc-foot-motion/20261016-analysis4.log 2>&1",
+      "wall_s": 6.71,
+      "max_rss_KiB": 1063948,
+      "exit_code": 0,
+      "purpose": "Include final 10 ms in hold and post-pulse summaries",
+      "cap": "1.6G"
+    }
+  ],
+  "events_before": 197,
+  "events_after": 197,
+  "new_events": [],
+  "quota_after_ten_minutes": {
+    "limit_id": "codex",
+    "limit_name": null,
+    "primary": {
+      "used_percent": 48.0,
+      "window_minutes": 300,
+      "resets_at": 1792215413
+    },
+    "secondary": {
+      "used_percent": 54.0,
+      "window_minutes": 10080,
+      "resets_at": 1792656594
+    },
+    "credits": {
+      "has_credits": false,
+      "unlimited": false,
+      "balance": "0"
+    },
+    "individual_limit": null,
+    "spend_control_reached": null,
+    "plan_type": "plus",
+    "rate_limit_reached_type": null
+  },
+  "quota_final": {
+    "limit_id": "codex",
+    "limit_name": null,
+    "primary": {
+      "used_percent": 51.0,
+      "window_minutes": 300,
+      "resets_at": 1792215413
+    },
+    "secondary": {
+      "used_percent": 55.0,
+      "window_minutes": 10080,
+      "resets_at": 1792656594
+    },
+    "credits": {
+      "has_credits": false,
+      "unlimited": false,
+      "balance": "0"
+    },
+    "individual_limit": null,
+    "spend_control_reached": null,
+    "plan_type": "plus",
+    "rate_limit_reached_type": null
+  },
+  "memory_sizing": "Probe cap 3G; measured 2685052 KiB. Both rollout caps were 3.4G, sized at 1.3 times that probe. Actual rollout peak 3038720 KiB; future full rollout cap must be >=3.8G. Replay/render cap 1.6G derives from prior measured height-render RSS 1175792 KiB.",
+  "failures": [
+    "First probe: missing asset environment path; fixed locally in the new script, zero physics steps.",
+    "First analysis: max() on an empty set of node-zero brace samples during approach; raw rollout files retained; fixed and rescored without integration."
+  ],
+  "invariants": "35 nodes, dt 0.02 s, certified plans and defaults, SITES5 and ARM_SITES unchanged. No solver installation, hardware command, agent, queue or push.",
+  "future": "Motion/command and contact-feasibility corrections remain separate checkpoints; hardware friction, state error and actuator bandwidth are unmeasured."
+}

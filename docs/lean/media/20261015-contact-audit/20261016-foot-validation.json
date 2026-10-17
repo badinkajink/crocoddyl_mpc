@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-16",
+  "checks": {
+    "scripts_compile": true,
+    "page_local_links_exist": true,
+    "raw_archive_crc_and_sha256": true,
+    "model_source_hashes_match": true,
+    "horizon_all_solves_35_nodes": true,
+    "nominal_pulse_identical_before_disturbance": true,
+    "all_122_reanchor_tests_zero_effect": true,
+    "clipped_servo_reconstruction_error_below_1e_10_Nm": true,
+    "both_videos_181_frames_at_30fps": true,
+    "seven_frames_per_condition_inspected": true,
+    "git_diff_check": true
+  },
+  "rollouts": 2,
+  "guarded_numerical_seconds": 53.58,
+  "new_resguard_events": 0,
+  "limitations": "No reanchored rollout, physical sliding model, recovery cycle, deployed EKF or hardware trial was performed."
+}

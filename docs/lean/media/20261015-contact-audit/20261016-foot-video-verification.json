@@ -1,0 +1,58 @@
+{
+  "nominal": {
+    "ffprobe": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    },
+    "metadata": {
+      "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261016-cmpc-foot-motion/20261016-nominal.csv",
+      "source_sha256": "bcbcd47a463a114b68cf807792f549a8f18369a9a41110da6ad980011f4e4b3d",
+      "fps": 30,
+      "playback_speed": 1,
+      "frames": 181,
+      "duration_s": 6.033333333333333,
+      "simulation_start_s": 0.0,
+      "simulation_end_s": 6.017999999999559,
+      "max_timestamp_error_s": 0.0006666666671018007,
+      "video_sha256": "e82f54c97042b4408ca3961ffe77afc3c50a970c9590905d4470eb30f24aed2f"
+    },
+    "inspected_frames_s": [
+      0,
+      0.13,
+      0.5,
+      2.4,
+      4.5,
+      4.8,
+      5.5
+    ]
+  },
+  "pulse": {
+    "ffprobe": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    },
+    "metadata": {
+      "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261016-cmpc-foot-motion/20261016-pulse.csv",
+      "source_sha256": "859ac1dc83c2632b93f918c0eb7a9b815d6bb44f56fa82fb209dda295511b35d",
+      "fps": 30,
+      "playback_speed": 1,
+      "frames": 181,
+      "duration_s": 6.033333333333333,
+      "simulation_start_s": 0.0,
+      "simulation_end_s": 6.017999999999559,
+      "max_timestamp_error_s": 0.0006666666671018007,
+      "video_sha256": "0086613f77628ad352f30d175fcc4f780bba49adffb8d2af1faea48e247e35b0"
+    },
+    "inspected_frames_s": [
+      0,
+      0.13,
+      0.5,
+      2.4,
+      4.5,
+      4.8,
+      5.5
+    ]
+  }
+}

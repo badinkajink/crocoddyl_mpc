@@ -1,0 +1,896 @@
+{
+  "plan": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/2026-09-08_height_dyn/h0885_x1060/cell/plan_elbow_forearm.json",
+  "plan_sha256": "56151d89b63733769d52901b5b5906bf52a6450ac2b1df73cd1265b3c5d1c9d6",
+  "xs_sha256": "787608976f9ecc82af0c621970b863a34a8a6a16412243f075501c3bea61cdb0",
+  "us_sha256": "99d3aa0341c09c168795f6eebf83cf920594080b123c78709397906784d62fee",
+  "model": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+  "model_sha256": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+  "plan_fields": {
+    "cost": 27.614941492616985,
+    "iters": 200,
+    "stop": 0.007247241099536239,
+    "is_feasible": true,
+    "score_node": 200,
+    "site_err": {
+      "elbow": 0.0004353260856288559,
+      "forearm": 0.0002026130113986377
+    },
+    "reach_err": 0.0003868516981239735,
+    "foot_err": {
+      "sole_left": 0.012110294039437367,
+      "sole_right": 0.007537737042600954
+    },
+    "terminal_vel_norm": 0.0324835836146649,
+    "q_err_vs_qstar_rad": 0.20726280025117572,
+    "q_err_max_joint_rad": 0.12367539359310822,
+    "max_torque_ratio": 1.0,
+    "torque_ratio_argmax_joint": "left_elbow_joint",
+    "brace_dz_vs_qstar": {
+      "elbow": {
+        "min": -0.0004980939981229504,
+        "max": -0.0003864224693022056,
+        "mean": -0.0004268158681689189
+      },
+      "forearm": {
+        "min": -0.0005064772612369817,
+        "max": -0.00014352561687891452,
+        "mean": -0.00030558144651612505
+      }
+    },
+    "brace_dz_worst_mm": 0.5064772612369817,
+    "mode": "elbow+forearm",
+    "subset": [
+      "elbow",
+      "forearm"
+    ],
+    "start": "stand",
+    "start_q": null,
+    "return_start": null,
+    "dt": 0.02,
+    "impulse": false,
+    "cones": true,
+    "n_approach": 120,
+    "n_braced": 80,
+    "n_return": 0,
+    "dwell": 0,
+    "mu": 0.6,
+    "legacy": false,
+    "keepout": 90,
+    "w_land": 5000.0,
+    "w_hold": 1000.0,
+    "w_com": 1000.0,
+    "w_cone": 10.0,
+    "w_reach": 100.0,
+    "cop_shrink": 1.0,
+    "min_nforce": 1.0,
+    "w_com_track": 0.0,
+    "w_com_damp": 0.0,
+    "w_ctrl": 0.001,
+    "n_hold": 0,
+    "w_hold_state": 100.0,
+    "drop": "",
+    "w_jlim": 1000.0,
+    "w_vel": 0.0,
+    "reach_rot": "auto",
+    "w_reach_rot": 0.01,
+    "com_margin": 0.03,
+    "contact_kp": 50.0,
+    "contact_kd": 50.0,
+    "foot_kp": 0.0,
+    "converged": false,
+    "solve_seconds": 20.1452214717865,
+    "commit": "0e8a6c8e299724ee89da7934a20074dcc09778e0",
+    "stage1": {
+      "converged": true,
+      "cost": 3.555585105347974
+    },
+    "stance_dx": 0.0,
+    "stance_dy": 0.0,
+    "start_settled": false,
+    "target": [
+      1.06,
+      -0.2348,
+      0.9982000000000001
+    ],
+    "model": "Lean_H12_Magpie.xml",
+    "tau_basis": "clamp"
+  },
+  "model_arrays_sha256": {
+    "body_pos": "83a5852dd1a9b9f0ed973daebb4f10e9521587688c5c00f72e291dafcefc0e4b",
+    "body_quat": "449ca587db37ae25fd2e94a42f938424fbc9a80593bf9d198e0374b95d60e53d",
+    "body_mass": "9c197b1157933d70eab35b178db7b9c68af69e7599c64a0de22be8b2ccfe6909",
+    "body_inertia": "5cd75c34ed9833d5bdf7d81b68cf9683d540085c6dd744c345ac85d625e72995",
+    "geom_pos": "a55da24ddd15207d1d020caed6da9913255f7916ba27fa16ce0426db82853ca2",
+    "geom_quat": "10b12d82111f8ce6ed85caf4d8700a5701894e9bc78be48f7cbbbe43e19ec4b1",
+    "geom_size": "1e6dd0cdf7b1f12849c7529d3032c0b928ead59cab3a56eb703e6f95fca71a83",
+    "geom_friction": "e215714f93729bd0a33e69ef950848fc34b57a493eec4e9d52a4abf4d44249d4",
+    "mesh_vert": "337838746b890d4203649037cc884ef61c3ce5d4c69c4d54d641222511a5d2c9",
+    "mesh_face": "cfb2c6ebc64801508550f5025894d07e859f641ea9b21b5d94ad3446e77b4ea1",
+    "dof_damping": "2ea04a0b02de002fb6cffaee43fcbbf0e1688f9aa4c091fcfb973cb88cca353f",
+    "dof_armature": "741e384ff66b30cef95876a882d6eb635803fa2bd055435ca6081eb9ff047447",
+    "actuator_gainprm": "0f0f7552109899e163993ef56bc4d358ec32d3d40d6ad3f3202164aeaeb5884f",
+    "actuator_biasprm": "2ed2e0f41b437aad4bc34258f3639bb11477a910b4b5441b15bf45aeb056c091"
+  },
+  "model_nodes": 200,
+  "control_nodes": 200,
+  "hold_index": 165,
+  "hold_window_s": 0.7000000000000001,
+  "dt_s": 0.02,
+  "horizon": 35,
+  "foot_gains": [
+    0.0,
+    50.0
+  ],
+  "foot_anchors": {
+    "sole_left": [
+      [
+        0.9991075723096339,
+        -0.042171526036372704,
+        0.0023709376442630214,
+        0.28628164080585494
+      ],
+      [
+        0.04217152603637271,
+        0.9928086358538663,
+        -0.11203827455717413,
+        0.26150245078802586
+      ],
+      [
+        0.0023709376442627994,
+        0.11203827455717415,
+        0.993701063544232,
+        0.00017751144837033217
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "sole_right": [
+      [
+        0.9991075723096339,
+        0.042171526036372704,
+        0.0023709376442630214,
+        0.28628164080585494
+      ],
+      [
+        -0.04217152603637271,
+        0.9928086358538663,
+        0.11203827455717413,
+        -0.26150245078802586
+      ],
+      [
+        0.0023709376442627994,
+        -0.11203827455717415,
+        0.993701063544232,
+        0.00017751144837033217
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "verified_hold_nodes": 35,
+  "hold_contacts": [
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ],
+    [
+      "brace_elbow",
+      "brace_forearm",
+      "sole_left",
+      "sole_right"
+    ]
+  ],
+  "reanchor_same_state_xnext_max_abs": 0.0,
+  "reanchor_test": "Saved-plan state k=165; reference changed to its contact pose. No plant rollout. Zero foot Kp predicts no effect.",
+  "cones": {
+    "cone_elbow": {
+      "A": [
+        [
+          1.0,
+          0.0,
+          -0.6
+        ],
+        [
+          -1.0,
+          -0.0,
+          -0.6
+        ],
+        [
+          6.123233995736766e-17,
+          1.0,
+          -0.6
+        ],
+        [
+          -6.123233995736766e-17,
+          -1.0,
+          -0.6
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "lower": [
+        null,
+        null,
+        null,
+        null,
+        1.0
+      ],
+      "upper": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10000.0
+      ],
+      "row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N"
+      ]
+    },
+    "cone_forearm": {
+      "A": [
+        [
+          1.0,
+          0.0,
+          -0.6
+        ],
+        [
+          -1.0,
+          -0.0,
+          -0.6
+        ],
+        [
+          6.123233995736766e-17,
+          1.0,
+          -0.6
+        ],
+        [
+          -6.123233995736766e-17,
+          -1.0,
+          -0.6
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "lower": [
+        null,
+        null,
+        null,
+        null,
+        1.0
+      ],
+      "upper": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10000.0
+      ],
+      "row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N"
+      ]
+    },
+    "cone_sole_left": {
+      "A": [
+        [
+          1.0,
+          0.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          -1.0,
+          -0.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          6.123233995736766e-17,
+          1.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          -6.123233995736766e-17,
+          -1.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.04,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.04,
+          -1.0,
+          -0.0,
+          -0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.1,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.1,
+          -0.0,
+          -1.0,
+          -0.0
+        ],
+        [
+          0.04,
+          0.1,
+          -0.084,
+          -0.6,
+          -0.6,
+          -1.0
+        ],
+        [
+          0.04,
+          -0.1,
+          -0.084,
+          -0.6,
+          0.6,
+          -1.0
+        ],
+        [
+          -0.04,
+          0.1,
+          -0.084,
+          0.6,
+          -0.6,
+          -1.0
+        ],
+        [
+          -0.04,
+          -0.1,
+          -0.084,
+          0.6,
+          0.6,
+          -1.0
+        ],
+        [
+          0.04,
+          0.1,
+          -0.084,
+          0.6,
+          0.6,
+          1.0
+        ],
+        [
+          0.04,
+          -0.1,
+          -0.084,
+          0.6,
+          -0.6,
+          1.0
+        ],
+        [
+          -0.04,
+          0.1,
+          -0.084,
+          -0.6,
+          0.6,
+          1.0
+        ],
+        [
+          -0.04,
+          -0.1,
+          -0.084,
+          -0.6,
+          -0.6,
+          1.0
+        ]
+      ],
+      "lower": [
+        null,
+        null,
+        null,
+        null,
+        1.0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "upper": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10000.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m"
+      ]
+    },
+    "cone_sole_right": {
+      "A": [
+        [
+          1.0,
+          0.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          -1.0,
+          -0.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          6.123233995736766e-17,
+          1.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          -6.123233995736766e-17,
+          -1.0,
+          -0.6,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.04,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.04,
+          -1.0,
+          -0.0,
+          -0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.1,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          -0.0,
+          -0.0,
+          -0.1,
+          -0.0,
+          -1.0,
+          -0.0
+        ],
+        [
+          0.04,
+          0.1,
+          -0.084,
+          -0.6,
+          -0.6,
+          -1.0
+        ],
+        [
+          0.04,
+          -0.1,
+          -0.084,
+          -0.6,
+          0.6,
+          -1.0
+        ],
+        [
+          -0.04,
+          0.1,
+          -0.084,
+          0.6,
+          -0.6,
+          -1.0
+        ],
+        [
+          -0.04,
+          -0.1,
+          -0.084,
+          0.6,
+          0.6,
+          -1.0
+        ],
+        [
+          0.04,
+          0.1,
+          -0.084,
+          0.6,
+          0.6,
+          1.0
+        ],
+        [
+          0.04,
+          -0.1,
+          -0.084,
+          0.6,
+          -0.6,
+          1.0
+        ],
+        [
+          -0.04,
+          0.1,
+          -0.084,
+          -0.6,
+          0.6,
+          1.0
+        ],
+        [
+          -0.04,
+          -0.1,
+          -0.084,
+          -0.6,
+          -0.6,
+          1.0
+        ]
+      ],
+      "lower": [
+        null,
+        null,
+        null,
+        null,
+        1.0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "upper": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        10000.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m"
+      ]
+    }
+  },
+  "contact_data_frames": "ContactModel6D/3D LOCAL_WORLD_ALIGNED; f is world-aligned at contact origin. WrenchCone A uses identity orientation, so its CoP rectangle is world-aligned.",
+  "urdf": "/home/humanoid/Programs/Humanoid_Simulation/CL_Assets/ros_assets/h1_2_magpie.urdf",
+  "urdf_sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f",
+  "source_hashes": {
+    "studies/20261016_cmpc_foot_motion.py": "8464edef576000ee115e8e4b5a01f4e316e75674a6d6c209a482d4ae90a40f3a",
+    "studies/20261016_cmpc_foot_analysis.py": "7348d6cdfe1373f7e85ddc2308fba043329ebda29e7c619fcdf1480f82f9ba08"
+  }
+}
