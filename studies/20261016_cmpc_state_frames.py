@@ -86,7 +86,7 @@ def plan_frame_control(mp, x_world, supplied_scene, g):
     The caller must retain the MPC warm start in the canonical frame.
     """
     error = scene_error(scene(mp.ocp), supplied_scene, g)
-    if error > 1e-9:
+    if not np.isfinite(error) or error > 1e-9:
         raise ValueError('State/table/target/contact references use different frames')
     u, x1 = mp(len(mp.models)-35, g.state(x_world, inverse=True))
     assert mp.problem.T == 35
@@ -144,27 +144,67 @@ def compare(a, b, g, state):
                next_state_tangent_max_abs=maxabs(state.diff(a['next_state'], g.state(b['next_state'], inverse=True))),
                reach_residual_delta_mm=1000*maxabs(a['reach_residual_m']-b['reach_residual_m']),
                table_signed_distance_delta_mm=1000*maxabs(a['table_distances_m']-b['table_distances_m']))
-    for key, scale in [('position_plan_m', 1000), ('rotation_local_rad', 1), ('wrench_plan', 1), ('acceleration_constraint_plan', 1)]:
-        out[key+'_delta_max'] = max(scale*maxabs(a['contacts'][n][key]-b['contacts'][n][key]) for n in a['contacts'])
+    fields = [('contact_position_delta_mm', 'position_plan_m', slice(None), 1000),
+              ('contact_rotation_delta_rad', 'rotation_local_rad', slice(None), 1),
+              ('contact_force_delta_N', 'wrench_plan', slice(0, 3), 1),
+              ('contact_moment_delta_Nm', 'wrench_plan', slice(3, 6), 1),
+              ('constraint_linear_acceleration_delta_m_s2', 'acceleration_constraint_plan', slice(0, 3), 1),
+              ('constraint_angular_acceleration_delta_rad_s2', 'acceleration_constraint_plan', slice(3, 6), 1)]
+    for label, key, indices, scale in fields:
+        values = [scale*maxabs((a['contacts'][n][key]-b['contacts'][n][key])[indices])
+                  for n in a['contacts'] if a['contacts'][n][key][indices].size]
+        out[label] = max(values, default=0.)
     return out
 
 
-def velocity_check(ocp, x, g):
+def velocity_check(fl, x, g):
     # Nonzero six-axis probe avoids the degeneracy of a nearly static hold.
+    ocp = fl.mpc.ocp
     xp = x.copy(); xp[34:40] = [.12, -.08, .04, .07, -.11, .13]
-    q = cb.pin_to_mj(xp[:34]); q[34:] = [1.5, 0., .935, 1., 0., 0., 0.]
+    q = cb.pin_to_mj(xp[:34], fl.start_qpos())
     v = np.zeros(39); v[:33] = xp[34:]; R = pin.Quaternion(xp[3:7]).matrix(); v[:3] = R @ v[:3]
     y = g.state(xp); qg = cb.pin_to_mj(y[:34], q); qg[34:37] = g.point(q[34:37])
-    qg[37:41] = pin.Quaternion(g.R).coeffs()[[3,0,1,2]]
+    qg[37:41] = pin.Quaternion(g.R @ pin.Quaternion(q[37:41][[1,2,3,0]]).matrix()).coeffs()[[3,0,1,2]]
     vg = v.copy(); vg[:3] = g.R @ v[:3]
     converted = cb.mj_to_pin_v(vg, pin.Quaternion(y[3:7]).matrix())
     dt = 1e-6; qnext = qg.copy()
-    mujoco.mj_integratePos(ocp_mj, qnext, vg, dt)
+    mujoco.mj_integratePos(fl.m, qnext, vg, dt)
     pin_next = pin.integrate(ocp.rmodel, y[:34], converted*dt)
+    wrong = converted.copy()
+    wrong[3:6] = pin.Quaternion(y[3:7]).matrix().T @ vg[3:6]
+    # Verify actual MuJoCo body/site and table geometry without stepping physics.
+    d, dg = mujoco.MjData(fl.m), mujoco.MjData(fl.m)
+    d.qpos[:] = q; dg.qpos[:] = qg
+    mujoco.mj_kinematics(fl.m, d)
+    gid = mujoco.mj_name2id(fl.m, mujoco.mjtObj.mjOBJ_GEOM, 'table_top_collision')
+    bid = fl.m.geom_bodyid[gid]
+    assert fl.m.body_parentid[bid] == 0 and fl.m.body_jntnum[bid] == 0
+    bp, bq = fl.m.body_pos[bid].copy(), fl.m.body_quat[bid].copy()
+    # The table is a static world child. qpos[34:] belongs to object_anchor_joint.
+    # Transform a private in-memory scene for kinematics, then restore it.
+    try:
+        fl.m.body_pos[bid] = g.point(bp)
+        fl.m.body_quat[bid] = pin.Quaternion(g.R @ pin.Quaternion(bq[[1,2,3,0]]).matrix()).coeffs()[[3,0,1,2]]
+        mujoco.mj_kinematics(fl.m, dg)
+    finally:
+        fl.m.body_pos[bid] = bp
+        fl.m.body_quat[bid] = bq
+    points = dict(cb.SOLES)
+    points.update({n:foot.cs.SITES[n] for n in ocp.subset})
+    points['reach'] = (foot.cs.REACH_BODY, foot.cs.REACH_OFF)
+    site_errors = {n:maxabs(g.point(foot.cs.point_world(fl.m,d,b,o))-
+                          foot.cs.point_world(fl.m,dg,b,o)) for n,(b,o) in points.items()}
     return dict(bridge_delta_max=maxabs(converted-xp[34:]),
                 integrate_configuration_tangent_error=maxabs(pin.difference(ocp.rmodel, pin_next, cb.mj_to_pin(qnext))),
+                incorrect_angular_rotation_error_rad_s=maxabs(wrong[3:6]-xp[37:40]),
+                mujoco_site_transform_error_m=site_errors,
+                mujoco_table_center_transform_error_m=maxabs(g.point(d.geom_xpos[gid])-dg.geom_xpos[gid]),
+                mujoco_table_rotation_transform_error=maxabs(g.R@d.geom_xmat[gid].reshape(3,3)-dg.geom_xmat[gid].reshape(3,3)),
                 probe_base_body_velocity=xp[34:40].tolist(), dt_s=dt,
-                transformed_table_pose_m_wxyz=qg[34:].tolist())
+                object_pose_m_wxyz=q[34:].tolist(),
+                transformed_object_pose_m_wxyz=qg[34:].tolist(),
+                table_geometry_center_m=d.geom_xpos[gid].tolist(),
+                transformed_table_geometry_center_m=dg.geom_xpos[gid].tolist())
 
 
 def serializable(v):
@@ -175,20 +215,22 @@ def serializable(v):
 
 
 def main():
-    global ocp_mj
     OUT.mkdir(parents=True, exist_ok=True)
     start = time.monotonic()
-    fl = foot.build(); mp = fl.mpc; ocp = mp.ocp; ocp_mj = fl.m
+    fl = foot.build(); mp = fl.mpc; ocp = mp.ocp
     source = ROOT/'studies/runs/20261016-cmpc-foot-motion/20261016-nominal-raw.npz'
     saved = np.load(source); idx = int(np.argmin(abs(saved['pred_t']-4.50)))
     x = saved['pred_x_est'][idx].copy(); k = len(fl.us)-35
     assert k == 165 and fl.dt == .02
+    t0 = time.monotonic()
     u, x1 = mp(k, x); assert mp.problem.T == 35
+    baseline_control = dict(torque_Nm=u.tolist(), solve_s=mp.solve_times[-1],
+                            call_s=time.monotonic()-t0, cost=float(mp.solver.cost), horizon=mp.problem.T)
     xs, us = [v.copy() for v in mp.xs], [v.copy() for v in mp.us]
     original_scene = scene(ocp)
     identity = WorldFrame(); translate = WorldFrame(0., (.10, -.07, 0.)); yaw = WorldFrame(.47, (.10, -.07, 0.))
     baseline = [evaluate(m, z, c, ocp, original_scene, identity) for m,z,c in zip(mp.problem.runningModels,xs,us)]
-    rows = {}; summaries = {}; raw = {'baseline': baseline}; controls = {}
+    rows = {}; summaries = {}; raw = {'baseline': baseline}; controls = {'baseline':baseline_control}
     for name, g, bias in [('translation',translate,0.), ('translation_yaw',yaw,0.), ('base_only_10mm',identity,.01)]:
         transformed_scene = transform_scene(original_scene, g)
         vals = []
@@ -204,10 +246,14 @@ def main():
                               joint_command_delta_max_rad=maxabs(xn[7:34]-x1[7:34]),
                               solve_s=mp.solve_times[-1], call_s=time.monotonic()-t0,
                               torque_Nm=un.tolist(), horizon=mp.problem.T,
-                              cost=float(mp.solver.cost))
-    bad_scene_rejected = False
-    try: plan_frame_control(mp, yaw.state(x), original_scene, yaw)
-    except ValueError: bad_scene_rejected = True
+                              cost=float(mp.solver.cost), cost_delta=float(mp.solver.cost)-baseline_control['cost'])
+    rejected = {}
+    for field in original_scene:
+        bad = transform_scene(original_scene, yaw)
+        bad[field] = original_scene[field]
+        rejected[field] = False
+        try: plan_frame_control(mp, yaw.state(x), bad, yaw)
+        except ValueError: rejected[field] = True
     feasibility = {}
     costs = mp.problem.runningModels[0].differential.costs.costs.todict()
     for n in baseline[0]['contacts']:
@@ -219,15 +265,39 @@ def main():
                               tangential_force_max_N=float(np.linalg.norm(w[:,:2],axis=1).max()),
                               cone_row_violation_max=vio.max(axis=0).tolist(),
                               cone_row_units=['N']*5+(['N m']*12 if w.shape[1]==6 and cone.A.shape[1]==6 else []))
+        if cone.A.shape[1] == 6:
+            loaded = w[:,2] > 1.
+            cop = np.c_[-w[loaded,4]/w[loaded,2],w[loaded,3]/w[loaded,2]]
+            feasibility[n]['plan_axis_cop_margin_min_mm'] = float(1000*np.min(np.array(cb.FOOT_HALF)-abs(cop)))
+    # Record the bias response contact by contact; feet have zero position gain.
+    bias_contacts = {}
+    for n in baseline[0]['contacts']:
+        diffs = [raw['base_only_10mm'][i]['contacts'][n]['acceleration_constraint_plan']-
+                 baseline[i]['contacts'][n]['acceleration_constraint_plan'] for i in range(35)]
+        bias_contacts[n] = dict(linear_acceleration_constraint_delta_m_s2=max(maxabs(v[:3]) for v in diffs),
+                                gains=mp.problem.runningModels[0].differential.contacts.contacts[n].contact.gains.tolist())
+    velocity = velocity_check(fl,x,yaw)
+    passes = {n:all([v['base_linear_acceleration_delta_m_s2'] < 1e-7,
+                     v['angular_joint_acceleration_delta_rad_s2'] < 1e-7,
+                     v['contact_position_delta_mm'] < 1e-6,
+                     v['contact_rotation_delta_rad'] < 1e-9,
+                     v['contact_force_delta_N'] < 1e-7,
+                     v['contact_moment_delta_Nm'] < 1e-7,
+                     controls[n]['torque_delta_max_Nm'] < 1e-6])
+              for n,v in summaries.items() if n != 'base_only_10mm'}
     result = dict(checkpoint='state_frames', rollouts=0, horizon=35, dt_s=.02, hold_index=k,
+                  measurement_complete=True, frame_invariance_pass=passes,
+                  software_versions=dict(crocoddyl=cro.__version__, pinocchio=pin.__version__, mujoco=mujoco.__version__),
+                  controller=dict(iterations=mp.iters, threads=1, warm_start='Same archived plan at each reset; one hold solve per condition, including baseline'),
                   hypothesis='A consistent horizontal frame change preserves contact residuals and dynamics; the plan-frame adapter preserves the first joint command. A base-only 10 mm +x error changes relative references and feedback.',
                   thresholds=dict(acceleration=1e-7, force=1e-7, residual_m=1e-9, torque_Nm=1e-6),
                   observation=dict(path='Saved MuJoCoPlant.read -> default_sense(seed=17) -> State -> policy -> pred_x_est',
                                    source=str(source.relative_to(ROOT)), source_sha256=foot.sha(source), index=idx,
                                    simulation_time_s=float(saved['pred_t'][idx]), synthetic_bias=True, ground_truth_input=False),
                   provenance=foot.provenance(fl), transformations=dict(translation_m=translate.t.tolist(), yaw_rad=.47, base_error_m=[.01,0,0]),
-                  metrics=summaries, first_control=controls, scene_mismatch_rejected=bad_scene_rejected,
-                  velocity_convention_check=velocity_check(ocp,x,yaw), baseline_feasibility=feasibility,
+                  metrics=summaries, first_control=controls, scene_mismatch_rejected=rejected,
+                  velocity_convention_check=velocity, baseline_feasibility=feasibility,
+                  base_error_contact_response=bias_contacts,
                   numerical_wall_s=time.monotonic()-start,
                   limitations=['No plant integration, slip, recovery or hardware test.',
                                'Raw table keep-out requires axis-aligned world geometry. The adapter uses the archived plan frame for the entire objective, including cone facet axes.',

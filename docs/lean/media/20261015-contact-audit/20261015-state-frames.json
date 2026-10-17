@@ -1,39 +1,746 @@
 {
   "checkpoint": "state_frames",
-  "status": "continue",
+  "rollouts": 0,
+  "horizon": 35,
+  "dt_s": 0.02,
+  "hold_index": 165,
+  "measurement_complete": true,
+  "frame_invariance_pass": {
+    "translation": true,
+    "translation_yaw": true
+  },
+  "software_versions": {
+    "crocoddyl": "3.2.1",
+    "pinocchio": "4.1.0",
+    "mujoco": "3.10.0"
+  },
+  "controller": {
+    "iterations": 1,
+    "threads": 1,
+    "warm_start": "Same archived plan at each reset; one hold solve per condition, including baseline"
+  },
+  "hypothesis": "A consistent horizontal frame change preserves contact residuals and dynamics; the plan-frame adapter preserves the first joint command. A base-only 10 mm +x error changes relative references and feedback.",
+  "thresholds": {
+    "acceleration": 1e-07,
+    "force": 1e-07,
+    "residual_m": 1e-09,
+    "torque_Nm": 1e-06
+  },
+  "observation": {
+    "path": "Saved MuJoCoPlant.read -> default_sense(seed=17) -> State -> policy -> pred_x_est",
+    "source": "studies/runs/20261016-cmpc-foot-motion/20261016-nominal-raw.npz",
+    "source_sha256": "6dc32676317950e57713ccfbbe2bd9be45b5931a1f7e732d0da7384450326c33",
+    "index": 225,
+    "simulation_time_s": 4.499999999999726,
+    "synthetic_bias": true,
+    "ground_truth_input": false
+  },
+  "provenance": {
+    "plan": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/2026-09-08_height_dyn/h0885_x1060/cell/plan_elbow_forearm.json",
+    "plan_sha256": "56151d89b63733769d52901b5b5906bf52a6450ac2b1df73cd1265b3c5d1c9d6",
+    "xs_sha256": "787608976f9ecc82af0c621970b863a34a8a6a16412243f075501c3bea61cdb0",
+    "us_sha256": "99d3aa0341c09c168795f6eebf83cf920594080b123c78709397906784d62fee",
+    "model": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+    "model_sha256": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+    "plan_fields": {
+      "cost": 27.614941492616985,
+      "iters": 200,
+      "stop": 0.007247241099536239,
+      "is_feasible": true,
+      "score_node": 200,
+      "site_err": {
+        "elbow": 0.0004353260856288559,
+        "forearm": 0.0002026130113986377
+      },
+      "reach_err": 0.0003868516981239735,
+      "foot_err": {
+        "sole_left": 0.012110294039437367,
+        "sole_right": 0.007537737042600954
+      },
+      "terminal_vel_norm": 0.0324835836146649,
+      "q_err_vs_qstar_rad": 0.20726280025117572,
+      "q_err_max_joint_rad": 0.12367539359310822,
+      "max_torque_ratio": 1.0,
+      "torque_ratio_argmax_joint": "left_elbow_joint",
+      "brace_dz_vs_qstar": {
+        "elbow": {
+          "min": -0.0004980939981229504,
+          "max": -0.0003864224693022056,
+          "mean": -0.0004268158681689189
+        },
+        "forearm": {
+          "min": -0.0005064772612369817,
+          "max": -0.00014352561687891452,
+          "mean": -0.00030558144651612505
+        }
+      },
+      "brace_dz_worst_mm": 0.5064772612369817,
+      "mode": "elbow+forearm",
+      "subset": [
+        "elbow",
+        "forearm"
+      ],
+      "start": "stand",
+      "start_q": null,
+      "return_start": null,
+      "dt": 0.02,
+      "impulse": false,
+      "cones": true,
+      "n_approach": 120,
+      "n_braced": 80,
+      "n_return": 0,
+      "dwell": 0,
+      "mu": 0.6,
+      "legacy": false,
+      "keepout": 90,
+      "w_land": 5000.0,
+      "w_hold": 1000.0,
+      "w_com": 1000.0,
+      "w_cone": 10.0,
+      "w_reach": 100.0,
+      "cop_shrink": 1.0,
+      "min_nforce": 1.0,
+      "w_com_track": 0.0,
+      "w_com_damp": 0.0,
+      "w_ctrl": 0.001,
+      "n_hold": 0,
+      "w_hold_state": 100.0,
+      "drop": "",
+      "w_jlim": 1000.0,
+      "w_vel": 0.0,
+      "reach_rot": "auto",
+      "w_reach_rot": 0.01,
+      "com_margin": 0.03,
+      "contact_kp": 50.0,
+      "contact_kd": 50.0,
+      "foot_kp": 0.0,
+      "converged": false,
+      "solve_seconds": 20.1452214717865,
+      "commit": "0e8a6c8e299724ee89da7934a20074dcc09778e0",
+      "stage1": {
+        "converged": true,
+        "cost": 3.555585105347974
+      },
+      "stance_dx": 0.0,
+      "stance_dy": 0.0,
+      "start_settled": false,
+      "target": [
+        1.06,
+        -0.2348,
+        0.9982000000000001
+      ],
+      "model": "Lean_H12_Magpie.xml",
+      "tau_basis": "clamp"
+    },
+    "model_arrays_sha256": {
+      "body_pos": "83a5852dd1a9b9f0ed973daebb4f10e9521587688c5c00f72e291dafcefc0e4b",
+      "body_quat": "449ca587db37ae25fd2e94a42f938424fbc9a80593bf9d198e0374b95d60e53d",
+      "body_mass": "9c197b1157933d70eab35b178db7b9c68af69e7599c64a0de22be8b2ccfe6909",
+      "body_inertia": "5cd75c34ed9833d5bdf7d81b68cf9683d540085c6dd744c345ac85d625e72995",
+      "geom_pos": "a55da24ddd15207d1d020caed6da9913255f7916ba27fa16ce0426db82853ca2",
+      "geom_quat": "10b12d82111f8ce6ed85caf4d8700a5701894e9bc78be48f7cbbbe43e19ec4b1",
+      "geom_size": "1e6dd0cdf7b1f12849c7529d3032c0b928ead59cab3a56eb703e6f95fca71a83",
+      "geom_friction": "e215714f93729bd0a33e69ef950848fc34b57a493eec4e9d52a4abf4d44249d4",
+      "mesh_vert": "337838746b890d4203649037cc884ef61c3ce5d4c69c4d54d641222511a5d2c9",
+      "mesh_face": "cfb2c6ebc64801508550f5025894d07e859f641ea9b21b5d94ad3446e77b4ea1",
+      "dof_damping": "2ea04a0b02de002fb6cffaee43fcbbf0e1688f9aa4c091fcfb973cb88cca353f",
+      "dof_armature": "741e384ff66b30cef95876a882d6eb635803fa2bd055435ca6081eb9ff047447",
+      "actuator_gainprm": "0f0f7552109899e163993ef56bc4d358ec32d3d40d6ad3f3202164aeaeb5884f",
+      "actuator_biasprm": "2ed2e0f41b437aad4bc34258f3639bb11477a910b4b5441b15bf45aeb056c091"
+    },
+    "model_nodes": 200,
+    "control_nodes": 200,
+    "hold_index": 165,
+    "hold_window_s": 0.7000000000000001,
+    "dt_s": 0.02,
+    "horizon": 35,
+    "foot_gains": [
+      0.0,
+      50.0
+    ],
+    "foot_anchors": {
+      "sole_left": [
+        [
+          0.9991075723096339,
+          -0.042171526036372704,
+          0.0023709376442630214,
+          0.28628164080585494
+        ],
+        [
+          0.04217152603637271,
+          0.9928086358538663,
+          -0.11203827455717413,
+          0.26150245078802586
+        ],
+        [
+          0.0023709376442627994,
+          0.11203827455717415,
+          0.993701063544232,
+          0.00017751144837033217
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sole_right": [
+        [
+          0.9991075723096339,
+          0.042171526036372704,
+          0.0023709376442630214,
+          0.28628164080585494
+        ],
+        [
+          -0.04217152603637271,
+          0.9928086358538663,
+          0.11203827455717413,
+          -0.26150245078802586
+        ],
+        [
+          0.0023709376442627994,
+          -0.11203827455717415,
+          0.993701063544232,
+          0.00017751144837033217
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    }
+  },
+  "transformations": {
+    "translation_m": [
+      0.1,
+      -0.07,
+      0.0
+    ],
+    "yaw_rad": 0.47,
+    "base_error_m": [
+      0.01,
+      0,
+      0
+    ]
+  },
+  "metrics": {
+    "translation": {
+      "base_linear_acceleration_delta_m_s2": 7.993605777301127e-15,
+      "angular_joint_acceleration_delta_rad_s2": 1.4033219031261979e-13,
+      "next_state_tangent_max_abs": 2.8059152223924855e-15,
+      "reach_residual_delta_mm": 4.440892098500626e-13,
+      "table_signed_distance_delta_mm": 4.440892098500626e-13,
+      "contact_position_delta_mm": 3.3306690738754696e-13,
+      "contact_rotation_delta_rad": 2.207435623180487e-16,
+      "contact_force_delta_N": 6.87601087179246e-11,
+      "contact_moment_delta_Nm": 9.237055564881302e-14,
+      "constraint_linear_acceleration_delta_m_s2": 1.6654158521006712e-14,
+      "constraint_angular_acceleration_delta_rad_s2": 5.551115123125783e-17
+    },
+    "translation_yaw": {
+      "base_linear_acceleration_delta_m_s2": 1.0658141036401503e-14,
+      "angular_joint_acceleration_delta_rad_s2": 1.4566126083082054e-13,
+      "next_state_tangent_max_abs": 2.914335439641036e-15,
+      "reach_residual_delta_mm": 3.705803025555454e-13,
+      "table_signed_distance_delta_mm": 5.273559366969494e-13,
+      "contact_position_delta_mm": 3.616898447411643e-13,
+      "contact_rotation_delta_rad": 3.0314292742694704e-16,
+      "contact_force_delta_N": 8.030642817402622e-11,
+      "contact_moment_delta_Nm": 1.2434497875801753e-13,
+      "constraint_linear_acceleration_delta_m_s2": 1.6654917462527452e-14,
+      "constraint_angular_acceleration_delta_rad_s2": 8.881784197001252e-16
+    },
+    "base_only_10mm": {
+      "base_linear_acceleration_delta_m_s2": 0.012621524027731645,
+      "angular_joint_acceleration_delta_rad_s2": 1.3117175418361455,
+      "next_state_tangent_max_abs": 0.026234350836722913,
+      "reach_residual_delta_mm": 10.000000000000231,
+      "table_signed_distance_delta_mm": 0.00048825159512655425,
+      "contact_position_delta_mm": 10.000000000000176,
+      "contact_rotation_delta_rad": 2.207435623180487e-16,
+      "contact_force_delta_N": 7.009370556159225,
+      "contact_moment_delta_Nm": 0.05331014041516413,
+      "constraint_linear_acceleration_delta_m_s2": 0.5000000000000061,
+      "constraint_angular_acceleration_delta_rad_s2": 5.551115123125783e-17
+    }
+  },
+  "first_control": {
+    "baseline": {
+      "torque_Nm": [
+        1.5019205566031324,
+        8.240920021430918,
+        0.8474211828040322,
+        -7.068352473157183,
+        3.20595104557367,
+        0.08111851017569009,
+        4.143745582827223,
+        18.55006823106845,
+        5.412587664356203,
+        -15.248966001481158,
+        13.107925191645494,
+        -1.1764363164755223,
+        -17.222693480218094,
+        14.036243279347108,
+        4.568032983889774,
+        0.45121877698989826,
+        -3.366868893555972,
+        -0.1551240602748128,
+        -0.5134028153381847,
+        -0.08071404738725835,
+        -11.498720802343186,
+        -4.766441177820961,
+        -0.5189709374412188,
+        -3.662967642766295,
+        -0.09078017707079039,
+        -0.4192305143008938,
+        0.08106550380933016
+      ],
+      "solve_s": 0.02161431312561035,
+      "call_s": 0.02330822078511119,
+      "cost": 28.49855092318454,
+      "horizon": 35
+    },
+    "translation": {
+      "torque_delta_max_Nm": 6.510347816401918e-13,
+      "joint_command_delta_max_rad": 4.440892098500626e-16,
+      "solve_s": 0.021054983139038086,
+      "call_s": 0.022775197867304087,
+      "torque_Nm": [
+        1.5019205566030513,
+        8.240920021430943,
+        0.8474211828039551,
+        -7.068352473156955,
+        3.205951045573493,
+        0.08111851017565372,
+        4.143745582826827,
+        18.550068231068582,
+        5.412587664355747,
+        -15.248966001481277,
+        13.107925191645542,
+        -1.176436316475649,
+        -17.222693480217814,
+        14.036243279346538,
+        4.568032983889752,
+        0.45121877698988877,
+        -3.3668688935559983,
+        -0.15512406027481215,
+        -0.5134028153381794,
+        -0.08071404738726275,
+        -11.498720802343245,
+        -4.76644117782031,
+        -0.5189709374410747,
+        -3.6629676427663225,
+        -0.09078017707078824,
+        -0.4192305143008973,
+        0.08106550380934843
+      ],
+      "horizon": 35,
+      "cost": 28.498550923185753,
+      "cost_delta": 1.2150280781497713e-12
+    },
+    "translation_yaw": {
+      "torque_delta_max_Nm": 1.3447021274259896e-12,
+      "joint_command_delta_max_rad": 5.551115123125783e-16,
+      "solve_s": 0.021059036254882812,
+      "call_s": 0.02280605398118496,
+      "torque_Nm": [
+        1.5019205566029583,
+        8.240920021430773,
+        0.8474211828039114,
+        -7.068352473157918,
+        3.2059510455733227,
+        0.08111851017576202,
+        4.143745582827157,
+        18.550068231068572,
+        5.41258766435638,
+        -15.248966001481307,
+        13.107925191645275,
+        -1.1764363164755176,
+        -17.22269348021766,
+        14.036243279346287,
+        4.5680329838911184,
+        0.4512187769900587,
+        -3.3668688935556745,
+        -0.15512406027480186,
+        -0.5134028153381534,
+        -0.08071404738726302,
+        -11.498720802343074,
+        -4.766441177820396,
+        -0.5189709374410835,
+        -3.66296764276629,
+        -0.09078017707078814,
+        -0.4192305143008935,
+        0.08106550380934864
+      ],
+      "horizon": 35,
+      "cost": 28.49855092319197,
+      "cost_delta": 7.432277016050648e-12
+    },
+    "base_only_10mm": {
+      "torque_delta_max_Nm": 0.018826772010033466,
+      "joint_command_delta_max_rad": 7.899784300824386e-06,
+      "solve_s": 0.02099442481994629,
+      "call_s": 0.022737517952919006,
+      "torque_Nm": [
+        1.5049105495175352,
+        8.234752677782062,
+        0.8490139508470116,
+        -7.052282210726328,
+        3.2089024993793953,
+        0.08661664739882655,
+        4.150528401065279,
+        18.54917002018144,
+        5.410451620406511,
+        -15.247277971062525,
+        13.122501461825802,
+        -1.17137748082616,
+        -17.241520252228128,
+        14.017498091305304,
+        4.580816551171904,
+        0.4590062865037304,
+        -3.353397732829013,
+        -0.15526364621174832,
+        -0.5135449442137664,
+        -0.08082103342096335,
+        -11.485858497955814,
+        -4.760201178583086,
+        -0.5174488601024742,
+        -3.6617174563709773,
+        -0.090743263765383,
+        -0.41927299948339736,
+        0.08141814399493488
+      ],
+      "horizon": 35,
+      "cost": 35.97930671324291,
+      "cost_delta": 7.4807557900583745
+    }
+  },
+  "scene_mismatch_rejected": {
+    "table": true,
+    "target": true,
+    "feet": true,
+    "brace": true
+  },
+  "velocity_convention_check": {
+    "bridge_delta_max": 3.469446951953614e-17,
+    "integrate_configuration_tangent_error": 6.40809968147521e-15,
+    "incorrect_angular_rotation_error_rad_s": 0.13167696282142827,
+    "mujoco_site_transform_error_m": {
+      "sole_left": 8.881784197001252e-16,
+      "sole_right": 8.881784197001252e-16,
+      "elbow": 4.440892098500626e-16,
+      "forearm": 6.661338147750939e-16,
+      "reach": 1.2212453270876722e-15
+    },
+    "mujoco_table_center_transform_error_m": 0.0,
+    "mujoco_table_rotation_transform_error": 1.1102230246251565e-16,
+    "probe_base_body_velocity": [
+      0.12,
+      -0.08,
+      0.04,
+      0.07,
+      -0.11,
+      0.13
+    ],
+    "dt_s": 1e-06,
+    "object_pose_m_wxyz": [
+      1.5,
+      0.0,
+      1.035,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "transformed_object_pose_m_wxyz": [
+      1.4373524322929936,
+      0.6093294280686024,
+      1.035,
+      0.972514341332643,
+      0.0,
+      0.0,
+      0.23284298551241675
+    ],
+    "table_geometry_center_m": [
+      1.04,
+      0.0,
+      0.83
+    ],
+    "transformed_table_geometry_center_m": [
+      1.0272310197231422,
+      0.401001736794231,
+      0.83
+    ]
+  },
+  "baseline_feasibility": {
+    "brace_elbow": {
+      "normal_force_min_N": 119.13884492968954,
+      "normal_force_max_N": 211.19397186027246,
+      "tangential_force_max_N": 43.248906231601104,
+      "cone_row_violation_max": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cone_row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N"
+      ]
+    },
+    "brace_forearm": {
+      "normal_force_min_N": 0.5779720432164269,
+      "normal_force_max_N": 52.72322845735097,
+      "tangential_force_max_N": 38.874916115212436,
+      "cone_row_violation_max": [
+        0.27285150070074976,
+        2.1701516917573125,
+        0.0,
+        8.552255102051019,
+        0.4220279567835731
+      ],
+      "cone_row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N"
+      ]
+    },
+    "sole_left": {
+      "normal_force_min_N": 141.64341044244722,
+      "normal_force_max_N": 197.8830267973382,
+      "tangential_force_max_N": 19.385345610296635,
+      "cone_row_violation_max": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cone_row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m"
+      ],
+      "plan_axis_cop_margin_min_mm": 10.032189476179104
+    },
+    "sole_right": {
+      "normal_force_min_N": 294.21359377946976,
+      "normal_force_max_N": 334.3217849106195,
+      "tangential_force_max_N": 40.46627319164796,
+      "cone_row_violation_max": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.0665261818209046e-05,
+        0.0,
+        0.0005373528020449214,
+        0.13077276548641592
+      ],
+      "cone_row_units": [
+        "N",
+        "N",
+        "N",
+        "N",
+        "N",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m",
+        "N m"
+      ],
+      "plan_axis_cop_margin_min_mm": 17.22327601613939
+    }
+  },
+  "base_error_contact_response": {
+    "brace_elbow": {
+      "linear_acceleration_constraint_delta_m_s2": 0.5000000000000061,
+      "gains": [
+        50.0,
+        50.0
+      ]
+    },
+    "brace_forearm": {
+      "linear_acceleration_constraint_delta_m_s2": 0.5000000000000059,
+      "gains": [
+        50.0,
+        50.0
+      ]
+    },
+    "sole_left": {
+      "linear_acceleration_constraint_delta_m_s2": 4.228388472693467e-18,
+      "gains": [
+        0.0,
+        50.0
+      ]
+    },
+    "sole_right": {
+      "linear_acceleration_constraint_delta_m_s2": 1.3877787807814457e-17,
+      "gains": [
+        0.0,
+        50.0
+      ]
+    }
+  },
+  "numerical_wall_s": 2.128755788318813,
+  "limitations": [
+    "No plant integration, slip, recovery or hardware test.",
+    "Raw table keep-out requires axis-aligned world geometry. The adapter uses the archived plan frame for the entire objective, including cone facet axes.",
+    "Frame transform is supplied and checked, not estimated. Base-only error is additional to the saved synthetic estimate.",
+    "Native transformed contact test evaluates the same 35 state/control samples; only canonical-frame solves use the complete objective."
+  ],
+  "status": "checkpoint_complete",
   "date_local": "2026-10-16",
-  "baseline_commit": "00aabb5fbee190e67a541ae74b82a861962d0bf9",
-  "measurement_complete": false,
-  "reason": "Five-hour local quota reached 83 percent before numerical launch; owner requires saving progress and returning at 80 percent.",
-  "quota_first_read_percent": 78,
-  "quota_before_experiment_percent": 83,
-  "weekly_quota_percent": 60,
-  "quota_resets_at": 1792215413,
-  "rollouts_started": 0,
-  "rollouts_completed": 0,
-  "rollout_retries": 0,
-  "cumulative_checkpoint_rollouts": 0,
-  "prior_foot_motion_rollouts": 2,
-  "checkpoint_rollout_limit": 6,
-  "serial_numerical_wall_s": 0,
-  "serial_numerical_limit_s": 1200,
-  "numerical_commands_executed": [],
-  "checks_executed": ["Read required files and implementation", "Python ast.parse of the new script", "Local continuation quota status", "Resguard status and event count"],
-  "resguard_events_before": 197,
-  "resguard_events_after": 197,
-  "new_resguard_events": [],
-  "resguard_last_status": {"available_GB": 17.0, "swap_used_GB": 9.8, "psi_some": 0, "psi_full": 0, "load_one_minute": 0.40, "host_cores": 20},
-  "planned_memory_cap": "3.8G",
-  "memory_basis": "Prior full-rollout RSS 3038720 KiB times 1.3",
-  "planned_horizon": 35,
-  "planned_dt_s": 0.02,
-  "planned_hold_index": 165,
-  "planned_observation": "Saved nominal pred_x_est at 4.50 s; MuJoCoPlant.read -> default_sense(seed=17) -> State -> policy",
-  "hypothesis": "Consistent state/table/target/contact frame changes preserve native constrained dynamics and the first control through a plan-frame adapter; base-only +x 10 mm error changes relative geometry and feedback.",
-  "planned_transform": {"translation_m": [0.10, -0.07, 0], "yaw_rad": 0.47, "base_only_error_m": [0.01, 0, 0]},
-  "thresholds": {"acceleration": 1e-7, "force_N": 1e-7, "contact_residual_m": 1e-9, "first_torque_Nm": 1e-6},
-  "measured_frame_metrics": null,
-  "pending": ["Run and debug native API access", "Verify force coordinate convention", "Measure all 35 nodes and first command", "Compare MuJoCo and Pinocchio velocity integration", "Replace this pending record and result page with measurements", "Update transfer assessment from the result"],
-  "implementation_findings": ["Velocity bridge rotates base linear velocity only", "Table keep-out requires world-axis alignment", "Wrench-cone axes are identity in the current builder"],
-  "hardware_validation": "No hardware data or action. State errors, actuator response, friction and recovery still require validation."
+  "baseline_commit": "af5005a",
+  "resources": {
+    "checkpoint": "state_frames",
+    "baseline_commit": "af5005a",
+    "date_local": "2026-10-16",
+    "started_utc": "2026-10-17T05:45:06Z",
+    "numerical_jobs": [
+      {
+        "id": "20261016-check-01",
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-state-frames/20261016-check-01-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_state_frames.py > studies/runs/20261016-cmpc-state-frames/20261016-check-01.log 2>&1",
+        "exit_code": 0,
+        "wall_s": 2.61,
+        "peak_rss_KiB": 2691944,
+        "rollouts": 0,
+        "assessment": "Initial contact, control and velocity comparisons passed; independent table geometry not yet checked."
+      },
+      {
+        "id": "20261016-check-02",
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-state-frames/20261016-check-02-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_state_frames.py > studies/runs/20261016-cmpc-state-frames/20261016-check-02.log 2>&1",
+        "exit_code": 0,
+        "wall_s": 2.63,
+        "peak_rss_KiB": 2682316,
+        "rollouts": 0,
+        "assessment": "Added table-geometry check failed: qpos[34:] is the object, not the static table. Table center error 0.401001736794231 m. Intermediate producer status is superseded by final validation."
+      },
+      {
+        "id": "20261016-check-03",
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-state-frames/20261016-check-03-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_state_frames.py > studies/runs/20261016-cmpc-state-frames/20261016-check-03.log 2>&1",
+        "exit_code": 0,
+        "wall_s": 2.6,
+        "peak_rss_KiB": 2692384,
+        "rollouts": 0,
+        "assessment": "Static table body transformed in memory and restored. All final checks passed."
+      }
+    ],
+    "numerical_jobs_total": 3,
+    "serial_numerical_wall_s": 7.84,
+    "serial_numerical_limit_s": 1200,
+    "peak_rss_KiB": 2692384,
+    "memory_cap": "3.8G",
+    "cpu_quota_percent": 200,
+    "threads": 1,
+    "cpu_affinity": [
+      18
+    ],
+    "memory_basis": "Prior foot-motion measured RSS 3038720 KiB times 1.3",
+    "cumulative_checkpoint_rollouts": 0,
+    "rollout_retries": 0,
+    "checkpoint_rollout_limit": 6,
+    "prior_foot_motion_rollouts": 2,
+    "resguard_events_before": 197,
+    "resguard_events_after": 197,
+    "new_resguard_events": [],
+    "final_validation": {
+      "frame_invariance": true,
+      "scene_contract": true,
+      "velocity_bridge": true,
+      "integration": true,
+      "wrong_angular_channel_detected": true,
+      "mujoco_sites": true,
+      "mujoco_table_center": true,
+      "mujoco_table_rotation": true,
+      "full_hold_horizon": true,
+      "base_only_contact_shift": true
+    },
+    "script_sha256": "0837deabc9c2c574efcfe41bc1c40c4605f8c1a2e008ca422bd46fa6faf2bbe9",
+    "final_quota_before_numerical_percent": 17,
+    "weekly_quota_percent": 65,
+    "final_quota_percent": 26.0,
+    "final_weekly_quota_percent": 66.0
+  },
+  "final_validation": {
+    "frame_invariance": true,
+    "scene_contract": true,
+    "velocity_bridge": true,
+    "integration": true,
+    "wrong_angular_channel_detected": true,
+    "mujoco_sites": true,
+    "mujoco_table_center": true,
+    "mujoco_table_rotation": true,
+    "full_hold_horizon": true,
+    "base_only_contact_shift": true
+  },
+  "numerical_commands_executed": [
+    "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-state-frames/20261016-check-01-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_state_frames.py > studies/runs/20261016-cmpc-state-frames/20261016-check-01.log 2>&1",
+    "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-state-frames/20261016-check-02-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_state_frames.py > studies/runs/20261016-cmpc-state-frames/20261016-check-02.log 2>&1",
+    "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-state-frames/20261016-check-03-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_state_frames.py > studies/runs/20261016-cmpc-state-frames/20261016-check-03.log 2>&1"
+  ],
+  "raw_archive": "20261016-state-frames-raw.zip",
+  "next_falsifiable_experiment": "motion_transfer: audit the first 0.5 s combined position/velocity/feedforward servo input, then compare the original zero-velocity-weight approach with an opt-in re-solved velocity-regularized approach at the same estimated state and servo initialization. The approach hypothesis fails if joint/wrist peaks do not decrease, or if support/reach deteriorates. Report command clipping and tracking separately.",
+  "hardware_validation": "Pending synchronized estimated base pose and velocity with frame/calibration definitions, independent sole motion, encoders, commanded versus measured actuator torque/current and measured surface friction; recovery must be tested separately.",
+  "metric_definitions": {
+    "contact_differences": "Largest absolute component across the same 35 state/control samples, after transforming back to plan axes. Force: N; moment: N m; contact position: mm; foot orientation: rad.",
+    "acceleration": "Pinocchio body-local base linear acceleration in m/s^2; angular and joint components in rad/s^2.",
+    "next_state_tangent_max_abs": "Largest numeric coefficient of the 66-dimensional Pinocchio state difference, with mixed m, rad, m/s and rad/s units; used only as an auxiliary zero-error check.",
+    "first_control": "Largest component difference in requested feedforward torque (N m) or next joint position (rad), from identical archived-plan warm starts and one BoxFDDP iteration.",
+    "feasibility": "Signed world-z normal force (N), horizontal force norm (N), positive excess outside each recorded cone interval (N or N m by row), and smallest plan-axis center-of-pressure margin (mm) within the 200 x 80 mm predictor rectangle.",
+    "velocity": "Six-axis base probe: body-linear m/s, body-angular rad/s; integration compares configuration tangent coordinates at 1 microsecond to expose convention errors with negligible discretization error.",
+    "geometry": "Largest coordinate error in MuJoCo transformed site/table positions (m); rotation uses largest absolute rotation-matrix entry difference. No plant timestep.",
+    "runtime": "Seconds measured around one solve or complete controller call, excluding per-condition reset. Four isolated solves do not estimate a latency percentile."
+  }
 }
