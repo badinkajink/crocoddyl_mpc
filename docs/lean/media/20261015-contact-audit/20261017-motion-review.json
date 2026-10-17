@@ -1,0 +1,468 @@
+{
+  "checkpoint": "motion_transfer",
+  "review_date": "2026-10-17 America/Denver",
+  "new_rollouts": 0,
+  "cumulative_rollouts": 3,
+  "rollout_limit": 6,
+  "physics_steps": 0,
+  "passed": true,
+  "checks": [
+    {
+      "name": "baseline actuator reconstruction",
+      "passed": true,
+      "max_abs_error": 6.394884621840902e-14
+    },
+    {
+      "name": "baseline startup_acceleration_rad_s2",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline acceleration_time_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline startup_joint_speed_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline startup_wrist_peak_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline q_tracking_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline v_tracking_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline startup_force_saturated_joint_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline startup_ctrl_clipped_joint_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline all_joint_limit_margin_min_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline floor onset sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline loaded slip sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline floor onset sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline loaded slip sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline reach RMS",
+      "passed": true,
+      "max_abs_error": 9.237055564881302e-14
+    },
+    {
+      "name": "baseline final support",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline displacement sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline displacement sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline wrist contact time",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline wrist contact speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline solve p95",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline horizon samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline final window",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline estimated initial base bias",
+      "passed": true,
+      "max_abs_error": 2.3418766925686896e-17
+    },
+    {
+      "name": "fixed-position actuator reconstruction",
+      "passed": true,
+      "max_abs_error": 3.197442310920451e-14
+    },
+    {
+      "name": "fixed-position startup_acceleration_rad_s2",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position acceleration_time_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position startup_joint_speed_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position startup_wrist_peak_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position q_tracking_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position v_tracking_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position startup_force_saturated_joint_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position startup_ctrl_clipped_joint_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position all_joint_limit_margin_min_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position floor onset sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position loaded slip sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position floor onset sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position loaded slip sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity actuator reconstruction",
+      "passed": true,
+      "max_abs_error": 4.263256414560601e-14
+    },
+    {
+      "name": "velocity startup_acceleration_rad_s2",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity acceleration_time_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity startup_joint_speed_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity startup_wrist_peak_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity q_tracking_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity v_tracking_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity startup_force_saturated_joint_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity startup_ctrl_clipped_joint_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity all_joint_limit_margin_min_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity floor onset sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity loaded slip sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity floor onset sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity loaded slip sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity reach RMS",
+      "passed": true,
+      "max_abs_error": 1.0302869668521453e-13
+    },
+    {
+      "name": "velocity final support",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity displacement sole_left",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity displacement sole_right",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity wrist contact time",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity wrist contact speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity solve p95",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity horizon samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity final window",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity estimated initial base bias",
+      "passed": true,
+      "max_abs_error": 2.3418766925686896e-17
+    },
+    {
+      "name": "fixed-position common initial qpos",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position common initial qvel",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity common initial qpos",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity common initial qvel",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline video duration",
+      "passed": true,
+      "max_abs_error": 3.33333333379926e-07
+    },
+    {
+      "name": "fixed-position video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "fixed-position video duration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "velocity video duration",
+      "passed": true,
+      "max_abs_error": 3.33333333379926e-07
+    }
+  ],
+  "measurements": {
+    "baseline": {
+      "startup_acceleration_rad_s2": 226.12325033594874,
+      "acceleration_time_s": 0.1290000000000001,
+      "startup_joint_speed_rad_s": 3.3075330609147615,
+      "startup_wrist_peak_m_s": 1.182786136404866,
+      "q_tracking_rms_rad": 0.01877268480661422,
+      "v_tracking_rms_rad_s": 0.21369320952269913,
+      "startup_force_saturated_joint_samples": 165,
+      "startup_ctrl_clipped_joint_samples": 0,
+      "all_joint_limit_margin_min_rad": 0.00590701647144054,
+      "first_loaded_floor_s": {
+        "sole_left": 0.024000000000000007,
+        "sole_right": 0.022000000000000006
+      },
+      "loaded_slip_m_s": {
+        "sole_left": 0.6094583003163533,
+        "sole_right": 0.9551806885454129
+      },
+      "reach_rms_mm": 17.450250242053865,
+      "solver_samples": 302,
+      "estimated_initial_base_bias_m": [
+        0.011012624535058468,
+        0.0033843127664617777,
+        -0.005399715152535012
+      ]
+    },
+    "fixed-position": {
+      "startup_acceleration_rad_s2": 175.62475870999018,
+      "acceleration_time_s": 0.1530000000000001,
+      "startup_joint_speed_rad_s": 1.6857217106540938,
+      "startup_wrist_peak_m_s": 0.36458267941787637,
+      "q_tracking_rms_rad": 0.04499854549252564,
+      "v_tracking_rms_rad_s": 0.2080664768842377,
+      "startup_force_saturated_joint_samples": 0,
+      "startup_ctrl_clipped_joint_samples": 0,
+      "all_joint_limit_margin_min_rad": 0.19813738060709615,
+      "first_loaded_floor_s": {
+        "sole_left": 0.034000000000000016,
+        "sole_right": 0.034000000000000016
+      },
+      "loaded_slip_m_s": {
+        "sole_left": 0.022557187459173126,
+        "sole_right": 0.02252070692496067
+      }
+    },
+    "velocity": {
+      "startup_acceleration_rad_s2": 223.62846569966646,
+      "acceleration_time_s": 0.023000000000000007,
+      "startup_joint_speed_rad_s": 2.7096882886996667,
+      "startup_wrist_peak_m_s": 0.8179261525849514,
+      "q_tracking_rms_rad": 0.015763405179716652,
+      "v_tracking_rms_rad_s": 0.1842020934030402,
+      "startup_force_saturated_joint_samples": 5,
+      "startup_ctrl_clipped_joint_samples": 0,
+      "all_joint_limit_margin_min_rad": 0.029417324742678386,
+      "first_loaded_floor_s": {
+        "sole_left": 0.024000000000000007,
+        "sole_right": 0.022000000000000006
+      },
+      "loaded_slip_m_s": {
+        "sole_left": 0.6159740510733613,
+        "sole_right": 0.9371800589688261
+      },
+      "reach_rms_mm": 16.150566837981046,
+      "solver_samples": 302,
+      "estimated_initial_base_bias_m": [
+        0.011012624535058468,
+        0.0033843127664617777,
+        -0.005399715152535012
+      ]
+    }
+  },
+  "archive": {
+    "sha256": "017db7cb7ba5a60a63e493dea864d0dfd9c7f6d024b7878e12fe9e53017b7a87",
+    "all_members_match_run_directory": true,
+    "members": 58,
+    "source_scripts_match_manifest": true
+  },
+  "videos": {
+    "baseline": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    },
+    "fixed-position": {
+      "avg_frame_rate": "30/1",
+      "duration": "0.500000",
+      "nb_frames": "15"
+    },
+    "velocity": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    }
+  },
+  "limitations": "Saved-state forward evaluation and source review; no new rollout, longer-duration solve, supported-handover test or hardware measurement."
+}

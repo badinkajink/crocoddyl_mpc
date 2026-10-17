@@ -5,7 +5,7 @@
   "rollouts_completed": 3,
   "rollout_retries": 0,
   "rollout_limit": 6,
-  "numerical_wall_s": 62.88999999999999,
+  "numerical_wall_s": 66.37,
   "numerical_limit_s": 1200,
   "max_rss_KiB": 3126812,
   "jobs": [
@@ -80,6 +80,14 @@
       "wall_s": 0.93,
       "max_rss_KiB": 108188,
       "exit_code": 0
+    },
+    {
+      "name": "review-20261017",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-motion-review/20261017-review-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_motion_verify.py > studies/runs/20261017-cmpc-motion-review/20261017-review.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 3.48,
+      "max_rss_KiB": 1095964,
+      "exit_code": 0
     }
   ],
   "events_before": 197,
@@ -139,6 +147,117 @@
     "plan_type": "plus",
     "rate_limit_reached_type": null
   },
-  "checkpoint_status": "continue",
-  "remaining": "Final source/metric and artifact consistency review; no further rollout needed."
+  "checkpoint_status": "checkpoint_complete",
+  "remaining": "None for motion_transfer; transfer limitations are recorded in completion_review.",
+  "completion_review": {
+    "date": "2026-10-17 America/Denver",
+    "source_commit": "cbe9357",
+    "status": "checkpoint_complete",
+    "numerical_wall_s": 3.48,
+    "numerical_limit_s": 1200,
+    "max_rss_KiB": 1095964,
+    "new_rollouts": 0,
+    "cumulative_rollouts": 3,
+    "rollout_limit": 6,
+    "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-motion-review/20261017-review-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_motion_verify.py > studies/runs/20261017-cmpc-motion-review/20261017-review.log 2>&1",
+    "exit_code": 0,
+    "stdout": "{\"passed\": true, \"checks\": 72, \"archive_members\": 58, \"rollouts\": 0, \"output\": \"/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/docs/lean/media/20261015-contact-audit/20261017-motion-review.json\"}\n",
+    "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_motion_verify.py\"\n\tUser time (seconds): 3.01\n\tSystem time (seconds): 0.44\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:03.48\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1095964\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 328246\n\tVoluntary context switches: 190\n\tInvoluntary context switches: 412\n\tSwaps: 0\n\tFile system inputs: 152\n\tFile system outputs: 80\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+    "memory_basis": "Previous scoring RSS 1087212 KiB times 1.3 is 1.35 GiB; selected 1.6G cap.",
+    "cpu": "One thread on core 18, CPUQuota 200",
+    "quota": {
+      "before-review": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 12.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 79.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "after-review": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 16.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 80.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "final": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 18.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 80.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      }
+    },
+    "events_before": 197,
+    "events_after": 197,
+    "new_events": [],
+    "passed_numerical_checks": 72,
+    "archive_members_verified": 58,
+    "video_frames": {
+      "baseline": 181,
+      "fixed-position": 15,
+      "velocity": 181
+    },
+    "figures_inspected": [
+      "20261016-motion-startup-traces.png",
+      "20261016-motion-baseline-frames.jpg",
+      "20261016-motion-fixed-position-frames.jpg",
+      "20261016-motion-velocity-frames.jpg"
+    ],
+    "source": "studies/20261017_cmpc_motion_verify.py",
+    "source_sha256": "b710a0923432080abe015f428696ac65bb55ee718babdac8f18964e9c1b2e345",
+    "numerical_measurement": "Recomputed startup acceleration/speed/tracking/saturation, margins, floor onset/slip, displacement, contact speed, final reach/support and runtime from saved states. Forward evaluation only; zero physics steps.",
+    "reviewed_invariants": "Same model arrays, target, initial state and estimated-state path. Source asserts 35 nodes on every solve; saved horizon samples equal 35, final window 165, dt 0.02. Added velocity term applies in both plan phases.",
+    "remaining_checkpoint_work": "None. Combined improvement hypothesis fails; keep velocity correction opt-in.",
+    "transfer_limitations": "Supported handover, feasible contact forces, foot motion and recovery remain unresolved. Hardware needs synchronized base estimates, joint commands/encoders, current or torque, independent sole motion and contact load/friction. No hardware action."
+  },
+  "numerical_budget_scope": "1200 s per session; 62.89 s in measurement session and 3.48 s in completion review."
 }
