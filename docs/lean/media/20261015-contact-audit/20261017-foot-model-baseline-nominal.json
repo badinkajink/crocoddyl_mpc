@@ -1,0 +1,12 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-nominal.csv",
+  "source_sha256": "cedd2711767d2baea28f2f05db450193fad7fe9f574d92676ec1ceee4aea3525",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 181,
+  "duration_s": 6.033333333333333,
+  "simulation_start_s": 0.0,
+  "simulation_end_s": 6.017999999999559,
+  "max_timestamp_error_s": 0.0006666666671018007,
+  "video_sha256": "829e36494ba948830709d14cdd907d0f6e6ddaa6c91e8214d1b1a2a16443115d"
+}

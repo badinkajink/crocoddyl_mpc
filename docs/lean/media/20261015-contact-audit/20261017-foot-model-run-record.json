@@ -1,0 +1,1058 @@
+{
+  "checkpoint": "foot_model_transfer",
+  "date": "2026-10-17",
+  "rollouts_started": 6,
+  "rollouts_completed": 6,
+  "rollout_retries": 2,
+  "rollout_limit": 6,
+  "jobs": [
+    {
+      "name": "probe",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-probe-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py probe > studies/runs/20261017-cmpc-foot-model-transfer/20261017-probe.log 2>&1",
+      "rollouts": 0,
+      "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py probe\"\n\tUser time (seconds): 1.63\n\tSystem time (seconds): 0.85\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.50\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2762748\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 822087\n\tVoluntary context switches: 440\n\tInvoluntary context switches: 613\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 8\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+      "wall_s": 2.5,
+      "max_rss_KiB": 2762748,
+      "exit_code": 1
+    },
+    {
+      "name": "probe2",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-probe2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py probe > studies/runs/20261017-cmpc-foot-model-transfer/20261017-probe2.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py probe\"\n\tUser time (seconds): 1.86\n\tSystem time (seconds): 0.85\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.73\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2776176\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 3\n\tMinor (reclaiming a frame) page faults: 823543\n\tVoluntary context switches: 474\n\tInvoluntary context switches: 531\n\tSwaps: 0\n\tFile system inputs: 664\n\tFile system outputs: 152\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 2.73,
+      "max_rss_KiB": 2776176,
+      "exit_code": 0
+    },
+    {
+      "name": "baseline-nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-nominal-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py baseline --case nominal > studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-nominal.log 2>&1",
+      "rollouts": 1,
+      "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py baseline --case nominal\"\n\tUser time (seconds): 9.63\n\tSystem time (seconds): 1.13\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.87\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3526672\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 1032218\n\tVoluntary context switches: 849\n\tInvoluntary context switches: 927\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 54192\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 10.87,
+      "max_rss_KiB": 3526672,
+      "exit_code": 0
+    },
+    {
+      "name": "baseline-pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-pulse-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py baseline --case pulse > studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-pulse.log 2>&1",
+      "rollouts": 1,
+      "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py baseline --case pulse\"\n\tUser time (seconds): 9.57\n\tSystem time (seconds): 1.09\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.71\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3443492\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 1037622\n\tVoluntary context switches: 1567\n\tInvoluntary context switches: 626\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 53448\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 10.71,
+      "max_rss_KiB": 3443492,
+      "exit_code": 0
+    },
+    {
+      "name": "projected-nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-projected-nominal-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case nominal > studies/runs/20261017-cmpc-foot-model-transfer/20261017-projected-nominal.log 2>&1",
+      "rollouts": 1,
+      "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case nominal\"\n\tUser time (seconds): 9.79\n\tSystem time (seconds): 1.11\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.96\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3496700\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 1026060\n\tVoluntary context switches: 1322\n\tInvoluntary context switches: 695\n\tSwaps: 0\n\tFile system inputs: 8\n\tFile system outputs: 54192\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 10.96,
+      "max_rss_KiB": 3496700,
+      "exit_code": 0
+    },
+    {
+      "name": "projected-pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-projected-pulse-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case pulse > studies/runs/20261017-cmpc-foot-model-transfer/20261017-projected-pulse.log 2>&1",
+      "rollouts": 1,
+      "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case pulse\"\n\tUser time (seconds): 9.71\n\tSystem time (seconds): 1.09\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.87\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3518048\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 1042472\n\tVoluntary context switches: 1443\n\tInvoluntary context switches: 781\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 54104\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 10.87,
+      "max_rss_KiB": 3518048,
+      "exit_code": 0
+    },
+    {
+      "name": "score-baseline",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-score-baseline-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py score --group baseline > studies/runs/20261017-cmpc-foot-model-transfer/20261017-score-baseline.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py score --group baseline\"\n\tUser time (seconds): 6.33\n\tSystem time (seconds): 0.38\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:06.78\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1127024\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 323391\n\tVoluntary context switches: 466\n\tInvoluntary context switches: 529\n\tSwaps: 0\n\tFile system inputs: 8\n\tFile system outputs: 62784\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 6.78,
+      "max_rss_KiB": 1127024,
+      "exit_code": 0
+    },
+    {
+      "name": "score-projected",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-score-projected-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py score --group projected > studies/runs/20261017-cmpc-foot-model-transfer/20261017-score-projected.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py score --group projected\"\n\tUser time (seconds): 6.49\n\tSystem time (seconds): 0.40\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:06.95\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1127972\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 322942\n\tVoluntary context switches: 1236\n\tInvoluntary context switches: 370\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 66408\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 6.95,
+      "max_rss_KiB": 1127972,
+      "exit_code": 0
+    },
+    {
+      "name": "finish",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-finish-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py finish > studies/runs/20261017-cmpc-foot-model-transfer/20261017-finish.log 2>&1",
+      "rollouts": 0,
+      "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py finish\"\n\tUser time (seconds): 1.99\n\tSystem time (seconds): 0.84\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.86\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2687200\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 818693\n\tVoluntary context switches: 334\n\tInvoluntary context switches: 485\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 472\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+      "wall_s": 2.86,
+      "max_rss_KiB": 2687200,
+      "exit_code": 1
+    },
+    {
+      "name": "corrected-nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-nominal-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case nominal > studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-nominal.log 2>&1",
+      "rollouts": 1,
+      "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case nominal\"\n\tUser time (seconds): 9.81\n\tSystem time (seconds): 1.07\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:11.00\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3523100\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 1030332\n\tVoluntary context switches: 1342\n\tInvoluntary context switches: 1176\n\tSwaps: 0\n\tFile system inputs: 8\n\tFile system outputs: 54192\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 11.0,
+      "max_rss_KiB": 3523100,
+      "exit_code": 0
+    },
+    {
+      "name": "corrected-pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-pulse-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case pulse > studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-pulse.log 2>&1",
+      "rollouts": 1,
+      "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_transfer.py projected --case pulse\"\n\tUser time (seconds): 9.77\n\tSystem time (seconds): 1.08\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.98\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3488248\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 1022773\n\tVoluntary context switches: 1219\n\tInvoluntary context switches: 811\n\tSwaps: 0\n\tFile system inputs: 8\n\tFile system outputs: 54088\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 10.98,
+      "max_rss_KiB": 3488248,
+      "exit_code": 0
+    },
+    {
+      "name": "score-corrected",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-score-corrected-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py score --group corrected > studies/runs/20261017-cmpc-foot-model-transfer/20261017-score-corrected.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py score --group corrected\"\n\tUser time (seconds): 6.51\n\tSystem time (seconds): 0.43\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:06.99\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1126780\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 323742\n\tVoluntary context switches: 286\n\tInvoluntary context switches: 387\n\tSwaps: 0\n\tFile system inputs: 24\n\tFile system outputs: 66552\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 6.99,
+      "max_rss_KiB": 1126780,
+      "exit_code": 0
+    },
+    {
+      "name": "finish2",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-finish2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py finish > studies/runs/20261017-cmpc-foot-model-transfer/20261017-finish2.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py finish\"\n\tUser time (seconds): 2.15\n\tSystem time (seconds): 0.85\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:03.02\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2686436\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 818528\n\tVoluntary context switches: 362\n\tInvoluntary context switches: 517\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 4368\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 3.02,
+      "max_rss_KiB": 2686436,
+      "exit_code": 0
+    },
+    {
+      "name": "render-baseline",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-render-baseline-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py render --group baseline > studies/runs/20261017-cmpc-foot-model-transfer/20261017-render-baseline.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py render --group baseline\"\n\tUser time (seconds): 4.48\n\tSystem time (seconds): 0.82\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:05.33\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1250672\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 434871\n\tVoluntary context switches: 16280\n\tInvoluntary context switches: 8281\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 1184\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 5.33,
+      "max_rss_KiB": 1250672,
+      "exit_code": 0
+    },
+    {
+      "name": "render-corrected",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.0G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261017-cmpc-foot-model-transfer/20261017-render-corrected-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py render --group corrected > studies/runs/20261017-cmpc-foot-model-transfer/20261017-render-corrected.log 2>&1",
+      "rollouts": 0,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261017_cmpc_foot_model_analysis.py render --group corrected\"\n\tUser time (seconds): 4.48\n\tSystem time (seconds): 0.80\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:05.32\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1252476\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 425133\n\tVoluntary context switches: 16201\n\tInvoluntary context switches: 8459\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 1120\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "wall_s": 5.32,
+      "max_rss_KiB": 1252476,
+      "exit_code": 0
+    }
+  ],
+  "numerical_wall_s": 107.87,
+  "max_rss_KiB": 3526672,
+  "numerical_limit_s": 1200,
+  "resguard_events_start": 197,
+  "resguard_events_end": 197,
+  "source_hashes": {
+    "studies/20261017_cmpc_foot_model_analysis.py": "99eef75543a57771ba84a191297a8bbad5d081c991560e178648ce5d1af64c6d",
+    "studies/20261017_cmpc_foot_model_transfer.py": "e1221dacbeebe0e80327a6dbbc2b4bc136d40082dff283b5817fa7e5fa459801",
+    "studies/20261016_cmpc_foot_motion.py": "8464edef576000ee115e8e4b5a01f4e316e75674a6d6c209a482d4ae90a40f3a",
+    "studies/20261016_cmpc_foot_analysis.py": "7348d6cdfe1373f7e85ddc2308fba043329ebda29e7c619fcdf1480f82f9ba08"
+  },
+  "failures": [
+    "First saved-state probe mixed 3D force Jacobian with 6D wrench; corrected before rollouts.",
+    "First final audit exposed omitted 0.9 runtime feedforward clamp. Two initial projected trials remain archived, excluded from final comparison. Baseline model predictions were recomputed from saved estimated states and issued commands; final corrected pair rerun."
+  ],
+  "videos": {
+    "20261017-foot-model-baseline-nominal": {
+      "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-nominal.csv",
+      "source_sha256": "cedd2711767d2baea28f2f05db450193fad7fe9f574d92676ec1ceee4aea3525",
+      "fps": 30,
+      "playback_speed": 1,
+      "frames": 181,
+      "duration_s": 6.033333333333333,
+      "simulation_start_s": 0.0,
+      "simulation_end_s": 6.017999999999559,
+      "max_timestamp_error_s": 0.0006666666671018007,
+      "video_sha256": "829e36494ba948830709d14cdd907d0f6e6ddaa6c91e8214d1b1a2a16443115d",
+      "ffprobe": {
+        "programs": [],
+        "streams": [
+          {
+            "r_frame_rate": "30/1",
+            "duration": "6.033333",
+            "nb_frames": "181"
+          }
+        ]
+      },
+      "frames_inspected": true
+    },
+    "20261017-foot-model-baseline-pulse": {
+      "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-pulse.csv",
+      "source_sha256": "5c783226e912ad4e693d005fd2a178c99a03ae8c93b9cf8f17e3f3ccd7191f1b",
+      "fps": 30,
+      "playback_speed": 1,
+      "frames": 181,
+      "duration_s": 6.033333333333333,
+      "simulation_start_s": 0.0,
+      "simulation_end_s": 6.017999999999559,
+      "max_timestamp_error_s": 0.0006666666671018007,
+      "video_sha256": "ecaabccf3f9f470a6960351f4e731530a0c94bc9875e2fc80cdd6c5c257d968d",
+      "ffprobe": {
+        "programs": [],
+        "streams": [
+          {
+            "r_frame_rate": "30/1",
+            "duration": "6.033333",
+            "nb_frames": "181"
+          }
+        ]
+      },
+      "frames_inspected": true
+    },
+    "20261017-foot-model-corrected-nominal": {
+      "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-nominal.csv",
+      "source_sha256": "3c8c8d5ff1e056f128def869a04bd73926484b97e1fd8af49f97e7893c3b237e",
+      "fps": 30,
+      "playback_speed": 1,
+      "frames": 181,
+      "duration_s": 6.033333333333333,
+      "simulation_start_s": 0.0,
+      "simulation_end_s": 6.017999999999559,
+      "max_timestamp_error_s": 0.0006666666671018007,
+      "video_sha256": "50ead88609a6f6b047497f8bf30f44ba00efe63bc2cbd62fd91029a4ddf9e623",
+      "ffprobe": {
+        "programs": [],
+        "streams": [
+          {
+            "r_frame_rate": "30/1",
+            "duration": "6.033333",
+            "nb_frames": "181"
+          }
+        ]
+      },
+      "frames_inspected": true
+    },
+    "20261017-foot-model-corrected-pulse": {
+      "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-pulse.csv",
+      "source_sha256": "94882f47eded2513d330efc65702b9ab567980d1c8552269877f450a592b77ac",
+      "fps": 30,
+      "playback_speed": 1,
+      "frames": 181,
+      "duration_s": 6.033333333333333,
+      "simulation_start_s": 0.0,
+      "simulation_end_s": 6.017999999999559,
+      "max_timestamp_error_s": 0.0006666666671018007,
+      "video_sha256": "68745266d65ccbc0d8c6869e2dcc2be0ec0e6171ad596d82b31972b50daffe13",
+      "ffprobe": {
+        "programs": [],
+        "streams": [
+          {
+            "r_frame_rate": "30/1",
+            "duration": "6.033333",
+            "nb_frames": "181"
+          }
+        ]
+      },
+      "frames_inspected": true
+    }
+  },
+  "validation": {
+    "baseline-nominal_accepted_rows": true,
+    "baseline-nominal_servo_realization": true,
+    "baseline-nominal_full_horizon": true,
+    "baseline-pulse_accepted_rows": true,
+    "baseline-pulse_servo_realization": true,
+    "baseline-pulse_full_horizon": true,
+    "corrected-nominal_accepted_rows": true,
+    "corrected-nominal_servo_realization": true,
+    "corrected-nominal_full_horizon": true,
+    "corrected-pulse_accepted_rows": true,
+    "corrected-pulse_servo_realization": true,
+    "corrected-pulse_full_horizon": true,
+    "nominal_baseline_reproduction": true,
+    "nominal_pre_activation_identical": true,
+    "pulse_baseline_reproduction": true,
+    "pulse_pre_activation_identical": true
+  },
+  "quota_reads": {
+    "20261017-quota-before-corrected-pulse.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 67.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 88.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-initial.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 37.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 83.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-before-corrected-nominal.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 64.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 87.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-before-baseline-pulse.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 48.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 85.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-before-baseline-nominal.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 46.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 84.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-ten-minute.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 70.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 88.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-before-projected-nominal.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 50.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 85.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-before-projected-pulse.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 55.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 86.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-final.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 74.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 89.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261017-quota-stop.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 11,
+        "next_at": 1792235196.9671261,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-17T11:15:06.022993+00:00",
+        "active_tag": "cmpc-20261015-attempt-11-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed 6412460; not pushed. Verified 72 checks in 3.48 s with no new rollout or resguard event; cumulative rollouts remain 3/6. Velocity regularization reduced wrist contact speed from 0.700 to 0.083 m/s while preserving support and reach, but failed acceleration and foot-displacement criteria. Initialization/servo-contact transients remain supported.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-motion-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-motion-review.json",
+            "studies/20261017_cmpc_motion_verify.py",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required motion_transfer work remains. Keep the correction opt-in. Supported initialization, contact-force feasibility, foot slip and recovery require further work; hardware actuator, state-estimation and contact measurements remain unavailable."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 83.0,
+          "window_minutes": 300,
+          "resets_at": 1792251832
+        },
+        "secondary": {
+          "used_percent": 90.0,
+          "window_minutes": 10080,
+          "resets_at": 1792656594
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 8,
+        "sessions_remaining": 10,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 1792656654
+    }
+  },
+  "artifact_archive_time_output": "\tCommand being timed: \"timeout 60s taskset -c 18 python -c import pathlib,zipfile; root=pathlib.Path(\"studies/runs/20261017-cmpc-foot-model-transfer\"); dest=pathlib.Path(\"docs/lean/media/20261015-contact-audit/20261017-foot-model-raw.zip\"); z=zipfile.ZipFile(dest,\"w\",zipfile.ZIP_DEFLATED,compresslevel=6); [z.write(p,str(p.relative_to(root))) for p in sorted(root.rglob(\"*\")) if p.is_file() and p.name not in [\"20261017-archive-time.txt\",\"20261017-archive.log\"]]; z.close()\"\n\tUser time (seconds): 5.56\n\tSystem time (seconds): 0.04\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:05.68\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 12000\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 2083\n\tVoluntary context switches: 3\n\tInvoluntary context switches: 162\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 130184\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+  "future_full_rollout_memory_cap": "4.4G",
+  "status": "continue",
+  "remaining": "Final source/metric consistency review; no further rollout allowed."
+}
