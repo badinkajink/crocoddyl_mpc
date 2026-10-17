@@ -1,0 +1,144 @@
+{
+  "checkpoint": "motion_transfer",
+  "date": "2026-10-16 America/Denver",
+  "rollouts_started": 3,
+  "rollouts_completed": 3,
+  "rollout_retries": 0,
+  "rollout_limit": 6,
+  "numerical_wall_s": 62.88999999999999,
+  "numerical_limit_s": 1200,
+  "max_rss_KiB": 3126812,
+  "jobs": [
+    {
+      "name": "audit",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-audit-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_transfer.py audit > studies/runs/20261016-cmpc-motion-transfer/20261016-audit.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 1.92,
+      "max_rss_KiB": 1068368,
+      "exit_code": 1
+    },
+    {
+      "name": "audit2",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-audit2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_transfer.py audit > studies/runs/20261016-cmpc-motion-transfer/20261016-audit2.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 3.39,
+      "max_rss_KiB": 1067652,
+      "exit_code": 0
+    },
+    {
+      "name": "fixed-position",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-fixed-position-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_transfer.py fixed-position > studies/runs/20261016-cmpc-motion-transfer/20261016-fixed-position.log 2>&1",
+      "rollouts": 1,
+      "wall_s": 3.42,
+      "max_rss_KiB": 2792792,
+      "exit_code": 0
+    },
+    {
+      "name": "baseline",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-baseline-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_transfer.py baseline > studies/runs/20261016-cmpc-motion-transfer/20261016-baseline.log 2>&1",
+      "rollouts": 1,
+      "wall_s": 11.17,
+      "max_rss_KiB": 3075924,
+      "exit_code": 0
+    },
+    {
+      "name": "solve",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-solve-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_transfer.py solve > studies/runs/20261016-cmpc-motion-transfer/20261016-solve.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 22.06,
+      "max_rss_KiB": 1823176,
+      "exit_code": 0
+    },
+    {
+      "name": "velocity",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-velocity-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_transfer.py velocity > studies/runs/20261016-cmpc-motion-transfer/20261016-velocity.log 2>&1",
+      "rollouts": 1,
+      "wall_s": 11.31,
+      "max_rss_KiB": 3126812,
+      "exit_code": 0
+    },
+    {
+      "name": "analysis",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 3.8G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-analysis-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_analysis.py > studies/runs/20261016-cmpc-motion-transfer/20261016-analysis.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 3.41,
+      "max_rss_KiB": 1087212,
+      "exit_code": 1
+    },
+    {
+      "name": "render",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-render-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261016_cmpc_motion_analysis.py --render > studies/runs/20261016-cmpc-motion-transfer/20261016-render.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 5.28,
+      "max_rss_KiB": 1250920,
+      "exit_code": 0
+    },
+    {
+      "name": "plot",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261016-cmpc-motion-transfer/20261016-plot-time.txt timeout 60s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 taskset -c 18 /usr/bin/python studies/20261016_cmpc_motion_plot.py > studies/runs/20261016-cmpc-motion-transfer/20261016-plot.log 2>&1",
+      "rollouts": 0,
+      "wall_s": 0.93,
+      "max_rss_KiB": 108188,
+      "exit_code": 0
+    }
+  ],
+  "events_before": 197,
+  "events_after": 197,
+  "new_events": [],
+  "memory_sizing": "3.8G model/rollout cap from prior measured 3038720 KiB times 1.3; 1.6G render/plot cap from prior measured render 1190676 KiB times 1.3.",
+  "scheduling": "Jobs run on core 18 with one thread and CPUQuota 200. The audit retry and fixed-position process were launched 1.2 s apart before awaiting the audit; their short initialization may overlap. Total numerical budget conservatively sums both full elapsed times. Later jobs were awaited serially.",
+  "failures": [
+    "Audit 01: empty initial contact list; no physics integration. Audit 02 reports zero contacts.",
+    "Analysis: numerical scoring and JSON completed, then missing Matplotlib in croco environment. Plot moved to installed system Python; no installation or extra rollout."
+  ],
+  "quota_10min": {
+    "limit_id": "codex",
+    "limit_name": null,
+    "primary": {
+      "used_percent": 76.0,
+      "window_minutes": 300,
+      "resets_at": 1792233623
+    },
+    "secondary": {
+      "used_percent": 74.0,
+      "window_minutes": 10080,
+      "resets_at": 1792656594
+    },
+    "credits": {
+      "has_credits": false,
+      "unlimited": false,
+      "balance": "0"
+    },
+    "individual_limit": null,
+    "spend_control_reached": null,
+    "plan_type": "plus",
+    "rate_limit_reached_type": null
+  },
+  "observation": "default_sense(seed=17) estimated-state path, synthetic 10 mm/0.01 rad base biases and ideal velocity/joint channels; same initial state. Ground truth used only for scoring.",
+  "invariants": "35-node MPC, dt 0.02, original memberships/defaults untouched. No agents, hardware commands, new queues, runner/config/timer changes or push.",
+  "quota_final": {
+    "limit_id": "codex",
+    "limit_name": null,
+    "primary": {
+      "used_percent": 85.0,
+      "window_minutes": 300,
+      "resets_at": 1792233623
+    },
+    "secondary": {
+      "used_percent": 75.0,
+      "window_minutes": 10080,
+      "resets_at": 1792656594
+    },
+    "credits": {
+      "has_credits": false,
+      "unlimited": false,
+      "balance": "0"
+    },
+    "individual_limit": null,
+    "spend_control_reached": null,
+    "plan_type": "plus",
+    "rate_limit_reached_type": null
+  },
+  "checkpoint_status": "continue",
+  "remaining": "Final source/metric and artifact consistency review; no further rollout needed."
+}

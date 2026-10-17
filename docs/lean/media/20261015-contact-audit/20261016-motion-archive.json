@@ -1,0 +1,10 @@
+{
+  "archive": "docs/lean/media/20261015-contact-audit/20261016-motion-raw.zip",
+  "sha256": "017db7cb7ba5a60a63e493dea864d0dfd9c7f6d024b7878e12fe9e53017b7a87",
+  "bytes": 35365492,
+  "source_scripts": {
+    "studies/20261016_cmpc_motion_analysis.py": "fd21547517b8ba788b0c91e9864e7601c4b305b0adc051538168f1472a964eac",
+    "studies/20261016_cmpc_motion_transfer.py": "50c73948ccfbadd7fe775d86d122189b53a2321257e5a197612ad143856c6dcf",
+    "studies/20261016_cmpc_motion_plot.py": "122f3a2b21b584abcfdbb393b9ecf1bb4a4152c355d5d6487c2de85ec7297791"
+  }
+}

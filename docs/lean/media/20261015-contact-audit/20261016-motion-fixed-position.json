@@ -1,0 +1,12 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261016-cmpc-motion-transfer/20261016-fixed-position.csv",
+  "source_sha256": "4e824fb82530cfabe50da87d3e23886abf5bc1b681fa95c8782936951815b33d",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 15,
+  "duration_s": 0.5,
+  "simulation_start_s": 0.0,
+  "simulation_end_s": 0.4980000000000004,
+  "max_timestamp_error_s": 0.0006666666666669818,
+  "video_sha256": "e484cca64ad4f2241f151d09cd455ba335b096e2dff84bc89cfeadcbd2f7f069"
+}

@@ -1,0 +1,12 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261016-cmpc-motion-transfer/20261016-velocity.csv",
+  "source_sha256": "bdef65e7b1ea30e3b52b33c689073b2ebac34c1983392583aeca6f0c005e73f1",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 181,
+  "duration_s": 6.033333333333333,
+  "simulation_start_s": 0.0,
+  "simulation_end_s": 6.017999999999559,
+  "max_timestamp_error_s": 0.0006666666671018007,
+  "video_sha256": "186e1cc1d1ea6ea7e0507b5d07dff1c6340474f7b21f5845f9f0991520bf0315"
+}
