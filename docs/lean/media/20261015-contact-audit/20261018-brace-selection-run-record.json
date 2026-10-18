@@ -53,7 +53,7 @@
     }
   ],
   "numerical_seconds": 25.710000000000004,
-  "rollouts_cumulative": 1,
+  "rollouts_cumulative": 5,
   "rollout_retries": 0,
   "resguard_events_before": 213,
   "resguard_events_after": 213,
@@ -204,5 +204,645 @@
     "studies/20261018_cmpc_brace_geometry_rollout.py": "56f50e88702ec9b5e5f0e6274a092f7fa900780980b189921eb908629de90c63",
     "studies/20261018_cmpc_brace_analysis.py": "f085e7cde39c74ddd4b05cdc1570dac031df3d6cd395e5089d695d257729846d",
     "studies/20261016_cmpc_foot_motion.py": "8464edef576000ee115e8e4b5a01f4e316e75674a6d6c209a482d4ae90a40f3a"
+  },
+  "planning_session": {
+    "jobs": [
+      {
+        "name": "design",
+        "args": "design",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-design-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py design > studies/runs/20261018-cmpc-brace-planning/20261018-design.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py design\"\n\tUser time (seconds): 1.73\n\tSystem time (seconds): 0.35\n\tPercent of CPU this job got: 91%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.28\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1052176\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 52\n\tMinor (reclaiming a frame) page faults: 289572\n\tVoluntary context switches: 1582\n\tInvoluntary context switches: 452\n\tSwaps: 0\n\tFile system inputs: 181568\n\tFile system outputs: 208\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 2.28,
+        "peak_rss_KiB": 1052176,
+        "exit_status": 0
+      },
+      {
+        "name": "design-closure",
+        "args": "design",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-design-closure-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py design > studies/runs/20261018-cmpc-brace-planning/20261018-design-closure.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py design\"\n\tUser time (seconds): 1.70\n\tSystem time (seconds): 0.34\n\tPercent of CPU this job got: 97%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.10\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1053216\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 10\n\tMinor (reclaiming a frame) page faults: 289506\n\tVoluntary context switches: 150\n\tInvoluntary context switches: 370\n\tSwaps: 0\n\tFile system inputs: 2280\n\tFile system outputs: 168\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 2.1,
+        "peak_rss_KiB": 1053216,
+        "exit_status": 0
+      },
+      {
+        "name": "design-distal",
+        "args": "design",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-design-distal-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py design > studies/runs/20261018-cmpc-brace-planning/20261018-design-distal.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py design\"\n\tUser time (seconds): 1.72\n\tSystem time (seconds): 0.33\n\tPercent of CPU this job got: 97%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.10\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1051828\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 289402\n\tVoluntary context switches: 155\n\tInvoluntary context switches: 367\n\tSwaps: 0\n\tFile system inputs: 256\n\tFile system outputs: 168\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 2.1,
+        "peak_rss_KiB": 1051828,
+        "exit_status": 0
+      },
+      {
+        "name": "solve-baseline-selection",
+        "args": "solve --strategy elbow_forearm --target selection",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-solve-baseline-selection-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy elbow_forearm --target selection > studies/runs/20261018-cmpc-brace-planning/20261018-solve-baseline-selection.log 2>&1",
+        "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy elbow_forearm --target selection\"\n\tUser time (seconds): 10.24\n\tSystem time (seconds): 0.87\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:11.21\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2182320\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 70\n\tMinor (reclaiming a frame) page faults: 664429\n\tVoluntary context switches: 508\n\tInvoluntary context switches: 872\n\tSwaps: 0\n\tFile system inputs: 11608\n\tFile system outputs: 336\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+        "elapsed_s": 11.21,
+        "peak_rss_KiB": 2182320,
+        "exit_status": 1
+      },
+      {
+        "name": "parity",
+        "args": "verify --strategy elbow_forearm --target selection",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-parity-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py verify --strategy elbow_forearm --target selection > studies/runs/20261018-cmpc-brace-planning/20261018-parity.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py verify --strategy elbow_forearm --target selection\"\n\tUser time (seconds): 1.43\n\tSystem time (seconds): 0.56\n\tPercent of CPU this job got: 89%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.25\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1556032\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 237\n\tMinor (reclaiming a frame) page faults: 509069\n\tVoluntary context switches: 1896\n\tInvoluntary context switches: 535\n\tSwaps: 0\n\tFile system inputs: 212632\n\tFile system outputs: 16\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 2.25,
+        "peak_rss_KiB": 1556032,
+        "exit_status": 0
+      },
+      {
+        "name": "run-baseline-selection",
+        "args": "run --strategy elbow_forearm --target selection",
+        "timeout": 120,
+        "rollouts": 1,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-run-baseline-selection-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy elbow_forearm --target selection > studies/runs/20261018-cmpc-brace-planning/20261018-run-baseline-selection.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy elbow_forearm --target selection\"\n\tUser time (seconds): 10.00\n\tSystem time (seconds): 1.04\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:11.14\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3041168\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 17\n\tMinor (reclaiming a frame) page faults: 910321\n\tVoluntary context switches: 718\n\tInvoluntary context switches: 974\n\tSwaps: 0\n\tFile system inputs: 2520\n\tFile system outputs: 51240\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 11.14,
+        "peak_rss_KiB": 3041168,
+        "exit_status": 0
+      },
+      {
+        "name": "solve-alternate-selection",
+        "args": "solve --strategy forearm_wrist --target selection",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-solve-alternate-selection-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy forearm_wrist --target selection > studies/runs/20261018-cmpc-brace-planning/20261018-solve-alternate-selection.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy forearm_wrist --target selection\"\n\tUser time (seconds): 6.47\n\tSystem time (seconds): 0.73\n\tPercent of CPU this job got: 97%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:07.43\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2192700\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 17\n\tMinor (reclaiming a frame) page faults: 667306\n\tVoluntary context switches: 1638\n\tInvoluntary context switches: 750\n\tSwaps: 0\n\tFile system inputs: 176304\n\tFile system outputs: 344\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 7.43,
+        "peak_rss_KiB": 2192700,
+        "exit_status": 0
+      },
+      {
+        "name": "run-alternate-selection",
+        "args": "run --strategy forearm_wrist --target selection",
+        "timeout": 120,
+        "rollouts": 1,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-run-alternate-selection-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy forearm_wrist --target selection > studies/runs/20261018-cmpc-brace-planning/20261018-run-alternate-selection.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy forearm_wrist --target selection\"\n\tUser time (seconds): 10.03\n\tSystem time (seconds): 1.02\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:11.17\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2998508\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 2\n\tMinor (reclaiming a frame) page faults: 902479\n\tVoluntary context switches: 810\n\tInvoluntary context switches: 1221\n\tSwaps: 0\n\tFile system inputs: 16\n\tFile system outputs: 52408\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 11.17,
+        "peak_rss_KiB": 2998508,
+        "exit_status": 0
+      },
+      {
+        "name": "score-selection",
+        "args": "selection",
+        "script": "20261018_cmpc_brace_planning_analysis.py",
+        "timeout": 180,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-score-selection-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py selection > studies/runs/20261018-cmpc-brace-planning/20261018-score-selection.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py selection\"\n\tUser time (seconds): 11.88\n\tSystem time (seconds): 0.50\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:12.45\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1365848\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 433281\n\tVoluntary context switches: 242\n\tInvoluntary context switches: 752\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 4096\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 12.45,
+        "peak_rss_KiB": 1365848,
+        "exit_status": 0
+      },
+      {
+        "name": "solve-baseline-reserved",
+        "args": "solve --strategy elbow_forearm --target reserved",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-solve-baseline-reserved-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy elbow_forearm --target reserved > studies/runs/20261018-cmpc-brace-planning/20261018-solve-baseline-reserved.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy elbow_forearm --target reserved\"\n\tUser time (seconds): 20.38\n\tSystem time (seconds): 0.72\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:21.19\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2192344\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 668560\n\tVoluntary context switches: 383\n\tInvoluntary context switches: 1645\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 344\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 21.19,
+        "peak_rss_KiB": 2192344,
+        "exit_status": 0
+      },
+      {
+        "name": "run-baseline-reserved",
+        "args": "run --strategy elbow_forearm --target reserved",
+        "timeout": 120,
+        "rollouts": 1,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-run-baseline-reserved-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy elbow_forearm --target reserved > studies/runs/20261018-cmpc-brace-planning/20261018-run-baseline-reserved.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy elbow_forearm --target reserved\"\n\tUser time (seconds): 9.63\n\tSystem time (seconds): 1.01\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.69\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3048032\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 909037\n\tVoluntary context switches: 963\n\tInvoluntary context switches: 810\n\tSwaps: 0\n\tFile system inputs: 16\n\tFile system outputs: 51912\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 10.69,
+        "peak_rss_KiB": 3048032,
+        "exit_status": 0
+      },
+      {
+        "name": "solve-alternate-reserved",
+        "args": "solve --strategy forearm_wrist --target reserved",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-solve-alternate-reserved-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy forearm_wrist --target reserved > studies/runs/20261018-cmpc-brace-planning/20261018-solve-alternate-reserved.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py solve --strategy forearm_wrist --target reserved\"\n\tUser time (seconds): 14.02\n\tSystem time (seconds): 0.73\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:14.84\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2176420\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 663803\n\tVoluntary context switches: 383\n\tInvoluntary context switches: 893\n\tSwaps: 0\n\tFile system inputs: 8\n\tFile system outputs: 344\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 14.84,
+        "peak_rss_KiB": 2176420,
+        "exit_status": 0
+      },
+      {
+        "name": "run-alternate-reserved",
+        "args": "run --strategy forearm_wrist --target reserved",
+        "timeout": 120,
+        "rollouts": 1,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-run-alternate-reserved-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy forearm_wrist --target reserved > studies/runs/20261018-cmpc-brace-planning/20261018-run-alternate-reserved.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning.py run --strategy forearm_wrist --target reserved\"\n\tUser time (seconds): 10.27\n\tSystem time (seconds): 1.03\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:11.37\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 3071120\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 918260\n\tVoluntary context switches: 1318\n\tInvoluntary context switches: 1029\n\tSwaps: 0\n\tFile system inputs: 16\n\tFile system outputs: 53264\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 11.37,
+        "peak_rss_KiB": 3071120,
+        "exit_status": 0
+      },
+      {
+        "name": "score-reserved",
+        "args": "reserved",
+        "script": "20261018_cmpc_brace_planning_analysis.py",
+        "timeout": 180,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-score-reserved-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py reserved > studies/runs/20261018-cmpc-brace-planning/20261018-score-reserved.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py reserved\"\n\tUser time (seconds): 10.74\n\tSystem time (seconds): 0.50\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:11.32\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1374440\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 430870\n\tVoluntary context switches: 339\n\tInvoluntary context switches: 636\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 4144\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 11.32,
+        "peak_rss_KiB": 1374440,
+        "exit_status": 0
+      },
+      {
+        "name": "render",
+        "args": "render",
+        "script": "20261018_cmpc_brace_planning_analysis.py",
+        "timeout": 180,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-render-time.txt timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py render > studies/runs/20261018-cmpc-brace-planning/20261018-render.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 180s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py render\"\n\tUser time (seconds): 8.35\n\tSystem time (seconds): 2.39\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:10.86\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1721648\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 64\n\tMinor (reclaiming a frame) page faults: 1064456\n\tVoluntary context switches: 32804\n\tInvoluntary context switches: 14058\n\tSwaps: 0\n\tFile system inputs: 73448\n\tFile system outputs: 4056\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 10.86,
+        "peak_rss_KiB": 1721648,
+        "exit_status": 0
+      },
+      {
+        "name": "verify",
+        "args": "verify",
+        "script": "20261018_cmpc_brace_planning_analysis.py",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-verify-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py verify > studies/runs/20261018-cmpc-brace-planning/20261018-verify.log 2>&1",
+        "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py verify\"\n\tUser time (seconds): 1.71\n\tSystem time (seconds): 0.51\n\tPercent of CPU this job got: 97%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.28\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1227456\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 1\n\tMinor (reclaiming a frame) page faults: 339897\n\tVoluntary context switches: 127\n\tInvoluntary context switches: 366\n\tSwaps: 0\n\tFile system inputs: 8096\n\tFile system outputs: 552\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+        "elapsed_s": 2.28,
+        "peak_rss_KiB": 1227456,
+        "exit_status": 1
+      },
+      {
+        "name": "verify-retry",
+        "args": "verify",
+        "script": "20261018_cmpc_brace_planning_analysis.py",
+        "timeout": 120,
+        "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-brace-planning/20261018-verify-retry-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py verify > studies/runs/20261018-cmpc-brace-planning/20261018-verify-retry.log 2>&1",
+        "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_brace_planning_analysis.py verify\"\n\tUser time (seconds): 2.96\n\tSystem time (seconds): 1.05\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:04.08\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 1777696\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 70\n\tMinor (reclaiming a frame) page faults: 702937\n\tVoluntary context switches: 534\n\tInvoluntary context switches: 608\n\tSwaps: 0\n\tFile system inputs: 6072\n\tFile system outputs: 2200\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+        "elapsed_s": 4.08,
+        "peak_rss_KiB": 1777696,
+        "exit_status": 0
+      }
+    ],
+    "numerical_seconds": 148.76000000000005,
+    "peak_rss_KiB": 3071120,
+    "rollouts_added": 4,
+    "rollouts_cumulative": 5,
+    "rollout_retries": 0,
+    "resguard_events_before": 213,
+    "resguard_events_after": 213,
+    "quota_reads": {
+      "20261018-quota-final.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 74.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 27.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-verification.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 63.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 26.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-alternate-run.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 38.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 22.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-initial.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 13.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 18.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-baseline-run.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 32.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 21.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-closure.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 17.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 19.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-verification-retry.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 69.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 27.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875052
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-reserved-alternate-solve.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 51.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 24.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-selection-score.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 41.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 22.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-reserved-baseline-solve.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 45.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 23.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-alternate-solve.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 34.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 21.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-after-ten-minutes.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 47.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 23.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-reserved-alternate-run.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 54.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 24.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-reserved-score.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 56.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 25.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-render.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 60.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 25.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-parity.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 28.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 20.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-baseline-solve.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 25.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 20.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-before-distal.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 21.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 19.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "20261018-quota-stop.json": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 77.0,
+          "window_minutes": 300,
+          "resets_at": 1792379272
+        },
+        "secondary": {
+          "used_percent": 28.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      }
+    },
+    "source_sha256": {
+      "studies/20261018_cmpc_brace_planning.py": "b18441ad677c9b901312a8a7599c66d8358da85d5d1cee5fc93c4ea2b6a3ffd2",
+      "studies/20261018_cmpc_brace_planning_analysis.py": "3be05f0685a72a223a92760e07d85bd64c6a1d917092f3c2c67297556b8d4be2"
+    },
+    "failures": [
+      "Initial proximal forearm design leaves a 0.421 mm gap; undamped closure changes joints 0.16 rad. Distal forearm with damped closure passes geometry checks.",
+      "Baseline solve completes but its 1e-10 m parity assertion fails at 0.318 micrometres; saved-state check passes 1 micrometre.",
+      "First final review requires exact table-plane reconstruction; measured maximum is 0.07143 mm. Review passes the inherited 0.5 mm geometry tolerance."
+    ],
+    "video_inspection": "Four labelled 1x videos inspected through six timestamped frames each, plus four transparent t=5 s contact scenes. No continuous playback tool used.",
+    "intermediate_sources": "Final source archived. Intermediate design variants are documented above; their result JSON and logs are preserved."
   }
 }
