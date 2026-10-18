@@ -78,6 +78,37 @@ def quota_wait(limits, now):
     return max(deadlines, default=0)
 
 
+def queue_progress(config, state):
+    used = state['attempts'] - state.get('resource_refusals', 0) - state.get('startup_failures', 0)
+    pending = [s['id'] for s in config['steps'] if s['id'] not in state['completed']]
+    return dict(session_budget=config['max_launches'], sessions_used=used,
+                sessions_remaining=max(0, config['max_launches'] - used),
+                checkpoints_total=len(config['steps']), pending=pending)
+
+
+def worker_prompt(config, step):
+    return (
+        'The owner authorized this continuation on 2026-10-15 and extended it on 2026-10-16. '
+        'You are a fresh research session, separate from the owner chat. '
+        f"Research direction for every checkpoint: {config.get('research_direction', '')}\n"
+        f'Read {NOTE} and its Read first files, then work ONLY checkpoint '
+        f"{step['id']}: {step['task']}\n"
+        'Complete a useful measurement within 35 minutes, with at most 20 minutes '
+        'of serial numerical work. At 30 minutes save a checkpoint. '
+        'Read the local quota with scripts/20261015_codex_continuation.py status '
+        'after 10 minutes and before another experiment; at 80% five-hour usage '
+        'save progress and return continue. Never spawn agents or queue other runs. '
+        'Use resguard for every mesh or numerical job and report its events. '
+        'Do not change the runner, queue config, limits, timer, certified defaults '
+        'or unrelated dirty files. Update the note State and write the required '
+        'result artifacts. Commit only your files; do not push. '
+        'Return the supplied JSON result schema. checkpoint_complete requires '
+        'the measurement and artifacts, continue means unfinished work can resume, '
+        'blocked means an owner answer is required. Your output is a durable '
+        'checkpoint, so state what ran and what remains.'
+    )
+
+
 def reconcile(state, step, result, rc, now, guard_refused=False):
     """A failed process or missing artifact cannot advance the queue."""
     state['last_returncode'] = rc
@@ -163,6 +194,7 @@ def main():
         now = time.time()
         if args.command == 'status':
             print(json.dumps({'state': state, 'quota': limits,
+                              'queue': queue_progress(config, state),
                               'quota_wait_until': quota_wait(limits, now)}, indent=2))
             return
         if state['status'] in ('done', 'blocked', 'stopped'):
@@ -171,10 +203,9 @@ def main():
         if not pending:
             state['status'] = 'done'
             save(state_path, state)
-            print('All three research checkpoints are complete.', flush=True)
+            print('All queued research checkpoints are complete.', flush=True)
             return
-        if (state['attempts'] - state.get('resource_refusals', 0)
-                - state.get('startup_failures', 0)) >= config['max_launches']:
+        if queue_progress(config, state)['sessions_remaining'] == 0:
             state['status'] = 'stopped'
             save(state_path, state)
             print('Launch budget exhausted; review the saved checkpoint.', flush=True)
@@ -205,25 +236,7 @@ def main():
         state['active_tag'] = 'cmpc-20261015-' + tag
         save(state_path, state)
         final_path = RUN / (tag + '-result.json')
-        prompt = (
-            'The owner authorized this finite continuation on 2026-10-15. '
-            'You are a fresh research session, separate from the owner chat. '
-            f'Read {NOTE} and its Read first files, then work ONLY checkpoint '
-            f"{step['id']}: {step['task']}\n"
-            'Complete a useful measurement within 35 minutes, with at most 20 minutes '
-            'of serial numerical work. At 30 minutes save a checkpoint. '
-            'Read the local quota with scripts/20261015_codex_continuation.py status '
-            'after 10 minutes and before another experiment; at 80% five-hour usage '
-            'save progress and return continue. Never spawn agents or queue other runs. '
-            'Use resguard for every mesh or numerical job and report its events. '
-            'Do not change the runner, queue config, limits, timer, certified defaults '
-            'or unrelated dirty files. Update the note State and write the required '
-            'result artifacts. Commit only your files; do not push. '
-            'Return the supplied JSON result schema. checkpoint_complete requires '
-            'the measurement and artifacts, continue means unfinished work can resume, '
-            'blocked means an owner answer is required. Your output is a durable '
-            'checkpoint, so state what ran and what remains.'
-        )
+        prompt = worker_prompt(config, step)
         # Pilot: CLI 183 MiB + geometry probe 1131 MiB; x1.3 = 1708 MiB.
         # Heavy child jobs still need their own measured resguard scope.
         command = [str(guard), 'run', '--mem', '1.8G', '--cpu', '200', '--',

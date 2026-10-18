@@ -1,6 +1,6 @@
 {
   "model": "gpt-6-astra",
-  "max_launches": 6,
+  "max_launches": 18,
   "not_before_epoch": 1792111200,
   "steps": [
     {
@@ -21,11 +21,68 @@
     },
     {
       "id": "state_frames",
-      "task": "Implement an opt-in state-frame consistency check. Compare identical physical states under a consistent world-frame horizontal translation/yaw change applied to state, table, targets and contact references, then a base-only 10 mm error. Account for Pinocchio and MuJoCo velocity conventions. Compare contact residuals, predicted accelerations/torques or first control action before attributing behavior to estimator noise. Use the full hold horizon; if rolling out, at most six short episodes and 20 minutes numerical wall time. Save a result page and metrics, then update the research assessment with the next falsifiable experiment. Stop after this checkpoint; no expanding grids or new queue.",
+      "task": "Implement an opt-in state-frame consistency check. Compare identical physical states under a consistent world-frame horizontal translation/yaw change applied to state, table, targets and contact references, then a base-only 10 mm error. Account for Pinocchio and MuJoCo velocity conventions. Compare contact residuals, predicted accelerations/torques or first control action before attributing behavior to estimator noise. Use the full hold horizon; if rolling out, at most six short episodes and 20 minutes numerical wall time. Save a result page and metrics, then update the research assessment with the next falsifiable experiment. Return after this checkpoint; the driver schedules subsequent transfer experiments.",
       "required_artifacts": [
         "docs/lean/20261015-cmpc-state-frames.html",
         "docs/lean/media/20261015-contact-audit/20261015-state-frames.json"
       ]
+    },
+    {
+      "id": "motion_transfer",
+      "task": "Use the height-playback audit to distinguish startup initialization/servo transients from an overly short approach. Start with h0885 and one comparison condition; inspect command, feedforward torque and measured-state traces before choosing the intervention. Re-solve an opt-in longer or velocity-regularized approach; slowing a video or time-scaling an old torque trajectory does not test this. Compare against the original plan at the same model, target and initial state. Measure startup joint acceleration, wrist speed at contact, command tracking, torque saturation, joint margins, foot displacement, reach and recovery if available. Keep full MPC horizon 35 and dt 0.02. Use at most six short rollouts across this checkpoint, including any validation. State which startup mechanism was supported and whether the intervention improves it without losing the brace. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-motion-transfer.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json"
+      ]
+    },
+    {
+      "id": "foot_model_transfer",
+      "task": "Read foot_motion and state_frames. Select the dominant observed fixed-foot prediction failure and implement one opt-in correction that can represent the measured motion, using a compliant/sliding contact model or contact-state transition where justified. Compare nominal and the same disturbed case against the fixed-anchor baseline. If reanchoring was already tested, distinguish its reactive correction from prediction of frictional slip; do not repeat it under a different label. Measure signed forces, cone and centre-of-pressure violations, predicted-versus-simulated sole motion, contact loss, state residual and solve time. If force infeasibility dominates before slip, test an available constraint formulation or a rejection/fallback mechanism first and report the remaining sliding limitation. No global environment installs. At most six short rollouts total. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-foot-model-transfer.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-foot-model-transfer.json"
+      ]
+    },
+    {
+      "id": "brace_selection_transfer",
+      "task": "Integrate physical brace locations into an opt-in planning experiment. Read the validated surface catalogue: its small CAD facets are position candidates, not justified load-bearing contact areas, and most saved collision witnesses fall outside them. Establish a usable physical surface region from actual body geometry and contact witnesses before crediting force there. Validate body, geom, point, normal and lever arm against MuJoCo contact. Compare at least two physically distinct brace candidates or strategies on a small set of targets, within six short rollouts total. Include one condition not used for selection. Use a fixed baseline strategy and an explicit selection score based on feasible reach, support and motion cost; report unavailable or failed candidates. Inspect scenes and 1x videos. Explain whether selection adds measurable benefit after geometry correction, even if one strategy still wins. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json"
+      ]
+    },
+    {
+      "id": "model_uncertainty_transfer",
+      "task": "Use prior predictor residuals to choose one dominant model mismatch (for example friction, actuator lag/compliance or observation delay). Compare the same controller and cost under nominal modeling and one non-RL adaptation or small scenario-based MPC correction. Fit or select models on earlier transition data and evaluate on a separate condition; do not use hidden plant parameters or ground truth as estimator inputs. Prefer two or three deliberately chosen variants and serial execution before considering GPU parallelization. Report one-step prediction error, task performance, constraint violations and latency including model-update cost. Label unmeasured hardware ranges. If prior physics or observation bugs invalidate this comparison, use the checkpoint to resolve the specific prerequisite instead. At most six short rollouts total. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-model-uncertainty.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-model-uncertainty.json"
+      ]
+    },
+    {
+      "id": "command_recovery_transfer",
+      "task": "Evaluate the best supported opt-in controller on a small change of reach target or table height and one induced failure that earlier experiments reproduced. Include a nominal cycle and a failure/recovery case within six short rollouts. Implement one model-based command transition, release or abort-to-supported-posture mechanism if needed. Measure time to brace, reach and recover separately, peak joint/wrist rates, foot motion, force feasibility and solve/deadline statistics. Define success by measured support and motion, not only an endpoint pose. Report failed recoveries and limitations from the contact schedule. No physical hardware action. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-command-recovery.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json"
+      ]
+    },
+    {
+      "id": "adaptive_transfer",
+      "task": "Review preceding transfer results and choose the most consequential unresolved mechanism for sim-to-real transfer without RL. Record the source measurement, hypothesis, intervention and falsification criterion before running. Implement and compare one opt-in correction, with at most six short rollouts and a reserved validation condition. A parameter change requires measured justification; a new estimator/planner integration must retain the same observation contract and separate oracle scoring. If all actionable questions are resolved, write an evidence review and the exact remaining hardware measurement instead of inventing another experiment. Save the decision, raw metrics and result page; do not append or arm another queue. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-adaptive-transfer.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-adaptive-transfer.json"
+      ]
+    },
+    {
+      "id": "transfer_review",
+      "task": "Synthesize the original questions and all completed checkpoints: foot slip, physical brace selection, estimation, motion speed/runtime, target commandability and recovery. For each, state the measured result, remaining limitation and concrete next hardware measurement. Compare the best supported non-RL variant to the baseline using existing results and identify whether comparisons used the same conditions; do not pool incompatible models. Record reproducible commands, hashes and artifact links. Use a final short regression only to resolve a specific remaining inconsistency, at most two rollouts. Update the research assessment and index. Produce a concise machine-readable list of resolved and unresolved questions, required hardware data, and remaining proposed experiments. Stop when the evidence supports a decision; simulation completion is not hardware sim-to-real validation. Save a dated result page and JSON metrics/decision record at the required paths, and add the page to docs/index.html.",
+      "required_artifacts": [
+        "docs/lean/20261016-cmpc-transfer-assessment.html",
+        "docs/lean/media/20261015-contact-audit/20261016-cmpc-transfer-assessment.json"
+      ]
     }
-  ]
+  ],
+  "research_direction": "Owner authorization, 2026-10-16: extend beyond the initial six sessions as needed to resolve remaining and emerging questions. The objective is sim-to-real transfer of the leaning MPC without RL-based robustification. Prioritize physically valid contact and foot motion, observation consistency, executable actuator commands and recovery. Use model-based control, system identification, online parameter/model updates and small scenario sets where measurements justify them. Do not train RL policies, residual RL controllers or learned policy distillations. Each experiment must identify a measured failure, state a falsifiable hypothesis, and compare an opt-in correction against the same baseline. Use data or earlier failures to select uncertainty ranges; label assumptions when hardware data are absent. Controller observations must use the estimated-state path; ground truth is allowed only for scoring or a separately labelled oracle ablation. Keep the 35-node horizon and 0.02 s step, certified defaults and the original site memberships. Per checkpoint allow at most six short rollouts total across retries, and per session at most 20 minutes of serial numerical work under measured resguard caps. Record cumulative rollout counts and commands in the handoff. No multi-hour grids, hardware commands or new autonomous queues. Use labelled 1x video with simulation timestamps for behavior claims. Report contact-force feasibility, slip, motion rates, tracking error and runtime where relevant. A negative result can complete a checkpoint if it answers the stated hypothesis. If prerequisites fail, test their smallest actionable cause within that checkpoint; if no useful simulation test remains, document the exact missing measurement and complete the research question with that limitation. Do not mark unperformed required work complete. Use continue for unfinished work; reserve blocked for an indispensable owner decision that prevents useful progress. Choose emerging work in the adaptive_transfer checkpoint from the strongest unresolved failure, and avoid repeating a closed question or expanding grids without a hypothesis. The current budget is 18 total actual model sessions; workers cannot increase it. Finish with a transfer assessment that separates simulation results from hardware validation still needed."
 }
