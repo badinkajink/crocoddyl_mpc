@@ -949,6 +949,39 @@ REAL_GAP, REAL_W = 0.72, 0.20
 # "<=" on the value so the figure cannot be read as a like-for-like win.
 UPPER_BOUND_KEYS = {"jitter_hp_rms_mm"}
 
+# STANDOFF CORRECTION -- applied to the SIM reach bars at max reach only.
+#
+# Allen measured it: real ankle midpoint to table front edge is 37 cm in nominal
+# stance; the model's is 26 cm (edge x = 0.450, ankles x = 0.190). The simulated
+# robot therefore starts 11 cm closer to the slab than the one it is being
+# compared against.
+#
+# `hand_x_settled` is a TABLE-ANCHORED number in both plants -- the sim world
+# origin sits 45.0 cm behind the near edge and Allen's plotted datum 44.8 cm
+# behind it, coinciding to 2 mm -- so the raw bars answer "how far onto the table
+# did this robot's hand get, in its own setup". At the shared target that is the
+# right question and the two agree (99 vs 99): both hands land on the same point,
+# and the standoff is already inside the numbers. AT MAX REACH IT IS NOT, because
+# there the target sits outside anything the robot can touch and the arm is
+# simply stretched to its limit -- so the 11 cm of extra standoff is 11 cm of
+# table the hardware's hand never gets to cover, and the raw comparison is
+# confounded by setup rather than measuring reach.
+#
+# Slide the sim robot back 11 cm and, being already stretch-limited, it lands
+# 11 cm short: 128 -> 117 and 132 -> 121, against the hardware's 99. Which
+# reproduces the ankle-frame arithmetic exactly (109.5 and 115.9 sim vs ~91 real),
+# as it must -- this is that comparison, drawn.
+#
+# IT IS AN ESTIMATE, NOT A MEASUREMENT, and only the unbraced bar is a safe one.
+# It assumes ankle-frame reach is invariant to where the robot stands, which
+# holds for a stretch-limited arm and does NOT hold for the brace: move the slab
+# 11 cm away and the BRACING arm has to travel further to reach it too, changing
+# the posture and the load. The re-runs at the corrected standoff replace both
+# numbers. Until they land the corrected bars are drawn with a dashed cap at the
+# uncorrected height so the adjustment is visible rather than asserted.
+STANDOFF_CORR_CM = {"maxreach": -11.0}
+STANDOFF_KEYS = {"hand_x_settled"}
+
 # Two-line forms of MARGIN_VARIANTS' labels. The one-line versions overrun a
 # 1.15 in panel, and a margin panel silently mislabelled as the OTHER margin is
 # the single most misleading thing this figure could do -- the two differ by a
@@ -1028,18 +1061,29 @@ def fig_stability_real(rows, out, which="support", jitter=True):
                             if r.get(k) is not None
                             and np.isfinite(r.get(k, np.nan))]
                 mu, hr = _ms([v * sc for v in vals])
+                # Sim bars only -- the hardware bar is already at the real
+                # standoff and must not be moved.
+                corr = (STANDOFF_CORR_CM.get(g, 0.0)
+                        if key in STANDOFF_KEYS else 0.0)
                 if np.isfinite(mu):
-                    series.append((C[arm], REAL_ARM_LABEL[arm], mu, hr, False))
+                    series.append((C[arm], REAL_ARM_LABEL[arm], mu + corr, hr,
+                                   False, mu if corr else None))
             rv = _real_value(g, key, which)
             if rv is not None:
                 series.append((C_REAL, REAL_LABEL, rv[0], rv[1],
-                               key in UPPER_BOUND_KEYS))
+                               key in UPPER_BOUND_KEYS, None))
             n = len(series)
-            for si, (col, _lab, mu, hr, ub) in enumerate(series):
+            for si, (col, _lab, mu, hr, ub, raw) in enumerate(series):
                 x = gi * REAL_GAP + (si - (n - 1) / 2.0) * REAL_W
                 ax.bar(x, mu, width=REAL_W * 0.88, color=col, zorder=3,
                        edgecolor="white", linewidth=0.8,
                        hatch="////" if ub else None)
+                if raw is not None:
+                    # Where the bar WOULD sit at the model's own standoff. Drawn
+                    # so a reader sees the size of the correction instead of
+                    # taking the corrected height on trust.
+                    ax.hlines(raw, x - REAL_W * 0.44, x + REAL_W * 0.44,
+                              color=col, lw=0.9, ls=(0, (2.2, 1.6)), zorder=6)
                 if hr > 0:
                     ax.errorbar(x, mu, yerr=hr, color=INK2, lw=0.9,
                                 capsize=2.0, zorder=4)
