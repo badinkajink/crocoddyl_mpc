@@ -6414,7 +6414,7 @@
     }
   },
   "decision": {
-    "status": "continue",
+    "status": "checkpoint_complete",
     "adopt_default": false,
     "sliding_model_tested": false,
     "pulse_left_residual_ratio": 0.015204754823379659,
@@ -6423,7 +6423,7 @@
     "all_issued_hold_model_forces_feasible": true,
     "hypothesis_passed": true,
     "remaining": "Fixed sticking contacts still exclude frictional slip. Executable-torque cone feasibility is a first-node model property. Future horizon forces, unsupported fallback, actuator evolution between ticks and hardware contact geometry remain unresolved.",
-    "closeout_remaining": "Final source/metric and artifact consistency review deferred at 82% five-hour usage. All six rollouts are consumed; do not repeat them."
+    "closeout_remaining": "None; independent source, numerical and artifact review completed on 2026-10-18."
   },
   "validation": {
     "baseline-nominal_accepted_rows": true,
@@ -6768,5 +6768,18 @@
   "run_record": "20261017-foot-model-run-record.json",
   "rollouts_total": 6,
   "rollout_retries": 2,
-  "numerical_wall_s": 107.87
+  "numerical_wall_s": 107.87,
+  "completion_review": {
+    "date": "2026-10-18 America/Denver",
+    "artifact": "docs/lean/media/20261015-contact-audit/20261018-foot-model-review.json",
+    "sha256": "055d790d5c8f5b9c98fa9fda2869891ff8d7b5070da1a999c216d370f8a1aa06",
+    "numerical_checks": 417,
+    "evaluated_states": 1208,
+    "new_rollouts": 0,
+    "cumulative_rollouts": 6,
+    "projected_hold_model_checks": 204,
+    "projected_commands_followed_by_integration": 202,
+    "checkpoint_hypothesis_complete": true,
+    "hardware_validation_complete": false
+  }
 }

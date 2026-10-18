@@ -1,0 +1,2173 @@
+{
+  "checkpoint": "foot_model_transfer",
+  "review_date": "2026-10-18 America/Denver",
+  "passed": true,
+  "new_rollouts": 0,
+  "cumulative_rollouts": 6,
+  "rollout_retries": 2,
+  "rollout_limit": 6,
+  "physics_steps": 0,
+  "checks": [
+    {
+      "name": "baseline-nominal horizon",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal control period",
+      "passed": true,
+      "max_abs_error": 2.203098814490545e-15
+    },
+    {
+      "name": "baseline-nominal next-state reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal torque reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal wrench reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal cone reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal initial physical torque",
+      "passed": true,
+      "max_abs_error": 5.684341886080802e-14
+    },
+    {
+      "name": "baseline-nominal observed joint positions",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal observed joint velocities",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal final reach",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal solve plus filter p95",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal hold tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal post_pulse tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse horizon",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse control period",
+      "passed": true,
+      "max_abs_error": 2.203098814490545e-15
+    },
+    {
+      "name": "baseline-pulse next-state reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse torque reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse wrench reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse cone reconstruction",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse initial physical torque",
+      "passed": true,
+      "max_abs_error": 6.394884621840902e-14
+    },
+    {
+      "name": "baseline-pulse observed joint positions",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse observed joint velocities",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse final reach",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse solve plus filter p95",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse hold tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right model residual",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse post_pulse tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal horizon",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal control period",
+      "passed": true,
+      "max_abs_error": 2.203098814490545e-15
+    },
+    {
+      "name": "corrected-nominal accepted hold cone rows",
+      "passed": true,
+      "max_abs_error": 3.47526452060265e-11
+    },
+    {
+      "name": "corrected-nominal next-state reconstruction",
+      "passed": true,
+      "max_abs_error": 1.8457457784393227e-15
+    },
+    {
+      "name": "corrected-nominal torque reconstruction",
+      "passed": true,
+      "max_abs_error": 2.4868995751603507e-14
+    },
+    {
+      "name": "corrected-nominal wrench reconstruction",
+      "passed": true,
+      "max_abs_error": 3.283950888999243e-11
+    },
+    {
+      "name": "corrected-nominal cone reconstruction",
+      "passed": true,
+      "max_abs_error": 2.7002400315723207e-11
+    },
+    {
+      "name": "corrected-nominal initial physical torque",
+      "passed": true,
+      "max_abs_error": 5.684341886080802e-14
+    },
+    {
+      "name": "corrected-nominal observed joint positions",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal observed joint velocities",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal final reach",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal solve plus filter p95",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 2.914335439641036e-16
+    },
+    {
+      "name": "corrected-nominal hold orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 2.168404344971009e-18
+    },
+    {
+      "name": "corrected-nominal hold base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 1.734723475976807e-18
+    },
+    {
+      "name": "corrected-nominal hold angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 2.7755575615628914e-17
+    },
+    {
+      "name": "corrected-nominal hold sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left model residual",
+      "passed": true,
+      "max_abs_error": 3.9898639947466563e-16
+    },
+    {
+      "name": "corrected-nominal hold sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right model residual",
+      "passed": true,
+      "max_abs_error": 4.163336342344337e-16
+    },
+    {
+      "name": "corrected-nominal hold sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal hold tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 2.7755575615628914e-17
+    },
+    {
+      "name": "corrected-nominal post_pulse orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 8.673617379884035e-19
+    },
+    {
+      "name": "corrected-nominal post_pulse base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 2.7755575615628914e-17
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left model residual",
+      "passed": true,
+      "max_abs_error": 1.106753577673203e-15
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right model residual",
+      "passed": true,
+      "max_abs_error": 4.440892098500626e-15
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal post_pulse tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse horizon",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse control period",
+      "passed": true,
+      "max_abs_error": 2.203098814490545e-15
+    },
+    {
+      "name": "corrected-pulse accepted hold cone rows",
+      "passed": true,
+      "max_abs_error": 3.47526452060265e-11
+    },
+    {
+      "name": "corrected-pulse next-state reconstruction",
+      "passed": true,
+      "max_abs_error": 2.275957200481571e-15
+    },
+    {
+      "name": "corrected-pulse torque reconstruction",
+      "passed": true,
+      "max_abs_error": 2.4868995751603507e-14
+    },
+    {
+      "name": "corrected-pulse wrench reconstruction",
+      "passed": true,
+      "max_abs_error": 2.674482857401017e-11
+    },
+    {
+      "name": "corrected-pulse cone reconstruction",
+      "passed": true,
+      "max_abs_error": 1.8896884057539864e-11
+    },
+    {
+      "name": "corrected-pulse initial physical torque",
+      "passed": true,
+      "max_abs_error": 5.684341886080802e-14
+    },
+    {
+      "name": "corrected-pulse observed joint positions",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse observed joint velocities",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse final reach",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse solve plus filter p95",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 3.608224830031759e-16
+    },
+    {
+      "name": "corrected-pulse hold orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 2.6020852139652106e-18
+    },
+    {
+      "name": "corrected-pulse hold angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left model residual",
+      "passed": true,
+      "max_abs_error": 5.904998712225051e-15
+    },
+    {
+      "name": "corrected-pulse hold sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right model residual",
+      "passed": true,
+      "max_abs_error": 3.622102617839573e-15
+    },
+    {
+      "name": "corrected-pulse hold sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse hold tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse base_position_rms_mm",
+      "passed": true,
+      "max_abs_error": 1.6653345369377348e-16
+    },
+    {
+      "name": "corrected-pulse post_pulse orientation_joint_rms_rad",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse base_linear_velocity_rms_m_s",
+      "passed": true,
+      "max_abs_error": 2.6020852139652106e-18
+    },
+    {
+      "name": "corrected-pulse post_pulse angular_joint_velocity_rms_rad_s",
+      "passed": true,
+      "max_abs_error": 1.1102230246251565e-16
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left model residual",
+      "passed": true,
+      "max_abs_error": 6.7307270867900115e-15
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right displacement",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right contact loss",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right model residual",
+      "passed": true,
+      "max_abs_error": 7.91033905045424e-16
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right predicted motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right complete simulated 20 ms motion",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right slip",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right native cone",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_elbow normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_elbow normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_elbow tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_elbow force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_elbow violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_forearm normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_forearm normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_forearm tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_forearm force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse brace_forearm violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_left cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right normal_min_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right normal_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right tangent_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right force_rows_max_N",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right violating_samples",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right moment_rows_max_Nm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse sole_right cop_margin_min_mm",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse speed",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse acceleration",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse post_pulse tracking",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-nominal video duration",
+      "passed": true,
+      "max_abs_error": 3.33333333379926e-07
+    },
+    {
+      "name": "baseline-pulse video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "baseline-pulse video duration",
+      "passed": true,
+      "max_abs_error": 3.33333333379926e-07
+    },
+    {
+      "name": "corrected-nominal video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-nominal video duration",
+      "passed": true,
+      "max_abs_error": 3.33333333379926e-07
+    },
+    {
+      "name": "corrected-pulse video frames",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "corrected-pulse video duration",
+      "passed": true,
+      "max_abs_error": 3.33333333379926e-07
+    },
+    {
+      "name": "decision residual ratio",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "decision reach delta",
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    {
+      "name": "decision loss delta",
+      "passed": true,
+      "max_abs_error": 0.0
+    }
+  ],
+  "measurements": {
+    "baseline-nominal": {
+      "evaluated_states": 302,
+      "observed_initial_torques": 301,
+      "projected_hold_commands": 0,
+      "projected_commands_followed_by_integration": 0,
+      "wrench_reconstruction_max_error": 0.0,
+      "cone_reconstruction_max_error": 0.0,
+      "hold_cone_excess_max": 10.85831485029398,
+      "final_command_time_s": 6.019999999999559,
+      "last_physical_log_s": 6.017999999999559
+    },
+    "baseline-pulse": {
+      "evaluated_states": 302,
+      "observed_initial_torques": 301,
+      "projected_hold_commands": 0,
+      "projected_commands_followed_by_integration": 0,
+      "wrench_reconstruction_max_error": 0.0,
+      "cone_reconstruction_max_error": 0.0,
+      "hold_cone_excess_max": 1605.7526034098757,
+      "final_command_time_s": 6.019999999999559,
+      "last_physical_log_s": 6.017999999999559
+    },
+    "corrected-nominal": {
+      "evaluated_states": 302,
+      "observed_initial_torques": 301,
+      "projected_hold_commands": 102,
+      "projected_commands_followed_by_integration": 101,
+      "wrench_reconstruction_max_error": 3.283950888999243e-11,
+      "cone_reconstruction_max_error": 2.7002400315723207e-11,
+      "hold_cone_excess_max": 3.47526452060265e-11,
+      "final_command_time_s": 6.019999999999559,
+      "last_physical_log_s": 6.017999999999559
+    },
+    "corrected-pulse": {
+      "evaluated_states": 302,
+      "observed_initial_torques": 301,
+      "projected_hold_commands": 102,
+      "projected_commands_followed_by_integration": 101,
+      "wrench_reconstruction_max_error": 2.674482857401017e-11,
+      "cone_reconstruction_max_error": 1.8896884057539864e-11,
+      "hold_cone_excess_max": 3.47526452060265e-11,
+      "final_command_time_s": 6.019999999999559,
+      "last_physical_log_s": 6.017999999999559
+    }
+  },
+  "model_and_source_hashes_match": true,
+  "archive": {
+    "sha256": "85dce8f941faad537e0df2303b8c7500658bea01ddffcf5206552e28d1ff1b17",
+    "members": 116,
+    "all_members_match": true
+  },
+  "videos": {
+    "baseline-nominal": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    },
+    "baseline-pulse": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    },
+    "corrected-nominal": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    },
+    "corrected-pulse": {
+      "avg_frame_rate": "30/1",
+      "duration": "6.033333",
+      "nb_frames": "181"
+    }
+  },
+  "final_command_accounting": "Each corrected trial evaluates 102 hold commands; 101 precede plant integration. The last command at 6.02 s is immediately replaced by shutdown safe_hold. All 204 model checks pass; 202 commands have physical rollout exposure. Complete 20 ms physical-motion maxima are unchanged after excluding the final 18 ms logged transition.",
+  "limitations": "Current-node force feasibility only. No frictional sliding prediction, fallback recovery validation, deadline delay injection or hardware measurement."
+}

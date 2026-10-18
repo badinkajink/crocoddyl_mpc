@@ -1053,6 +1053,213 @@
   },
   "artifact_archive_time_output": "\tCommand being timed: \"timeout 60s taskset -c 18 python -c import pathlib,zipfile; root=pathlib.Path(\"studies/runs/20261017-cmpc-foot-model-transfer\"); dest=pathlib.Path(\"docs/lean/media/20261015-contact-audit/20261017-foot-model-raw.zip\"); z=zipfile.ZipFile(dest,\"w\",zipfile.ZIP_DEFLATED,compresslevel=6); [z.write(p,str(p.relative_to(root))) for p in sorted(root.rglob(\"*\")) if p.is_file() and p.name not in [\"20261017-archive-time.txt\",\"20261017-archive.log\"]]; z.close()\"\n\tUser time (seconds): 5.56\n\tSystem time (seconds): 0.04\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:05.68\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 12000\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 2083\n\tVoluntary context switches: 3\n\tInvoluntary context switches: 162\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 130184\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
   "future_full_rollout_memory_cap": "4.4G",
-  "status": "continue",
-  "remaining": "Final source/metric consistency review; no further rollout allowed."
+  "status": "checkpoint_complete",
+  "remaining": "No required work remains for the force-feasibility hypothesis. Sliding prediction, fallback recovery, deadline execution and hardware measurements remain future work.",
+  "completion_review": {
+    "date": "2026-10-18 America/Denver",
+    "baseline_commit": "5172eae",
+    "status": "checkpoint_complete",
+    "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-foot-model-review/20261018-review-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_foot_model_verify.py > studies/runs/20261018-cmpc-foot-model-review/20261018-review.log 2>&1",
+    "exit_status": 0,
+    "new_rollouts": 0,
+    "cumulative_rollouts": 6,
+    "rollout_retries": 2,
+    "numerical_wall_s": 5.34,
+    "cumulative_numerical_wall_s": 113.21,
+    "numerical_session_limit_s": 1200,
+    "max_rss_KiB": 2853632,
+    "memory_cap": "4.4G",
+    "cpu_quota": 200,
+    "threads": 1,
+    "cpu": 18,
+    "memory_cap_basis": "Prior maximum RSS 3,526,672 KiB times 1.3, rounded to 4.4G.",
+    "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_foot_model_verify.py\"\n\tUser time (seconds): 3.47\n\tSystem time (seconds): 1.18\n\tPercent of CPU this job got: 87%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:05.34\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2853632\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 835\n\tMinor (reclaiming a frame) page faults: 965796\n\tVoluntary context switches: 4923\n\tInvoluntary context switches: 866\n\tSwaps: 0\n\tFile system inputs: 1027976\n\tFile system outputs: 120\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+    "log": "Warning: the number of threads won't affect the computational performance as multithreading support is not enabled.\n{\"passed\": true, \"numerical_checks\": 417, \"evaluated_states\": 1208, \"archive_members\": 116, \"new_rollouts\": 0}\n",
+    "resource_status": "RAM avail 18.3/31.0 GB, swap used 10.2 GB, PSI some/full 0.00/0.00; load 0.64 on 20 cores; GPU free 13951 MB (22% busy)\nlargest resident processes:\n  0.7 GB     6% /home/humanoid/.vscode-server/cli/servers/Stable-2a59476c9bfcb90b3ddc372c36762471b7dfad1c/\n  0.7 GB     1% /home/humanoid/.vscode-server/cli/servers/Stable-2a59476c9bfcb90b3ddc372c36762471b7dfad1c/\n  0.6 GB     0% /usr/share/code/code --type=renderer --crashpad-handler-pid=1319368 --enable-crash-reporte\n  0.5 GB     0% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.5 GB     0% /usr/share/code/code --type=renderer --crashpad-handler-pid=1319368 --enable-crash-reporte\n  0.5 GB     0% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\nlaunch gate: OPEN (>= 5 GB avail, PSI full <= 5 / some <= 25, load <= nproc-2, swap <= 15 GB; run --mem X needs avail >= X+2)\n",
+    "resguard_events_start": 213,
+    "resguard_events_end": 213,
+    "new_resguard_events": [],
+    "quota_before": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 12,
+        "next_at": 1792356727.8537536,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-18T20:52:19.462418+00:00",
+        "active_tag": "cmpc-20261015-attempt-12-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed e42cede; not pushed. Six rollouts completed, including two retries. Torque filtering reduced disturbed left-sole displacement from 78.460 to 0.304 mm and contact loss from 210 ms to zero. Numerical work used 107.87 s; no new resguard events. Stopped at 82% five-hour usage.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-foot-model-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-foot-model-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261017-foot-model-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-foot-model-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Final source/metric and artifact consistency review. All six rollouts are consumed; do not repeat them. Keep the correction opt-in: sliding prediction, recovery, hardware validation and approximately 24 ms p95 runtime remain unresolved."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792356727.8537536
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 29.0,
+          "window_minutes": 300,
+          "resets_at": 1792361094
+        },
+        "secondary": {
+          "used_percent": 6.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 9,
+        "sessions_remaining": 9,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "quota_final": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer"
+        ],
+        "attempts": 12,
+        "next_at": 1792356727.8537536,
+        "current_step": "foot_model_transfer",
+        "last_started": "2026-10-18T20:52:19.462418+00:00",
+        "active_tag": "cmpc-20261015-attempt-12-foot_model_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed e42cede; not pushed. Six rollouts completed, including two retries. Torque filtering reduced disturbed left-sole displacement from 78.460 to 0.304 mm and contact loss from 210 ms to zero. Numerical work used 107.87 s; no new resguard events. Stopped at 82% five-hour usage.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-foot-model-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-foot-model-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261017-foot-model-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261017-foot-model-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Final source/metric and artifact consistency review. All six rollouts are consumed; do not repeat them. Keep the correction opt-in: sliding prediction, recovery, hardware validation and approximately 24 ms p95 runtime remain unresolved."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792356727.8537536
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 36.0,
+          "window_minutes": 300,
+          "resets_at": 1792361094
+        },
+        "secondary": {
+          "used_percent": 7.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 9,
+        "sessions_remaining": 9,
+        "checkpoints_total": 10,
+        "pending": [
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "review_artifact": "docs/lean/media/20261015-contact-audit/20261018-foot-model-review.json",
+    "review_sha256": "055d790d5c8f5b9c98fa9fda2869891ff8d7b5070da1a999c216d370f8a1aa06",
+    "source": "studies/20261018_cmpc_foot_model_verify.py",
+    "source_sha256": "37e8e599f0d3e13f32aacd0fb2d4c2beed63a3c39c60a10e0323fd9c3c5df0f5",
+    "numerical_checks": 417,
+    "evaluated_states": 1208,
+    "archive_members": 116,
+    "frames_inspected": true,
+    "accounting_correction": "Each corrected trial evaluates 102 hold commands; 101 precede plant integration. The last command at 6.02 s is immediately replaced by shutdown safe_hold. All 204 model checks pass; 202 commands have physical rollout exposure. Complete 20 ms physical-motion maxima are unchanged after excluding the final 18 ms logged transition.",
+    "deadline_accounting": "Review finished before the ten-minute quota check and thirty-minute checkpoint deadlines; a quota check preceded numerical work and another preceded completion.",
+    "artifact_checks": {
+      "html_tables_matching_metrics": 5,
+      "all_local_links_exist": true,
+      "completion_statuses_agree": true,
+      "review_and_source_hashes_agree": true
+    }
+  }
 }
