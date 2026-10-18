@@ -14,6 +14,28 @@ spec.loader.exec_module(driver)
 
 
 class QueueTests(unittest.TestCase):
+    def test_quota_refresh_releases_old_deadline(self):
+        state = {'retry_at': 1100, 'next_at': 9000}
+        old = {'secondary': {'used_percent': 91, 'resets_at': 8940}}
+        fresh = {'secondary': {'used_percent': 2, 'resets_at': 10000}}
+        self.assertEqual(driver.launch_deadline(state, old, 1200), 9000)
+        self.assertEqual(driver.launch_deadline(state, fresh, 1200), 1100)
+        # An account refresh must preserve a genuine retry delay.
+        state['retry_at'] = 2000
+        self.assertEqual(driver.launch_deadline(state, fresh, 1200), 2000)
+
+    def test_extended_budget_and_prompt(self):
+        config = json.loads(driver.CONFIG.read_text())
+        state = {'attempts': 11, 'resource_refusals': 2, 'startup_failures': 1,
+                 'completed': ['geometry', 'foot_motion', 'state_frames', 'motion_transfer']}
+        progress = driver.queue_progress(config, state)
+        self.assertEqual(progress['sessions_remaining'], 10)
+        self.assertEqual(progress['pending'][0], 'foot_model_transfer')
+        for step in config['steps']:
+            prompt = driver.worker_prompt(config, step)
+            self.assertIn('without RL-based robustification', prompt)
+            self.assertIn(step['task'], prompt)
+
     def test_quota(self):
         self.assertEqual(driver.quota_wait(None, 1000), 0)
         self.assertEqual(driver.quota_wait({'primary': {

@@ -86,6 +86,11 @@ def queue_progress(config, state):
                 checkpoints_total=len(config['steps']), pending=pending)
 
 
+def launch_deadline(state, limits, now):
+    """Recompute quota waits without extending a retry cooldown permanently."""
+    return max(state.get('retry_at', state['next_at']), quota_wait(limits, now))
+
+
 def worker_prompt(config, step):
     return (
         'The owner authorized this continuation on 2026-10-15 and extended it on 2026-10-16. '
@@ -113,7 +118,8 @@ def reconcile(state, step, result, rc, now, guard_refused=False):
     """A failed process or missing artifact cannot advance the queue."""
     state['last_returncode'] = rc
     state['last_result'] = result
-    state['next_at'] = now + 15 * 60
+    state['retry_at'] = now + 15 * 60
+    state['next_at'] = state['retry_at']
     if guard_refused:
         state['resource_refusals'] = state.get('resource_refusals', 0) + 1
         state['last_error'] = 'Resguard refused the launch; no Codex session started'
@@ -133,7 +139,8 @@ def reconcile(state, step, result, rc, now, guard_refused=False):
         state['last_error'] = 'Worker did not return a valid checkpoint result'
         # Account limits and transient errors receive a long backoff even if
         # the CLI failed before writing fresh quota telemetry.
-        state['next_at'] = now + 6 * 3600
+        state['retry_at'] = now + 6 * 3600
+        state['next_at'] = state['retry_at']
     return state
 
 
@@ -181,7 +188,7 @@ def main():
                 return
         state = json.loads(state_path.read_text()) if state_path.exists() else {
             'status': 'armed', 'completed': [], 'attempts': 0,
-            'next_at': config['not_before_epoch']}
+            'retry_at': config['not_before_epoch'], 'next_at': config['not_before_epoch']}
         if args.command == 'cleanup':
             count = cleanup_tagged(state.get('active_tag'))
             if state['status'] == 'running':
@@ -210,7 +217,7 @@ def main():
             save(state_path, state)
             print('Launch budget exhausted; review the saved checkpoint.', flush=True)
             return
-        deadline = max(state['next_at'], quota_wait(limits, now))
+        deadline = launch_deadline(state, limits, now)
         if now < deadline:
             state['status'] = 'waiting'
             state['next_at'] = deadline
@@ -225,7 +232,8 @@ def main():
         check = subprocess.run([str(guard), 'status'], capture_output=True, text=True)
         print(check.stdout, flush=True)
         if check.returncode:
-            state['next_at'] = now + 15 * 60
+            state['retry_at'] = now + 15 * 60
+            state['next_at'] = state['retry_at']
             save(state_path, state)
             return
         step = pending[0]
@@ -267,7 +275,7 @@ def main():
             state['status'] = 'done'
         elif state['status'] == 'running':
             state['status'] = 'waiting'
-        state['next_at'] = max(state['next_at'], quota_wait(latest_usage(), time.time()))
+        state['next_at'] = launch_deadline(state, latest_usage(), time.time())
         save(state_path, state)
         print(json.dumps(state), flush=True)
 
