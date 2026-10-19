@@ -1,0 +1,1046 @@
+{
+  "checkpoint": "transfer_review",
+  "date": "2026-10-19",
+  "baseline_commit": "90ce6b780d3bc7276c59bbe447c0f1bdb7ee5328",
+  "measurement": "Saved-array comparability and provenance audit; derived within-condition differences",
+  "passed": true,
+  "checks": [
+    {
+      "name": "force nominal plan_sha256",
+      "passed": true
+    },
+    {
+      "name": "force nominal xs_sha256",
+      "passed": true
+    },
+    {
+      "name": "force nominal us_sha256",
+      "passed": true
+    },
+    {
+      "name": "force nominal model_sha256",
+      "passed": true
+    },
+    {
+      "name": "force nominal model_arrays_sha256",
+      "passed": true
+    },
+    {
+      "name": "force nominal before 4 s sole_p",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force nominal before 4 s sole_R",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force nominal before 4 s sole_v",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force nominal before 4 s point_p",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force nominal before 4 s point_v",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force nominal before 4 s pred_x_est",
+      "passed": true,
+      "samples": 200,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force pulse plan_sha256",
+      "passed": true
+    },
+    {
+      "name": "force pulse xs_sha256",
+      "passed": true
+    },
+    {
+      "name": "force pulse us_sha256",
+      "passed": true
+    },
+    {
+      "name": "force pulse model_sha256",
+      "passed": true
+    },
+    {
+      "name": "force pulse model_arrays_sha256",
+      "passed": true
+    },
+    {
+      "name": "force pulse before 4 s sole_p",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force pulse before 4 s sole_R",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force pulse before 4 s sole_v",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force pulse before 4 s point_p",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force pulse before 4 s point_v",
+      "passed": true,
+      "samples": 2000,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "force pulse before 4 s pred_x_est",
+      "passed": true,
+      "samples": 200,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard nominal entire run sole_p",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard nominal entire run sole_R",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard nominal entire run sole_v",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard nominal entire run point_p",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard nominal entire run point_v",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard nominal entire run pred_x_est",
+      "passed": true,
+      "samples": 452,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal before request sole_p",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal before request sole_R",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal before request sole_v",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal before request point_p",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal before request point_v",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal before request pred_x_est",
+      "passed": true,
+      "samples": 260,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate nominal plan_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate nominal xs_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate nominal us_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate nominal model_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate nominal model_arrays_sha256",
+      "passed": true
+    },
+    {
+      "name": "reused baseline nominal",
+      "passed": true
+    },
+    {
+      "name": "first-command guard pulse entire run sole_p",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard pulse entire run sole_R",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard pulse entire run sole_v",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard pulse entire run point_p",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard pulse entire run point_v",
+      "passed": true,
+      "samples": 4510,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "first-command guard pulse entire run pred_x_est",
+      "passed": true,
+      "samples": 452,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse before request sole_p",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse before request sole_R",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse before request sole_v",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse before request point_p",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse before request point_v",
+      "passed": true,
+      "samples": 2600,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse before request pred_x_est",
+      "passed": true,
+      "samples": 260,
+      "maximum_absolute_error": 0.0
+    },
+    {
+      "name": "motion gate pulse plan_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate pulse xs_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate pulse us_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate pulse model_sha256",
+      "passed": true
+    },
+    {
+      "name": "motion gate pulse model_arrays_sha256",
+      "passed": true
+    },
+    {
+      "name": "reused baseline pulse",
+      "passed": true
+    },
+    {
+      "name": "20261017-foot-model-raw.zip archive digest",
+      "passed": true
+    },
+    {
+      "name": "20261018-command-recovery-raw.zip archive digest",
+      "passed": true
+    },
+    {
+      "name": "20261018-model-uncertainty-raw.zip archive digest",
+      "passed": true
+    },
+    {
+      "name": "20261019-adaptive-raw.zip archive digest",
+      "passed": true
+    },
+    {
+      "name": "20261019-command-recovery-review-raw.zip archive digest",
+      "passed": true
+    },
+    {
+      "name": "plan current bytes",
+      "passed": true
+    },
+    {
+      "name": "model current bytes",
+      "passed": true
+    }
+  ],
+  "new_rollouts": 0,
+  "cumulative_checkpoint_rollouts": 0,
+  "allowed_regression_rollouts": 2,
+  "plant_steps": 0,
+  "optimizer_solves": 0,
+  "force_comparison": {
+    "nominal": {
+      "baseline": {
+        "left_sole_displacement_mm": 0.14180607306086515,
+        "left_contact_loss_ms": 0.0,
+        "left_loaded_slip_m_s": 0.003162038355270108,
+        "left_executable_prediction_rms_mm": 0.023437514671663474,
+        "reach_final_mm": 17.598081088956615,
+        "joint_speed_rad_s": 0.33873838129547235,
+        "joint_acceleration_rad_s2": 164.2870565865568,
+        "wrist_speed_m_s": 0.009793819643005987,
+        "joint_tracking_rms_mrad": 0.7718178083099934,
+        "solve_plus_audit_or_filter_p95_ms": 23.80003638099879,
+        "above_20ms": 72,
+        "command_evaluations": 302,
+        "executable_hold_force_rows": {
+          "brace_elbow": {
+            "normal_min_N": 182.78263944415292,
+            "normal_max_N": 215.8963531385151,
+            "tangent_max_N": 55.10628976840251,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102
+          },
+          "brace_forearm": {
+            "normal_min_N": -0.6712342592580084,
+            "normal_max_N": 24.726738776347855,
+            "tangent_max_N": 25.70835113426765,
+            "force_rows_max_N": 10.85831485029398,
+            "negative_normal_samples": 2,
+            "violating_samples": 102,
+            "samples": 102
+          },
+          "sole_left": {
+            "normal_min_N": 128.24513614495703,
+            "normal_max_N": 156.3905093647248,
+            "tangent_max_N": 20.580284783064464,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 32,
+            "samples": 102,
+            "moment_rows_max_Nm": 3.809801614572832,
+            "cop_margin_min_mm": -0.39359786533285646
+          },
+          "sole_right": {
+            "normal_min_N": 300.0631276577631,
+            "normal_max_N": 354.7547690576018,
+            "tangent_max_N": 53.39892474067956,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 41,
+            "samples": 102,
+            "moment_rows_max_Nm": 8.189364782047743,
+            "cop_margin_min_mm": 22.17524053070207
+          }
+        }
+      },
+      "corrected": {
+        "left_sole_displacement_mm": 0.19004771336046575,
+        "left_contact_loss_ms": 0.0,
+        "left_loaded_slip_m_s": 0.0029751136275427996,
+        "left_executable_prediction_rms_mm": 0.02886400462822644,
+        "reach_final_mm": 19.22247859494923,
+        "joint_speed_rad_s": 0.3389203641435501,
+        "joint_acceleration_rad_s2": 165.53467043123635,
+        "wrist_speed_m_s": 0.00997512246668957,
+        "joint_tracking_rms_mrad": 0.8036686145037742,
+        "solve_plus_audit_or_filter_p95_ms": 24.22023843973875,
+        "above_20ms": 91,
+        "command_evaluations": 302,
+        "executable_hold_force_rows": {
+          "brace_elbow": {
+            "normal_min_N": 171.9278332123739,
+            "normal_max_N": 211.79041261129245,
+            "tangent_max_N": 53.116425817659774,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102
+          },
+          "brace_forearm": {
+            "normal_min_N": 0.9999999999968265,
+            "normal_max_N": 29.73721766307753,
+            "tangent_max_N": 23.86418386224176,
+            "force_rows_max_N": 3.3436364788030914e-11,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102
+          },
+          "sole_left": {
+            "normal_min_N": 126.95105099676252,
+            "normal_max_N": 164.4180398640604,
+            "tangent_max_N": 20.715740295721076,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102,
+            "moment_rows_max_Nm": 1.2434497875801753e-14,
+            "cop_margin_min_mm": -1.3877787807814457e-14
+          },
+          "sole_right": {
+            "normal_min_N": 299.6731923350432,
+            "normal_max_N": 352.2996790866175,
+            "tangent_max_N": 55.712696361062626,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102,
+            "moment_rows_max_Nm": 4.263256414560601e-14,
+            "cop_margin_min_mm": 24.394794695555692
+          }
+        }
+      },
+      "left_displacement_reduction_percent": -34.01944589417874,
+      "reach_change_mm": 1.624397505992615
+    },
+    "pulse": {
+      "baseline": {
+        "left_sole_displacement_mm": 78.45977607970637,
+        "left_contact_loss_ms": 210.0,
+        "left_loaded_slip_m_s": 0.5176999421217584,
+        "left_executable_prediction_rms_mm": 3.637573798139522,
+        "reach_final_mm": 271.07585403348367,
+        "joint_speed_rad_s": 3.407541481907638,
+        "joint_acceleration_rad_s2": 438.61692946352434,
+        "wrist_speed_m_s": 0.972000519617246,
+        "joint_tracking_rms_mrad": 23.531446502821865,
+        "solve_plus_audit_or_filter_p95_ms": 23.90562342479825,
+        "above_20ms": 65,
+        "command_evaluations": 302,
+        "executable_hold_force_rows": {
+          "brace_elbow": {
+            "normal_min_N": -97.96452662514577,
+            "normal_max_N": 333.83284943263914,
+            "tangent_max_N": 1422.4822972619913,
+            "force_rows_max_N": 1086.754200603141,
+            "negative_normal_samples": 11,
+            "violating_samples": 52,
+            "samples": 102
+          },
+          "brace_forearm": {
+            "normal_min_N": -260.8640547998434,
+            "normal_max_N": 248.33509281802407,
+            "tangent_max_N": 1741.2328557551116,
+            "force_rows_max_N": 1605.7526034098757,
+            "negative_normal_samples": 41,
+            "violating_samples": 101,
+            "samples": 102
+          },
+          "sole_left": {
+            "normal_min_N": -136.30378497365086,
+            "normal_max_N": 664.1693663819708,
+            "tangent_max_N": 367.33142888611803,
+            "force_rows_max_N": 226.48064743587875,
+            "negative_normal_samples": 4,
+            "violating_samples": 75,
+            "samples": 102,
+            "moment_rows_max_Nm": 146.76652836903042,
+            "cop_margin_min_mm": -945.4451012144306
+          },
+          "sole_right": {
+            "normal_min_N": -189.9749050128071,
+            "normal_max_N": 759.1141498897742,
+            "tangent_max_N": 260.26796051813096,
+            "force_rows_max_N": 190.9749050128071,
+            "negative_normal_samples": 2,
+            "violating_samples": 64,
+            "samples": 102,
+            "moment_rows_max_Nm": 98.38026112490007,
+            "cop_margin_min_mm": -552.859825456624
+          }
+        }
+      },
+      "corrected": {
+        "left_sole_displacement_mm": 0.30363513945373627,
+        "left_contact_loss_ms": 0.0,
+        "left_loaded_slip_m_s": 0.009083084827660654,
+        "left_executable_prediction_rms_mm": 0.05530841775266136,
+        "reach_final_mm": 21.05781180366681,
+        "joint_speed_rad_s": 1.849684219657944,
+        "joint_acceleration_rad_s2": 203.70550114209917,
+        "wrist_speed_m_s": 0.15608924486671014,
+        "joint_tracking_rms_mrad": 7.431199834322713,
+        "solve_plus_audit_or_filter_p95_ms": 23.95618981681764,
+        "above_20ms": 94,
+        "command_evaluations": 302,
+        "executable_hold_force_rows": {
+          "brace_elbow": {
+            "normal_min_N": 41.92655762272262,
+            "normal_max_N": 221.9870535763621,
+            "tangent_max_N": 130.7938651217173,
+            "force_rows_max_N": 4.888534022029489e-12,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102
+          },
+          "brace_forearm": {
+            "normal_min_N": 1.0102416915264323,
+            "normal_max_N": 141.97367849978028,
+            "tangent_max_N": 98.61443028391768,
+            "force_rows_max_N": 2.892708295121338e-11,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102
+          },
+          "sole_left": {
+            "normal_min_N": 102.3533923033288,
+            "normal_max_N": 213.03782231266806,
+            "tangent_max_N": 24.047297879557156,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102,
+            "moment_rows_max_Nm": 2.3447910280083306e-13,
+            "cop_margin_min_mm": 4.445105643501424
+          },
+          "sole_right": {
+            "normal_min_N": 230.1638260618048,
+            "normal_max_N": 388.36757089559677,
+            "tangent_max_N": 80.92592915322673,
+            "force_rows_max_N": 0.0,
+            "negative_normal_samples": 0,
+            "violating_samples": 0,
+            "samples": 102,
+            "moment_rows_max_Nm": 1.1723955140041653e-13,
+            "cop_margin_min_mm": 9.478898076386798
+          }
+        }
+      },
+      "left_displacement_reduction_percent": 99.61300534538198,
+      "reach_change_mm": -250.01804222981684
+    }
+  },
+  "recovery_comparison": {
+    "nominal": {
+      "scheduled": {
+        "complete_cycle": true,
+        "timing": {
+          "brace_onset_s": 2.3799999999999595,
+          "original_reach_onset_s": 2.401999999999957,
+          "physical_brace_release_onset_s": 5.273999999999641,
+          "reach_onset_s": 3.999999999999781,
+          "reach_after_command_s": 0.0,
+          "standing_recovery_onset_s": 8.529999999999518,
+          "standing_recovery_after_request_s": 3.329999999999518,
+          "supported_rest_onset_s": null,
+          "supported_rest_after_request_s": null
+        },
+        "post_request_max_sole_displacement_mm": 0.5776947568489212
+      },
+      "gated": {
+        "complete_cycle": false,
+        "timing": {
+          "brace_onset_s": 2.3799999999999595,
+          "original_reach_onset_s": 2.401999999999957,
+          "physical_brace_release_onset_s": null,
+          "reach_onset_s": 3.999999999999781,
+          "reach_after_command_s": 0.0,
+          "standing_recovery_onset_s": null,
+          "standing_recovery_after_request_s": null,
+          "supported_rest_onset_s": null,
+          "supported_rest_after_request_s": null
+        },
+        "post_request_max_sole_displacement_mm": 0.748501159071027
+      }
+    },
+    "pulse": {
+      "scheduled": {
+        "complete_cycle": false,
+        "timing": {
+          "brace_onset_s": 2.3799999999999595,
+          "original_reach_onset_s": 2.401999999999957,
+          "physical_brace_release_onset_s": 5.417999999999625,
+          "reach_onset_s": 3.999999999999781,
+          "reach_after_command_s": 0.0,
+          "standing_recovery_onset_s": null,
+          "standing_recovery_after_request_s": null,
+          "supported_rest_onset_s": null,
+          "supported_rest_after_request_s": null
+        },
+        "post_request_max_sole_displacement_mm": 8.42434779452592
+      },
+      "gated": {
+        "complete_cycle": false,
+        "timing": {
+          "brace_onset_s": 2.3799999999999595,
+          "original_reach_onset_s": 2.401999999999957,
+          "physical_brace_release_onset_s": 7.227999999999426,
+          "reach_onset_s": 3.999999999999781,
+          "reach_after_command_s": 0.0,
+          "standing_recovery_onset_s": null,
+          "standing_recovery_after_request_s": null,
+          "supported_rest_onset_s": null,
+          "supported_rest_after_request_s": null
+        },
+        "post_request_max_sole_displacement_mm": 1.3055172576587661
+      }
+    }
+  },
+  "command_interval_checks": {
+    "nominal": {
+      "transitions": 100,
+      "initial": {
+        "brace_elbow": {
+          "samples": 100,
+          "normal_min_N": 171.9278332123739,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 0
+        },
+        "brace_forearm": {
+          "samples": 100,
+          "normal_min_N": 0.9999999999968271,
+          "force_excess_max_N": 3.3436364788030914e-11,
+          "violating_samples": 0
+        },
+        "sole_left": {
+          "samples": 100,
+          "normal_min_N": 126.95105099676252,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 0,
+          "moment_excess_max_Nm": 6.217248937900877e-15
+        },
+        "sole_right": {
+          "samples": 100,
+          "normal_min_N": 299.6731923350432,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 0,
+          "moment_excess_max_Nm": 4.263256414560601e-14
+        }
+      },
+      "endpoint": {
+        "brace_elbow": {
+          "samples": 100,
+          "normal_min_N": 175.68776262788433,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 0
+        },
+        "brace_forearm": {
+          "samples": 100,
+          "normal_min_N": -0.14995041403028023,
+          "force_excess_max_N": 3.504604274784719,
+          "violating_samples": 59
+        },
+        "sole_left": {
+          "samples": 100,
+          "normal_min_N": 126.78595332212879,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 3,
+          "moment_excess_max_Nm": 0.5715804142606054
+        },
+        "sole_right": {
+          "samples": 100,
+          "normal_min_N": 306.07067416745446,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 26,
+          "moment_excess_max_Nm": 1.0504107001516267
+        }
+      }
+    },
+    "pulse": {
+      "transitions": 75,
+      "initial": {
+        "brace_elbow": {
+          "samples": 75,
+          "normal_min_N": 41.92655762272262,
+          "force_excess_max_N": 3.4646063795662485e-11,
+          "violating_samples": 0
+        },
+        "brace_forearm": {
+          "samples": 75,
+          "normal_min_N": 1.0102416915264323,
+          "force_excess_max_N": 2.9686475500056986e-11,
+          "violating_samples": 0
+        },
+        "sole_left": {
+          "samples": 75,
+          "normal_min_N": 102.3533923033288,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 0,
+          "moment_excess_max_Nm": 2.3447910280083306e-13
+        },
+        "sole_right": {
+          "samples": 75,
+          "normal_min_N": 230.1638260618048,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 0,
+          "moment_excess_max_Nm": 1.1723955140041653e-13
+        }
+      },
+      "endpoint": {
+        "brace_elbow": {
+          "samples": 75,
+          "normal_min_N": 11.43773982308522,
+          "force_excess_max_N": 62.54628076946666,
+          "violating_samples": 3
+        },
+        "brace_forearm": {
+          "samples": 75,
+          "normal_min_N": 0.5131809995092301,
+          "force_excess_max_N": 19.191067380490722,
+          "violating_samples": 42
+        },
+        "sole_left": {
+          "samples": 75,
+          "normal_min_N": 117.50547351710908,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 9,
+          "moment_excess_max_Nm": 4.550273197602841
+        },
+        "sole_right": {
+          "samples": 75,
+          "normal_min_N": 245.35785515563214,
+          "force_excess_max_N": 0.0,
+          "violating_samples": 16,
+          "moment_excess_max_Nm": 1.0678762134770068
+        }
+      }
+    }
+  },
+  "source_plan_and_model": {
+    "plan": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/2026-09-08_height_dyn/h0885_x1060/cell/plan_elbow_forearm.json",
+    "plan_sha256": "56151d89b63733769d52901b5b5906bf52a6450ac2b1df73cd1265b3c5d1c9d6",
+    "xs_sha256": "787608976f9ecc82af0c621970b863a34a8a6a16412243f075501c3bea61cdb0",
+    "us_sha256": "99d3aa0341c09c168795f6eebf83cf920594080b123c78709397906784d62fee",
+    "model": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/_stage/mjpc/tasks/humanoid_bench/lean/Lean_H12_Magpie.xml",
+    "model_sha256": "37b78e65b7c5cf0ce2d5106eeea54a630bd9f5d3439c77af94d1d7c0646fa696",
+    "plan_fields": {
+      "cost": 27.614941492616985,
+      "iters": 200,
+      "stop": 0.007247241099536239,
+      "is_feasible": true,
+      "score_node": 200,
+      "site_err": {
+        "elbow": 0.0004353260856288559,
+        "forearm": 0.0002026130113986377
+      },
+      "reach_err": 0.0003868516981239735,
+      "foot_err": {
+        "sole_left": 0.012110294039437367,
+        "sole_right": 0.007537737042600954
+      },
+      "terminal_vel_norm": 0.0324835836146649,
+      "q_err_vs_qstar_rad": 0.20726280025117572,
+      "q_err_max_joint_rad": 0.12367539359310822,
+      "max_torque_ratio": 1.0,
+      "torque_ratio_argmax_joint": "left_elbow_joint",
+      "brace_dz_vs_qstar": {
+        "elbow": {
+          "min": -0.0004980939981229504,
+          "max": -0.0003864224693022056,
+          "mean": -0.0004268158681689189
+        },
+        "forearm": {
+          "min": -0.0005064772612369817,
+          "max": -0.00014352561687891452,
+          "mean": -0.00030558144651612505
+        }
+      },
+      "brace_dz_worst_mm": 0.5064772612369817,
+      "mode": "elbow+forearm",
+      "subset": [
+        "elbow",
+        "forearm"
+      ],
+      "start": "stand",
+      "start_q": null,
+      "return_start": null,
+      "dt": 0.02,
+      "impulse": false,
+      "cones": true,
+      "n_approach": 120,
+      "n_braced": 80,
+      "n_return": 0,
+      "dwell": 0,
+      "mu": 0.6,
+      "legacy": false,
+      "keepout": 90,
+      "w_land": 5000.0,
+      "w_hold": 1000.0,
+      "w_com": 1000.0,
+      "w_cone": 10.0,
+      "w_reach": 100.0,
+      "cop_shrink": 1.0,
+      "min_nforce": 1.0,
+      "w_com_track": 0.0,
+      "w_com_damp": 0.0,
+      "w_ctrl": 0.001,
+      "n_hold": 0,
+      "w_hold_state": 100.0,
+      "drop": "",
+      "w_jlim": 1000.0,
+      "w_vel": 0.0,
+      "reach_rot": "auto",
+      "w_reach_rot": 0.01,
+      "com_margin": 0.03,
+      "contact_kp": 50.0,
+      "contact_kd": 50.0,
+      "foot_kp": 0.0,
+      "converged": false,
+      "solve_seconds": 20.1452214717865,
+      "commit": "0e8a6c8e299724ee89da7934a20074dcc09778e0",
+      "stage1": {
+        "converged": true,
+        "cost": 3.555585105347974
+      },
+      "stance_dx": 0.0,
+      "stance_dy": 0.0,
+      "start_settled": false,
+      "target": [
+        1.06,
+        -0.2348,
+        0.9982000000000001
+      ],
+      "model": "Lean_H12_Magpie.xml",
+      "tau_basis": "clamp"
+    },
+    "model_arrays_sha256": {
+      "body_pos": "83a5852dd1a9b9f0ed973daebb4f10e9521587688c5c00f72e291dafcefc0e4b",
+      "body_quat": "449ca587db37ae25fd2e94a42f938424fbc9a80593bf9d198e0374b95d60e53d",
+      "body_mass": "9c197b1157933d70eab35b178db7b9c68af69e7599c64a0de22be8b2ccfe6909",
+      "body_inertia": "5cd75c34ed9833d5bdf7d81b68cf9683d540085c6dd744c345ac85d625e72995",
+      "geom_pos": "a55da24ddd15207d1d020caed6da9913255f7916ba27fa16ce0426db82853ca2",
+      "geom_quat": "10b12d82111f8ce6ed85caf4d8700a5701894e9bc78be48f7cbbbe43e19ec4b1",
+      "geom_size": "1e6dd0cdf7b1f12849c7529d3032c0b928ead59cab3a56eb703e6f95fca71a83",
+      "geom_friction": "e215714f93729bd0a33e69ef950848fc34b57a493eec4e9d52a4abf4d44249d4",
+      "mesh_vert": "337838746b890d4203649037cc884ef61c3ce5d4c69c4d54d641222511a5d2c9",
+      "mesh_face": "cfb2c6ebc64801508550f5025894d07e859f641ea9b21b5d94ad3446e77b4ea1",
+      "dof_damping": "2ea04a0b02de002fb6cffaee43fcbbf0e1688f9aa4c091fcfb973cb88cca353f",
+      "dof_armature": "741e384ff66b30cef95876a882d6eb635803fa2bd055435ca6081eb9ff047447",
+      "actuator_gainprm": "0f0f7552109899e163993ef56bc4d358ec32d3d40d6ad3f3202164aeaeb5884f",
+      "actuator_biasprm": "2ed2e0f41b437aad4bc34258f3639bb11477a910b4b5441b15bf45aeb056c091"
+    },
+    "model_nodes": 200,
+    "control_nodes": 200,
+    "hold_index": 165,
+    "hold_window_s": 0.7000000000000001,
+    "dt_s": 0.02,
+    "horizon": 35,
+    "foot_gains": [
+      0.0,
+      50.0
+    ],
+    "foot_anchors": {
+      "sole_left": [
+        [
+          0.9991075723096339,
+          -0.042171526036372704,
+          0.0023709376442630214,
+          0.28628164080585494
+        ],
+        [
+          0.04217152603637271,
+          0.9928086358538663,
+          -0.11203827455717413,
+          0.26150245078802586
+        ],
+        [
+          0.0023709376442627994,
+          0.11203827455717415,
+          0.993701063544232,
+          0.00017751144837033217
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sole_right": [
+        [
+          0.9991075723096339,
+          0.042171526036372704,
+          0.0023709376442630214,
+          0.28628164080585494
+        ],
+        [
+          -0.04217152603637271,
+          0.9928086358538663,
+          0.11203827455717413,
+          -0.26150245078802586
+        ],
+        [
+          0.0023709376442627994,
+          -0.11203827455717415,
+          0.993701063544232,
+          0.00017751144837033217
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    }
+  },
+  "archive_digest_checks": [
+    "20261017-foot-model-raw.zip",
+    "20261018-command-recovery-raw.zip",
+    "20261018-model-uncertainty-raw.zip",
+    "20261019-adaptive-raw.zip",
+    "20261019-command-recovery-review-raw.zip"
+  ],
+  "input_sha256": {
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-foot-model-transfer.json": "aa3e295013abba9a06ca466ccd9c15bf6b87ac0269cc7caa0f3eb773c42b5f35",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json": "4b43f4017e92c6fd095936fd107872605c50514e48abccab11735bd38647d5b2",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-adaptive-transfer.json": "4a1dd2161c59a92de41bdffe9a849c49aea0c4ffb37f5a002a0ea5944a5caaf0",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-model-uncertainty.json": "7dfe5249d8c88691d2a31f3bd40db75d4ad57b9a0fa5f61ff1cb4cc4373bdb7d",
+    "docs/lean/media/20261015-contact-audit/20261015-audit.json": "84caa03c68feb4071f61779ad4130453ee19de6ac30c5cab12cc78a7479f5718",
+    "docs/lean/media/20261015-contact-audit/20261015-surface-catalogue.json": "e6730832e710723ae8f76e67b5fc29efa1297f886e1ca218f3ff47c974e67d42",
+    "docs/lean/media/20261015-contact-audit/20261015-foot-motion.json": "2924161ade602322273f312c0d59e457a13cdbd2aea176629969f91bc6019b09",
+    "docs/lean/media/20261015-contact-audit/20261015-state-frames.json": "711d3f39e707447f71569310469e2a6f06ec488d7c85aaeafea2d9edfaa998e5",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json": "28dd6e3feae982d3a8176ae1f86d7d83aac17b9725e5bfa6006c57d665552bef",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json": "e16f2dac7d1027d60efea071de0bd2b25fc8fd43f419a77d2d220a218c514dc4",
+    "studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-nominal-raw.npz": "b6d180c774ae5b85c9048829f7a1b696df794d69f2bd7d4f78b688ed81a72ec1",
+    "studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-nominal-raw.npz": "11ae6a39e37518bee09a58a69c7d3ad0563195e19473dfc0856df68fcedd7b0c",
+    "studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-pulse-raw.npz": "b1af075b526cfaf56fa4bf5803a4f35fce0d25904e310dac98421854a7dd1991",
+    "studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-pulse-raw.npz": "d1db9333559543e6a5a30f35f30a08b763e056e8a5be83f593e4202807c26155",
+    "studies/runs/20261018-cmpc-command-recovery/20261018-baseline-nominal-raw.npz": "72546d2d050572a4de6d42db849123cb6377a6f9e6de0e6890bdd7ed1730a26e",
+    "studies/runs/20261018-cmpc-command-recovery/20261018-guarded-nominal-raw.npz": "26373467ec2d6b0c3ec8e691adafcb051190e9d38cb7c0a6ca5e9a0dfb095bf2",
+    "studies/runs/20261019-cmpc-adaptive-transfer/20261019-gated-nominal-raw.npz": "dbd8c64dac66a1482b600ad8a37486ec5cc5842765d11aeaa7b5b6b7f0d76f79",
+    "studies/runs/20261018-cmpc-command-recovery/20261018-baseline-pulse-raw.npz": "3cff7e6e6ac9d4830f23cae118cfb6efb40436758908103fef770af201dfd6a9",
+    "studies/runs/20261018-cmpc-command-recovery/20261018-guarded-pulse-raw.npz": "2b5b17fd14826978d51c55c0f092f0c12494176f7113c425f19a319e08b983f5",
+    "studies/runs/20261019-cmpc-adaptive-transfer/20261019-gated-pulse-raw.npz": "dfd12fd1f742195dc56bfac9d5a1a237ec9652d86888eac72fd205c0fb549f3b",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-raw.zip": "85dce8f941faad537e0df2303b8c7500658bea01ddffcf5206552e28d1ff1b17",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-archive.json": "a5d5386ed736809f17f5d871d1a83f63710c32f92e084442cb867fe9685f312b",
+    "docs/lean/media/20261015-contact-audit/20261018-command-recovery-raw.zip": "b10180a0b12553ad5ed74e3ce12b06c1167621c2b6966cd99bebd4a16ccfb880",
+    "docs/lean/media/20261015-contact-audit/20261018-command-recovery-archive.json": "717c486619cb0a7606542611356094cb93cf8e26a2f6a79d729bc9535f907c61",
+    "docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-raw.zip": "e62e3cffee04a908dd6016a5a87e74ae0e8c624ac5e0bcffccb2e28b2b0125de",
+    "docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-archive.json": "f63bedbc55be81eab0a9f9c5d151056cd8003529e88d37f7e32a439bb29e991c",
+    "docs/lean/media/20261015-contact-audit/20261019-adaptive-raw.zip": "dac26fb2826a62e32f3208e6abb7c5318204ffda11fcd7f77308ed89e0d3561c",
+    "docs/lean/media/20261015-contact-audit/20261019-adaptive-archive.json": "de2734b02323c30cd3dcc25416114ff5c7a4de5f96f503e3a32c114a16b0318e",
+    "docs/lean/media/20261015-contact-audit/20261019-command-recovery-review-raw.zip": "897a5570099d0640e1c275be96504d6634908706404031b08440380fa6eaf857",
+    "docs/lean/media/20261015-contact-audit/20261019-command-recovery-review-archive.json": "a33c529c93480571663dcfefa985a0099e15e47b75bff7a51da9f378c7253cca",
+    "docs/lean/20261015-cmpc-contact-reassessment.html": "f2196f14cdf32af8b874c9a5cb3adaa96f77c62c00a6063d296362cab128721d",
+    "docs/lean/20261015-cmpc-foot-motion.html": "11b8d6330223db2d676e3d762aaef903e87b7ae755bcd9af8cd46fed1e9e5c9b",
+    "docs/lean/20261015-cmpc-state-frames.html": "9aa1293830b3e6222453a48ab15613cf634d3dcd47b97c84476865d18690953a",
+    "docs/lean/20261015-cmpc-surface-catalogue.html": "1ed475dfd5281d8c13548d739633284e66a51d674d6379cbba6277a878b5e41c",
+    "docs/lean/20261016-cmpc-adaptive-transfer.html": "e139d8100114e7a8fd069f7db3d74ab85c94b1c09b5c86fe0c5a48b5609b3dcf",
+    "docs/lean/20261016-cmpc-brace-selection-transfer.html": "3174a657d1f8ded05e3911cb41fef22e996127226e9caec3c20806997a0bcb82",
+    "docs/lean/20261016-cmpc-command-recovery.html": "113c298a3ecaabdbdab4c1384d3f66d023be5b9e0f790850acbd2ca273a03a3b",
+    "docs/lean/20261016-cmpc-foot-model-transfer.html": "ae39e6905dea29a93f4b62ce142aeaaf5d030cae9922bdde73e050e0f0dfa939",
+    "docs/lean/20261016-cmpc-model-uncertainty.html": "1c5ff3921e130c2e75c8239387aa6f3935da9f8bceed62b3c43c1490ca0bce27",
+    "docs/lean/20261016-cmpc-motion-transfer.html": "9576a2fcd2540b61b7fe82a196d60b7746ec3e6e75aea90739bb9d6a5a38ad11",
+    "docs/lean/media/20261015-contact-audit/20261016-foot-nominal.mp4": "e82f54c97042b4408ca3961ffe77afc3c50a970c9590905d4470eb30f24aed2f",
+    "docs/lean/media/20261015-contact-audit/20261016-foot-pulse.mp4": "0086613f77628ad352f30d175fcc4f780bba49adffb8d2af1faea48e247e35b0",
+    "docs/lean/media/20261015-contact-audit/20261016-motion-baseline.mp4": "17f9425f18552df2171ad6c6300ad15bcef7244cc22f69e46de34f25e689d0c8",
+    "docs/lean/media/20261015-contact-audit/20261016-motion-fixed-position.mp4": "e484cca64ad4f2241f151d09cd455ba335b096e2dff84bc89cfeadcbd2f7f069",
+    "docs/lean/media/20261015-contact-audit/20261016-motion-velocity.mp4": "186e1cc1d1ea6ea7e0507b5d07dff1c6340474f7b21f5845f9f0991520bf0315",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-baseline-nominal.mp4": "829e36494ba948830709d14cdd907d0f6e6ddaa6c91e8214d1b1a2a16443115d",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-baseline-pulse.mp4": "ecaabccf3f9f470a6960351f4e731530a0c94bc9875e2fc80cdd6c5c257d968d",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-corrected-nominal.mp4": "50ead88609a6f6b047497f8bf30f44ba00efe63bc2cbd62fd91029a4ddf9e623",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-corrected-pulse.mp4": "68745266d65ccbc0d8c6869e2dcc2be0ec0e6171ad596d82b31972b50daffe13",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-cad-wrist.mp4": "47685c5f97e57fc4a1bb447ecdb401ffafdfbbdc5973fe4aad09bc62c6dcdc76",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-elbow_forearm-reserved.mp4": "b5651d18b5a7a9a9c0093424a8432597be21356543d3b97ff087b027d0ec53f3",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-elbow_forearm-selection.mp4": "d667409ae3f726bc375f838f0ac5c11fe9d4c88c5f6568977123166d11357512",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-forearm_wrist-reserved.mp4": "8e0a049b0443e278610519a915af6fa97e54a0e4fe3560eb2cd25fe8747ad7ff",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-forearm_wrist-selection.mp4": "6a562dd8984471ea1057ff99db24bcbf32f10275f057a3a7f279ea46d57fc519",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-original.mp4": "1ced4047e4ad02484ce3a252b0590bc2560a995bda82f0a764a4aa4583c5cc91",
+    "docs/lean/media/20261015-contact-audit/20261018-recovery-baseline-nominal.mp4": "73aa5cc1023e4e9d3a27a3ce3ad4a56ae802a6de59146b5487145f3e2788bdf8",
+    "docs/lean/media/20261015-contact-audit/20261018-recovery-baseline-pulse.mp4": "7c09f8b86baa40ea9744e0b752df3246f9ce62120d55fcb16fe2a43f4dcbadeb",
+    "docs/lean/media/20261015-contact-audit/20261018-recovery-guarded-nominal.mp4": "e593f0c7fd530979336d5d60f1264c6a083754eeffd657374cc06467805fdc11",
+    "docs/lean/media/20261015-contact-audit/20261018-recovery-guarded-pulse.mp4": "77e2938ebfd0c4ff5175450a8e32f229bad06641134d3251b37a66c77b937f82",
+    "docs/lean/media/20261015-contact-audit/20261019-adaptive-gated-nominal.mp4": "7c817daac2ef1d8a7e5be37351f5358abd458dfa80f7b0722a4c6c15e23a1f65",
+    "docs/lean/media/20261015-contact-audit/20261019-adaptive-gated-pulse.mp4": "98661796817b305e92744839ee63dc2ea9932dba8e66d4b7769288b68d691e22",
+    "docs/lean/media/20261015-contact-audit/20261016-foot-motion-run-record.json": "e9faab3b9a4dfca5fa924a5122d8479fd6d43ffb523c8f81765548e869eef43c",
+    "docs/lean/media/20261015-contact-audit/20261016-geometry-run-record.json": "fc0ed7d9f952082a994012d0a0a6c1f1d43e0b78e2a4362a57d7e02816519bed",
+    "docs/lean/media/20261015-contact-audit/20261016-geometry-validation-run-record.json": "add781100e0f13d7ec6013814926678c9b76ee681f5bb61b7b0dd6ad8de1da7c",
+    "docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json": "ce22861620bb35d66924ade2f72b511fa15ef79c31c4f611bacb3baaccf58258",
+    "docs/lean/media/20261015-contact-audit/20261016-state-frames-run-record.json": "0079e2cc8294fbf292a10407833d11f53a17f62a1a7afba3018910e1473e24f5",
+    "docs/lean/media/20261015-contact-audit/20261017-foot-model-run-record.json": "a8b3b9fa7eae9b6bb5014503177dc7823c3ec194696ba1f9a2fa6968fc691cba",
+    "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json": "c3d158e88387ff8e81a1e5d8282f7aace160e9d1c7c3993072501d30b67f7412",
+    "docs/lean/media/20261015-contact-audit/20261018-command-recovery-run-record.json": "c1aab7c9ae801629a894de762087ef2fb08a2c22079c2e5cccd9da01f4f27c66",
+    "docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-run-record.json": "b49e8ad028d44065ce498726a65be29cfe07df115aca7665d3061b7ed163a0ef",
+    "docs/lean/media/20261015-contact-audit/20261019-adaptive-run-record.json": "ae077c1e822a58630e4c69430fc0b9d82065b4e176ee77d58fe9eb92e61347f6",
+    "docs/lean/media/20261015-contact-audit/20261019-command-recovery-run-record.json": "6c2a780b4081d3732c0e8bcc27cb492b48039b4958f66d4fae937aa80f826d86",
+    "studies/20261019_cmpc_transfer_review.py": "5d123563f75582f1c9a8930e022a0f7b5efbb856b092ddb0bfc5d41690681f45"
+  },
+  "rollout_accounting": {
+    "geometry": 0,
+    "foot_motion": 2,
+    "state_frames": 0,
+    "motion_transfer": 3,
+    "foot_model_transfer": 6,
+    "brace_selection_transfer": 5,
+    "model_uncertainty_transfer": 0,
+    "command_recovery_transfer": 4,
+    "adaptive_transfer": 2,
+    "transfer_review": 0
+  },
+  "rollout_accounting_total": 22,
+  "rollout_retries_included": 2,
+  "incompatible_comparisons": [
+    "Physical brace selection changes wrist collision geometry and replans contact points; do not pool with original-model force-filter trials.",
+    "Recovery changes target and contact schedule and lasts 9.02 s; do not pool with 6.02 s hold-only trials.",
+    "Older August results use older assets; historical context only.",
+    "Model-uncertainty predictor alternatives reuse saved transitions and are not closed-loop controller trials."
+  ]
+}
