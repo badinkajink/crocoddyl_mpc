@@ -1,0 +1,21 @@
+{
+  "checkpoint": "model_uncertainty_transfer",
+  "date": "2026-10-18 America/Denver",
+  "baseline_commit": "ba37518",
+  "status": "preregistered_before_measurement",
+  "measured_failure": "Prior corrected pulse angular/joint-velocity one-step residual is 0.687720 rad/s despite initial force-row feasibility. The predictor uses initial executable torque for 20 ms; the plant executes a position/velocity/feedforward command throughout the interval.",
+  "prerequisite": "Separate command realization and integration error from a physical-parameter mismatch before identifying friction, compliance or actuator lag.",
+  "hypothesis": "Evaluating the known servo command along predicted states reduces angular/joint-velocity residual by at least 10 percent relative to 2 ms frozen-torque integration on both nominal selection data and the separate pulse condition.",
+  "variants": ["Frozen initial torque, one 20 ms step", "Frozen initial torque, ten 2 ms predictor steps", "Issued servo law evaluated at predicted states, ten 2 ms predictor steps"],
+  "selection": "Archived corrected nominal estimated transitions starting at 4.00 through 5.98 s; no physical parameter fitted.",
+  "reserved": "Archived corrected pulse estimated transitions starting at 4.50 through 5.98 s; excluded from selection.",
+  "additional_measurement": "Evaluate the previous command at the next estimated state before changing commands. Count loss of model cone feasibility despite feasible initial rows. This uses observed endpoints for scoring only.",
+  "invariants": {"horizon": 35, "dt_s": 0.02, "same_controller_cost_and_commands": true, "certified_defaults_modified": false, "site_membership_modified": false},
+  "controller_inputs": "Only archived estimated states and issued commands. No future observations enter predictor trajectories. Known command gains and controller torque limits are retained.",
+  "hardware_ranges": "None selected. Existing synthetic 10 mm/0.01 rad base bias and ideal joint/velocity channels are unmeasured hardware assumptions.",
+  "new_rollouts": 0,
+  "cumulative_rollouts": 0,
+  "rollout_limit": 6,
+  "numerical_budget_s": 1200,
+  "decision_rule": "A failed command-model or between-command feasibility prerequisite completes this prerequisite question with measured limitations; do not attribute its residual to an identified physical parameter or report closed-loop adaptation benefit. A successful predictor alone also does not establish closed-loop benefit."
+}

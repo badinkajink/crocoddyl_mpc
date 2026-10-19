@@ -1,0 +1,173 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "nominal source estimates",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal source targets",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal original predictor parity",
+      "passed": true,
+      "max_error": 2.130240428499519e-15
+    },
+    {
+      "name": "nominal observation interval",
+      "passed": true,
+      "max_error": 2.203098814490545e-15
+    },
+    {
+      "name": "nominal frozen_20ms state residual",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal frozen_20ms velocity metric",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal frozen_2ms state residual",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal frozen_2ms velocity metric",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal servo_2ms state residual",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal servo_2ms velocity metric",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal high-rate physical actuator law",
+      "passed": true,
+      "max_error": 5.773159728050814e-14
+    },
+    {
+      "name": "nominal video frame count",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "nominal video and physical source hashes",
+      "passed": true
+    },
+    {
+      "name": "pulse source estimates",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse source targets",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse original predictor parity",
+      "passed": true,
+      "max_error": 1.4432899320127035e-15
+    },
+    {
+      "name": "pulse observation interval",
+      "passed": true,
+      "max_error": 2.203098814490545e-15
+    },
+    {
+      "name": "Reserved evaluation excludes shared pre-pulse transitions",
+      "passed": true
+    },
+    {
+      "name": "pulse frozen_20ms state residual",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse frozen_20ms velocity metric",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse frozen_2ms state residual",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse frozen_2ms velocity metric",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse servo_2ms state residual",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse servo_2ms velocity metric",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse high-rate physical actuator law",
+      "passed": true,
+      "max_error": 5.684341886080802e-14
+    },
+    {
+      "name": "pulse video frame count",
+      "passed": true,
+      "max_error": 0.0
+    },
+    {
+      "name": "pulse video and physical source hashes",
+      "passed": true
+    }
+  ],
+  "cases": {
+    "nominal": {
+      "servo_improvement_over_fine_fraction": 0.04866592915507517,
+      "fine_improvement_over_original_fraction": 0.22458945552082987,
+      "servo_improvement_over_original_fraction": 0.2623255301445514,
+      "hypothesis_passed": false,
+      "endpoint_violating_transitions": 75,
+      "transitions": 100,
+      "physical_actuator_scoring_samples": 1000,
+      "physical_law_max_error_Nm": 5.773159728050814e-14,
+      "physical_within_interval_torque_change_max_Nm": 2.1097147081325964,
+      "videos": {
+        "mp4_sha256": "50ead88609a6f6b047497f8bf30f44ba00efe63bc2cbd62fd91029a4ddf9e623",
+        "csv_sha256": "3c8c8d5ff1e056f128def869a04bd73926484b97e1fd8af49f97e7893c3b237e"
+      }
+    },
+    "pulse": {
+      "servo_improvement_over_fine_fraction": 0.12184349672712291,
+      "fine_improvement_over_original_fraction": 0.28588945176710034,
+      "servo_improvement_over_original_fraction": 0.37289917801351957,
+      "hypothesis_passed": true,
+      "endpoint_violating_transitions": 57,
+      "transitions": 75,
+      "physical_actuator_scoring_samples": 750,
+      "physical_law_max_error_Nm": 5.684341886080802e-14,
+      "physical_within_interval_torque_change_max_Nm": 7.4966946257060165,
+      "videos": {
+        "mp4_sha256": "68745266d65ccbc0d8c6869e2dcc2be0ec0e6171ad596d82b31972b50daffe13",
+        "csv_sha256": "94882f47eded2513d330efc65702b9ab567980d1c8552269877f450a592b77ac"
+      }
+    }
+  },
+  "hypothesis_passed": false,
+  "new_rollouts": 0,
+  "plant_steps": 0,
+  "source_sha256": "1d550e92cc34e672364d9f168cc5b3d9cae4af555ceac5c6bc5dc452e71ead5f"
+}

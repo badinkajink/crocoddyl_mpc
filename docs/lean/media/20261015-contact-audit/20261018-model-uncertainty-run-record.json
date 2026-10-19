@@ -1,0 +1,691 @@
+{
+  "checkpoint": "model_uncertainty_transfer",
+  "date": "2026-10-18 America/Denver",
+  "start_utc": "2026-10-19 03:15:06 UTC",
+  "status": "checkpoint_complete",
+  "completion_basis": "Requested prerequisite branch; command-model comparison and interval-feasibility measurement. No physical-parameter adaptation or new closed-loop controller comparison was performed.",
+  "commands": [
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-nominal-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction.py --case nominal > studies/runs/20261018-cmpc-model-uncertainty/20261018-nominal.log 2>&1",
+      "start_utc": "2026-10-19 03:17:47 UTC",
+      "returncode": 1,
+      "wall_s": 2.66,
+      "max_rss_KiB": 2686588,
+      "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction.py --case nominal\"\n\tUser time (seconds): 1.49\n\tSystem time (seconds): 0.91\n\tPercent of CPU this job got: 90%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.66\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2686588\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 265\n\tMinor (reclaiming a frame) page faults: 795488\n\tVoluntary context switches: 1990\n\tInvoluntary context switches: 598\n\tSwaps: 0\n\tFile system inputs: 232784\n\tFile system outputs: 8\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+      "log_output": "Warning: the number of threads won't affect the computational performance as multithreading support is not enabled.\nTraceback (most recent call last):\n  File \"/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/20261018_cmpc_command_prediction.py\", line 150, in <module>\n    run(p.parse_args().case)\n  File \"/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/20261018_cmpc_command_prediction.py\", line 60, in run\n    assert np.allclose(fl.m.actuator_forcerange, np.c_[-limit, limit])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-nominal2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction.py --case nominal > studies/runs/20261018-cmpc-model-uncertainty/20261018-nominal2.log 2>&1",
+      "start_utc": "2026-10-19 03:18:10 UTC",
+      "returncode": 0,
+      "wall_s": 2.57,
+      "max_rss_KiB": 2681968,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction.py --case nominal\"\n\tUser time (seconds): 1.70\n\tSystem time (seconds): 0.84\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.57\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2681968\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 17\n\tMinor (reclaiming a frame) page faults: 797665\n\tVoluntary context switches: 387\n\tInvoluntary context switches: 621\n\tSwaps: 0\n\tFile system inputs: 1008\n\tFile system outputs: 1432\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "log_output": "Warning: the number of threads won't affect the computational performance as multithreading support is not enabled.\n{\"case\": \"nominal\", \"transitions\": 100, \"variants\": {\"frozen_20ms\": {\"base_translation_rms_mm\": 0.11041599552558222, \"orientation_joint_rms_rad\": 0.003345616549109482, \"base_velocity_rms_m_s\": 0.005287748046056847, \"angular_joint_velocity_rms_rad_s\": 0.1658482878255248, \"joint_velocity_rms_rad_s\": 0.1640431221662785, \"sole_position_rms_mm\": [0.028232241873733778, 0.09788007379873709], \"latency_ms\": {\"mean\": 0.06322101689875126, \"p95\": 0.06846908945590258, \"maximum\": 0.0949581153690815}, \"force_rows\": {\"brace_elbow\": {\"samples\": 100, \"normal_min_N\": 171.9278332123739, \"force_excess_max_N\": 0.0, \"violating_samples\": 0}, \"brace_forearm\": {\"samples\": 100, \"normal_min_N\": 0.9999999999968271, \"force_excess_max_N\": 3.3436364788030914e-11, \"violating_samples\": 0}, \"sole_left\": {\"samples\": 100, \"normal_min_N\": 126.95105099676252, \"force_excess_max_N\": 0.0, \"violating_samples\": 0, \"moment_excess_max_Nm\": 6.217248937900877e-15}, \"sole_right\": {\"samples\": 100, \"normal_min_N\": 299.6731923350432, \"force_excess_max_N\": 0.0, \"violating_samples\": 0, \"moment_excess_max_Nm\": 4.263256414560601e-14}}, \"model_torque_change_max_joint_Nm\": {\"mean\": 0.0, \"p95\": 0.0, \"maximum\": 0.0}}, \"frozen_2ms\": {\"base_translation_rms_mm\": 0.05372080802627507, \"orientation_joint_rms_rad\": 0.0019632934358363345, \"base_velocity_rms_m_s\": 0.004565830778539352, \"angular_joint_velocity_rms_rad_s\": 0.1286005111637283, \"joint_velocity_rms_rad_s\": 0.12779649060224302, \"sole_position_rms_mm\": [0.02689129014471854, 0.09251823672885888], \"latency_ms\": {\"mean\": 0.6175885442644358, \"p95\": 0.6307914853096008, \"maximum\": 1.080694142729044}, \"force_rows\": {\"brace_elbow\": {\"samples\": 1000, \"normal_min_N\": 171.9278332123739, \"force_excess_max_N\": 0.0, \"violating_samples\": 0}, \"brace_forearm\": {\"samples\": 1000, \"normal_min_N\": -0.014790651974495944, \"force_excess_max_N\": 2.4363352061472936, \"violating_samples\": 109}, \"sole_left\": {\"samples\": 1000, \"normal_min_N\": 126.95105099676252, \"force_excess_max_N\": 0.0, \"violating_samples\": 14, \"moment_excess_max_Nm\": 0.2493325194055167}, \"sole_right\": {\"samples\": 1000, \"normal_min_N\": 299.6731923350432, \"force_excess_max_N\": 0.0, \"violating_samples\": 322, \"moment_excess_max_Nm\": 0.7925066249581079}}, \"model_torque_change_max_joint_Nm\": {\"mean\": 0.0, \"p95\": 0.0, \"maximum\": 0.0}}, \"servo_2ms\": {\"base_translation_rms_mm\": 0.05176110187514301, \"orientation_joint_rms_rad\": 0.0019126783313443895, \"base_velocity_rms_m_s\": 0.004305033809565481, \"angular_joint_velocity_rms_rad_s\": 0.12234204779812785, \"joint_velocity_rms_rad_s\": 0.12173216356491535, \"sole_position_rms_mm\": [0.026890604228719205, 0.09252012602846046], \"latency_ms\": {\"mean\": 0.6587124336510897, \"p95\": 0.6683293730020523, \"maximum\": 1.1784839443862438}, \"force_rows\": {\"brace_elbow\": {\"samples\": 1000, \"normal_min_N\": 171.678386263947, \"force_excess_max_N\": 0.0, \"violating_samples\": 0}, \"brace_forearm\": {\"samples\": 1000, \"normal_min_N\": -0.1877732272532398, \"force_excess_max_N\": 3.479993140051742, \"violating_samples\": 142}, \"sole_left\": {\"samples\": 1000, \"normal_min_N\": 126.50373409932153, \"force_excess_max_N\": 0.0, \"violating_samples\": 17, \"moment_excess_max_Nm\": 0.23452116644585708}, \"sole_right\": {\"samples\": 1000, \"normal_min_N\": 299.6731923350432, \"force_excess_max_N\": 0.0, \"violating_samples\": 392, \"moment_excess_max_Nm\": 1.0344808394339786}}, \"model_torque_change_max_joint_Nm\": {\"mean\": 0.3156150110329581, \"p95\": 0.49273780963580877, \"maximum\": 0.711730130861401}}}, \"endpoint_force_rows\": {\"brace_elbow\": {\"samples\": 100, \"normal_min_N\": 175.68776262788433, \"force_excess_max_N\": 0.0, \"violating_samples\": 0}, \"brace_forearm\": {\"samples\": 100, \"normal_min_N\": -0.14995041403028023, \"force_excess_max_N\": 3.504604274784719, \"violating_samples\": 59}, \"sole_left\": {\"samples\": 100, \"normal_min_N\": 126.78595332212879, \"force_excess_max_N\": 0.0, \"violating_samples\": 3, \"moment_excess_max_Nm\": 0.5715804142606054}, \"sole_right\": {\"samples\": 100, \"normal_min_N\": 306.07067416745446, \"force_excess_max_N\": 0.0, \"violating_samples\": 26, \"moment_excess_max_Nm\": 1.0504107001516267}}, \"observed_endpoint_torque_change_max_joint_Nm\": {\"mean\": 0.5426999049291612, \"p95\": 1.165602718762578, \"maximum\": 2.0615831888387914}}\n"
+    },
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-pulse-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction.py --case pulse > studies/runs/20261018-cmpc-model-uncertainty/20261018-pulse.log 2>&1",
+      "start_utc": "2026-10-19 03:18:44 UTC",
+      "returncode": 0,
+      "wall_s": 2.51,
+      "max_rss_KiB": 2685860,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction.py --case pulse\"\n\tUser time (seconds): 1.62\n\tSystem time (seconds): 0.87\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.51\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2685860\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 797738\n\tVoluntary context switches: 399\n\tInvoluntary context switches: 519\n\tSwaps: 0\n\tFile system inputs: 5424\n\tFile system outputs: 1088\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "log_output": "Warning: the number of threads won't affect the computational performance as multithreading support is not enabled.\n{\"case\": \"pulse\", \"transitions\": 75, \"variants\": {\"frozen_20ms\": {\"base_translation_rms_mm\": 0.18845053851281685, \"orientation_joint_rms_rad\": 0.014489433369742462, \"base_velocity_rms_m_s\": 0.007136895318822894, \"angular_joint_velocity_rms_rad_s\": 0.6920909892383672, \"joint_velocity_rms_rad_s\": 0.6848665984168383, \"sole_position_rms_mm\": [0.05565286018284116, 0.10146152446029924], \"latency_ms\": {\"mean\": 0.06376499310135841, \"p95\": 0.06927754729986191, \"maximum\": 0.09242910891771317}, \"force_rows\": {\"brace_elbow\": {\"samples\": 75, \"normal_min_N\": 41.92655762272262, \"force_excess_max_N\": 3.4646063795662485e-11, \"violating_samples\": 0}, \"brace_forearm\": {\"samples\": 75, \"normal_min_N\": 1.0102416915264323, \"force_excess_max_N\": 2.9686475500056986e-11, \"violating_samples\": 0}, \"sole_left\": {\"samples\": 75, \"normal_min_N\": 102.3533923033288, \"force_excess_max_N\": 0.0, \"violating_samples\": 0, \"moment_excess_max_Nm\": 2.3447910280083306e-13}, \"sole_right\": {\"samples\": 75, \"normal_min_N\": 230.1638260618048, \"force_excess_max_N\": 0.0, \"violating_samples\": 0, \"moment_excess_max_Nm\": 1.1723955140041653e-13}}, \"model_torque_change_max_joint_Nm\": {\"mean\": 0.0, \"p95\": 0.0, \"maximum\": 0.0}}, \"frozen_2ms\": {\"base_translation_rms_mm\": 0.0705458110074987, \"orientation_joint_rms_rad\": 0.006057992810630344, \"base_velocity_rms_m_s\": 0.006029596756136146, \"angular_joint_velocity_rms_rad_s\": 0.4942294757520603, \"joint_velocity_rms_rad_s\": 0.4917518812073371, \"sole_position_rms_mm\": [0.043097541915944025, 0.09047031337289009], \"latency_ms\": {\"mean\": 0.6211093751092752, \"p95\": 0.6274240557104349, \"maximum\": 1.3013188727200031}, \"force_rows\": {\"brace_elbow\": {\"samples\": 750, \"normal_min_N\": 41.92655762272262, \"force_excess_max_N\": 32.165705373780455, \"violating_samples\": 45}, \"brace_forearm\": {\"samples\": 750, \"normal_min_N\": 0.020048295319727197, \"force_excess_max_N\": 30.29255198858523, \"violating_samples\": 283}, \"sole_left\": {\"samples\": 750, \"normal_min_N\": 102.3533923033288, \"force_excess_max_N\": 0.0, \"violating_samples\": 21, \"moment_excess_max_Nm\": 1.089245550344577}, \"sole_right\": {\"samples\": 750, \"normal_min_N\": 230.1638260618048, \"force_excess_max_N\": 0.0, \"violating_samples\": 176, \"moment_excess_max_Nm\": 0.898604461194946}}, \"model_torque_change_max_joint_Nm\": {\"mean\": 0.0, \"p95\": 0.0, \"maximum\": 0.0}}, \"servo_2ms\": {\"base_translation_rms_mm\": 0.07222165072559018, \"orientation_joint_rms_rad\": 0.005491748599866135, \"base_velocity_rms_m_s\": 0.006440455291614874, \"angular_joint_velocity_rms_rad_s\": 0.43401082824081644, \"joint_velocity_rms_rad_s\": 0.4325967770254394, \"sole_position_rms_mm\": [0.04309509299873064, 0.09047384039602407], \"latency_ms\": {\"mean\": 0.6602721909681956, \"p95\": 0.6794751156121492, \"maximum\": 1.0782070457935333}, \"force_rows\": {\"brace_elbow\": {\"samples\": 750, \"normal_min_N\": 41.92655762272262, \"force_excess_max_N\": 29.07287549461717, \"violating_samples\": 41}, \"brace_forearm\": {\"samples\": 750, \"normal_min_N\": -0.6168256153347185, \"force_excess_max_N\": 29.151838858196044, \"violating_samples\": 212}, \"sole_left\": {\"samples\": 750, \"normal_min_N\": 102.3533923033288, \"force_excess_max_N\": 0.0, \"violating_samples\": 16, \"moment_excess_max_Nm\": 0.7035094291327315}, \"sole_right\": {\"samples\": 750, \"normal_min_N\": 230.1638260618048, \"force_excess_max_N\": 0.0, \"violating_samples\": 202, \"moment_excess_max_Nm\": 1.6403494365688687}}, \"model_torque_change_max_joint_Nm\": {\"mean\": 1.7812267519030016, \"p95\": 5.913766647095388, \"maximum\": 6.595634622343578}}}, \"endpoint_force_rows\": {\"brace_elbow\": {\"samples\": 75, \"normal_min_N\": 11.43773982308522, \"force_excess_max_N\": 62.54628076946666, \"violating_samples\": 3}, \"brace_forearm\": {\"samples\": 75, \"normal_min_N\": 0.5131809995092301, \"force_excess_max_N\": 19.191067380490722, \"violating_samples\": 42}, \"sole_left\": {\"samples\": 75, \"normal_min_N\": 117.50547351710908, \"force_excess_max_N\": 0.0, \"violating_samples\": 9, \"moment_excess_max_Nm\": 4.550273197602841}, \"sole_right\": {\"samples\": 75, \"normal_min_N\": 245.35785515563214, \"force_excess_max_N\": 0.0, \"violating_samples\": 16, \"moment_excess_max_Nm\": 1.0678762134770068}}, \"observed_endpoint_torque_change_max_joint_Nm\": {\"mean\": 1.4801622565244135, \"p95\": 4.923401849828886, \"maximum\": 7.907183305233153}}\n"
+    },
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-review-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction_review.py > studies/runs/20261018-cmpc-model-uncertainty/20261018-review.log 2>&1",
+      "start_utc": "2026-10-19 03:20:33 UTC",
+      "returncode": 1,
+      "wall_s": 0.37,
+      "max_rss_KiB": 185968,
+      "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction_review.py\"\n\tUser time (seconds): 0.31\n\tSystem time (seconds): 0.05\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:00.37\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 185968\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 22025\n\tVoluntary context switches: 4\n\tInvoluntary context switches: 38\n\tSwaps: 0\n\tFile system inputs: 8\n\tFile system outputs: 40\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+      "log_output": "Traceback (most recent call last):\n  File \"/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/20261018_cmpc_command_prediction_review.py\", line 18, in <module>\n    import matplotlib\nModuleNotFoundError: No module named 'matplotlib'\n"
+    },
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-review2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction_review.py > studies/runs/20261018-cmpc-model-uncertainty/20261018-review2.log 2>&1",
+      "start_utc": "2026-10-19 03:20:56 UTC",
+      "returncode": 1,
+      "wall_s": 2.45,
+      "max_rss_KiB": 2691760,
+      "time_output": "Command exited with non-zero status 1\n\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction_review.py\"\n\tUser time (seconds): 1.58\n\tSystem time (seconds): 0.85\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.45\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2691760\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 798532\n\tVoluntary context switches: 366\n\tInvoluntary context switches: 547\n\tSwaps: 0\n\tFile system inputs: 15912\n\tFile system outputs: 8\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+      "log_output": "Warning: the number of threads won't affect the computational performance as multithreading support is not enabled.\nTraceback (most recent call last):\n  File \"/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/20261018_cmpc_command_prediction_review.py\", line 62, in <module>\n    t = physical[:, cols.index('t')]\n                    ^^^^^^^^^^^^^^^\nValueError: 't' is not in list\n"
+    },
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-review3-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction_review.py > studies/runs/20261018-cmpc-model-uncertainty/20261018-review3.log 2>&1",
+      "start_utc": "2026-10-19 03:21:11 UTC",
+      "returncode": 0,
+      "wall_s": 2.72,
+      "max_rss_KiB": 2685328,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_prediction_review.py\"\n\tUser time (seconds): 1.79\n\tSystem time (seconds): 0.89\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.72\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2685328\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 43\n\tMinor (reclaiming a frame) page faults: 810896\n\tVoluntary context switches: 417\n\tInvoluntary context switches: 605\n\tSwaps: 0\n\tFile system inputs: 18152\n\tFile system outputs: 24\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "log_output": "Warning: the number of threads won't affect the computational performance as multithreading support is not enabled.\n{\"passed\": true, \"checks\": [{\"name\": \"nominal source estimates\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal source targets\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal original predictor parity\", \"passed\": true, \"max_error\": 2.130240428499519e-15}, {\"name\": \"nominal observation interval\", \"passed\": true, \"max_error\": 2.203098814490545e-15}, {\"name\": \"nominal frozen_20ms state residual\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal frozen_20ms velocity metric\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal frozen_2ms state residual\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal frozen_2ms velocity metric\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal servo_2ms state residual\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal servo_2ms velocity metric\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal high-rate physical actuator law\", \"passed\": true, \"max_error\": 5.773159728050814e-14}, {\"name\": \"nominal video frame count\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"nominal video and physical source hashes\", \"passed\": true}, {\"name\": \"pulse source estimates\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse source targets\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse original predictor parity\", \"passed\": true, \"max_error\": 1.4432899320127035e-15}, {\"name\": \"pulse observation interval\", \"passed\": true, \"max_error\": 2.203098814490545e-15}, {\"name\": \"Reserved evaluation excludes shared pre-pulse transitions\", \"passed\": true}, {\"name\": \"pulse frozen_20ms state residual\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse frozen_20ms velocity metric\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse frozen_2ms state residual\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse frozen_2ms velocity metric\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse servo_2ms state residual\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse servo_2ms velocity metric\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse high-rate physical actuator law\", \"passed\": true, \"max_error\": 5.684341886080802e-14}, {\"name\": \"pulse video frame count\", \"passed\": true, \"max_error\": 0.0}, {\"name\": \"pulse video and physical source hashes\", \"passed\": true}], \"cases\": {\"nominal\": {\"servo_improvement_over_fine_fraction\": 0.04866592915507517, \"fine_improvement_over_original_fraction\": 0.22458945552082987, \"servo_improvement_over_original_fraction\": 0.2623255301445514, \"hypothesis_passed\": false, \"endpoint_violating_transitions\": 75, \"transitions\": 100, \"physical_actuator_scoring_samples\": 1000, \"physical_law_max_error_Nm\": 5.773159728050814e-14, \"physical_within_interval_torque_change_max_Nm\": 2.1097147081325964, \"videos\": {\"mp4_sha256\": \"50ead88609a6f6b047497f8bf30f44ba00efe63bc2cbd62fd91029a4ddf9e623\", \"csv_sha256\": \"3c8c8d5ff1e056f128def869a04bd73926484b97e1fd8af49f97e7893c3b237e\"}}, \"pulse\": {\"servo_improvement_over_fine_fraction\": 0.12184349672712291, \"fine_improvement_over_original_fraction\": 0.28588945176710034, \"servo_improvement_over_original_fraction\": 0.37289917801351957, \"hypothesis_passed\": true, \"endpoint_violating_transitions\": 57, \"transitions\": 75, \"physical_actuator_scoring_samples\": 750, \"physical_law_max_error_Nm\": 5.684341886080802e-14, \"physical_within_interval_torque_change_max_Nm\": 7.4966946257060165, \"videos\": {\"mp4_sha256\": \"68745266d65ccbc0d8c6869e2dcc2be0ec0e6171ad596d82b31972b50daffe13\", \"csv_sha256\": \"94882f47eded2513d330efc65702b9ab567980d1c8552269877f450a592b77ac\"}}}, \"hypothesis_passed\": false, \"new_rollouts\": 0, \"plant_steps\": 0, \"source_sha256\": \"1d550e92cc34e672364d9f168cc5b3d9cae4af555ceac5c6bc5dc452e71ead5f\"}\n"
+    },
+    {
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-model-uncertainty/20261018-plot-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /usr/bin/python3 studies/20261018_cmpc_command_prediction_plot.py > studies/runs/20261018-cmpc-model-uncertainty/20261018-plot.log 2>&1",
+      "start_utc": "2026-10-19 03:21:44 UTC",
+      "returncode": 0,
+      "wall_s": 0.8,
+      "max_rss_KiB": 76284,
+      "time_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /usr/bin/python3 studies/20261018_cmpc_command_prediction_plot.py\"\n\tUser time (seconds): 0.55\n\tSystem time (seconds): 0.04\n\tPercent of CPU this job got: 74%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:00.80\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 76284\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 16\n\tMinor (reclaiming a frame) page faults: 14792\n\tVoluntary context switches: 242\n\tInvoluntary context switches: 37\n\tSwaps: 0\n\tFile system inputs: 16056\n\tFile system outputs: 648\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "log_output": ""
+    }
+  ],
+  "new_rollouts": 0,
+  "cumulative_rollouts": 0,
+  "rollout_retries": 0,
+  "rollout_limit": 6,
+  "numerical_wall_s": 14.08,
+  "numerical_limit_s": 1200,
+  "peak_rss_KiB": 2691760,
+  "cap_basis": "Prior comparable model job measured 3526672 KiB; 1.3 times RSS fits 4.4G. Plot cap 1.6G reused from prior system-Python plot.",
+  "model_memory_cap": "4.4G",
+  "plot_memory_cap": "1.6G",
+  "cpu_quota": 200,
+  "threads": 1,
+  "core": 18,
+  "resguard_events_before": 213,
+  "resguard_events_after": 213,
+  "resguard_new_events": [],
+  "failures": [
+    "Initial assertion wrongly equated controller feedforward and total actuator limits; stopped before prediction. Fixed nominal actuator interface bounds and saved v1 source.",
+    "Review imported unavailable matplotlib in croco environment; moved plotting to system Python without installing dependencies.",
+    "Review used CSV header t instead of time; corrected and saved failed sources and logs."
+  ],
+  "figure_inspected": true,
+  "video_frame_sequences_inspected": [
+    "20261017-foot-model-corrected-nominal-frames.jpg",
+    "20261017-foot-model-corrected-pulse-frames.jpg"
+  ],
+  "session_budget": 18,
+  "sessions_used": 12,
+  "no_push": true,
+  "no_agents": true,
+  "no_hardware_commands": true,
+  "no_queue_runner_config_timer_default_changes": true,
+  "quota_reads": {
+    "20261018-quota-before-nominal.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 10.0,
+          "window_minutes": 300,
+          "resets_at": 1792397483
+        },
+        "secondary": {
+          "used_percent": 32.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261018-quota-before-nominal2.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 14.0,
+          "window_minutes": 300,
+          "resets_at": 1792397483
+        },
+        "secondary": {
+          "used_percent": 32.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261018-quota-before-pulse.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 16.0,
+          "window_minutes": 300,
+          "resets_at": 1792397482
+        },
+        "secondary": {
+          "used_percent": 32.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261018-quota-before-review.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 19.0,
+          "window_minutes": 300,
+          "resets_at": 1792397483
+        },
+        "secondary": {
+          "used_percent": 33.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261018-quota-final.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 31.0,
+          "window_minutes": 300,
+          "resets_at": 1792397483
+        },
+        "secondary": {
+          "used_percent": 35.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261018-quota-save.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 29.0,
+          "window_minutes": 300,
+          "resets_at": 1792397483
+        },
+        "secondary": {
+          "used_percent": 34.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261018-quota-ten-minute.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer"
+        ],
+        "attempts": 15,
+        "next_at": 1792379332,
+        "current_step": "model_uncertainty_transfer",
+        "last_started": "2026-10-19T03:15:06.009645+00:00",
+        "active_tag": "cmpc-20261015-attempt-15-model_uncertainty_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "checkpoint_complete",
+          "summary": "Committed ba37518; not pushed. Four comparisons found no feasible selection benefit: forearm\u2013wrist relied on unselected wrist-roll support. Cumulative rollouts 5/6; numerical work 148.76 s this session. All 37 checks passed; videos and scenes inspected. No new resguard events. Final quota 77%.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "No required checkpoint work remains. Hardware contact loading, friction/compliance, state estimation, actuator response and recovery remain unvalidated."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792363598.0053163
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 36.0,
+          "window_minutes": 300,
+          "resets_at": 1792397483
+        },
+        "secondary": {
+          "used_percent": 36.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 12,
+        "sessions_remaining": 6,
+        "checkpoints_total": 10,
+        "pending": [
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    }
+  },
+  "checkpoint_saved_utc": "2026-10-19 03:25:11 UTC",
+  "ten_minute_quota_primary_percent": 36.0,
+  "ten_minute_quota_weekly_percent": 36.0,
+  "completed_before_thirty_minute_deadline": true
+}

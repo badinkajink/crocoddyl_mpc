@@ -1,0 +1,12 @@
+{
+  "status": "frozen_before_reserved_evaluation",
+  "nominal_transitions": 100,
+  "frozen_20ms_angular_joint_velocity_rms_rad_s": 0.1658482878255248,
+  "frozen_2ms_angular_joint_velocity_rms_rad_s": 0.1286005111637283,
+  "servo_2ms_angular_joint_velocity_rms_rad_s": 0.12234204779812785,
+  "servo_improvement_fraction": 0.0486659291342314,
+  "required_improvement_fraction": 0.1,
+  "nominal_hypothesis_passed": false,
+  "decision": "Do not select servo evolution as the dominant remaining error. Evaluate all three unchanged predictors on the preregistered pulse interval to measure transfer and interval feasibility. No fitting or parameter search follows.",
+  "new_rollouts": 0
+}
