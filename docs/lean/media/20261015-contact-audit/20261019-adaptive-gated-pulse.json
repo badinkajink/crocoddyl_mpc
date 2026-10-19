@@ -1,0 +1,11 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261019-cmpc-adaptive-transfer/20261019-gated-pulse.csv",
+  "source_sha256": "40ef22f1bacd7b2339994bfbe671aac39f3b93a352d72a1e005fc4a934ee00a6",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 271,
+  "duration_s": 9.033333333333333,
+  "simulation_end_s": 9.017999999999681,
+  "max_timestamp_error_s": 0.0006666666673220689,
+  "video_sha256": "98661796817b305e92744839ee63dc2ea9932dba8e66d4b7769288b68d691e22"
+}

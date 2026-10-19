@@ -1,0 +1,26 @@
+{
+  "checkpoint": "adaptive_transfer",
+  "date": "2026-10-19",
+  "baseline_commit": "c2777dd",
+  "source_measurement": {
+    "page": "docs/lean/20261016-cmpc-command-recovery.html",
+    "pulse_sole_displacement_mm": 8.423952,
+    "final_gripper_load_N": 13.555,
+    "first_command_guard_trajectory_change": 0
+  },
+  "hypothesis": "A 0.3 s estimated low-motion dwell before feet-only release prevents disturbed sole displacement and gripper recontact, while preserving nominal recovery by 9 s.",
+  "intervention": "Opt-in release timing gate: retain original braced controller until estimated maximum joint speed <0.1 rad/s, brace-wrist speed <0.03 m/s and both sole tangential speeds <0.02 m/s continuously for 0.3 s. Then execute the unchanged first-command feasibility gate and return controller.",
+  "parameter_justification": "All thresholds and dwell are copied from the preceding recovery success screens, with no parameter fit; hardware thresholds remain unmeasured assumptions.",
+  "baseline": "Reuse the independently reviewed scheduled-release nominal and pulse rollouts; verify source/model hashes and exact estimated trajectory agreement before 5.2 s.",
+  "selection_condition": "Existing 90 N world +y reaching-wrist pulse at 4.5\u20134.8 s",
+  "reserved_validation": "Nominal without pulse, evaluated only after saving the pulse decision; no retuning.",
+  "falsification": "Fail if corrected pulse does not finish standing recovery by 9 s with the original 0.3 s dwell, robot table load <5 N and maximum post-request sole displacement <5 mm; also fail if nominal loses its baseline success. No improvement by indefinitely deferring return.",
+  "observation": "Only State from default_sense(seed=17), including estimated base pose and existing ideal velocity/joint channels, enters the release gate. Physical contacts and true motion are scoring only.",
+  "horizon": 35,
+  "dt_s": 0.02,
+  "new_rollout_limit": 6,
+  "planned_rollouts": 2,
+  "serial_numerical_limit_s": 1200,
+  "required_page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+  "required_metrics": "docs/lean/media/20261015-contact-audit/20261016-cmpc-adaptive-transfer.json"
+}

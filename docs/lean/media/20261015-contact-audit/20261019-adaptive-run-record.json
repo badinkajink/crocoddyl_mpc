@@ -1,0 +1,158 @@
+{
+  "checkpoint": "adaptive_transfer",
+  "date": "2026-10-19",
+  "baseline_commit": "c2777dd",
+  "status": "checkpoint_complete",
+  "rollouts_this_session": 2,
+  "cumulative_rollouts": 2,
+  "reused_baseline_rollouts": 2,
+  "rollout_retries": 0,
+  "rollout_limit": 6,
+  "numerical_wall_s": 46.45,
+  "numerical_limit_s": 1200,
+  "peak_rss_KiB": 3283868,
+  "cap": "4.4G",
+  "cap_basis": "Prior measured 3,526,672 KiB times 1.3",
+  "cpu_quota": 200,
+  "threads": 1,
+  "core": 18,
+  "resguard_events_before": 213,
+  "resguard_events_after": 213,
+  "new_resguard_events": [],
+  "commands": [
+    {
+      "name": "pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-adaptive-transfer/20261019-pulse-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_adaptive_transfer.py run --case pulse --guarded > studies/runs/20261019-cmpc-adaptive-transfer/20261019-pulse.log 2>&1",
+      "elapsed_s": 15.31,
+      "peak_rss_KiB": 3247872,
+      "exit_code": 0
+    },
+    {
+      "name": "selection",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-adaptive-transfer/20261019-selection-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_adaptive_transfer_analysis.py selection > studies/runs/20261019-cmpc-adaptive-transfer/20261019-selection.log 2>&1",
+      "elapsed_s": 2.27,
+      "peak_rss_KiB": 1123112,
+      "exit_code": 0
+    },
+    {
+      "name": "nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-adaptive-transfer/20261019-nominal-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_adaptive_transfer.py run --case nominal --guarded > studies/runs/20261019-cmpc-adaptive-transfer/20261019-nominal.log 2>&1",
+      "elapsed_s": 15.9,
+      "peak_rss_KiB": 3283868,
+      "exit_code": 0
+    },
+    {
+      "name": "score",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-adaptive-transfer/20261019-score-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_adaptive_transfer_analysis.py score > studies/runs/20261019-cmpc-adaptive-transfer/20261019-score.log 2>&1",
+      "elapsed_s": 2.96,
+      "peak_rss_KiB": 1144008,
+      "exit_code": 0
+    },
+    {
+      "name": "render",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-adaptive-transfer/20261019-render-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_adaptive_transfer_analysis.py render > studies/runs/20261019-cmpc-adaptive-transfer/20261019-render.log 2>&1",
+      "elapsed_s": 5.56,
+      "peak_rss_KiB": 1269484,
+      "exit_code": 0
+    },
+    {
+      "name": "review",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-adaptive-transfer/20261019-review-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_adaptive_transfer_review.py > studies/runs/20261019-cmpc-adaptive-transfer/20261019-review.log 2>&1",
+      "elapsed_s": 4.45,
+      "peak_rss_KiB": 2914228,
+      "exit_code": 0
+    }
+  ],
+  "quota_save": {
+    "state": {
+      "status": "running",
+      "completed": [
+        "geometry",
+        "foot_motion",
+        "state_frames",
+        "motion_transfer",
+        "foot_model_transfer",
+        "brace_selection_transfer",
+        "model_uncertainty_transfer",
+        "command_recovery_transfer"
+      ],
+      "attempts": 18,
+      "next_at": 1792399080.889149,
+      "current_step": "adaptive_transfer",
+      "last_started": "2026-10-19T08:45:06.010840+00:00",
+      "active_tag": "cmpc-20261015-attempt-18-adaptive_transfer",
+      "last_returncode": 0,
+      "last_result": {
+        "status": "checkpoint_complete",
+        "summary": "Committed c2777dd; not pushed. Completed 455 review checks and inspected four video sequences. Nominal recovery took 3.33 s; disturbed recovery failed with 8.42 mm sole motion and 13.56 N gripper load. Guard gave no benefit. Zero new rollouts; cumulative 4/6. Review used 4.49 s numerical work; no new resguard events.",
+        "artifacts": [
+          "docs/lean/20261016-cmpc-command-recovery.html",
+          "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json",
+          "docs/lean/media/20261015-contact-audit/20261019-command-recovery-review.json",
+          "docs/lean/media/20261015-contact-audit/20261019-command-recovery-run-record.json",
+          "docs/handoff/20261015-cmpc-research.md",
+          "docs/index.html"
+        ],
+        "remaining": "No required checkpoint work remains. Simulation supports nominal recovery only; disturbed contact scheduling and the unexercised abort branch remain unresolved. Hardware validation still requires synchronized state, actuator response, independent sole motion, contact geometry, friction/compliance and delay measurements."
+      },
+      "resource_refusals": 2,
+      "repair_20261016": {
+        "refused_logs": [
+          "attempt-01-geometry.jsonl",
+          "attempt-02-geometry.jsonl"
+        ],
+        "actual_model_launches_before_repair": 0
+      },
+      "startup_failures": 1,
+      "resume_20261018": {
+        "previous_next_at": 1792656654,
+        "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+        "at": 1792356727.8537533
+      },
+      "retry_at": 1792399080.889149
+    },
+    "quota": {
+      "limit_id": "codex",
+      "limit_name": null,
+      "primary": {
+        "used_percent": 51.0,
+        "window_minutes": 300,
+        "resets_at": 1792415699
+      },
+      "secondary": {
+        "used_percent": 53.0,
+        "window_minutes": 10080,
+        "resets_at": 1792875051
+      },
+      "credits": {
+        "has_credits": false,
+        "unlimited": false,
+        "balance": "0"
+      },
+      "individual_limit": null,
+      "spend_control_reached": null,
+      "plan_type": "plus",
+      "rate_limit_reached_type": null
+    },
+    "queue": {
+      "session_budget": 18,
+      "sessions_used": 15,
+      "sessions_remaining": 3,
+      "checkpoints_total": 10,
+      "pending": [
+        "adaptive_transfer",
+        "transfer_review"
+      ]
+    },
+    "quota_wait_until": 0
+  },
+  "baseline_archive": "docs/lean/media/20261015-contact-audit/20261018-command-recovery-raw.zip",
+  "baseline_archive_sha256": "b10180a0b12553ad5ed74e3ce12b06c1167621c2b6966cd99bebd4a16ccfb880",
+  "notes": [
+    "Pulse selection was saved before the reserved nominal rollout. No parameter retuning.",
+    "Both comparisons reuse previously reviewed baselines. All 68 baseline archive members and model/source hashes were verified; pre-request physical and estimated trajectories agree.",
+    "Pulse source was reconstructed after cleanup of its docstring and unused legacy_protocol function; its active AST equals the nominal source. Selection scorer snapshot matches its recorded source hash. No controller behavior changed between rollouts.",
+    "All six numerical jobs passed. No rollout retry, agent, hardware command, queue, runner/config/limit/timer/default/site-membership change or push.",
+    "Artifact-save quota read precedes ten minutes; a post-ten-minute read and thirty-minute checkpoint were not yet due."
+  ]
+}

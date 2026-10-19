@@ -1,0 +1,11 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261019-cmpc-adaptive-transfer/20261019-gated-nominal.csv",
+  "source_sha256": "45b24eb8f115a0c05adea7fa74a89e9cc35b221b73f05cbe12cb70ed257a684b",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 271,
+  "duration_s": 9.033333333333333,
+  "simulation_end_s": 9.017999999999681,
+  "max_timestamp_error_s": 0.0006666666673220689,
+  "video_sha256": "7c817daac2ef1d8a7e5be37351f5358abd458dfa80f7b0722a4c6c15e23a1f65"
+}
