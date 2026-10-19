@@ -1,0 +1,11 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261018-cmpc-command-recovery/20261018-baseline-pulse.csv",
+  "source_sha256": "40aeeae62ca83c77072b0bfbcab6a091536a58de74de1159631ed06a7d90a21b",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 271,
+  "duration_s": 9.033333333333333,
+  "simulation_end_s": 9.017999999999681,
+  "max_timestamp_error_s": 0.0006666666673220689,
+  "video_sha256": "7c09f8b86baa40ea9744e0b752df3246f9ce62120d55fcb16fe2a43f4dcbadeb"
+}

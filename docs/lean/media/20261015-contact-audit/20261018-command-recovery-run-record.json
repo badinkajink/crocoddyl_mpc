@@ -1,0 +1,161 @@
+{
+  "date": "2026-10-18",
+  "checkpoint": "command_recovery_transfer",
+  "status": "continue",
+  "baseline_commit": "a83ac6c",
+  "rollouts_this_session": 4,
+  "cumulative_rollouts": 4,
+  "rollout_limit": 6,
+  "rollout_retries": 0,
+  "numerical_wall_s": 75.8,
+  "numerical_limit_s": 1200,
+  "peak_rss_KiB": 3295096,
+  "cap": "4.4G",
+  "cpu_quota": 200,
+  "threads": 1,
+  "core": 18,
+  "resguard_events_before": 213,
+  "resguard_events_after": 213,
+  "new_resguard_events": [],
+  "commands": [
+    {
+      "name": "baseline-nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-baseline-nominal-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery.py run --case nominal > studies/runs/20261018-cmpc-command-recovery/20261018-baseline-nominal.log 2>&1",
+      "elapsed_s": 14.66,
+      "peak_rss_KiB": 3295096,
+      "exit_code": 0
+    },
+    {
+      "name": "guarded-nominal",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-guarded-nominal-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery.py run --case nominal --guarded > studies/runs/20261018-cmpc-command-recovery/20261018-guarded-nominal.log 2>&1",
+      "elapsed_s": 14.59,
+      "peak_rss_KiB": 3293476,
+      "exit_code": 0
+    },
+    {
+      "name": "baseline-pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-baseline-pulse-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery.py run --case pulse > studies/runs/20261018-cmpc-command-recovery/20261018-baseline-pulse.log 2>&1",
+      "elapsed_s": 15.1,
+      "peak_rss_KiB": 3276248,
+      "exit_code": 0
+    },
+    {
+      "name": "guarded-pulse",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-guarded-pulse-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery.py run --case pulse --guarded > studies/runs/20261018-cmpc-command-recovery/20261018-guarded-pulse.log 2>&1",
+      "elapsed_s": 15.09,
+      "peak_rss_KiB": 3204060,
+      "exit_code": 0
+    },
+    {
+      "name": "score",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-score-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery_analysis.py score > studies/runs/20261018-cmpc-command-recovery/20261018-score.log 2>&1",
+      "elapsed_s": 2.96,
+      "peak_rss_KiB": 1143368,
+      "exit_code": 0
+    },
+    {
+      "name": "score2",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-score2-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery_analysis.py score > studies/runs/20261018-cmpc-command-recovery/20261018-score2.log 2>&1",
+      "elapsed_s": 2.95,
+      "peak_rss_KiB": 1143104,
+      "exit_code": 0
+    },
+    {
+      "name": "render",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261018-cmpc-command-recovery/20261018-render-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261018_cmpc_command_recovery_analysis.py render > studies/runs/20261018-cmpc-command-recovery/20261018-render.log 2>&1",
+      "elapsed_s": 10.45,
+      "peak_rss_KiB": 1280016,
+      "exit_code": 0
+    }
+  ],
+  "quota_save": {
+    "state": {
+      "status": "running",
+      "completed": [
+        "geometry",
+        "foot_motion",
+        "state_frames",
+        "motion_transfer",
+        "foot_model_transfer",
+        "brace_selection_transfer",
+        "model_uncertainty_transfer"
+      ],
+      "attempts": 16,
+      "next_at": 1792381326.450155,
+      "current_step": "command_recovery_transfer",
+      "last_started": "2026-10-19T03:45:06.006601+00:00",
+      "active_tag": "cmpc-20261015-attempt-16-command_recovery_transfer",
+      "last_returncode": 0,
+      "last_result": {
+        "status": "checkpoint_complete",
+        "summary": "Committed a83ac6c; not pushed. Completed the prerequisite branch using 175 saved transitions. Servo evolution failed the nominal improvement criterion; model cones failed at 75/100 nominal and 57/75 pulse endpoints. Zero rollouts, 14.08 s numerical work, 27 checks passed, no new resguard events.",
+        "artifacts": [
+          "docs/lean/20261016-cmpc-model-uncertainty.html",
+          "docs/lean/media/20261015-contact-audit/20261016-cmpc-model-uncertainty.json",
+          "docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-run-record.json",
+          "docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-raw.zip",
+          "docs/handoff/20261015-cmpc-research.md",
+          "docs/index.html"
+        ],
+        "remaining": "The prerequisite test is complete. Physical-parameter adaptation and adapted-controller validation were not performed. Interval force feasibility remains unresolved; hardware transfer requires synchronized actuator response, estimated state, contact geometry, friction/compliance and independent sole-motion measurements."
+      },
+      "resource_refusals": 2,
+      "repair_20261016": {
+        "refused_logs": [
+          "attempt-01-geometry.jsonl",
+          "attempt-02-geometry.jsonl"
+        ],
+        "actual_model_launches_before_repair": 0
+      },
+      "startup_failures": 1,
+      "resume_20261018": {
+        "previous_next_at": 1792656654,
+        "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+        "at": 1792356727.8537533
+      },
+      "retry_at": 1792381326.450155
+    },
+    "quota": {
+      "limit_id": "codex",
+      "limit_name": null,
+      "primary": {
+        "used_percent": 82.0,
+        "window_minutes": 300,
+        "resets_at": 1792397482
+      },
+      "secondary": {
+        "used_percent": 43.0,
+        "window_minutes": 10080,
+        "resets_at": 1792875051
+      },
+      "credits": {
+        "has_credits": false,
+        "unlimited": false,
+        "balance": "0"
+      },
+      "individual_limit": null,
+      "spend_control_reached": null,
+      "plan_type": "plus",
+      "rate_limit_reached_type": null
+    },
+    "queue": {
+      "session_budget": 18,
+      "sessions_used": 13,
+      "sessions_remaining": 5,
+      "checkpoints_total": 10,
+      "pending": [
+        "command_recovery_transfer",
+        "adaptive_transfer",
+        "transfer_review"
+      ]
+    },
+    "quota_wait_until": 1792397542
+  },
+  "notes": [
+    "First saved-data score included the passive object load; corrected score excludes its 2.943 N. Both versions and the first scorer source are archived.",
+    "No failed numerical invocation, no rollout retry. One patch operation to update the command log failed and was corrected; no experiment was affected.",
+    "Session stopped for quota before ten minutes; a post-ten-minute quota read was not yet due.",
+    "Four render jobs were executed serially within one guarded render command. Video/frame inspection and independent saved-data review remain.",
+    "No agent, queue, runner, timer, default, site-membership, hardware action or push."
+  ]
+}

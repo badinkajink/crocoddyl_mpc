@@ -1,0 +1,11 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261018-cmpc-command-recovery/20261018-baseline-nominal.csv",
+  "source_sha256": "5685ebf243c262594a547411cabbfda0e353d16693c7ff674c7978852170c1b1",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 271,
+  "duration_s": 9.033333333333333,
+  "simulation_end_s": 9.017999999999681,
+  "max_timestamp_error_s": 0.0006666666673220689,
+  "video_sha256": "73aa5cc1023e4e9d3a27a3ce3ad4a56ae802a6de59146b5487145f3e2788bdf8"
+}

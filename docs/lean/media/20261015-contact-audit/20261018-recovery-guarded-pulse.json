@@ -1,0 +1,11 @@
+{
+  "source": "/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/studies/runs/20261018-cmpc-command-recovery/20261018-guarded-pulse.csv",
+  "source_sha256": "9b3122835d269ccb3bec24e5bf75eb4f64fc21a1a18b8607e05eb496d67fcd31",
+  "fps": 30,
+  "playback_speed": 1,
+  "frames": 271,
+  "duration_s": 9.033333333333333,
+  "simulation_end_s": 9.017999999999681,
+  "max_timestamp_error_s": 0.0006666666673220689,
+  "video_sha256": "77e2938ebfd0c4ff5175450a8e32f229bad06641134d3251b37a66c77b937f82"
+}
