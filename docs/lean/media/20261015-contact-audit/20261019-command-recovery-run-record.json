@@ -1,0 +1,297 @@
+{
+  "checkpoint": "command_recovery_transfer",
+  "status": "checkpoint_complete",
+  "date": "2026-10-19 America/Denver",
+  "baseline_commit": "bd8c8a9",
+  "new_rollouts": 0,
+  "cumulative_rollouts": 4,
+  "rollout_limit": 6,
+  "rollout_retries": 0,
+  "new_numerical_wall_s": 4.49,
+  "cumulative_numerical_wall_s": 80.29,
+  "session_numerical_limit_s": 1200,
+  "peak_rss_KiB": 2903200,
+  "cap": "4.4G",
+  "cap_basis": "Earlier measured 3,526,672 KiB times 1.3",
+  "cpu_quota": 200,
+  "threads": 1,
+  "core": 18,
+  "resguard_events_before": 213,
+  "resguard_events_after": 213,
+  "new_resguard_events": [],
+  "commands": [
+    {
+      "name": "review",
+      "command": "/home/humanoid/.claude/bin/resguard.sh run --mem 4.4G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-command-recovery-review/20261019-review-time.txt timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_command_recovery_review.py > studies/runs/20261019-cmpc-command-recovery-review/20261019-review.log 2>&1",
+      "exit_code": 0,
+      "elapsed_s": 4.49,
+      "peak_rss_KiB": 2903200,
+      "timing_output": "\tCommand being timed: \"timeout 120s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CMPC_THREADS=1 MUJOCO_GL=egl taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_command_recovery_review.py\"\n\tUser time (seconds): 3.32\n\tSystem time (seconds): 1.10\n\tPercent of CPU this job got: 98%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:04.49\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 2903200\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 15\n\tMinor (reclaiming a frame) page faults: 921746\n\tVoluntary context switches: 449\n\tInvoluntary context switches: 743\n\tSwaps: 0\n\tFile system inputs: 3784\n\tFile system outputs: 136\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n"
+    }
+  ],
+  "quota": {
+    "20261019-quota-before-review": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer"
+        ],
+        "attempts": 17,
+        "next_at": 1792397543,
+        "current_step": "command_recovery_transfer",
+        "last_started": "2026-10-19T08:15:06.006443+00:00",
+        "active_tag": "cmpc-20261015-attempt-17-command_recovery_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed bd8c8a9; not pushed. Four rollouts completed: nominal recovery passed in 3.33 s; pulse recovery failed with 8.42 mm sole motion. Release guard gave no benefit. Numerical work: 75.8 s; no new resguard events. Saved at 82% quota.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-command-recovery.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json",
+            "docs/lean/media/20261015-contact-audit/20261018-command-recovery-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-command-recovery-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Inspect four completed 1x videos and independently verify saved metrics before finalizing. Cumulative rollout count is 4/6; no further rollout is needed. Abort branch remains unvalidated. Hardware validation remains outstanding."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792382992.9712043
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 10.0,
+          "window_minutes": 300,
+          "resets_at": 1792415699
+        },
+        "secondary": {
+          "used_percent": 46.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 14,
+        "sessions_remaining": 4,
+        "checkpoints_total": 10,
+        "pending": [
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261019-quota-finish": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer"
+        ],
+        "attempts": 17,
+        "next_at": 1792397543,
+        "current_step": "command_recovery_transfer",
+        "last_started": "2026-10-19T08:15:06.006443+00:00",
+        "active_tag": "cmpc-20261015-attempt-17-command_recovery_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed bd8c8a9; not pushed. Four rollouts completed: nominal recovery passed in 3.33 s; pulse recovery failed with 8.42 mm sole motion. Release guard gave no benefit. Numerical work: 75.8 s; no new resguard events. Saved at 82% quota.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-command-recovery.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json",
+            "docs/lean/media/20261015-contact-audit/20261018-command-recovery-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-command-recovery-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Inspect four completed 1x videos and independently verify saved metrics before finalizing. Cumulative rollout count is 4/6; no further rollout is needed. Abort branch remains unvalidated. Hardware validation remains outstanding."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792382992.9712043
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 16.0,
+          "window_minutes": 300,
+          "resets_at": 1792415699
+        },
+        "secondary": {
+          "used_percent": 47.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 14,
+        "sessions_remaining": 4,
+        "checkpoints_total": 10,
+        "pending": [
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261019-quota-start": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer"
+        ],
+        "attempts": 17,
+        "next_at": 1792397543,
+        "current_step": "command_recovery_transfer",
+        "last_started": "2026-10-19T08:15:06.006443+00:00",
+        "active_tag": "cmpc-20261015-attempt-17-command_recovery_transfer",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed bd8c8a9; not pushed. Four rollouts completed: nominal recovery passed in 3.33 s; pulse recovery failed with 8.42 mm sole motion. Release guard gave no benefit. Numerical work: 75.8 s; no new resguard events. Saved at 82% quota.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-command-recovery.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json",
+            "docs/lean/media/20261015-contact-audit/20261018-command-recovery-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261018-command-recovery-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Inspect four completed 1x videos and independently verify saved metrics before finalizing. Cumulative rollout count is 4/6; no further rollout is needed. Abort branch remains unvalidated. Hardware validation remains outstanding."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792382992.9712043
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 7.0,
+          "window_minutes": 300,
+          "resets_at": 1792415699
+        },
+        "secondary": {
+          "used_percent": 46.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 14,
+        "sessions_remaining": 4,
+        "checkpoints_total": 10,
+        "pending": [
+          "command_recovery_transfer",
+          "adaptive_transfer",
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    }
+  },
+  "guard_finish": "RAM avail 14.4/31.0 GB, swap used 8.0 GB, PSI some/full 0.00/0.00; load 0.36 on 20 cores; GPU free 14083 MB (0% busy)\nlargest resident processes:\n  1.4 GB     0% /usr/share/code/code /home/humanoid/.vscode/extensions/ms-python.vscode-pylance-2026.4.1/d\n  1.2 GB     0% /app/bin/prusa-slicer --single-instance-on-url /home/humanoid/Programs/hand/docs/experimen\n  0.7 GB     0% /home/humanoid/.vscode/extensions/ms-vscode.cpptools-1.34.4-linux-x64/bin/cpptools\n  0.6 GB     0% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.6 GB     1% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.5 GB     0% /usr/share/code/code --type=renderer --crashpad-handler-pid=1319368 --enable-crash-reporte\nlaunch gate: OPEN (>= 5 GB avail, PSI full <= 5 / some <= 25, load <= nproc-2, swap <= 15 GB; run --mem X needs avail >= X+2)\n",
+  "independent_checks": 455,
+  "evaluated_commands": 1808,
+  "physical_samples": 18040,
+  "review": "docs/lean/media/20261015-contact-audit/20261019-command-recovery-review.json",
+  "source_sha256": "bc210da3eaabbbef7fd9d1aeb985eeadaf95b3cb79c23f8f8d14725dee753802",
+  "review_finished_utc": "2026-10-19T08:20:51.985210+00:00",
+  "notes": [
+    "Finished before ten minutes and the thirty-minute checkpoint deadline; no post-ten-minute quota read was due.",
+    "No new rollout, plant integration, optimizer solve, agent, hardware command, autonomous queue, runner/config/limit/timer/default/site-membership change or push.",
+    "Inspected all four existing eight-frame sequences. All videos decode completely, contain 271 frames at 30 fps, and have 1x timestamps with at most 0.667 ms rounding.",
+    "Original 68-member raw archive and all original source/model/video hashes pass; original archive and videos remain unchanged.",
+    "Abort branch never activated. Release testing and issued return command use consecutive solver calls. Measured transition policy latency is 27.39\u201328.14 ms."
+  ]
+}

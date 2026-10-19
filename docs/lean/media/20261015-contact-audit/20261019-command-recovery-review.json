@@ -1,0 +1,2435 @@
+{
+  "checkpoint": "command_recovery_transfer",
+  "review_date": "2026-10-19 America/Denver",
+  "passed": true,
+  "new_rollouts": 0,
+  "cumulative_rollouts": 4,
+  "rollout_retries": 0,
+  "rollout_limit": 6,
+  "physics_steps": 0,
+  "optimizer_solves": 0,
+  "checks": [
+    {
+      "name": "return horizon",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal physical sample interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-16
+    },
+    {
+      "name": "baseline-nominal command interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-15
+    },
+    {
+      "name": "baseline-nominal horizon",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal next-state reconstruction",
+      "passed": true,
+      "maximum_error": 2.275957200481571e-15
+    },
+    {
+      "name": "baseline-nominal torque reconstruction",
+      "passed": true,
+      "maximum_error": 2.4868995751603507e-14
+    },
+    {
+      "name": "baseline-nominal wrench reconstruction",
+      "passed": true,
+      "maximum_error": 3.4653169223020086e-11
+    },
+    {
+      "name": "baseline-nominal cone reconstruction",
+      "passed": true,
+      "maximum_error": 1.7035262089848402e-11
+    },
+    {
+      "name": "baseline-nominal first-command cone feasibility",
+      "passed": true,
+      "maximum_error": 2.7274182912151446e-11
+    },
+    {
+      "name": "baseline-nominal initial physical torque",
+      "passed": true,
+      "maximum_error": 5.684341886080802e-14
+    },
+    {
+      "name": "baseline-nominal estimated joint position",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal estimated joint velocity",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal every physical servo sample",
+      "passed": true,
+      "maximum_error": 6.394884621840902e-14
+    },
+    {
+      "name": "baseline-nominal table accounting",
+      "passed": true,
+      "maximum_error": 2.842170943040401e-14
+    },
+    {
+      "name": "baseline-nominal brace_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal original_reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal physical_brace_release_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal standing_recovery_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal supported_rest_onset_s",
+      "passed": true,
+      "maximum_error": null
+    },
+    {
+      "name": "baseline-nominal final standing",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal final supported rest",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal complete cycle",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal displacement maximum",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal approach sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal command sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal recovery sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal tail sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal video frames",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-nominal video duration",
+      "passed": true,
+      "maximum_error": 3.3333333249174757e-07
+    },
+    {
+      "name": "guarded-nominal physical sample interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-16
+    },
+    {
+      "name": "guarded-nominal command interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-15
+    },
+    {
+      "name": "guarded-nominal horizon",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal next-state reconstruction",
+      "passed": true,
+      "maximum_error": 2.275957200481571e-15
+    },
+    {
+      "name": "guarded-nominal torque reconstruction",
+      "passed": true,
+      "maximum_error": 2.4868995751603507e-14
+    },
+    {
+      "name": "guarded-nominal wrench reconstruction",
+      "passed": true,
+      "maximum_error": 3.4653169223020086e-11
+    },
+    {
+      "name": "guarded-nominal cone reconstruction",
+      "passed": true,
+      "maximum_error": 1.7035262089848402e-11
+    },
+    {
+      "name": "guarded-nominal first-command cone feasibility",
+      "passed": true,
+      "maximum_error": 2.7274182912151446e-11
+    },
+    {
+      "name": "guarded-nominal initial physical torque",
+      "passed": true,
+      "maximum_error": 5.684341886080802e-14
+    },
+    {
+      "name": "guarded-nominal estimated joint position",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal estimated joint velocity",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal every physical servo sample",
+      "passed": true,
+      "maximum_error": 6.394884621840902e-14
+    },
+    {
+      "name": "guarded-nominal table accounting",
+      "passed": true,
+      "maximum_error": 2.842170943040401e-14
+    },
+    {
+      "name": "guarded-nominal brace_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal original_reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal physical_brace_release_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal standing_recovery_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal supported_rest_onset_s",
+      "passed": true,
+      "maximum_error": null
+    },
+    {
+      "name": "guarded-nominal final standing",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal final supported rest",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal complete cycle",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal displacement maximum",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal approach sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal command sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal recovery sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal tail sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal video frames",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-nominal video duration",
+      "passed": true,
+      "maximum_error": 3.3333333249174757e-07
+    },
+    {
+      "name": "baseline-pulse physical sample interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-16
+    },
+    {
+      "name": "baseline-pulse command interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-15
+    },
+    {
+      "name": "baseline-pulse horizon",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse next-state reconstruction",
+      "passed": true,
+      "maximum_error": 3.4139358007223564e-15
+    },
+    {
+      "name": "baseline-pulse torque reconstruction",
+      "passed": true,
+      "maximum_error": 2.4868995751603507e-14
+    },
+    {
+      "name": "baseline-pulse wrench reconstruction",
+      "passed": true,
+      "maximum_error": 3.735678433258727e-11
+    },
+    {
+      "name": "baseline-pulse cone reconstruction",
+      "passed": true,
+      "maximum_error": 3.382893964953837e-11
+    },
+    {
+      "name": "baseline-pulse first-command cone feasibility",
+      "passed": true,
+      "maximum_error": 3.520028712955536e-11
+    },
+    {
+      "name": "baseline-pulse initial physical torque",
+      "passed": true,
+      "maximum_error": 5.684341886080802e-14
+    },
+    {
+      "name": "baseline-pulse estimated joint position",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse estimated joint velocity",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse every physical servo sample",
+      "passed": true,
+      "maximum_error": 6.394884621840902e-14
+    },
+    {
+      "name": "baseline-pulse table accounting",
+      "passed": true,
+      "maximum_error": 5.684341886080802e-14
+    },
+    {
+      "name": "baseline-pulse brace_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse original_reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse physical_brace_release_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse standing_recovery_onset_s",
+      "passed": true,
+      "maximum_error": null
+    },
+    {
+      "name": "baseline-pulse supported_rest_onset_s",
+      "passed": true,
+      "maximum_error": null
+    },
+    {
+      "name": "baseline-pulse final standing",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse final supported rest",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse complete cycle",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse displacement maximum",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse approach sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse command sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse recovery sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse tail sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse video frames",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "baseline-pulse video duration",
+      "passed": true,
+      "maximum_error": 3.3333333249174757e-07
+    },
+    {
+      "name": "guarded-pulse physical sample interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-16
+    },
+    {
+      "name": "guarded-pulse command interval",
+      "passed": true,
+      "maximum_error": 6.678685382510707e-15
+    },
+    {
+      "name": "guarded-pulse horizon",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse next-state reconstruction",
+      "passed": true,
+      "maximum_error": 3.4139358007223564e-15
+    },
+    {
+      "name": "guarded-pulse torque reconstruction",
+      "passed": true,
+      "maximum_error": 2.4868995751603507e-14
+    },
+    {
+      "name": "guarded-pulse wrench reconstruction",
+      "passed": true,
+      "maximum_error": 3.735678433258727e-11
+    },
+    {
+      "name": "guarded-pulse cone reconstruction",
+      "passed": true,
+      "maximum_error": 3.382893964953837e-11
+    },
+    {
+      "name": "guarded-pulse first-command cone feasibility",
+      "passed": true,
+      "maximum_error": 3.520028712955536e-11
+    },
+    {
+      "name": "guarded-pulse initial physical torque",
+      "passed": true,
+      "maximum_error": 5.684341886080802e-14
+    },
+    {
+      "name": "guarded-pulse estimated joint position",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse estimated joint velocity",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse every physical servo sample",
+      "passed": true,
+      "maximum_error": 6.394884621840902e-14
+    },
+    {
+      "name": "guarded-pulse table accounting",
+      "passed": true,
+      "maximum_error": 5.684341886080802e-14
+    },
+    {
+      "name": "guarded-pulse brace_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse original_reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse physical_brace_release_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse reach_onset_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse standing_recovery_onset_s",
+      "passed": true,
+      "maximum_error": null
+    },
+    {
+      "name": "guarded-pulse supported_rest_onset_s",
+      "passed": true,
+      "maximum_error": null
+    },
+    {
+      "name": "guarded-pulse final standing",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse final supported rest",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse complete cycle",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse displacement maximum",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse approach sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse command sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse recovery sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail joint_speed_peak_rad_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail wrist_speed_peak_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail joint_acceleration_peak_rad_s2",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail joint_tracking_rms_rad",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail target_error_rms_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail solve_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail policy_p95_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail policy_max_ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail policy_over_20ms",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail commands",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail table_load_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail table_load_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_left displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_left contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_left loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_left normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_left normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_right displacement_from_phase_start_max_mm",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_right contact_loss_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_right loaded_slip_max_m_s",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_right normal_min_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse tail sole_right normal_max_N",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse video frames",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "guarded-pulse video duration",
+      "passed": true,
+      "maximum_error": 3.3333333249174757e-07
+    },
+    {
+      "name": "nominal guard release accepted",
+      "passed": true,
+      "maximum_error": 0.0
+    },
+    {
+      "name": "pulse guard release accepted",
+      "passed": true,
+      "maximum_error": 0.0
+    }
+  ],
+  "measurements": {
+    "baseline-nominal": {
+      "evaluated_commands": 452,
+      "physical_samples": 4510,
+      "initial_torque_error_Nm": 5.684341886080802e-14,
+      "servo_error_Nm": 6.394884621840902e-14,
+      "wrench_error": 3.4653169223020086e-11,
+      "cone_error": 1.7035262089848402e-11,
+      "maximum_executable_cone_excess": 2.7274182912151446e-11,
+      "final_robot_table_load_N": 0.0,
+      "final_table_body_loads_N": {
+        "object": 2.9429999999999854
+      },
+      "release_policy_ms": 28.073362074792385,
+      "recovery_criteria_failed_in_final_dwell": {
+        "foot_support": 0,
+        "quiet": 0,
+        "sole_motion": 0,
+        "standing_posture": 0,
+        "table_release": 0
+      }
+    },
+    "guarded-nominal": {
+      "evaluated_commands": 452,
+      "physical_samples": 4510,
+      "initial_torque_error_Nm": 5.684341886080802e-14,
+      "servo_error_Nm": 6.394884621840902e-14,
+      "wrench_error": 3.4653169223020086e-11,
+      "cone_error": 1.7035262089848402e-11,
+      "maximum_executable_cone_excess": 2.7274182912151446e-11,
+      "final_robot_table_load_N": 0.0,
+      "final_table_body_loads_N": {
+        "object": 2.9429999999999854
+      },
+      "release_policy_ms": 27.39436598494649,
+      "recovery_criteria_failed_in_final_dwell": {
+        "foot_support": 0,
+        "quiet": 0,
+        "sole_motion": 0,
+        "standing_posture": 0,
+        "table_release": 0
+      }
+    },
+    "baseline-pulse": {
+      "evaluated_commands": 452,
+      "physical_samples": 4510,
+      "initial_torque_error_Nm": 5.684341886080802e-14,
+      "servo_error_Nm": 6.394884621840902e-14,
+      "wrench_error": 3.735678433258727e-11,
+      "cone_error": 3.382893964953837e-11,
+      "maximum_executable_cone_excess": 3.520028712955536e-11,
+      "final_robot_table_load_N": 13.55500631491091,
+      "final_table_body_loads_N": {
+        "left_magpie_gripper": 5.040871256590499,
+        "right_magpie_gripper": 8.514135058320411,
+        "object": 2.9429999999999854
+      },
+      "release_policy_ms": 28.14350090920925,
+      "recovery_criteria_failed_in_final_dwell": {
+        "foot_support": 0,
+        "quiet": 14,
+        "sole_motion": 160,
+        "standing_posture": 0,
+        "table_release": 160
+      }
+    },
+    "guarded-pulse": {
+      "evaluated_commands": 452,
+      "physical_samples": 4510,
+      "initial_torque_error_Nm": 5.684341886080802e-14,
+      "servo_error_Nm": 6.394884621840902e-14,
+      "wrench_error": 3.735678433258727e-11,
+      "cone_error": 3.382893964953837e-11,
+      "maximum_executable_cone_excess": 3.520028712955536e-11,
+      "final_robot_table_load_N": 13.55500631491091,
+      "final_table_body_loads_N": {
+        "left_magpie_gripper": 5.040871256590499,
+        "right_magpie_gripper": 8.514135058320411,
+        "object": 2.9429999999999854
+      },
+      "release_policy_ms": 28.052917681634426,
+      "recovery_criteria_failed_in_final_dwell": {
+        "foot_support": 0,
+        "quiet": 14,
+        "sole_motion": 160,
+        "standing_posture": 0,
+        "table_release": 160
+      }
+    }
+  },
+  "videos": {
+    "baseline-nominal": {
+      "avg_frame_rate": "30/1",
+      "duration": "9.033333",
+      "nb_frames": "271",
+      "full_decode_passed": true,
+      "timestamp_error_s": 0.0006666666673220689
+    },
+    "guarded-nominal": {
+      "avg_frame_rate": "30/1",
+      "duration": "9.033333",
+      "nb_frames": "271",
+      "full_decode_passed": true,
+      "timestamp_error_s": 0.0006666666673220689
+    },
+    "baseline-pulse": {
+      "avg_frame_rate": "30/1",
+      "duration": "9.033333",
+      "nb_frames": "271",
+      "full_decode_passed": true,
+      "timestamp_error_s": 0.0006666666673220689
+    },
+    "guarded-pulse": {
+      "avg_frame_rate": "30/1",
+      "duration": "9.033333",
+      "nb_frames": "271",
+      "full_decode_passed": true,
+      "timestamp_error_s": 0.0006666666673220689
+    }
+  },
+  "source_hashes_match": true,
+  "model_hashes_match": true,
+  "raw_archive": {
+    "members": 68,
+    "all_members_match": true,
+    "sha256": "b10180a0b12553ad5ed74e3ce12b06c1167621c2b6966cd99bebd4a16ccfb880"
+  },
+  "source_review": {
+    "observation": "Estimated base pose through default_sense(seed=17); physical contacts used only in scoring.",
+    "release": "At 5.2 s, evaluate one feet-only solve; accept projected status; issue a second feet-only solve. These are separate commands, and both solve costs contribute to transition latency.",
+    "abort": "Rejection branch sets the current estimated state as rest reference and adds the existing weight-100 velocity cost. No rejection occurred; no abort validation is claimed.",
+    "schedule": "Both feet remain fixed throughout; feet-only return excludes subsequent gripper contacts. Original site membership and certified defaults unchanged.",
+    "shutdown": "Final command at 9.02 s is replaced by shutdown without plant integration; scored force phases end before 9 s."
+  },
+  "visual_review": {
+    "frame_sequences_inspected": [
+      "baseline-nominal",
+      "guarded-nominal",
+      "baseline-pulse",
+      "guarded-pulse"
+    ],
+    "frames_per_sequence": 8,
+    "nominal": "Standing return visible at 6.5, 8 and 9 s; hands separate from the tabletop.",
+    "pulse": "Torso remains inclined and hands near the table at 6.5, 8 and 9 s; body load logs establish renewed support.",
+    "limitation": "Eight-frame sequences do not resolve millimetre foot slip; raw motion logs determine that measurement."
+  },
+  "decision": "First-command release feasibility fails to predict successful disturbed recovery. Keep opt-in; no further rollout is required for this hypothesis."
+}

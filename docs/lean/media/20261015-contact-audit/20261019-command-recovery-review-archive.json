@@ -1,0 +1,15 @@
+{
+  "archive_sha256": "897a5570099d0640e1c275be96504d6634908706404031b08440380fa6eaf857",
+  "members": {
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-commands.json": "81ea948b86847c13e3457c6deaf08156a5a09278cff5b02ad562a65e41faf77a",
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-quota-before-review.json": "655827f0fc859de70873d41ada6760f85d1f883080595ca8174e80d069eddd53",
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-quota-finish.json": "4cd103931385a5c0d659b7d785ea09ab843a6294a79a1113af2371b86311613b",
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-quota-start.json": "18efc360ed7d5a7163645a796ccb32bcd5ee2454aa28cebb2a0b3efbc7b4c380",
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-resguard-finish.txt": "007d71df2a46319105ce980e7701cf60e673ef88788ab7302fc519a52c6f7870",
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-review-time.txt": "388c4defda48c48c74589f33e5dd6bc440173f9b2933d78e06fdf7209c61c3ce",
+    "studies/runs/20261019-cmpc-command-recovery-review/20261019-review.log": "fc40473b393d4eac5180f3fa51f473063b6caf891d5e24eda8045b6358acad03",
+    "studies/20261019_cmpc_command_recovery_review.py": "bc210da3eaabbbef7fd9d1aeb985eeadaf95b3cb79c23f8f8d14725dee753802",
+    "docs/lean/media/20261015-contact-audit/20261019-command-recovery-review.json": "d874ed0b041efd6e827f5ae8d3e30bcf16d3ef9c43a38e01fba199657bffd75d",
+    "docs/lean/media/20261015-contact-audit/20261019-command-recovery-run-record.json": "6c2a780b4081d3732c0e8bcc27cb492b48039b4958f66d4fae937aa80f826d86"
+  }
+}
