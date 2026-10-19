@@ -1,0 +1,9 @@
+{
+  "archive_sha256": "b73dc7b0f36d5082fbb38691fbd0070c9ee375bf82a601e10dd5e0c49b42fccd",
+  "final_page_local_links_checked": 24,
+  "all_links_exist": true,
+  "final_status_consistent": true,
+  "prior_archive_preserved": true,
+  "record_sha256": "58f38165ee22e20e0ce3691b29f1ed44562b2e9e22d0de9e36f75de34a7e0056",
+  "note": "Final document hashes are in the completion run record; initial audit bytes remain in their original archive."
+}

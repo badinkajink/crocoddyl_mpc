@@ -1,14 +1,12 @@
 {
   "checkpoint": "transfer_review",
   "date": "2026-10-19 America/Denver",
-  "status": "continue",
+  "status": "checkpoint_complete",
   "decision": "Retain executable-torque filtering as an opt-in simulation baseline. Do not promote a complete transfer controller; obtain contact/actuator/estimator measurements before hardware validation.",
   "best_supported_non_RL_variant": "Existing BoxFDDP plus executable-torque cone projection from 4 s; unchanged original staged geometry and contact membership.",
   "hardware_validation_complete": false,
-  "simulation_review_complete": false,
-  "required_checkpoint_work_remaining": [
-    "Final artifact/link and synthesis consistency review; no rollouts needed"
-  ],
+  "simulation_review_complete": true,
+  "required_checkpoint_work_remaining": [],
   "questions": [
     {
       "id": "foot_slip",
@@ -66,7 +64,7 @@
       "checkpoints": [
         "motion_transfer"
       ],
-      "result": "Added velocity cost reduces first-contact wrist speed 0.700 to 0.083 m/s and saturated startup samples 165 to 5. Startup acceleration remains 223.63 versus 226.12 rad/s\u00b2, while left-sole excursion increases 18.80 to 24.35 mm. Fixed-position startup still reaches 175.62 rad/s\u00b2. Best force-filter p95 is 24.22/23.96 ms against 20 ms.",
+      "result": "Added velocity cost reduces wrist speed at its first table contact 0.700 to 0.083 m/s and saturated joint samples in the first 0.5 s 165 to 5. Startup acceleration remains 223.63 versus 226.12 rad/s\u00b2, while left-sole excursion increases 18.80 to 24.35 mm. Fixed-position startup still reaches 175.62 rad/s\u00b2. Best force-filter p95 is 24.22/23.96 ms against 20 ms.",
       "resolved": "Velocity regularization improves contact arrival but fails the combined acceleration/sole-motion criterion; initialization contributes to acceleration.",
       "unresolved": "Supported handover and deadline-aware execution remain untested. No same-condition measurement explains the approximately 90 s hardware maneuver. Earlier unlabelled 3x clips were replaced by 1x clips.",
       "hardware": [
@@ -245,7 +243,7 @@
         "H1",
         "H3"
       ],
-      "experiment": "Re-solve from a measured supported handover after foot load and velocity settle; compare the original approach and velocity correction at identical initialization.",
+      "experiment": "Re-solve from a measured supported handover after foot load and velocity stabilize; compare the original approach and velocity correction at identical initialization.",
       "falsification": "Persistent acceleration near 224 rad/s\u00b2 rejects contact acquisition as a sufficient explanation; preserve reach and sole motion."
     },
     {
@@ -577,7 +575,9 @@
       "Recovery changes target and contact schedule and lasts 9.02 s; do not pool with 6.02 s hold-only trials.",
       "Older August results use older assets; historical context only.",
       "Model-uncertainty predictor alternatives reuse saved transitions and are not closed-loop controller trials."
-    ]
+    ],
+    "observation_equality_limit": "Identical sensing configuration and estimated/physical arrays before intervention; observations diverge with subsequent motion.",
+    "nominal_disturbance": "None; pulse applies only to disturbed trials."
   },
   "measurement": {
     "path": "docs/lean/media/20261015-contact-audit/20261019-transfer-review-measurement.json",
@@ -590,20 +590,23 @@
     "new_rollouts": 0,
     "cumulative_checkpoint_rollouts": 0,
     "regression_limit": 2,
-    "numerical_wall_s": 0.4,
+    "numerical_wall_s": 0.17,
     "numerical_limit_s": 1200,
-    "peak_rss_KiB": 61956,
+    "cumulative_checkpoint_numerical_wall_s": 0.57,
+    "peak_rss_KiB": 22184,
     "cap": "1.6G",
-    "cap_basis": "Prior saved-data review RSS 1,095,964 KiB times 1.3",
+    "cap_basis": "Earlier measured saved-data RSS 1,095,964 KiB times 1.3",
     "threads": 1,
     "cpu_quota": 200,
     "core": 18,
     "resguard_events_before": 213,
     "resguard_events_after": 213,
     "new_resguard_events": [],
-    "quota_save_five_hour_percent": 82,
-    "quota_save_weekly_percent": 58,
-    "stopped_for_quota": true,
+    "quota_save_five_hour_percent": 22.0,
+    "quota_save_weekly_percent": 63.0,
+    "session_budget": 18,
+    "sessions_used": 17,
+    "stopped_for_quota": false,
     "post_ten_minute_check_due": false,
     "thirty_minute_checkpoint_due": false,
     "rollout_accounting": {
@@ -623,7 +626,9 @@
   },
   "reproducible_commands": [
     "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-transfer-review/20261019-audit-time.txt timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_transfer_review.py > studies/runs/20261019-cmpc-transfer-review/20261019-audit.log 2>&1",
-    "python studies/20261019_cmpc_transfer_assessment.py"
+    "python studies/20261019_cmpc_transfer_assessment.py",
+    "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-transfer-completion/20261019-review-time.txt timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_transfer_completion.py > studies/runs/20261019-cmpc-transfer-completion/20261019-review.log 2>&1",
+    "python studies/20261019_cmpc_transfer_finalize.py"
   ],
   "source_baseline_commit": "90ce6b780d3bc7276c59bbe447c0f1bdb7ee5328",
   "source_plan_and_model": {
@@ -813,5 +818,56 @@
     ],
     "prior_complete_decode_checks": "Original foot-model, command-recovery and adaptive review records",
     "observation": "Pulse baseline shows large posture change; filtered case preserves the brace. Gated nominal remains at the table through 9 s. Loads and submillimetre motion come from numerical scoring."
-  }
+  },
+  "prior_quota_limited_session_resources": {
+    "new_rollouts": 0,
+    "cumulative_checkpoint_rollouts": 0,
+    "regression_limit": 2,
+    "numerical_wall_s": 0.4,
+    "numerical_limit_s": 1200,
+    "peak_rss_KiB": 61956,
+    "cap": "1.6G",
+    "cap_basis": "Prior saved-data review RSS 1,095,964 KiB times 1.3",
+    "threads": 1,
+    "cpu_quota": 200,
+    "core": 18,
+    "resguard_events_before": 213,
+    "resguard_events_after": 213,
+    "new_resguard_events": [],
+    "quota_save_five_hour_percent": 82,
+    "quota_save_weekly_percent": 58,
+    "stopped_for_quota": true,
+    "post_ten_minute_check_due": false,
+    "thirty_minute_checkpoint_due": false,
+    "rollout_accounting": {
+      "geometry": 0,
+      "foot_motion": 2,
+      "state_frames": 0,
+      "motion_transfer": 3,
+      "foot_model_transfer": 6,
+      "brace_selection_transfer": 5,
+      "model_uncertainty_transfer": 0,
+      "command_recovery_transfer": 4,
+      "adaptive_transfer": 2,
+      "transfer_review": 0
+    },
+    "total_research_rollouts_including_retries": 22,
+    "retries_included": 2
+  },
+  "completion_baseline_commit": "c1d777ed70481e35d96b860f39fe37cabeec1d08",
+  "completion_review": {
+    "path": "docs/lean/media/20261015-contact-audit/20261019-transfer-review-completion.json",
+    "sha256": "8379d553b89eb41f4d8dd759191f80063e5573f4a7b25779086c885e0c7493b4",
+    "checks": 157,
+    "numerical_claims": 36,
+    "local_links": 145,
+    "prior_input_digests_verified": 73,
+    "frame_sequences_reinspected": true,
+    "new_regression_needed": false
+  },
+  "completion_editorial_changes": [
+    "Clarify identical sensing configuration versus differing post-intervention observations.",
+    "Identify wrist contact and joint-sample counting in motion measurements.",
+    "Add existing pulse motion rates and executable-command pressure margins."
+  ]
 }

@@ -1,0 +1,1828 @@
+{
+  "checkpoint": "transfer_review",
+  "date": "2026-10-19",
+  "baseline_commit": "c1d777ed70481e35d96b860f39fe37cabeec1d08",
+  "passed": true,
+  "checks": [
+    {
+      "name": "prior saved-array audit",
+      "passed": true
+    },
+    {
+      "name": "assessment points to original audit bytes",
+      "passed": true
+    },
+    {
+      "name": "copied force comparisons",
+      "passed": true
+    },
+    {
+      "name": "copied recovery comparisons",
+      "passed": true
+    },
+    {
+      "name": "zero regression rollouts",
+      "passed": true
+    },
+    {
+      "name": "research rollout count includes retries",
+      "passed": true
+    },
+    {
+      "name": "hardware validation remains open",
+      "passed": true
+    },
+    {
+      "name": "original synthesis archive digest",
+      "passed": true
+    },
+    {
+      "name": "original synthesis archive CRC",
+      "passed": true
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-cmpc-foot-model-transfer.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-cmpc-adaptive-transfer.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-cmpc-model-uncertainty.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261015-audit.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261015-surface-catalogue.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261015-foot-motion.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261015-state-frames.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-nominal-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-nominal-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261017-cmpc-foot-model-transfer/20261017-baseline-pulse-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261017-cmpc-foot-model-transfer/20261017-corrected-pulse-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261018-cmpc-command-recovery/20261018-baseline-nominal-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261018-cmpc-command-recovery/20261018-guarded-nominal-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261019-cmpc-adaptive-transfer/20261019-gated-nominal-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261018-cmpc-command-recovery/20261018-baseline-pulse-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261018-cmpc-command-recovery/20261018-guarded-pulse-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/runs/20261019-cmpc-adaptive-transfer/20261019-gated-pulse-raw.npz",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-raw.zip",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-archive.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-command-recovery-raw.zip",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-command-recovery-archive.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-raw.zip",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-archive.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-adaptive-raw.zip",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-adaptive-archive.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-command-recovery-review-raw.zip",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-command-recovery-review-archive.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261015-cmpc-contact-reassessment.html",
+      "passed": true,
+      "basis": "archived baseline bytes; current assessment updated intentionally"
+    },
+    {
+      "name": "input digest docs/lean/20261015-cmpc-foot-motion.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261015-cmpc-state-frames.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261015-cmpc-surface-catalogue.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261016-cmpc-command-recovery.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261016-cmpc-model-uncertainty.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/20261016-cmpc-motion-transfer.html",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-foot-nominal.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-foot-pulse.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-motion-baseline.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-motion-fixed-position.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-motion-velocity.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-baseline-nominal.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-baseline-pulse.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-corrected-nominal.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-corrected-pulse.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-cad-wrist.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-elbow_forearm-reserved.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-elbow_forearm-selection.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-forearm_wrist-reserved.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-forearm_wrist-selection.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-original.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-recovery-baseline-nominal.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-recovery-baseline-pulse.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-recovery-guarded-nominal.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-recovery-guarded-pulse.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-adaptive-gated-nominal.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-adaptive-gated-pulse.mp4",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-foot-motion-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-geometry-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-geometry-validation-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-motion-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261016-state-frames-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261017-foot-model-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-command-recovery-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261018-model-uncertainty-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-adaptive-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest docs/lean/media/20261015-contact-audit/20261019-command-recovery-run-record.json",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "input digest studies/20261019_cmpc_transfer_review.py",
+      "passed": true,
+      "basis": "current bytes"
+    },
+    {
+      "name": "archived source 20261019_cmpc_transfer_assessment.py",
+      "passed": true
+    },
+    {
+      "name": "archived source 20261019_cmpc_transfer_review.py",
+      "passed": true
+    },
+    {
+      "name": "archived source 20261019-transfer-review-measurement.json",
+      "passed": true
+    },
+    {
+      "name": "archived quota-limited status",
+      "passed": true
+    },
+    {
+      "name": "local links 20261015-cmpc-contact-reassessment.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261015-cmpc-foot-motion.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261015-cmpc-state-frames.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261015-cmpc-surface-catalogue.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-adaptive-transfer.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-brace-selection-transfer.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-command-recovery.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-foot-model-transfer.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-model-uncertainty.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-motion-transfer.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-cmpc-transfer-assessment.html",
+      "passed": true
+    },
+    {
+      "name": "local links 20261016-height-playback.html",
+      "passed": true
+    },
+    {
+      "name": "index includes assessment once",
+      "passed": true
+    },
+    {
+      "name": "seven question groups",
+      "passed": true
+    },
+    {
+      "name": "all nine earlier checkpoints covered",
+      "passed": true
+    },
+    {
+      "name": "question completeness foot_slip",
+      "passed": true
+    },
+    {
+      "name": "question completeness physical_brace_selection",
+      "passed": true
+    },
+    {
+      "name": "question completeness estimation",
+      "passed": true
+    },
+    {
+      "name": "question completeness motion_speed_runtime",
+      "passed": true
+    },
+    {
+      "name": "question completeness target_commandability",
+      "passed": true
+    },
+    {
+      "name": "question completeness recovery",
+      "passed": true
+    },
+    {
+      "name": "question completeness model_uncertainty",
+      "passed": true
+    },
+    {
+      "name": "unperformed proposal E1",
+      "passed": true
+    },
+    {
+      "name": "unperformed proposal E2",
+      "passed": true
+    },
+    {
+      "name": "unperformed proposal E3",
+      "passed": true
+    },
+    {
+      "name": "unperformed proposal E4",
+      "passed": true
+    },
+    {
+      "name": "comparison table nominal baseline",
+      "passed": true
+    },
+    {
+      "name": "comparison table nominal corrected",
+      "passed": true
+    },
+    {
+      "name": "comparison table pulse baseline",
+      "passed": true
+    },
+    {
+      "name": "comparison table pulse corrected",
+      "passed": true
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/baseline/first_wrist_contact/wrist_speed_m_s",
+      "passed": true,
+      "actual": 0.6995601899851366,
+      "displayed": 0.7,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/baseline/startup_acceleration_rad_s2",
+      "passed": true,
+      "actual": 226.12325033594874,
+      "displayed": 226.12,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/baseline/startup_force_saturated_joint_samples",
+      "passed": true,
+      "actual": 165,
+      "displayed": 165,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/baseline/rollout/feet/sole_left/displacement_from_start_max_mm",
+      "passed": true,
+      "actual": 18.796711933282182,
+      "displayed": 18.8,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/velocity/first_wrist_contact/wrist_speed_m_s",
+      "passed": true,
+      "actual": 0.08320131712246252,
+      "displayed": 0.083,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/velocity/startup_acceleration_rad_s2",
+      "passed": true,
+      "actual": 223.62846569966646,
+      "displayed": 223.63,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/velocity/startup_force_saturated_joint_samples",
+      "passed": true,
+      "actual": 5,
+      "displayed": 5,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/velocity/rollout/feet/sole_left/displacement_from_start_max_mm",
+      "passed": true,
+      "actual": 24.345965510777848,
+      "displayed": 24.35,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-motion-transfer.json cases/fixed-position/startup_acceleration_rad_s2",
+      "passed": true,
+      "actual": 175.62475870999018,
+      "displayed": 175.62,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261015-state-frames.json metrics/base_only_10mm/contact_force_delta_N",
+      "passed": true,
+      "actual": 7.009370556159225,
+      "displayed": 7.009,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261015-state-frames.json first_control/base_only_10mm/torque_delta_max_Nm",
+      "passed": true,
+      "actual": 0.018826772010033466,
+      "displayed": 0.01883,
+      "rounding_tolerance": 5e-06
+    },
+    {
+      "name": "frame invariance and four scene rejections",
+      "passed": true
+    },
+    {
+      "name": "no selected physical strategy",
+      "passed": true
+    },
+    {
+      "name": "20261016-cmpc-brace-selection-transfer.json conditions/selection/elbow_forearm/credited_support_min_N",
+      "passed": true,
+      "actual": 182.2054088956479,
+      "displayed": 182.21,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-brace-selection-transfer.json conditions/selection/forearm_wrist/credited_support_min_N",
+      "passed": true,
+      "actual": 0.0,
+      "displayed": 0,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-brace-selection-transfer.json conditions/selection/forearm_wrist/body_support_mean_N/left_wrist_roll_link",
+      "passed": true,
+      "actual": 107.89273580480395,
+      "displayed": 107.89,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-brace-selection-transfer.json conditions/reserved/elbow_forearm/credited_support_min_N",
+      "passed": true,
+      "actual": 43.89569641588346,
+      "displayed": 43.9,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-brace-selection-transfer.json conditions/reserved/forearm_wrist/credited_support_min_N",
+      "passed": true,
+      "actual": 0.0,
+      "displayed": 0,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-brace-selection-transfer.json conditions/reserved/forearm_wrist/body_support_mean_N/left_wrist_roll_link",
+      "passed": true,
+      "actual": 71.06549242057838,
+      "displayed": 71.07,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/command_response/hand_x_motion_first_half_second_mm",
+      "passed": true,
+      "actual": 8.373341689807301,
+      "displayed": 8.37,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/command_response/error_at_command_mm",
+      "passed": true,
+      "actual": 27.393299627566332,
+      "displayed": 27.39,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/command_response/error_before_pulse_mm",
+      "passed": true,
+      "actual": 18.96289420719682,
+      "displayed": 18.96,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/phases/command/target_error_rms_mm",
+      "passed": true,
+      "actual": 19.71950450173155,
+      "displayed": 19.72,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-pulse/phases/command/target_error_rms_mm",
+      "passed": true,
+      "actual": 187.71440857649154,
+      "displayed": 187.71,
+      "rounding_tolerance": 0.005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/timing/brace_onset_s",
+      "passed": true,
+      "actual": 2.3799999999999595,
+      "displayed": 2.38,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/timing/original_reach_onset_s",
+      "passed": true,
+      "actual": 2.401999999999957,
+      "displayed": 2.402,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/timing/standing_recovery_onset_s",
+      "passed": true,
+      "actual": 8.529999999999518,
+      "displayed": 8.53,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-nominal/timing/standing_recovery_after_request_s",
+      "passed": true,
+      "actual": 3.329999999999518,
+      "displayed": 3.33,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-command-recovery.json cases/baseline-pulse/post_release_max_sole_displacement_mm",
+      "passed": true,
+      "actual": 8.42434779452592,
+      "displayed": 8.424,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "release guard branch unexercised",
+      "passed": true
+    },
+    {
+      "name": "20261016-cmpc-adaptive-transfer.json cases/gated-pulse/post_release_max_sole_displacement_mm",
+      "passed": true,
+      "actual": 1.3055172576587661,
+      "displayed": 1.306,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "recovery fails gated-nominal",
+      "passed": true
+    },
+    {
+      "name": "recovery fails gated-pulse",
+      "passed": true
+    },
+    {
+      "name": "20261019-adaptive-review.json measurements/baseline-pulse/final_robot_table_load_N",
+      "passed": true,
+      "actual": 13.55500631491091,
+      "displayed": 13.555,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261019-adaptive-review.json measurements/gated-nominal/final_robot_table_load_N",
+      "passed": true,
+      "actual": 54.798904010235184,
+      "displayed": 54.799,
+      "rounding_tolerance": 0.0005
+    },
+    {
+      "name": "20261016-cmpc-model-uncertainty.json decision/nominal_improvement_fraction",
+      "passed": true,
+      "actual": 0.04866592915507517,
+      "displayed": 0.0487,
+      "rounding_tolerance": 5e-05
+    },
+    {
+      "name": "20261016-cmpc-model-uncertainty.json decision/reserved_improvement_fraction",
+      "passed": true,
+      "actual": 0.12184349672712291,
+      "displayed": 0.1218,
+      "rounding_tolerance": 5e-05
+    },
+    {
+      "name": "20261016-cmpc-model-uncertainty.json cases/nominal/transitions",
+      "passed": true,
+      "actual": 100,
+      "displayed": 100,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-model-uncertainty.json review/cases/nominal/endpoint_violating_transitions",
+      "passed": true,
+      "actual": 75,
+      "displayed": 75,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-model-uncertainty.json cases/pulse/transitions",
+      "passed": true,
+      "actual": 75,
+      "displayed": 75,
+      "rounding_tolerance": 0
+    },
+    {
+      "name": "20261016-cmpc-model-uncertainty.json review/cases/pulse/endpoint_violating_transitions",
+      "passed": true,
+      "actual": 57,
+      "displayed": 57,
+      "rounding_tolerance": 0
+    }
+  ],
+  "numerical_claims": [
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/baseline/first_wrist_contact/wrist_speed_m_s",
+      "actual": 0.6995601899851366,
+      "displayed": 0.7,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/baseline/startup_acceleration_rad_s2",
+      "actual": 226.12325033594874,
+      "displayed": 226.12,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/baseline/startup_force_saturated_joint_samples",
+      "actual": 165,
+      "displayed": 165,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/baseline/rollout/feet/sole_left/displacement_from_start_max_mm",
+      "actual": 18.796711933282182,
+      "displayed": 18.8,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/velocity/first_wrist_contact/wrist_speed_m_s",
+      "actual": 0.08320131712246252,
+      "displayed": 0.083,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/velocity/startup_acceleration_rad_s2",
+      "actual": 223.62846569966646,
+      "displayed": 223.63,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/velocity/startup_force_saturated_joint_samples",
+      "actual": 5,
+      "displayed": 5,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/velocity/rollout/feet/sole_left/displacement_from_start_max_mm",
+      "actual": 24.345965510777848,
+      "displayed": 24.35,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-motion-transfer.json",
+      "pointer": "cases/fixed-position/startup_acceleration_rad_s2",
+      "actual": 175.62475870999018,
+      "displayed": 175.62,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261015-state-frames.json",
+      "pointer": "metrics/base_only_10mm/contact_force_delta_N",
+      "actual": 7.009370556159225,
+      "displayed": 7.009,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261015-state-frames.json",
+      "pointer": "first_control/base_only_10mm/torque_delta_max_Nm",
+      "actual": 0.018826772010033466,
+      "displayed": 0.01883,
+      "tolerance": 5e-06
+    },
+    {
+      "source": "20261016-cmpc-brace-selection-transfer.json",
+      "pointer": "conditions/selection/elbow_forearm/credited_support_min_N",
+      "actual": 182.2054088956479,
+      "displayed": 182.21,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-brace-selection-transfer.json",
+      "pointer": "conditions/selection/forearm_wrist/credited_support_min_N",
+      "actual": 0.0,
+      "displayed": 0,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-brace-selection-transfer.json",
+      "pointer": "conditions/selection/forearm_wrist/body_support_mean_N/left_wrist_roll_link",
+      "actual": 107.89273580480395,
+      "displayed": 107.89,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-brace-selection-transfer.json",
+      "pointer": "conditions/reserved/elbow_forearm/credited_support_min_N",
+      "actual": 43.89569641588346,
+      "displayed": 43.9,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-brace-selection-transfer.json",
+      "pointer": "conditions/reserved/forearm_wrist/credited_support_min_N",
+      "actual": 0.0,
+      "displayed": 0,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-brace-selection-transfer.json",
+      "pointer": "conditions/reserved/forearm_wrist/body_support_mean_N/left_wrist_roll_link",
+      "actual": 71.06549242057838,
+      "displayed": 71.07,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/command_response/hand_x_motion_first_half_second_mm",
+      "actual": 8.373341689807301,
+      "displayed": 8.37,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/command_response/error_at_command_mm",
+      "actual": 27.393299627566332,
+      "displayed": 27.39,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/command_response/error_before_pulse_mm",
+      "actual": 18.96289420719682,
+      "displayed": 18.96,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/phases/command/target_error_rms_mm",
+      "actual": 19.71950450173155,
+      "displayed": 19.72,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-pulse/phases/command/target_error_rms_mm",
+      "actual": 187.71440857649154,
+      "displayed": 187.71,
+      "tolerance": 0.005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/timing/brace_onset_s",
+      "actual": 2.3799999999999595,
+      "displayed": 2.38,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/timing/original_reach_onset_s",
+      "actual": 2.401999999999957,
+      "displayed": 2.402,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/timing/standing_recovery_onset_s",
+      "actual": 8.529999999999518,
+      "displayed": 8.53,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-nominal/timing/standing_recovery_after_request_s",
+      "actual": 3.329999999999518,
+      "displayed": 3.33,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-command-recovery.json",
+      "pointer": "cases/baseline-pulse/post_release_max_sole_displacement_mm",
+      "actual": 8.42434779452592,
+      "displayed": 8.424,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-adaptive-transfer.json",
+      "pointer": "cases/gated-pulse/post_release_max_sole_displacement_mm",
+      "actual": 1.3055172576587661,
+      "displayed": 1.306,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261019-adaptive-review.json",
+      "pointer": "measurements/baseline-pulse/final_robot_table_load_N",
+      "actual": 13.55500631491091,
+      "displayed": 13.555,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261019-adaptive-review.json",
+      "pointer": "measurements/gated-nominal/final_robot_table_load_N",
+      "actual": 54.798904010235184,
+      "displayed": 54.799,
+      "tolerance": 0.0005
+    },
+    {
+      "source": "20261016-cmpc-model-uncertainty.json",
+      "pointer": "decision/nominal_improvement_fraction",
+      "actual": 0.04866592915507517,
+      "displayed": 0.0487,
+      "tolerance": 5e-05
+    },
+    {
+      "source": "20261016-cmpc-model-uncertainty.json",
+      "pointer": "decision/reserved_improvement_fraction",
+      "actual": 0.12184349672712291,
+      "displayed": 0.1218,
+      "tolerance": 5e-05
+    },
+    {
+      "source": "20261016-cmpc-model-uncertainty.json",
+      "pointer": "cases/nominal/transitions",
+      "actual": 100,
+      "displayed": 100,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-model-uncertainty.json",
+      "pointer": "review/cases/nominal/endpoint_violating_transitions",
+      "actual": 75,
+      "displayed": 75,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-model-uncertainty.json",
+      "pointer": "cases/pulse/transitions",
+      "actual": 75,
+      "displayed": 75,
+      "tolerance": 0
+    },
+    {
+      "source": "20261016-cmpc-model-uncertainty.json",
+      "pointer": "review/cases/pulse/endpoint_violating_transitions",
+      "actual": 57,
+      "displayed": 57,
+      "tolerance": 0
+    }
+  ],
+  "local_links": [
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "20261016-cmpc-transfer-assessment.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "media/20261015-contact-audit/20261015-elbow_palm.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "media/20261015-contact-audit/20261015-elbow_palm.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "media/20261015-contact-audit/20261015-forearm_wrist.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "media/20261015-contact-audit/20261015-forearm_wrist.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "2026-08-14_robustness.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "2026-08-22_cmpc_vs_mjpc.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "20261015-cmpc-state-frames.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "20261016-cmpc-motion-transfer.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "20261016-cmpc-transfer-assessment.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "media/20261015-contact-audit/20261015-audit.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "../../studies/20261015_contact_audit.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-contact-reassessment.html",
+      "link": "media/20261015-contact-audit/20261015-elbow_forearm.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261016-foot-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261016-foot-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261015-foot-motion.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261016-foot-motion-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261016-foot-motion-provenance.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261016-foot-motion-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "media/20261015-contact-audit/20261016-foot-video-verification.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "../../studies/20261016_cmpc_foot_motion.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-foot-motion.html",
+      "link": "../../studies/20261016_cmpc_foot_analysis.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-state-frames.html",
+      "link": "20261015-cmpc-foot-motion.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-state-frames.html",
+      "link": "20261015-cmpc-foot-motion.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-state-frames.html",
+      "link": "media/20261015-contact-audit/20261015-state-frames.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-state-frames.html",
+      "link": "media/20261015-contact-audit/20261016-state-frames-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-state-frames.html",
+      "link": "media/20261015-contact-audit/20261016-state-frames-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-state-frames.html",
+      "link": "../../studies/20261016_cmpc_state_frames.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-model-comparison.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-surface-validation.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-validated-patches-elbow_palm.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-validated-patches-elbow_palm.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-validated-patches-forearm_wrist.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-validated-patches-forearm_wrist.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-validated-patches-elbow_forearm.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261015-surface-catalogue.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-geometry-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-geometry-validation-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "../../studies/20261016_validate_surface_catalogue.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "../../studies/20261016_surface_catalogue.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261015-cmpc-surface-catalogue.html",
+      "link": "media/20261015-contact-audit/20261016-geometry-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "20261016-cmpc-command-recovery.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-plan.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-recovery-baseline-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-gated-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-recovery-baseline-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-gated-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-adaptive-transfer.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-selection.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-review.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-adaptive-transfer.html",
+      "link": "../../studies/20261019_cmpc_adaptive_transfer.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "../index.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-elbow_forearm-selection.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-elbow_forearm-selection-scene.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-forearm_wrist-selection.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-forearm_wrist-selection-scene.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-elbow_forearm-reserved.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-elbow_forearm-reserved-scene.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-forearm_wrist-reserved.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-forearm_wrist-reserved-scene.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-selection-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-planning-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-brace-selection-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-brace-geometry-prerequisite.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261018-recovery-baseline-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261018-recovery-guarded-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261018-recovery-baseline-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261018-recovery-guarded-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-command-recovery.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261019-command-recovery-review.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261018-command-recovery-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261018-command-recovery-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-command-recovery.html",
+      "link": "media/20261015-contact-audit/20261019-command-recovery-review-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-baseline-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-baseline-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-corrected-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-corrected-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-foot-model-transfer.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "../../studies/20261017_cmpc_foot_model_transfer.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "../../studies/20261017_cmpc_foot_model_analysis.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "media/20261015-contact-audit/20261018-foot-model-review.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-foot-model-transfer.html",
+      "link": "../../studies/20261018_cmpc_foot_model_verify.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261018-model-uncertainty-prediction.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-corrected-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-corrected-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-model-uncertainty.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261018-model-uncertainty-plan.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261018-model-uncertainty-selection.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261018-model-uncertainty-review.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261018-model-uncertainty-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "media/20261015-contact-audit/20261018-model-uncertainty-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "../../studies/20261018_cmpc_command_prediction.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "../../studies/20261018_cmpc_command_prediction_review.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-model-uncertainty.html",
+      "link": "20261016-cmpc-foot-model-transfer.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "../index.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "20261016-height-playback.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-startup-traces.png",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "20261015-cmpc-foot-motion.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-baseline.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-velocity.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-fixed-position.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-motion-transfer.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261016-motion-video-verification.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "../../studies/20261016_cmpc_motion_transfer.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "media/20261015-contact-audit/20261017-motion-review.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-motion-transfer.html",
+      "link": "../../studies/20261017_cmpc_motion_verify.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261015-cmpc-foot-motion.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-foot-model-transfer.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261015-cmpc-surface-catalogue.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-brace-selection-transfer.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261015-cmpc-state-frames.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-motion-transfer.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-height-playback.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-command-recovery.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-command-recovery.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-adaptive-transfer.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "20261016-cmpc-model-uncertainty.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-baseline-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-corrected-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-baseline-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261017-foot-model-corrected-pulse.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261019-adaptive-gated-nominal.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261016-cmpc-transfer-assessment.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261019-transfer-review-measurement.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261019-transfer-review-run-record.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "media/20261015-contact-audit/20261019-transfer-review-raw.zip",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-cmpc-transfer-assessment.html",
+      "link": "../../studies/20261019_cmpc_transfer_review.py",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "../index.html",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h0885_x1060_brace_r0.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/height/h0885_x1060_brace_r0.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h0985_x1060_brace_r0.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h1050_x1060_brace_r0.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h1085_x1060_brace_r0.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h1085_x1060_stand_r0.mp4",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h0885-motion.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h0885_x1060_brace_r0.json",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-h0885-frames.jpg",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "media/20261016-height-playback/20261016-other-height-frames.jpg",
+      "exists": true
+    },
+    {
+      "page": "docs/lean/20261016-height-playback.html",
+      "link": "../../studies/20261016_height_motion_audit.py",
+      "exists": true
+    }
+  ],
+  "external_links_not_rechecked": [
+    "https://arxiv.org/html/2511.09484v1",
+    "https://arxiv.org/html/2610.10465v1",
+    "https://github.com/loco-3d/crocoddyl/wiki/Frequently-Asked-Questions",
+    "https://github.com/machines-in-motion/mim_solvers",
+    "https://h12leaner.github.io/paper.pdf?v=4",
+    "https://osqp.org/docs/"
+  ],
+  "input_sha256": {
+    "docs/lean/media/20261015-contact-audit/20261019-transfer-review-measurement.json": "04208e106ce90f6ec5298703016298809a89d275633a06c0e52c9f4aa7ae7a76",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-transfer-assessment.json": "08c1497880299420ed5d63b0a10770459d18d2602cde1266419ca1bc570a3472",
+    "docs/lean/media/20261015-contact-audit/20261019-transfer-review-archive.json": "f614487e3bc20abb06e55258c9c17982eb4a6caf11af20d95c40154c3f32ac07",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-motion-transfer.json": "28dd6e3feae982d3a8176ae1f86d7d83aac17b9725e5bfa6006c57d665552bef",
+    "docs/lean/media/20261015-contact-audit/20261015-state-frames.json": "711d3f39e707447f71569310469e2a6f06ec488d7c85aaeafea2d9edfaa998e5",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-brace-selection-transfer.json": "e16f2dac7d1027d60efea071de0bd2b25fc8fd43f419a77d2d220a218c514dc4",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-command-recovery.json": "4b43f4017e92c6fd095936fd107872605c50514e48abccab11735bd38647d5b2",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-adaptive-transfer.json": "4a1dd2161c59a92de41bdffe9a849c49aea0c4ffb37f5a002a0ea5944a5caaf0",
+    "docs/lean/media/20261015-contact-audit/20261019-adaptive-review.json": "9ff16fd84b9105e515dcf07165e16e586230ee552da4382ec7318cc0a622f94f",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-model-uncertainty.json": "7dfe5249d8c88691d2a31f3bd40db75d4ad57b9a0fa5f61ff1cb4cc4373bdb7d",
+    "docs/lean/20261016-cmpc-transfer-assessment.html": "4f3256ff8cca16cdd19fe590713ebbce4d585ab522316f07893c27761ec47660",
+    "studies/20261019_cmpc_transfer_completion.py": "a013e76e2584c2c00472bd0175b137adf9ae68528c18de670e666a405eef9b4a"
+  },
+  "prior_input_digests_verified": 73,
+  "new_rollouts": 0,
+  "cumulative_checkpoint_rollouts": 0,
+  "physics_steps": 0,
+  "optimizer_solves": 0,
+  "regression_needed": false,
+  "incompatible_model_groups_remain_separate": true,
+  "hardware_validation_complete": false
+}

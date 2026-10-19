@@ -1,0 +1,238 @@
+{
+  "checkpoint": "transfer_review",
+  "status": "checkpoint_complete",
+  "baseline_commit": "c1d777ed70481e35d96b860f39fe37cabeec1d08",
+  "resources": {
+    "new_rollouts": 0,
+    "cumulative_checkpoint_rollouts": 0,
+    "regression_limit": 2,
+    "numerical_wall_s": 0.17,
+    "numerical_limit_s": 1200,
+    "cumulative_checkpoint_numerical_wall_s": 0.57,
+    "peak_rss_KiB": 22184,
+    "cap": "1.6G",
+    "cap_basis": "Earlier measured saved-data RSS 1,095,964 KiB times 1.3",
+    "threads": 1,
+    "cpu_quota": 200,
+    "core": 18,
+    "resguard_events_before": 213,
+    "resguard_events_after": 213,
+    "new_resguard_events": [],
+    "quota_save_five_hour_percent": 22.0,
+    "quota_save_weekly_percent": 63.0,
+    "session_budget": 18,
+    "sessions_used": 17,
+    "stopped_for_quota": false,
+    "post_ten_minute_check_due": false,
+    "thirty_minute_checkpoint_due": false,
+    "rollout_accounting": {
+      "geometry": 0,
+      "foot_motion": 2,
+      "state_frames": 0,
+      "motion_transfer": 3,
+      "foot_model_transfer": 6,
+      "brace_selection_transfer": 5,
+      "model_uncertainty_transfer": 0,
+      "command_recovery_transfer": 4,
+      "adaptive_transfer": 2,
+      "transfer_review": 0
+    },
+    "total_research_rollouts_including_retries": 22,
+    "retries_included": 2
+  },
+  "commands": [
+    "/home/humanoid/.claude/bin/resguard.sh run --mem 1.6G --cpu 200 -- /usr/bin/time -v -o studies/runs/20261019-cmpc-transfer-completion/20261019-review-time.txt timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_transfer_completion.py > studies/runs/20261019-cmpc-transfer-completion/20261019-review.log 2>&1",
+    "python studies/20261019_cmpc_transfer_finalize.py"
+  ],
+  "log": "{\"passed\": true, \"checks\": 157, \"numerical_claims\": 36, \"local_links\": 145, \"output\": \"/home/humanoid/Programs/Humanoid_Simulation/crocoddyl_mpc/docs/lean/media/20261015-contact-audit/20261019-transfer-review-completion.json\"}\n",
+  "time_output": "\tCommand being timed: \"timeout 90s env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 taskset -c 18 /home/humanoid/miniconda3/envs/croco/bin/python studies/20261019_cmpc_transfer_completion.py\"\n\tUser time (seconds): 0.11\n\tSystem time (seconds): 0.04\n\tPercent of CPU this job got: 93%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:00.17\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 22184\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 9428\n\tVoluntary context switches: 15\n\tInvoluntary context switches: 32\n\tSwaps: 0\n\tFile system inputs: 624\n\tFile system outputs: 128\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+  "quota_reads": {
+    "20261019-quota-before.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer"
+        ],
+        "attempts": 20,
+        "next_at": 1792415759,
+        "current_step": "transfer_review",
+        "last_started": "2026-10-19T13:30:06.004369+00:00",
+        "active_tag": "cmpc-20261015-attempt-20-transfer_review",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed c1d777e; not pushed. Saved transfer synthesis and decision record. All 65 saved-data checks passed; zero new rollouts, 0.40 s numerical work, no new resguard events. Stopped at 82% five-hour usage.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-transfer-assessment.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-transfer-assessment.json",
+            "docs/lean/media/20261015-contact-audit/20261019-transfer-review-measurement.json",
+            "docs/lean/media/20261015-contact-audit/20261019-transfer-review-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261019-transfer-review-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Finish artifact/link and synthesis consistency review before checkpoint_complete. No further rollout is needed. Contact-aware recovery, command-interval feasibility and hardware validation remain unresolved; required measurements and proposed experiments are recorded."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792402668.5171387
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 14.0,
+          "window_minutes": 300,
+          "resets_at": 1792433903
+        },
+        "secondary": {
+          "used_percent": 62.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 17,
+        "sessions_remaining": 1,
+        "checkpoints_total": 10,
+        "pending": [
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    },
+    "20261019-quota-save.json": {
+      "state": {
+        "status": "running",
+        "completed": [
+          "geometry",
+          "foot_motion",
+          "state_frames",
+          "motion_transfer",
+          "foot_model_transfer",
+          "brace_selection_transfer",
+          "model_uncertainty_transfer",
+          "command_recovery_transfer",
+          "adaptive_transfer"
+        ],
+        "attempts": 20,
+        "next_at": 1792415759,
+        "current_step": "transfer_review",
+        "last_started": "2026-10-19T13:30:06.004369+00:00",
+        "active_tag": "cmpc-20261015-attempt-20-transfer_review",
+        "last_returncode": 0,
+        "last_result": {
+          "status": "continue",
+          "summary": "Committed c1d777e; not pushed. Saved transfer synthesis and decision record. All 65 saved-data checks passed; zero new rollouts, 0.40 s numerical work, no new resguard events. Stopped at 82% five-hour usage.",
+          "artifacts": [
+            "docs/lean/20261016-cmpc-transfer-assessment.html",
+            "docs/lean/media/20261015-contact-audit/20261016-cmpc-transfer-assessment.json",
+            "docs/lean/media/20261015-contact-audit/20261019-transfer-review-measurement.json",
+            "docs/lean/media/20261015-contact-audit/20261019-transfer-review-run-record.json",
+            "docs/lean/media/20261015-contact-audit/20261019-transfer-review-raw.zip",
+            "docs/handoff/20261015-cmpc-research.md",
+            "docs/index.html"
+          ],
+          "remaining": "Finish artifact/link and synthesis consistency review before checkpoint_complete. No further rollout is needed. Contact-aware recovery, command-interval feasibility and hardware validation remain unresolved; required measurements and proposed experiments are recorded."
+        },
+        "resource_refusals": 2,
+        "repair_20261016": {
+          "refused_logs": [
+            "attempt-01-geometry.jsonl",
+            "attempt-02-geometry.jsonl"
+          ],
+          "actual_model_launches_before_repair": 0
+        },
+        "startup_failures": 1,
+        "resume_20261018": {
+          "previous_next_at": 1792656654,
+          "reason": "Owner requested continuation; refreshed quota is below the pause ceilings",
+          "at": 1792356727.8537533
+        },
+        "retry_at": 1792402668.5171387
+      },
+      "quota": {
+        "limit_id": "codex",
+        "limit_name": null,
+        "primary": {
+          "used_percent": 22.0,
+          "window_minutes": 300,
+          "resets_at": 1792433903
+        },
+        "secondary": {
+          "used_percent": 63.0,
+          "window_minutes": 10080,
+          "resets_at": 1792875051
+        },
+        "credits": {
+          "has_credits": false,
+          "unlimited": false,
+          "balance": "0"
+        },
+        "individual_limit": null,
+        "spend_control_reached": null,
+        "plan_type": "plus",
+        "rate_limit_reached_type": null
+      },
+      "queue": {
+        "session_budget": 18,
+        "sessions_used": 17,
+        "sessions_remaining": 1,
+        "checkpoints_total": 10,
+        "pending": [
+          "transfer_review"
+        ]
+      },
+      "quota_wait_until": 0
+    }
+  },
+  "guard_before": "RAM avail 14.2/31.0 GB, swap used 8.0 GB, PSI some/full 0.00/0.00; load 0.30 on 20 cores; GPU free 14083 MB (4% busy)\nlargest resident processes:\n  1.4 GB     0% /usr/share/code/code /home/humanoid/.vscode/extensions/ms-python.vscode-pylance-2026.4.1/d\n  1.2 GB     0% /app/bin/prusa-slicer --single-instance-on-url /home/humanoid/Programs/hand/docs/experimen\n  0.7 GB     0% /home/humanoid/.vscode/extensions/ms-vscode.cpptools-1.34.4-linux-x64/bin/cpptools\n  0.6 GB     1% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.6 GB     0% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.5 GB     0% /usr/bin/gnome-shell\nlaunch gate: OPEN (>= 5 GB avail, PSI full <= 5 / some <= 25, load <= nproc-2, swap <= 15 GB; run --mem X needs avail >= X+2)\n",
+  "guard_after": "RAM avail 14.2/31.0 GB, swap used 8.0 GB, PSI some/full 0.00/0.00; load 0.13 on 20 cores; GPU free 14083 MB (0% busy)\nlargest resident processes:\n  1.4 GB     0% /usr/share/code/code /home/humanoid/.vscode/extensions/ms-python.vscode-pylance-2026.4.1/d\n  1.2 GB     0% /app/bin/prusa-slicer --single-instance-on-url /home/humanoid/Programs/hand/docs/experimen\n  0.7 GB     0% /home/humanoid/.vscode/extensions/ms-vscode.cpptools-1.34.4-linux-x64/bin/cpptools\n  0.6 GB     1% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.6 GB     0% /usr/share/code/code --type=utility --utility-sub-type=node.mojom.NodeService --lang=en-US\n  0.5 GB     0% /usr/bin/gnome-shell\nlaunch gate: OPEN (>= 5 GB avail, PSI full <= 5 / some <= 25, load <= nproc-2, swap <= 15 GB; run --mem X needs avail >= X+2)\n",
+  "completion_review_sha256": "8379d553b89eb41f4d8dd759191f80063e5573f4a7b25779086c885e0c7493b4",
+  "prior_archive_preserved": true,
+  "source_sha256": {
+    "studies/20261019_cmpc_transfer_finalize.py": "a68fcdd55231d3afa37062522c69865bbd0a3322429aa4f4bd4eab8b77c96645",
+    "studies/20261019_cmpc_transfer_completion.py": "a013e76e2584c2c00472bd0175b137adf9ae68528c18de670e666a405eef9b4a"
+  },
+  "final_artifact_sha256": {
+    "docs/lean/20261016-cmpc-transfer-assessment.html": "80f6bac428ca58556807c1d490b482b5cb9cf986d02ed861c71e6459b5759739",
+    "docs/lean/media/20261015-contact-audit/20261016-cmpc-transfer-assessment.json": "1f28335e134f938aa7cc78febbec8c8216775752bcdecabfdbebe6b590436467",
+    "docs/lean/20261015-cmpc-contact-reassessment.html": "992bf52e704f56a1b2237030228e1407959c02166f9a348c11308c6059b5d04b",
+    "docs/index.html": "5bd59701a765794f9d27194818a06ceeac849e9278d9c45d635f4d1d5fc16f71"
+  },
+  "inspected_frame_sequences": [
+    "20261017-foot-model-baseline-pulse-frames.jpg",
+    "20261017-foot-model-corrected-pulse-frames.jpg",
+    "20261019-adaptive-gated-nominal.jpg"
+  ]
+}
